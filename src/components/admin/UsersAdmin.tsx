@@ -9,7 +9,7 @@ import { PermissionsEditor } from './PermissionsEditor';
 import { CreateAccountWizard } from './CreateAccountWizard';
 import { SupportRequests } from './SupportRequests';
 import { AuditLog } from './AuditLog';
-import { CopyButton, Empty, Issued, Skeleton, UserAvatar, btnCls, cardCls, genPassword, inputCls } from './adminUi';
+import { AvatarPicker, CopyButton, Empty, Issued, Skeleton, UserAvatar, btnCls, cardCls, genPassword, inputCls } from './adminUi';
 
 export { PermissionsEditor };
 
@@ -199,7 +199,7 @@ const UsersTab: React.FC<{
             const granted = Object.keys(a.perms || {}).length;
             return (
               <li key={a.id} className={`group flex items-center gap-3 p-3 rounded-2xl border border-slate-200/70 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-800 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition ${a.disabled ? 'opacity-60' : ''}`}>
-                <UserAvatar name={a.name} color={a.color} />
+                <UserAvatar name={a.name} color={a.color} src={a.avatar} />
                 <button onClick={() => setEditTarget({ acc: a })} className="flex-1 min-w-0 text-right">
                   <div className="flex items-center gap-1.5 font-bold text-sm text-slate-900 dark:text-white truncate">
                     {a.name}
@@ -247,6 +247,7 @@ const EditAccount: React.FC<{
 }> = ({ acc, self, startReset, onBack, onDone }) => {
   const [name, setName] = useState(acc.name);
   const [role, setRole] = useState(acc.role || '');
+  const [avatar, setAvatar] = useState(acc.avatar || '');
   const [isAdmin, setIsAdmin] = useState(!!acc.is_admin);
   const [perms, setPerms] = useState<Perms>(acc.perms || {});
   const [resetPw, setResetPw] = useState(!!startReset);
@@ -263,6 +264,7 @@ const EditAccount: React.FC<{
     try {
       await chatApi.adminUpdate(acc.id, {
         name: name.trim(), role: role.trim(), perms,
+        ...(avatar !== (acc.avatar || '') ? { avatar } : {}),
         ...(self ? {} : { is_admin: isAdmin }),
         ...(resetPw ? { password } : {}),
       });
@@ -280,12 +282,14 @@ const EditAccount: React.FC<{
         <ArrowRight className="w-4 h-4" /> رجوع للقائمة
       </button>
       <div className="flex items-center gap-3">
-        <UserAvatar name={name || acc.name} color={acc.color} size={52} />
+        <UserAvatar name={name || acc.name} color={acc.color} src={avatar} size={52} />
         <div className="min-w-0">
           <h4 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-1.5 truncate">{acc.name}{!!acc.is_admin && <Crown className="w-4 h-4 text-amber-500" />}</h4>
           <p className="text-xs text-slate-500"><span dir="ltr">@{acc.username}</span> · {acc.disabled ? 'موقوف' : 'نشط'}</p>
         </div>
       </div>
+
+      <AvatarPicker value={avatar} name={name} onChange={setAvatar} size={76} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <label className="block">

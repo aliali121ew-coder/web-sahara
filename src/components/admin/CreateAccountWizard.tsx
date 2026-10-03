@@ -3,7 +3,7 @@ import { UserRound, KeyRound, ShieldCheck, ClipboardCheck, Check, ArrowLeft, Arr
 import { chatApi } from '../chat/chatApi';
 import { PERM_GROUPS, ALL_SECTIONS, type Perms } from '../../lib/permCatalog';
 import { PermissionsEditor } from './PermissionsEditor';
-import { CopyButton, SCORE_LABEL, SCORE_TONE, UserAvatar, btnCls, cardCls, genPassword, inputCls, passwordScore } from './adminUi';
+import { AvatarPicker, CopyButton, SCORE_LABEL, SCORE_TONE, UserAvatar, btnCls, cardCls, genPassword, inputCls, passwordScore } from './adminUi';
 
 const USERNAME_RE = /^[a-z0-9._-]{3,32}$/;
 const ROLE_SUGGESTIONS = ['محاسب', 'مسؤول خزانات', 'مشرف موقع', 'مدخل بيانات', 'مراقب', 'مدير فرع'];
@@ -38,6 +38,7 @@ export const CreateAccountWizard: React.FC<{
   const [name, setName] = useState(prefill?.name || '');
   const [username, setUsername] = useState((prefill?.username || '').toLowerCase().replace(/[^a-z0-9._-]/g, ''));
   const [role, setRole] = useState('');
+  const [avatar, setAvatar] = useState('');
   const [password, setPassword] = useState(() => genPassword());
   const [showPw, setShowPw] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -78,7 +79,7 @@ export const CreateAccountWizard: React.FC<{
     if (!canGo(STEPS.length)) return;
     setBusy(true);
     try {
-      await chatApi.adminCreate({ username, password, name: name.trim(), role: role.trim(), is_admin: isAdmin, perms });
+      await chatApi.adminCreate({ username, password, name: name.trim(), role: role.trim(), is_admin: isAdmin, perms, ...(avatar ? { avatar } : {}) });
       onCreated({ name: name.trim(), username, password });
     } catch (e) {
       setError((e as Error).message);
@@ -120,6 +121,7 @@ export const CreateAccountWizard: React.FC<{
           {step === 0 && (
             <div key="s0" className="swipe-in-next space-y-5">
               <StepTitle title="من هو صاحب الحساب؟" desc="الاسم يظهر لزملائه في المحادثة والتقارير، واسم المستخدم يُستخدم لتسجيل الدخول ولا يمكن تغييره لاحقًا." />
+              <AvatarPicker value={avatar} name={name} onChange={setAvatar} />
               <Field label="الاسم الكامل" required icon={UserRound} error={touched ? nameError : ''}>
                 <input autoFocus value={name} onChange={e => setName(e.target.value)} maxLength={60} className={inputCls} placeholder="مثال: علي حسين الكربلائي" />
               </Field>
@@ -199,7 +201,7 @@ export const CreateAccountWizard: React.FC<{
             <div key="s3" className="swipe-in-next space-y-4">
               <StepTitle title="راجع قبل الإنشاء" desc="تأكد من البيانات. بعد الإنشاء تظهر بيانات الدخول مرة واحدة لتسليمها." />
               <dl className="rounded-2xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 text-sm">
-                <ReviewRow label="الاسم" value={name} onEdit={() => setStep(0)} />
+                <ReviewRow label="الاسم" value={<span className="flex items-center gap-2"><UserAvatar name={name} src={avatar} size={28} className="!rounded-lg" />{name}</span>} onEdit={() => setStep(0)} />
                 <ReviewRow label="اسم المستخدم" value={<span dir="ltr" className="font-mono">@{username}</span>} onEdit={() => setStep(0)} />
                 <ReviewRow label="الوظيفة" value={role || <span className="text-slate-400">—</span>} onEdit={() => setStep(1)} />
                 <ReviewRow label="الدور" value={isAdmin ? <span className="inline-flex items-center gap-1 text-amber-600 font-bold"><Crown className="w-3.5 h-3.5" />مدير النظام</span> : 'مستخدم'} onEdit={() => setStep(1)} />
@@ -246,7 +248,7 @@ export const CreateAccountWizard: React.FC<{
         <div className={`${cardCls} overflow-hidden`}>
           <div className="h-16 bg-gradient-to-l from-violet-600 via-indigo-600 to-blue-600" />
           <div className="px-5 pb-5 -mt-8">
-            <UserAvatar name={name || '؟'} size={64} className="ring-4 ring-white dark:ring-slate-900" />
+            <UserAvatar name={name || '؟'} src={avatar} size={64} className="ring-4 ring-white dark:ring-slate-900" />
             <div className="mt-3 flex items-center gap-1.5">
               <span className="font-black text-base text-slate-900 dark:text-white truncate">{name || 'اسم الموظف'}</span>
               {isAdmin && <Crown className="w-4 h-4 text-amber-500" />}

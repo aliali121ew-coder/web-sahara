@@ -215,7 +215,7 @@ export const AuditLog: React.FC<{ users: Account[] }> = ({ users }) => {
                             <div className="flex items-center gap-2">
                               <b className={`text-sm ${sev.text}`}>{meta.label}</b>
                               <span className="flex items-center gap-1.5 min-w-0 text-xs text-slate-500">
-                                {who && <UserAvatar name={who.name} color={who.color} size={18} className="!rounded-md" />}
+                                {who && <UserAvatar name={who.name} color={who.color} src={who.avatar} size={18} className="!rounded-md" />}
                                 <span className="truncate">{who?.name || (row.username ? `@${row.username}` : 'غير معروف')}</span>
                               </span>
                               <span className="mr-auto shrink-0 text-[11px] text-slate-400 tabular-nums" title={fullDate(row.at)}>{clock(row.at)}</span>

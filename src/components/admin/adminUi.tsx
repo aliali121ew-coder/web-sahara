@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Loader2, Check, Copy, CheckCircle2 } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Loader2, Check, Copy, CheckCircle2, Camera, Trash2, ImagePlus } from 'lucide-react';
 import { initials } from '../../lib/session';
 
 /** أدوات وأنماط مشتركة لصفحات إدارة المستخدمين */
@@ -43,12 +43,87 @@ export const timeAgo = (ts: number) => {
 export const fullDate = (ts: number) => new Date(ts).toLocaleString('ar-IQ', { dateStyle: 'full', timeStyle: 'medium' });
 export const clock = (ts: number) => new Date(ts).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' });
 
-export const UserAvatar: React.FC<{ name: string; color?: string; size?: number; className?: string }> = ({ name, color, size = 42, className = '' }) => (
-  <div className={`rounded-2xl flex items-center justify-center text-white font-black shrink-0 shadow-sm ${className}`}
-    style={{ width: size, height: size, fontSize: size * 0.36, background: color || 'linear-gradient(135deg,#6366f1,#3b82f6)' }}>
-    {initials(name)}
-  </div>
+export const UserAvatar: React.FC<{ name: string; color?: string; src?: string; size?: number; className?: string }> = ({ name, color, src, size = 42, className = '' }) => (
+  src ? (
+    <img src={src} alt={name} width={size} height={size} className={`rounded-2xl object-cover shrink-0 shadow-sm bg-slate-100 dark:bg-slate-800 ${className}`} style={{ width: size, height: size }} />
+  ) : (
+    <div className={`rounded-2xl flex items-center justify-center text-white font-black shrink-0 shadow-sm ${className}`}
+      style={{ width: size, height: size, fontSize: size * 0.36, background: color || 'linear-gradient(135deg,#6366f1,#3b82f6)' }}>
+      {initials(name)}
+    </div>
+  )
 );
+
+const AVATAR_PX = 256;
+/** قص الصورة مربعًا من المنتصف وتصغيرها إلى 256×256 (WebP أو JPEG) حتى تبقى خفيفة (~20–40KB) */
+export const resizeAvatar = (file: File): Promise<string> => new Promise((resolve, reject) => {
+  if (!/^image\/(png|jpe?g|webp|gif|bmp|heic|heif)$/i.test(file.type)) return reject(new Error('اختر صورة (PNG أو JPEG أو WebP)'));
+  if (file.size > 15 * 1024 * 1024) return reject(new Error('حجم الصورة أكبر من 15MB'));
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    URL.revokeObjectURL(url);
+    const side = Math.min(img.naturalWidth, img.naturalHeight);
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = AVATAR_PX;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return reject(new Error('تعذّر معالجة الصورة'));
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, AVATAR_PX, AVATAR_PX);
+    const webp = canvas.toDataURL('image/webp', 0.85);
+    resolve(webp.startsWith('data:image/webp') ? webp : canvas.toDataURL('image/jpeg', 0.85));
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('تعذّر قراءة الصورة')); };
+  img.src = url;
+});
+
+/** اختيار صورة شخصية: ضغط أو سحب وإفلات، مع معاينة وإزالة */
+export const AvatarPicker: React.FC<{ value: string; name: string; onChange: (v: string) => void; size?: number }> = ({ value, name, onChange, size = 88 }) => {
+  const input = useRef<HTMLInputElement>(null);
+  const [drag, setDrag] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const pick = async (file?: File) => {
+    if (!file) return;
+    setError('');
+    setBusy(true);
+    try { onChange(await resizeAvatar(file)); } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+  };
+  return (
+    <div className="flex items-center gap-4">
+      <button type="button" onClick={() => input.current?.click()} aria-label="اختيار صورة شخصية"
+        onDragOver={e => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
+        onDrop={e => { e.preventDefault(); setDrag(false); pick(e.dataTransfer.files[0]); }}
+        className={`group relative rounded-3xl shrink-0 transition ${drag ? 'ring-4 ring-blue-500/40 scale-105' : ''}`} style={{ width: size, height: size }}>
+        {value ? <UserAvatar name={name || '؟'} src={value} size={size} className="!rounded-3xl" /> : (
+          <span className="w-full h-full rounded-3xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/60 flex flex-col items-center justify-center gap-1 text-slate-400 group-hover:border-blue-400 group-hover:text-blue-500 transition">
+            <ImagePlus className="w-6 h-6" />
+            <span className="text-[10px] font-bold">صورة</span>
+          </span>
+        )}
+        <span className="absolute -bottom-1 -left-1 w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-lg ring-4 ring-white dark:ring-slate-900">
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+        </span>
+      </button>
+      <div className="min-w-0 space-y-1.5">
+        <div className="text-xs font-bold text-slate-700 dark:text-slate-300">الصورة الشخصية <span className="font-normal text-slate-400">(اختياري)</span></div>
+        <p className="text-[11px] text-slate-400 leading-relaxed">اضغط أو اسحب صورة هنا. تُقص مربعًا وتُصغَّر تلقائيًا.</p>
+        <div className="flex gap-1.5">
+          <button type="button" onClick={() => input.current?.click()} className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200">
+            {value ? 'تغيير' : 'رفع صورة'}
+          </button>
+          {value && (
+            <button type="button" onClick={() => onChange('')} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">
+              <Trash2 className="w-3.5 h-3.5" /> إزالة
+            </button>
+          )}
+        </div>
+        {error && <p className="text-[11px] font-bold text-rose-500">{error}</p>}
+      </div>
+      <input ref={input} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={e => { pick(e.target.files?.[0]); e.target.value = ''; }} />
+    </div>
+  );
+};
 
 export const Empty: React.FC<{ icon: React.ComponentType<{ className?: string }>; title: string; hint?: string }> = ({ icon: Icon, title, hint }) => (
   <div className="py-14 text-center">

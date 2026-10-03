@@ -158,7 +158,7 @@ export const chatApi = {
   changePassword: (current: string, next: string) => call('/auth/password', send('POST', { current, next })),
   // ───── إدارة الحسابات (للمدير) ─────
   adminUsers: () => call<{ items: Account[]; max: number }>('/admin/users'),
-  adminCreate: (body: { username: string; password: string; name: string; role: string; is_admin: boolean; perms?: Perms }) => call<{ id: string }>('/admin/users', send('POST', body)),
+  adminCreate: (body: { username: string; password: string; name: string; role: string; is_admin: boolean; perms?: Perms; avatar?: string }) => call<{ id: string }>('/admin/users', send('POST', body)),
   adminSupport: () => call<{ items: SupportRequest[] }>('/admin/support'),
   adminAuditStats: () => call<{ since: number; items: { action: string; n: number; users: number }[] }>('/admin/audit/stats'),
   adminAudit: (q: { user?: string; action?: string; q?: string; since?: number; before?: number; limit?: number } = {}) => {
@@ -166,7 +166,7 @@ export const chatApi = {
     return call<{ items: AuditEntry[]; more: boolean }>(`/admin/audit?${p}`);
   },
   adminSupportStatus: (id: string, status: 'open' | 'done') => call(`/admin/support/${encodeURIComponent(id)}`, send('PATCH', { status })),
-  adminUpdate: (id: string, body: { name?: string; role?: string; password?: string; is_admin?: boolean; disabled?: boolean; perms?: Perms }) =>
+  adminUpdate: (id: string, body: { name?: string; role?: string; password?: string; is_admin?: boolean; disabled?: boolean; perms?: Perms; avatar?: string }) =>
     call(`/admin/users/${encodeURIComponent(id)}`, send('PATCH', body)),
   typing: (me: string, room: string) => call('/typing', send('POST', { me, room })),
   read: (me: string, room: string, at: number) => call('/read', send('POST', { me, room, at })),
