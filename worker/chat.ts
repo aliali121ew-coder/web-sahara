@@ -9,6 +9,7 @@
  */
 
 import { checkPublicKey, parseClientData, randomChallenge, verifyAssertion } from './webauthn';
+import { levelOf, parsePerms, sanitizePerms, type Perms } from '../src/lib/permCatalog';
 
 interface D1Result<T> { results: T[] }
 interface D1PreparedStatement {
@@ -67,6 +68,8 @@ const ensureTables = async (db: ChatDB) => {
   for (const col of [
     "username TEXT NOT NULL DEFAULT ''", "pass_hash TEXT NOT NULL DEFAULT ''", 'is_admin INTEGER NOT NULL DEFAULT 0',
     'disabled INTEGER NOT NULL DEFAULT 0', 'fail_count INTEGER NOT NULL DEFAULT 0', 'lock_until INTEGER NOT NULL DEFAULT 0',
+    // صلاحيات الأقسام (JSON) يحددها مدير النظام — راجع src/lib/permCatalog.ts
+    "perms TEXT NOT NULL DEFAULT '{}'",
   ]) {
     try { await db.exec(`ALTER TABLE chat_users ADD COLUMN ${col}`); } catch { /* موجود */ }
   }
@@ -163,8 +166,9 @@ const LOCK_MS = 5 * 60_000;
 const normUser = (v: unknown) => str(v, 40).trim().toLowerCase();
 const passwordError = (p: string) => (p.length < MIN_PASSWORD ? `كلمة المرور يجب أن تكون ${MIN_PASSWORD} أحرف على الأقل` : p.length > 128 ? 'كلمة المرور طويلة جدًا' : '');
 
-type AccountRow = { id: string; username: string; name: string; role: string; avatar: string; color: string; is_admin: number; disabled: number; last_seen: number; updated_at: number };
-const ACCOUNT_COLS = 'id, username, name, role, avatar, color, is_admin, disabled, last_seen, updated_at';
+type AccountRow = { id: string; username: string; name: string; role: string; avatar: string; color: string; is_admin: number; disabled: number; last_seen: number; updated_at: number; perms: string };
+const ACCOUNT_COLS = 'id, username, name, role, avatar, color, is_admin, disabled, last_seen, updated_at, perms';
+const withPerms = (a: AccountRow | undefined) => a && { ...a, perms: parsePerms(a.perms) };
 
 /** جلسة جديدة لهذا الجهاز: الرمز يُعاد للعميل مرة واحدة ويُحفظ على الخادم كبصمة */
 const newSession = async (db: ChatDB, userId: string, now: number) => {
@@ -178,9 +182,9 @@ const authUser = async (request: Request, db: ChatDB) => {
   const key = str(request.headers.get('x-chat-key'), 128);
   if (!id || !key) return null;
   const { results } = await db.prepare(
-    `SELECT u.id, u.is_admin, s.token_hash, s.created_at, s.last_used FROM chat_sessions s JOIN chat_users u ON u.id = s.user_id
+    `SELECT u.id, u.is_admin, u.perms, s.token_hash, s.created_at, s.last_used FROM chat_sessions s JOIN chat_users u ON u.id = s.user_id
      WHERE s.token_hash = ? AND u.disabled = 0 AND u.pass_hash != ''`,
-  ).bind(await hashKey(key)).all<{ id: string; is_admin: number; token_hash: string; created_at: number; last_used: number }>();
+  ).bind(await hashKey(key)).all<{ id: string; is_admin: number; perms: string; token_hash: string; created_at: number; last_used: number }>();
   const s = results[0];
   if (!s || s.id !== id) return null;
   if (Date.now() - s.created_at > SESSION_MAX_MS) {
@@ -189,8 +193,9 @@ const authUser = async (request: Request, db: ChatDB) => {
   }
   // تحديث آخر استخدام للجلسة مرة كل ساعة على الأكثر
   if (Date.now() - s.last_used > 3600_000) await db.prepare('UPDATE chat_sessions SET last_used = ? WHERE token_hash = ?').bind(Date.now(), s.token_hash).run();
-  return { id: s.id, admin: !!s.is_admin, tokenHash: s.token_hash };
+  return { id: s.id, admin: !!s.is_admin, perms: parsePerms(s.perms) as Perms, tokenHash: s.token_hash };
 };
+export type Session = NonNullable<Awaited<ReturnType<typeof authUser>>>;
 /** التحقق من جلسة حساب (يستخدمه worker/index.ts لحماية كل واجهات البرنامج) */
 export const verifySession = async (request: Request, db: ChatDB) => {
   await ensureTables(db);
@@ -296,17 +301,10 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
   };
 
   if (path === '/auth/webauthn/login-options' && method === 'POST') {
-    const b = await readBody<{ username?: string }>(request);
-    const username = normUser(b?.username);
-    let allow: { id: string }[] = [];
-    if (username) {
-      const { results } = await db.prepare('SELECT c.id FROM webauthn_credentials c JOIN chat_users u ON u.id = c.user_id WHERE u.username = ? AND u.disabled = 0')
-        .bind(username).all<{ id: string }>();
-      allow = results;
-    }
+    // لا نُرجع معرّفات البصمات حتى لا يُكشف وجود الحسابات أو معرّفات بصماتها؛ الجهاز يعرض مفاتيحه المحفوظة بنفسه
     const challenge = randomChallenge();
     await db.prepare("INSERT INTO webauthn_challenges (challenge, kind, expires_at) VALUES (?, 'get', ?)").bind(challenge, now + 2 * 60_000).run();
-    return json({ challenge, rpId, timeout: 60000, userVerification: 'required', allowCredentials: allow.map(a => ({ type: 'public-key', id: a.id })) });
+    return json({ challenge, rpId, timeout: 60000, userVerification: 'required', allowCredentials: [] });
   }
 
   if (path === '/auth/webauthn/login' && method === 'POST') {
@@ -355,7 +353,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
   // ───── جلستي وحسابي ─────
   if (path === '/auth/me' && method === 'GET') {
     const { results } = await db.prepare(`SELECT ${ACCOUNT_COLS} FROM chat_users WHERE id = ?`).bind(authId).all<AccountRow>();
-    return json({ user: results[0] });
+    return json({ user: withPerms(results[0]) });
   }
   if (path === '/auth/logout' && method === 'POST') {
     await db.prepare('DELETE FROM chat_sessions WHERE token_hash = ?').bind(session.tokenHash).run();
@@ -402,8 +400,12 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     const alg = Number(b.alg);
     const publicKey = str(b.publicKey, 2000);
     if (!(await checkPublicKey(publicKey, alg))) return json({ error: 'هذا الجهاز لا يدعم الدخول بالبصمة' }, 400);
+    const credId = str(b.id, 512);
+    // معرّف بصمة مسجّل لحساب آخر لا يُستبدل (كان يسمح بإلغاء بصمة شخص آخر)
+    const { results: existing } = await db.prepare('SELECT user_id FROM webauthn_credentials WHERE id = ?').bind(credId).all<{ user_id: string }>();
+    if (existing[0] && existing[0].user_id !== authId) return json({ error: 'هذه البصمة مسجّلة مسبقًا' }, 409);
     await db.prepare('INSERT OR REPLACE INTO webauthn_credentials (id, user_id, public_key, alg, sign_count, label, created_at) VALUES (?, ?, ?, ?, 0, ?, ?)')
-      .bind(str(b.id, 512), authId, publicKey, alg, str(b.label, 80), now).run();
+      .bind(credId, authId, publicKey, alg, str(b.label, 80), now).run();
     return json({ ok: true });
   }
   if (path === '/auth/webauthn/credentials' && method === 'GET') {
@@ -414,6 +416,13 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
   if (credMatch && method === 'DELETE') {
     await db.prepare('DELETE FROM webauthn_credentials WHERE id = ? AND user_id = ?').bind(decodeURIComponent(credMatch[1]), authId).run();
     return json({ ok: true });
+  }
+
+  // ───── صلاحية المحادثة: العرض للقراءة، والتعديل للإرسال وإدارة الغرف ─────
+  if (!path.startsWith('/admin/')) {
+    const chatLevel = levelOf(session.perms, session.admin, 'chat');
+    const readOnlyOk = method === 'GET' || ['/read', '/typing', '/prefs'].includes(path);
+    if (chatLevel < (readOnlyOk ? 1 : 2)) return json({ error: chatLevel ? 'صلاحيتك على المحادثة للعرض فقط' : 'لا تملك صلاحية الدخول إلى المحادثة', code: 'forbidden' }, 403);
   }
 
   // قائمة الحسابات الفعّالة (لزملاء العمل) — بدون أي بيانات سرّية
@@ -428,12 +437,12 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
 
     if (path === '/admin/users' && method === 'GET') {
       const { results } = await db.prepare(`SELECT ${ACCOUNT_COLS} FROM chat_users WHERE pass_hash != '' ORDER BY is_admin DESC, name`).all<AccountRow>();
-      return json({ items: results, max: MAX_ACCOUNTS });
+      return json({ items: results.map(withPerms), max: MAX_ACCOUNTS });
     }
 
     if (path === '/admin/users' && method === 'POST') {
       if ((await accountCount()) >= MAX_ACCOUNTS) return json({ error: `وصلت إلى الحد الأقصى (${MAX_ACCOUNTS} حساب)` }, 403);
-      const b = await readBody<{ username?: string; password?: string; name?: string; role?: string; is_admin?: boolean }>(request);
+      const b = await readBody<{ username?: string; password?: string; name?: string; role?: string; is_admin?: boolean; perms?: unknown }>(request);
       const username = normUser(b?.username);
       const password = str(b?.password, 200);
       const name = str(b?.name, 60).trim();
@@ -446,8 +455,8 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
       const id = uid();
       const color = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6'][Math.floor(Math.random() * 8)];
       await db.batch([
-        db.prepare('INSERT INTO chat_users (id, name, role, color, last_seen, updated_at, username, pass_hash, is_admin) VALUES (?1, ?2, ?3, ?4, 0, ?5, ?6, ?7, ?8)')
-          .bind(id, name, str(b?.role, 60).trim(), color, now, username, await hashPassword(password), b?.is_admin ? 1 : 0),
+        db.prepare('INSERT INTO chat_users (id, name, role, color, last_seen, updated_at, username, pass_hash, is_admin, perms) VALUES (?1, ?2, ?3, ?4, 0, ?5, ?6, ?7, ?8, ?9)')
+          .bind(id, name, str(b?.role, 60).trim(), color, now, username, await hashPassword(password), b?.is_admin ? 1 : 0, JSON.stringify(sanitizePerms(b?.perms))),
         db.prepare("INSERT OR IGNORE INTO chat_members (room_id, user_id, role, last_read, joined_at) VALUES (?, ?, 'member', 0, ?)").bind(GENERAL_ROOM, id, now),
       ]);
       return json({ ok: true, id });
@@ -467,7 +476,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     const m = path.match(/^\/admin\/users\/([^/]+)$/);
     if (m && method === 'PATCH') {
       const id = decodeURIComponent(m[1]);
-      const b = await readBody<{ name?: string; role?: string; password?: string; is_admin?: boolean; disabled?: boolean }>(request);
+      const b = await readBody<{ name?: string; role?: string; password?: string; is_admin?: boolean; disabled?: boolean; perms?: unknown }>(request);
       if (!b) return json({ error: 'بيانات غير صالحة' }, 400);
       const { results } = await db.prepare("SELECT id FROM chat_users WHERE id = ? AND pass_hash != ''").bind(id).all();
       if (!results.length) return json({ error: 'الحساب غير موجود' }, 404);
@@ -479,6 +488,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
         stmts.push(db.prepare('UPDATE chat_users SET name = ?, updated_at = ? WHERE id = ?').bind(name, now, id));
       }
       if (b.role !== undefined) stmts.push(db.prepare('UPDATE chat_users SET role = ?, updated_at = ? WHERE id = ?').bind(str(b.role, 60).trim(), now, id));
+      if (b.perms !== undefined) stmts.push(db.prepare('UPDATE chat_users SET perms = ?, updated_at = ? WHERE id = ?').bind(JSON.stringify(sanitizePerms(b.perms)), now, id));
       if (b.is_admin !== undefined) stmts.push(db.prepare('UPDATE chat_users SET is_admin = ? WHERE id = ?').bind(b.is_admin ? 1 : 0, id));
       if (b.password !== undefined) {
         const pErr = passwordError(str(b.password, 200));
@@ -675,7 +685,14 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     if (!(await isMember(db, b.room, b.me))) return json({ error: 'لست عضوًا في هذه المحادثة' }, 403);
     const kind = ['text', 'file', 'voice'].includes(b.kind || '') ? b.kind! : 'text';
     const text = str(b.text, 8000);
-    const attachments = JSON.stringify(Array.isArray(b.attachments) ? b.attachments.slice(0, 20) : []);
+    const list = (Array.isArray(b.attachments) ? b.attachments.slice(0, 20) : []) as { fileId?: unknown }[];
+    // المرفقات تشير فقط لملفات رفعها المرسل نفسه (وإلا قد يحذف ملف غيره عند حذف رسالته)
+    const fileIds = list.map(a => (a && typeof a.fileId === 'string' ? a.fileId : '')).filter(Boolean);
+    if (fileIds.length) {
+      const { results: own } = await db.prepare(`SELECT id FROM chat_files WHERE owner = ? AND id IN (${fileIds.map(() => '?').join(',')})`).bind(authId, ...fileIds).all<{ id: string }>();
+      if (own.length !== new Set(fileIds).size) return json({ error: 'مرفق غير صالح' }, 400);
+    }
+    const attachments = JSON.stringify(list);
     if (!text.trim() && attachments === '[]') return json({ error: 'الرسالة فارغة' }, 400);
     if (attachments.length > 600_000) return json({ error: 'بيانات المرفقات كبيرة جدًا' }, 413);
     const id = str(b.id, 64) || uid();
@@ -739,8 +756,8 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
       await db.batch([
         db.prepare("UPDATE chat_messages SET deleted = 1, text = '', attachments = '[]', reactions = '{}', updated_at = ? WHERE id = ?").bind(now, id),
         ...files.flatMap(f => [
-          db.prepare('DELETE FROM chat_file_chunks WHERE file_id = ?').bind(f),
-          db.prepare('DELETE FROM chat_files WHERE id = ?').bind(f),
+          db.prepare('DELETE FROM chat_file_chunks WHERE file_id = ? AND file_id IN (SELECT id FROM chat_files WHERE owner = ?)').bind(f, authId),
+          db.prepare('DELETE FROM chat_files WHERE id = ? AND owner = ?').bind(f, authId),
         ]),
       ]);
       return json({ ok: true });
@@ -780,6 +797,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
         'content-type': meta[0].type,
         'content-disposition': `attachment; filename*=UTF-8''${encodeURIComponent(meta[0].name)}`,
         'x-content-type-options': 'nosniff',
+        'content-security-policy': "default-src 'none'; sandbox",
         'cache-control': 'private, max-age=31536000, immutable',
       },
     });

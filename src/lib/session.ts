@@ -1,3 +1,4 @@
+import type { Perms } from './permCatalog';
 import { useEffect, useState } from 'react';
 
 /**
@@ -27,6 +28,8 @@ export interface SessionProfile {
   avatar: string;
   color: string;
   is_admin: number;
+  /** صلاحيات الأقسام (راجع permCatalog.ts) */
+  perms?: Perms;
 }
 
 /**

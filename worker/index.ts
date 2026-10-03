@@ -5,7 +5,8 @@
  */
 
 import { extractSaharaReport } from './extractSaharaReport';
-import { handleChat, verifySession } from './chat';
+import { handleChat, verifySession, type Session } from './chat';
+import { canReadKey, canWriteKey, isServerForbiddenKey, levelOf } from '../src/lib/permCatalog';
 
 interface D1Result<T> { results: T[] }
 interface D1PreparedStatement {
@@ -46,8 +47,18 @@ let tableReady = false;
 const ensureTable = async (db: D1Database) => {
   if (tableReady) return;
   await db.exec('CREATE TABLE IF NOT EXISTS app_state (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL)');
+  // تنظيف مفاتيح سرّية خاصة بالأجهزة رُفعت قديمًا قبل استثنائها من المزامنة
+  const { results } = await db.prepare('SELECT key FROM app_state').all<{ key: string }>();
+  const leaked = results.map(r => r.key).filter(isServerForbiddenKey);
+  if (leaked.length) await db.batch(leaked.map(k => db.prepare('DELETE FROM app_state WHERE key = ?').bind(k)));
   tableReady = true;
 };
+
+const MAX_STATE_BODY = 8 * 1024 * 1024;
+const MAX_IMAGE_BODY = 6 * 1024 * 1024;
+const forbidden = (error = 'لا تملك صلاحية لهذا القسم') => json({ error, code: 'forbidden' }, 403);
+/** طول جسم الطلب المعلن (للرفض المبكر للطلبات الضخمة) */
+const tooLarge = (request: Request, max: number) => Number(request.headers.get('content-length') || 0) > max;
 
 /**
  * المرفقات: الملف يُخزَّن في D1 مقسّمًا إلى أجزاء base64 (كل قيمة في D1 حدّها ~2MB)،
@@ -83,7 +94,10 @@ const base64ToBytes = (b64: string) => {
   return out;
 };
 
-const handleFiles = async (request: Request, url: URL, db: D1Database): Promise<Response> => {
+const handleFiles = async (request: Request, url: URL, db: D1Database, session: Session): Promise<Response> => {
+  // مرفقات رصيد الصحاري: العرض يتطلب صلاحية عرض، والرفع والحذف يتطلبان صلاحية تعديل
+  const level = levelOf(session.perms, session.admin, 'sahara.balance');
+  if (level < (request.method === 'GET' ? 1 : 2)) return forbidden();
   await ensureFilesTables(db);
   const id = url.pathname.slice('/api/files/'.length);
 
@@ -169,16 +183,24 @@ export default {
     }
 
     // كل ما عدا ذلك يتطلب جلسة حساب معتمد (اسم مستخدم + كلمة مرور)
-    if (!(await verifySession(request, env.DB))) return json({ error: 'انتهت الجلسة، سجّل الدخول مجددًا', code: 'chat_auth' }, 401);
+    const session = await verifySession(request, env.DB);
+    if (!session) return json({ error: 'انتهت الجلسة، سجّل الدخول مجددًا', code: 'chat_auth' }, 401);
 
     await ensureTable(env.DB);
 
     if (url.pathname === '/api/state' && request.method === 'GET') {
       const { results } = await env.DB.prepare('SELECT key, value, updated_at FROM app_state').all<StateRow>();
-      return json({ items: Object.fromEntries(results.map(r => [r.key, r.value])) });
+      // كل حساب يستلم فقط مفاتيح الأقسام المسموح له بعرضها
+      const visible = results.filter(r => canReadKey(session.perms, session.admin, r.key));
+      return json({
+        items: Object.fromEntries(visible.map(r => [r.key, r.value])),
+        admin: session.admin,
+        readOnly: visible.filter(r => !canWriteKey(session.perms, session.admin, r.key)).map(r => r.key),
+      });
     }
 
     if (url.pathname === '/api/state' && request.method === 'PUT') {
+      if (tooLarge(request, MAX_STATE_BODY)) return json({ error: 'حجم البيانات كبير جدًا' }, 413);
       let body: { set?: Record<string, string>; remove?: string[] };
       try {
         body = await request.json();
@@ -187,8 +209,11 @@ export default {
       }
       const now = Date.now();
       const statements: D1PreparedStatement[] = [];
+      // المفاتيح التي لا يملك الحساب صلاحية تعديلها تُرفض وتُعاد للتطبيق ليستعيد نسخة الخادم
+      const rejected: string[] = [];
       for (const [key, value] of Object.entries(body.set || {})) {
         if (typeof value !== 'string') continue;
+        if (!canWriteKey(session.perms, session.admin, key)) { rejected.push(key); continue; }
         statements.push(
           env.DB.prepare(
             'INSERT INTO app_state (key, value, updated_at) VALUES (?1, ?2, ?3) ON CONFLICT(key) DO UPDATE SET value = ?2, updated_at = ?3'
@@ -196,10 +221,12 @@ export default {
         );
       }
       for (const key of body.remove || []) {
+        if (typeof key !== 'string') continue;
+        if (!canWriteKey(session.perms, session.admin, key)) { rejected.push(key); continue; }
         statements.push(env.DB.prepare('DELETE FROM app_state WHERE key = ?1').bind(key));
       }
       if (statements.length) await env.DB.batch(statements);
-      return json({ ok: true, saved: statements.length });
+      return json({ ok: true, saved: statements.length, rejected });
     }
 
     // المحادثة: الحسابات والغرف والرسائل والمرفقات
@@ -209,11 +236,13 @@ export default {
 
     // مرفقات سجلات رصيد الصحاري (PDF و Excel)
     if (url.pathname === '/api/files' || url.pathname.startsWith('/api/files/')) {
-      return handleFiles(request, url, env.DB);
+      return handleFiles(request, url, env.DB, session);
     }
 
     // قراءة صورة الكشف اليومي للصحاري وتعبئة نافذة الإدخال
     if (url.pathname === '/api/extract-sahara-report' && request.method === 'POST') {
+      if (levelOf(session.perms, session.admin, 'sahara.balance') < 2) return forbidden();
+      if (tooLarge(request, MAX_IMAGE_BODY)) return json({ error: 'حجم الصورة كبير جدًا' }, 413);
       if (!env.ANTHROPIC_API_KEY) return json({ error: 'لم يُضبط مفتاح الذكاء الاصطناعي على الخادم (ANTHROPIC_API_KEY)' }, 503);
       let body: { image?: string; mediaType?: string; stations?: string[] };
       try {
@@ -222,7 +251,7 @@ export default {
         return json({ error: 'بيانات غير صالحة' }, 400);
       }
       const mediaType = body.mediaType as 'image/jpeg' | 'image/png' | 'image/webp';
-      if (!body.image || !['image/jpeg', 'image/png', 'image/webp'].includes(mediaType)) {
+      if (!body.image || body.image.length > MAX_IMAGE_BODY || !['image/jpeg', 'image/png', 'image/webp'].includes(mediaType)) {
         return json({ error: 'الصورة غير صالحة' }, 400);
       }
       try {

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useCanOpenTab } from '../../lib/usePermission';
 import {
   LayoutDashboard,
   Database,
@@ -56,7 +57,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [openDropdowns, setOpenDropdowns] = React.useState<Record<string, boolean>>({});
 
   // Categorized Navigation for clean corporate architecture with full multi-language support
-  const navGroups: NavGroup[] = [
+  const canOpenTab = useCanOpenTab();
+  const allGroups: NavGroup[] = [
     {
       groupTitle: t('groupOperations'),
       items: [
@@ -83,6 +85,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ]
     }
   ];
+
+  // إخفاء الصفحات غير المسموحة لهذا الحساب (والمجموعات التي تصبح فارغة)
+  const navGroups = allGroups
+    .map(g => ({ ...g, items: g.items.filter(i => canOpenTab(i.id)) }))
+    .filter(g => g.items.length > 0);
 
   const isUnified = sidebarStyle === 'unified';
   const isLight = sidebarStyle === 'light' || (isUnified && themeMode === 'light');

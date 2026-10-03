@@ -19,9 +19,20 @@ import { TasksLogistics } from './components/tasks/TasksLogistics';
 import { ReportsAnalytics } from './components/reports/ReportsAnalytics';
 import { ChatApp } from './components/chat/ChatApp';
 import { SettingsView } from './components/settings/SettingsView';
+import { NoAccess } from './components/auth/NoAccess';
+import { ReadOnlyBanner } from './components/auth/ReadOnlyBanner';
+import { useCanOpenTab, TAB_SECTION } from './lib/usePermission';
+import type { NavTabId } from './types';
 
 const AppContent: React.FC = () => {
-  const { activeTab } = useFuelData();
+  const { activeTab, setActiveTab } = useFuelData();
+  const canOpenTab = useCanOpenTab();
+  const firstAllowed = Object.keys(TAB_SECTION).find(canOpenTab) as NavTabId | undefined;
+
+  // صفحة غير مسموحة (رابط قديم أو صفحة البداية الافتراضية): الانتقال لأول صفحة مسموحة
+  useEffect(() => {
+    if (!canOpenTab(activeTab) && firstAllowed) setActiveTab(firstAllowed);
+  }, [activeTab, firstAllowed]); // eslint-disable-line react-hooks/exhaustive-deps
   const { tr, direction } = useLanguage();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [quickActionOpen, setQuickActionOpen] = useState(false);
@@ -98,6 +109,7 @@ const AppContent: React.FC = () => {
   }, []);
 
   const renderActiveView = () => {
+    if (!canOpenTab(activeTab)) return <NoAccess hasAny={!!firstAllowed} />;
     switch (activeTab) {
       case 'dashboard':
         return <MainDashboard />;
@@ -188,6 +200,7 @@ const AppContent: React.FC = () => {
           {/* Active View Container */}
           <div className="flex-1 flex flex-col print:animate-none">
             <QuickActionContext.Provider value={handleOpenQuickAction}>
+              {canOpenTab(activeTab) && TAB_SECTION[activeTab]?.section && <ReadOnlyBanner section={TAB_SECTION[activeTab].section!} />}
               {renderActiveView()}
             </QuickActionContext.Provider>
           </div>

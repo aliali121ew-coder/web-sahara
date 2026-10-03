@@ -17,7 +17,8 @@ const start = async () => {
     root.render(<AppLogin onSuccess={start} />);
     return;
   }
-  refreshProfile();
+  // الصلاحيات تُجلب قبل عرض التطبيق حتى لا تظهر صفحات غير مسموحة للحظة
+  await refreshProfile();
   const { default: App } = await import('./App');
   root.render(
     <React.StrictMode>

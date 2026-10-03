@@ -80,7 +80,16 @@ const scheduleFlush = (delay = 1000) => {
   flushTimer = setTimeout(flush, delay);
 };
 
+// مفاتيح لا يملك هذا الحساب صلاحية تعديلها (يحددها الخادم): التغييرات عليها تبقى محلية ولا تُرسل
+const blocked = new Set<string>();
+type StateResponse = { items: Record<string, string>; admin?: boolean; readOnly?: string[] };
+const setBlocked = (r: StateResponse) => {
+  blocked.clear();
+  (r.readOnly || []).forEach(k => blocked.add(k));
+};
+
 const markPending = (key: string) => {
+  if (blocked.has(key)) return;
   const p = readPending();
   p[key] = (p[key] || 0) + 1;
   writePending(p);
@@ -127,10 +136,14 @@ async function flush(): Promise<void> {
       return;
     }
     if (!res.ok) throw new Error(String(res.status));
+    const { rejected = [] } = (await res.json().catch(() => ({}))) as { rejected?: string[] };
     // إزالة ما وصل فقط، وإبقاء ما تغيّر أثناء الإرسال
     const latest = readPending();
     for (const [key, ver] of Object.entries(pending)) if (latest[key] === ver) delete latest[key];
+    // ما رفضه الخادم (لا صلاحية تعديل): لا يُعاد إرساله، وتُستعاد نسخة الخادم بهدوء
+    rejected.forEach(k => { blocked.add(k); delete latest[k]; });
     writePending(latest);
+    if (rejected.length) restoreRejected(rejected);
     flushing = false;
     if (Object.keys(latest).length) scheduleFlush(200);
     else setStatus('saved');
@@ -181,6 +194,23 @@ const applyServerState = (items: Record<string, string>): string[] => {
   return changed;
 };
 
+/** استعادة نسخة الخادم للمفاتيح المرفوضة (أو حذفها محليًا إن لم يكن مسموحًا بعرضها) */
+const restoreRejected = async (keys: string[]) => {
+  try {
+    const res = await fetchState();
+    if (!res.ok) return;
+    const data = (await res.json()) as StateResponse;
+    setBlocked(data);
+    for (const k of keys) {
+      if (k in data.items) rawSet.call(localStorage, k, data.items[k]);
+      else rawRemove.call(localStorage, k);
+    }
+    window.dispatchEvent(new CustomEvent(CLOUD_APPLIED_EVENT, { detail: keys }));
+  } catch {
+    /* تجاهل */
+  }
+};
+
 const fetchState = async (timeoutMs = 8000) => {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -213,10 +243,13 @@ export async function initCloudSync(): Promise<InitResult> {
       return 'need-login';
     }
     if (!res.ok) throw new Error(String(res.status));
-    const { items } = (await res.json()) as { items: Record<string, string> };
+    const data = (await res.json()) as StateResponse;
+    const { items } = data;
+    setBlocked(data);
 
-    if (!Object.keys(items).length) {
-      // الخادم فارغ (أول استخدام): رفع كل البيانات الموجودة في هذا الجهاز
+    if (!Object.keys(items).length && data.admin) {
+      // الخادم فارغ (أول استخدام): رفع كل البيانات الموجودة في هذا الجهاز.
+      // لمدير النظام فقط: الحساب المقيّد يستلم مفاتيح أقسامه فقط وقد تبدو له النسخة فارغة
       const p = readPending();
       localSyncKeys().forEach(k => { p[k] = (p[k] || 0) + 1; });
       writePending(p);

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useCanOpenTab } from '../../lib/usePermission';
 import {
   Search,
   LayoutDashboard,
@@ -83,7 +84,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   }, [isOpen, onClose]);
 
   // Comprehensive Search Items
-  const allItems: CommandItem[] = useMemo(() => [
+  const canOpenTab = useCanOpenTab();
+  const everyItem: CommandItem[] = useMemo(() => [
     // 📄 Navigation Pages
     {
       id: 'page-dashboard',
@@ -260,6 +262,11 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       onSelect: () => { refreshAllData(); onClose(); }
     }
   ], [setActiveTab, onClose, onOpenQuickAction, themeMode, toggleThemeMode, refreshAllData]);
+  // الصفحات والخزانات غير المسموحة لهذا الحساب لا تظهر في البحث
+  const allItems = everyItem.filter(item =>
+    item.id.startsWith('page-') ? canOpenTab(item.id.slice(5))
+      : item.id.startsWith('tank-') ? canOpenTab('tanks')
+        : true);
 
   // Filter items based on query
   const filteredItems = useMemo(() => {

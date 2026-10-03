@@ -1,3 +1,4 @@
+import type { Perms } from '../../lib/permCatalog';
 import { sessionHeaders } from '../../lib/session';
 
 export interface ChatUser {
@@ -25,6 +26,8 @@ export interface Account {
   disabled: number;
   last_seen: number;
   updated_at: number;
+  /** صلاحيات الأقسام (راجع src/lib/permCatalog.ts) */
+  perms?: Perms;
 }
 
 /** طلب دعم مُرسل من شاشة الدخول */
@@ -144,10 +147,10 @@ export const chatApi = {
   changePassword: (current: string, next: string) => call('/auth/password', send('POST', { current, next })),
   // ───── إدارة الحسابات (للمدير) ─────
   adminUsers: () => call<{ items: Account[]; max: number }>('/admin/users'),
-  adminCreate: (body: { username: string; password: string; name: string; role: string; is_admin: boolean }) => call<{ id: string }>('/admin/users', send('POST', body)),
+  adminCreate: (body: { username: string; password: string; name: string; role: string; is_admin: boolean; perms?: Perms }) => call<{ id: string }>('/admin/users', send('POST', body)),
   adminSupport: () => call<{ items: SupportRequest[] }>('/admin/support'),
   adminSupportStatus: (id: string, status: 'open' | 'done') => call(`/admin/support/${encodeURIComponent(id)}`, send('PATCH', { status })),
-  adminUpdate: (id: string, body: { name?: string; role?: string; password?: string; is_admin?: boolean; disabled?: boolean }) =>
+  adminUpdate: (id: string, body: { name?: string; role?: string; password?: string; is_admin?: boolean; disabled?: boolean; perms?: Perms }) =>
     call(`/admin/users/${encodeURIComponent(id)}`, send('PATCH', body)),
   typing: (me: string, room: string) => call('/typing', send('POST', { me, room })),
   read: (me: string, room: string, at: number) => call('/read', send('POST', { me, room, at })),

@@ -279,6 +279,7 @@ const AccountForm: React.FC<{
           <span className="flex-1">صلاحية مدير النظام</span>
           <input type="checkbox" checked={isAdmin} disabled={self} onChange={e => setIsAdmin(e.target.checked)} className="w-4 h-4" />
         </label>
+        <p className="text-xs cx-muted">صلاحيات الأقسام تُحدَّد من: الإعدادات ← إدارة المستخدمين والصلاحيات. الحساب الجديد لا يرى أي قسم حتى تُحدَّد صلاحياته.</p>
         {error && <p className="text-sm text-rose-500">{error}</p>}
       </div>
     </Modal>

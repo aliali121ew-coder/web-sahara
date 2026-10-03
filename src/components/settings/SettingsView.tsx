@@ -13,8 +13,11 @@ import {
 import { useTheme } from '../../context/ThemeContext';
 import { useFuelData } from '../../context/FuelDataContext';
 import { SidebarStyle } from '../../types';
+import { UsersAdmin } from '../admin/UsersAdmin';
+import { usePermissions } from '../../lib/usePermission';
 
 export const SettingsView: React.FC = () => {
+  const { isAdmin } = usePermissions();
   const { themeMode, setThemeMode, sidebarStyle, setSidebarStyle } = useTheme();
   const { refreshAllData } = useFuelData();
 
@@ -56,6 +59,9 @@ export const SettingsView: React.FC = () => {
           تخصيص المظهر والهوية البصرية، إعدادات الشريط الجانبي والربط السحابي
         </p>
       </div>
+
+      {/* إدارة المستخدمين والصلاحيات: لمدير النظام فقط */}
+      {isAdmin && <UsersAdmin />}
 
       {/* Theme Customizer Card */}
       <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-6 shadow-soft-card space-y-6">
@@ -220,8 +226,8 @@ export const SettingsView: React.FC = () => {
         </form>
       </div>
 
-      {/* System Reset & Data Management */}
-      <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-6 shadow-soft-card flex items-center justify-between">
+      {/* System Reset & Data Management (لمدير النظام فقط) */}
+      {isAdmin && <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-6 shadow-soft-card flex items-center justify-between">
         <div>
           <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">إعادة ضبط المصنع للبيانات</h4>
           <p className="text-xs text-slate-500 mt-0.5">استعادة البيانات الافتراضية الأولية ومسح الذاكرة المؤقتة</p>
@@ -234,7 +240,7 @@ export const SettingsView: React.FC = () => {
           <RotateCcw className="w-3.5 h-3.5" />
           <span>إعادة ضبط البيانات</span>
         </button>
-      </div>
+      </div>}
     </div>
   );
 };
