@@ -130,3 +130,14 @@ export const canWriteKey = (perms: Perms, isAdmin: boolean, key: string) => {
   const r = ruleFor(key);
   return !!r && anyAtLeast(perms, false, r.write || r.read, 2);
 };
+
+const SECTION_LABEL: Record<string, string> = Object.fromEntries(
+  PERM_GROUPS.flatMap(g => g.sections.map(s => [s.id, g.id === 'pages' ? s.label : `${g.label} ← ${s.label}`])),
+);
+
+/** اسم القسم المسؤول عن مفتاح بيانات (لسجل العمليات) */
+export const keySectionLabel = (key: string) => {
+  const r = ruleFor(key);
+  const id = r && (r.write || r.read).find(x => x !== COMMON);
+  return id ? SECTION_LABEL[id] : 'بيانات عامة';
+};

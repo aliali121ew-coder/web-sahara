@@ -83,6 +83,10 @@ const ensureTables = async (db: ChatDB) => {
   await db.exec("CREATE TABLE IF NOT EXISTS webauthn_challenges (challenge TEXT PRIMARY KEY, user_id TEXT NOT NULL DEFAULT '', kind TEXT NOT NULL, expires_at INTEGER NOT NULL)");
   // طلبات الدعم من شاشة الدخول (حساب جديد / نسيت كلمة المرور) تصل لمدير النظام
   await db.exec("CREATE TABLE IF NOT EXISTS support_requests (id TEXT PRIMARY KEY, name TEXT NOT NULL, phone TEXT NOT NULL DEFAULT '', username TEXT NOT NULL DEFAULT '', kind TEXT NOT NULL, message TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL)");
+  // سجل عمليات المستخدمين (دخول، إدارة حسابات، حفظ بيانات الأقسام...) يطّلع عليه مدير النظام
+  await db.exec("CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, user_id TEXT NOT NULL DEFAULT '', username TEXT NOT NULL DEFAULT '', action TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '', ip TEXT NOT NULL DEFAULT '')");
+  await db.exec('CREATE INDEX IF NOT EXISTS audit_log_at ON audit_log (at)');
+  await db.exec('CREATE INDEX IF NOT EXISTS audit_log_user ON audit_log (user_id, at)');
   const now = Date.now();
   await db.prepare("INSERT OR IGNORE INTO chat_rooms (id, type, name, description, avatar, created_by, created_at, updated_at) VALUES (?1, 'group', ?2, ?3, '', '', ?4, ?4)")
     .bind(GENERAL_ROOM, 'غرفة العمليات العامة', 'القناة الرئيسية لكل فريق الموقع', now).run();
@@ -106,6 +110,38 @@ const parseMessage = (m: MessageRow) => ({
   attachments: JSON.parse(m.attachments || '[]'),
   reactions: JSON.parse(m.reactions || '{}'),
 });
+
+// ───── سجل العمليات ─────
+const AUDIT_KEEP_MS = 180 * 24 * 3600_000; // يُحتفظ بالسجل 6 أشهر
+const AUDIT_MERGE_MS = 10 * 60_000; // حفظ البيانات المتكرر من نفس الحساب يُدمج في سطر واحد كل 10 دقائق
+
+/** تسجيل عملية. merge: يدمج تفاصيل (قائمة مفصولة بفاصلة) مع آخر سطر لنفس الحساب والعملية خلال 10 دقائق */
+export const audit = async (db: ChatDB, request: Request, userId: string, action: string, detail = '', opts: { username?: string; merge?: boolean } = {}) => {
+  try {
+    await ensureTables(db);
+    const now = Date.now();
+    const ip = (request.headers.get('cf-connecting-ip') || '').slice(0, 64);
+    let username = opts.username || '';
+    if (!username && userId) {
+      const { results } = await db.prepare('SELECT username FROM chat_users WHERE id = ?').bind(userId).all<{ username: string }>();
+      username = results[0]?.username || '';
+    }
+    if (opts.merge && userId) {
+      const { results } = await db.prepare('SELECT id, detail FROM audit_log WHERE user_id = ? AND action = ? AND at > ? ORDER BY at DESC LIMIT 1')
+        .bind(userId, action, now - AUDIT_MERGE_MS).all<{ id: number; detail: string }>();
+      if (results[0]) {
+        const merged = Array.from(new Set([...results[0].detail.split('، '), ...detail.split('، ')].filter(Boolean))).join('، ').slice(0, 1000);
+        await db.prepare('UPDATE audit_log SET detail = ?, at = ?, ip = ? WHERE id = ?').bind(merged, now, ip, results[0].id).run();
+        return;
+      }
+    }
+    await db.prepare('INSERT INTO audit_log (at, user_id, username, action, detail, ip) VALUES (?, ?, ?, ?, ?, ?)')
+      .bind(now, userId, username, action, detail.slice(0, 1000), ip).run();
+    if (Math.random() < 0.01) await db.prepare('DELETE FROM audit_log WHERE at < ?').bind(now - AUDIT_KEEP_MS).run();
+  } catch {
+    /* السجل لا يجب أن يُفشل العملية الأصلية */
+  }
+};
 
 const isMember = async (db: ChatDB, room: string, user: string) => {
   const { results } = await db.prepare('SELECT user_id FROM chat_members WHERE room_id = ? AND user_id = ?').bind(room, user).all();
@@ -278,6 +314,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
         const locked = fails >= MAX_FAILS;
         await db.prepare('UPDATE chat_users SET fail_count = ?, lock_until = ? WHERE id = ?')
           .bind(locked ? 0 : fails, locked ? now + LOCK_MS : 0, u.id).run();
+        await audit(db, request, u.id, locked ? 'auth.locked' : 'auth.failed', locked ? 'قفل مؤقت 5 دقائق' : `محاولة ${fails}`, { username });
         if (locked) return json({ error: 'محاولات خاطئة كثيرة. تم إيقاف الدخول لهذا الحساب 5 دقائق', code: 'locked', retryAt: now + LOCK_MS }, 429);
       }
       return json({ error: 'بيانات الدخول غير صحيحة، يرجى التحقق من اسم المستخدم وكلمة المرور', code: 'bad_credentials' }, 401);
@@ -285,6 +322,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     if (u.disabled) return json({ error: 'هذا الحساب موقوف. راجع مدير النظام', code: 'disabled' }, 403);
     await db.prepare('UPDATE chat_users SET fail_count = 0, lock_until = 0, last_seen = ? WHERE id = ?').bind(now, u.id).run();
     await db.prepare("INSERT OR IGNORE INTO chat_members (room_id, user_id, role, last_read, joined_at) VALUES (?, ?, 'member', 0, ?)").bind(GENERAL_ROOM, u.id, now).run();
+    await audit(db, request, u.id, 'auth.login', 'كلمة المرور', { username });
     return json({ ok: true, id: u.id, key: await newSession(db, u.id, now) });
   }
 
@@ -328,6 +366,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     if (v.signCount && cred.sign_count && v.signCount <= cred.sign_count) return fail('تم رفض البصمة لأسباب أمنية');
     await db.prepare('UPDATE webauthn_credentials SET sign_count = ?, last_used = ? WHERE id = ?').bind(v.signCount, now, cred.id).run();
     await db.prepare('UPDATE chat_users SET fail_count = 0, lock_until = 0, last_seen = ? WHERE id = ?').bind(now, cred.user_id).run();
+    await audit(db, request, cred.user_id, 'auth.login', 'البصمة');
     return json({ ok: true, id: cred.user_id, key: await newSession(db, cred.user_id, now) });
   }
 
@@ -357,6 +396,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
   }
   if (path === '/auth/logout' && method === 'POST') {
     await db.prepare('DELETE FROM chat_sessions WHERE token_hash = ?').bind(session.tokenHash).run();
+    await audit(db, request, authId, 'auth.logout');
     return json({ ok: true });
   }
   // تغيير كلمة المرور: يُخرج كل الأجهزة الأخرى ويُبقي هذا الجهاز
@@ -371,6 +411,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
       db.prepare('UPDATE chat_users SET pass_hash = ? WHERE id = ?').bind(await hashPassword(next), authId),
       db.prepare('DELETE FROM chat_sessions WHERE user_id = ? AND token_hash != ?').bind(authId, session.tokenHash),
     ]);
+    await audit(db, request, authId, 'auth.password');
     return json({ ok: true });
   }
 
@@ -459,6 +500,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
           .bind(id, name, str(b?.role, 60).trim(), color, now, username, await hashPassword(password), b?.is_admin ? 1 : 0, JSON.stringify(sanitizePerms(b?.perms))),
         db.prepare("INSERT OR IGNORE INTO chat_members (room_id, user_id, role, last_read, joined_at) VALUES (?, ?, 'member', 0, ?)").bind(GENERAL_ROOM, id, now),
       ]);
+      await audit(db, request, authId, 'admin.create', `@${username}${b?.is_admin ? ' (مدير النظام)' : ''}`);
       return json({ ok: true, id });
     }
 
@@ -470,7 +512,23 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     if (sm && method === 'PATCH') {
       const b = await readBody<{ status?: string }>(request);
       await db.prepare('UPDATE support_requests SET status = ? WHERE id = ?').bind(b?.status === 'done' ? 'done' : 'open', decodeURIComponent(sm[1])).run();
+      await audit(db, request, authId, 'admin.support', b?.status === 'done' ? 'تمت معالجة طلب' : 'إعادة فتح طلب');
       return json({ ok: true });
+    }
+
+    // سجل العمليات: الأحدث أولًا، مع تصفية حسب الحساب وتحميل تدريجي (before = آخر id معروض)
+    if (path === '/admin/audit' && method === 'GET') {
+      const user = str(url.searchParams.get('user'), 64);
+      const action = str(url.searchParams.get('action'), 40);
+      const before = Number(url.searchParams.get('before')) || Number.MAX_SAFE_INTEGER;
+      const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 50, 1), 200);
+      const where = ['id < ?'];
+      const args: unknown[] = [before];
+      if (user) { where.push('user_id = ?'); args.push(user); }
+      if (action) { where.push('action LIKE ?'); args.push(`${action}%`); }
+      const { results } = await db.prepare(`SELECT id, at, user_id, username, action, detail, ip FROM audit_log WHERE ${where.join(' AND ')} ORDER BY id DESC LIMIT ?`)
+        .bind(...args, limit).all();
+      return json({ items: results, more: results.length === limit });
     }
 
     const m = path.match(/^\/admin\/users\/([^/]+)$/);
@@ -501,7 +559,16 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
         stmts.push(db.prepare('UPDATE chat_users SET disabled = ? WHERE id = ?').bind(b.disabled ? 1 : 0, id));
         if (b.disabled) stmts.push(db.prepare('DELETE FROM chat_sessions WHERE user_id = ?').bind(id));
       }
-      if (stmts.length) await db.batch(stmts);
+      if (stmts.length) {
+        await db.batch(stmts);
+        const { results: target } = await db.prepare('SELECT username FROM chat_users WHERE id = ?').bind(id).all<{ username: string }>();
+        const changes = [
+          b.name !== undefined && 'الاسم', b.role !== undefined && 'الوظيفة', b.perms !== undefined && 'الصلاحيات',
+          b.is_admin !== undefined && (b.is_admin ? 'منح الإدارة' : 'سحب الإدارة'), b.password !== undefined && 'إعادة تعيين كلمة المرور',
+          b.disabled !== undefined && (b.disabled ? 'إيقاف الحساب' : 'تفعيل الحساب'),
+        ].filter(Boolean).join('، ');
+        await audit(db, request, authId, 'admin.update', `@${target[0]?.username || id}: ${changes}`);
+      }
       return json({ ok: true });
     }
     return json({ error: 'غير موجود' }, 404);

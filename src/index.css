@@ -396,3 +396,10 @@ svg path:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .success-pop, .success-circle, .success-check, .success-ring { animation: none; stroke-dashoffset: 0; }
 }
+
+/* انتقال تبويبات SwipeTabs: التالي يدخل من اليسار والسابق من اليمين (اتجاه عربي) */
+@keyframes swipe-in-next { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+@keyframes swipe-in-prev { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+.swipe-in-next { animation: swipe-in-next .28s ease-out; }
+.swipe-in-prev { animation: swipe-in-prev .28s ease-out; }
+@media (prefers-reduced-motion: reduce) { .swipe-in-next, .swipe-in-prev { animation: none; } }

@@ -30,6 +30,17 @@ export interface Account {
   perms?: Perms;
 }
 
+/** سطر في سجل عمليات المستخدمين */
+export interface AuditEntry {
+  id: number;
+  at: number;
+  user_id: string;
+  username: string;
+  action: string;
+  detail: string;
+  ip: string;
+}
+
 /** طلب دعم مُرسل من شاشة الدخول */
 export interface SupportRequest {
   id: string;
@@ -149,6 +160,10 @@ export const chatApi = {
   adminUsers: () => call<{ items: Account[]; max: number }>('/admin/users'),
   adminCreate: (body: { username: string; password: string; name: string; role: string; is_admin: boolean; perms?: Perms }) => call<{ id: string }>('/admin/users', send('POST', body)),
   adminSupport: () => call<{ items: SupportRequest[] }>('/admin/support'),
+  adminAudit: (q: { user?: string; action?: string; before?: number; limit?: number } = {}) => {
+    const p = new URLSearchParams(Object.entries(q).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)]));
+    return call<{ items: AuditEntry[]; more: boolean }>(`/admin/audit?${p}`);
+  },
   adminSupportStatus: (id: string, status: 'open' | 'done') => call(`/admin/support/${encodeURIComponent(id)}`, send('PATCH', { status })),
   adminUpdate: (id: string, body: { name?: string; role?: string; password?: string; is_admin?: boolean; disabled?: boolean; perms?: Perms }) =>
     call(`/admin/users/${encodeURIComponent(id)}`, send('PATCH', body)),

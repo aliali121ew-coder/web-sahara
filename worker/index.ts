@@ -5,8 +5,8 @@
  */
 
 import { extractSaharaReport } from './extractSaharaReport';
-import { handleChat, verifySession, type Session } from './chat';
-import { canReadKey, canWriteKey, isServerForbiddenKey, levelOf } from '../src/lib/permCatalog';
+import { audit, handleChat, verifySession, type Session } from './chat';
+import { canReadKey, canWriteKey, isServerForbiddenKey, keySectionLabel, levelOf } from '../src/lib/permCatalog';
 
 interface D1Result<T> { results: T[] }
 interface D1PreparedStatement {
@@ -133,6 +133,7 @@ const handleFiles = async (request: Request, url: URL, db: D1Database, session: 
         .bind(row.id, idx, bytesToBase64(bytes.subarray(i, i + CHUNK_BYTES))));
     }
     await db.batch(statements);
+    await audit(db, request, session.id, 'file.upload', name);
     return json({ ok: true, item: row });
   }
 
@@ -160,10 +161,12 @@ const handleFiles = async (request: Request, url: URL, db: D1Database, session: 
 
   // حذف الملف
   if (request.method === 'DELETE') {
+    const { results: gone } = await db.prepare('SELECT name FROM sahara_files WHERE id = ?').bind(id).all<{ name: string }>();
     await db.batch([
       db.prepare('DELETE FROM sahara_file_chunks WHERE file_id = ?').bind(id),
       db.prepare('DELETE FROM sahara_files WHERE id = ?').bind(id)
     ]);
+    await audit(db, request, session.id, 'file.delete', gone[0]?.name || id);
     return json({ ok: true });
   }
 
@@ -225,7 +228,14 @@ export default {
         if (!canWriteKey(session.perms, session.admin, key)) { rejected.push(key); continue; }
         statements.push(env.DB.prepare('DELETE FROM app_state WHERE key = ?1').bind(key));
       }
-      if (statements.length) await env.DB.batch(statements);
+      if (statements.length) {
+        await env.DB.batch(statements);
+        // سجل العمليات: الأقسام التي حُفظت (يُدمج الحفظ التلقائي المتكرر في سطر واحد)
+        const touched = [...Object.keys(body.set || {}), ...(body.remove || [])].filter(k => typeof k === 'string' && !rejected.includes(k));
+        const sections = Array.from(new Set(touched.map(keySectionLabel).filter(l => l !== 'بيانات عامة')));
+        if (sections.length) await audit(env.DB, request, session.id, 'data.save', sections.join('، '), { merge: true });
+      }
+      if (rejected.length) await audit(env.DB, request, session.id, 'data.denied', Array.from(new Set(rejected.map(keySectionLabel))).join('، '), { merge: true });
       return json({ ok: true, saved: statements.length, rejected });
     }
 
