@@ -520,15 +520,26 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     if (path === '/admin/audit' && method === 'GET') {
       const user = str(url.searchParams.get('user'), 64);
       const action = str(url.searchParams.get('action'), 40);
+      const q = str(url.searchParams.get('q'), 80).trim();
+      const since = Number(url.searchParams.get('since')) || 0;
       const before = Number(url.searchParams.get('before')) || Number.MAX_SAFE_INTEGER;
       const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 50, 1), 200);
       const where = ['id < ?'];
       const args: unknown[] = [before];
       if (user) { where.push('user_id = ?'); args.push(user); }
       if (action) { where.push('action LIKE ?'); args.push(`${action}%`); }
+      if (since) { where.push('at >= ?'); args.push(since); }
+      if (q) { where.push('(detail LIKE ? OR username LIKE ?)'); args.push(`%${q}%`, `%${q}%`); }
       const { results } = await db.prepare(`SELECT id, at, user_id, username, action, detail, ip FROM audit_log WHERE ${where.join(' AND ')} ORDER BY id DESC LIMIT ?`)
         .bind(...args, limit).all();
       return json({ items: results, more: results.length === limit });
+    }
+
+    // ملخص آخر 24 ساعة لبطاقات سجل العمليات
+    if (path === '/admin/audit/stats' && method === 'GET') {
+      const { results } = await db.prepare('SELECT action, COUNT(*) AS n, COUNT(DISTINCT user_id) AS users FROM audit_log WHERE at >= ? GROUP BY action')
+        .bind(now - 24 * 3600_000).all<{ action: string; n: number; users: number }>();
+      return json({ since: now - 24 * 3600_000, items: results });
     }
 
     const m = path.match(/^\/admin\/users\/([^/]+)$/);

@@ -160,7 +160,8 @@ export const chatApi = {
   adminUsers: () => call<{ items: Account[]; max: number }>('/admin/users'),
   adminCreate: (body: { username: string; password: string; name: string; role: string; is_admin: boolean; perms?: Perms }) => call<{ id: string }>('/admin/users', send('POST', body)),
   adminSupport: () => call<{ items: SupportRequest[] }>('/admin/support'),
-  adminAudit: (q: { user?: string; action?: string; before?: number; limit?: number } = {}) => {
+  adminAuditStats: () => call<{ since: number; items: { action: string; n: number; users: number }[] }>('/admin/audit/stats'),
+  adminAudit: (q: { user?: string; action?: string; q?: string; since?: number; before?: number; limit?: number } = {}) => {
     const p = new URLSearchParams(Object.entries(q).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)]));
     return call<{ items: AuditEntry[]; more: boolean }>(`/admin/audit?${p}`);
   },

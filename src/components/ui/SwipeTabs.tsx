@@ -60,7 +60,8 @@ export const SwipeTabs: React.FC<{ tabs: SwipeTab[]; active: string; onChange: (
             <button key={t.id} role="tab" aria-selected={on} tabIndex={on ? 0 : -1} onClick={() => go(i)}
               className={`relative z-10 h-11 rounded-xl px-2 flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold transition-colors ${on ? 'text-blue-700 dark:text-blue-300' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}>
               {Icon && <Icon className="w-4 h-4 shrink-0" />}
-              <span className="truncate">{t.label}</span>
+              {/* على الشاشات الضيقة: التبويب النشط يعرض اسمه، والبقية أيقونة فقط */}
+              <span className={`truncate ${on || !Icon ? '' : 'sr-only sm:not-sr-only'}`}>{t.label}</span>
               {!!t.badge && (
                 <span className="min-w-5 h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">{t.badge}</span>
               )}
