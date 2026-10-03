@@ -60,7 +60,8 @@ export const SettingsView: React.FC = () => {
   const current = visible.find(s => s.id === section) || null;
 
   return (
-    <div className={`space-y-5 mx-auto w-full ${current?.id === 'users' ? 'max-w-6xl' : 'max-w-4xl'}`}>
+    <div className={`space-y-5 mx-auto w-full ${current?.id === 'users' ? 'xl:w-[95%]' : 'max-w-4xl'}`}>
+      {/* صفحة المستخدمين: 95% من عرض الشاشة على الكمبيوتر، وكامل العرض على الشاشات الأصغر */}
       {/* الترويسة: عنوان الإعدادات أو مسار القسم المفتوح */}
       {current ? (
         <div className="flex items-center gap-3">

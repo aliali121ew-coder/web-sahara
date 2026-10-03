@@ -91,8 +91,8 @@ export const CreateAccountWizard: React.FC<{
   const granted = isAdmin ? ALL_SECTIONS.length : Object.keys(perms).length;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4 items-start">
-      <div className={`${cardCls} overflow-hidden`}>
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px] gap-4 items-stretch">
+      <div className={`${cardCls} overflow-hidden flex flex-col`}>
         {/* شريط الخطوات */}
         <ol className="grid grid-cols-4 border-b border-slate-100 dark:border-slate-800">
           {STEPS.map((s, i) => {
@@ -117,7 +117,7 @@ export const CreateAccountWizard: React.FC<{
           })}
         </ol>
 
-        <div className="p-5 sm:p-6 min-h-[340px]">
+        <div className="p-5 sm:p-6 min-h-[340px] flex-1">
           {step === 0 && (
             <div key="s0" className="swipe-in-next space-y-5">
               <StepTitle title="من هو صاحب الحساب؟" desc="الاسم يظهر لزملائه في المحادثة والتقارير، واسم المستخدم يُستخدم لتسجيل الدخول ولا يمكن تغييره لاحقًا." />
@@ -243,38 +243,67 @@ export const CreateAccountWizard: React.FC<{
         </div>
       </div>
 
-      {/* معاينة حيّة */}
-      <aside className="lg:sticky lg:top-20 space-y-3">
-        <div className={`${cardCls} overflow-hidden`}>
-          <div className="h-16 bg-gradient-to-l from-violet-600 via-indigo-600 to-blue-600" />
-          <div className="px-5 pb-5 -mt-8">
-            <UserAvatar name={name || '؟'} src={avatar} size={64} className="ring-4 ring-white dark:ring-slate-900" />
-            <div className="mt-3 flex items-center gap-1.5">
-              <span className="font-black text-base text-slate-900 dark:text-white truncate">{name || 'اسم الموظف'}</span>
-              {isAdmin && <Crown className="w-4 h-4 text-amber-500" />}
+      {/* معاينة حيّة: بطاقة الموظف بنفس ارتفاع بطاقة الخطوات */}
+      <aside className="flex flex-col">
+        <div className={`${cardCls} overflow-hidden flex-1 flex flex-col`}>
+          <div className="relative h-28 bg-gradient-to-l from-violet-600 via-indigo-600 to-blue-600 overflow-hidden">
+            <div aria-hidden className="absolute -left-8 -top-10 w-40 h-40 rounded-full bg-white/10" />
+            <div aria-hidden className="absolute left-24 top-10 w-24 h-24 rounded-full bg-white/10" />
+            <span className="absolute top-3 left-3 text-[10px] font-black tracking-wide text-white/80 bg-white/15 rounded-full px-2.5 py-1">معاينة البطاقة</span>
+          </div>
+          <div className="relative z-10 px-6 -mt-12 flex flex-col items-center text-center">
+            <UserAvatar name={name || '؟'} src={avatar} size={96} className="!rounded-[28px] ring-4 ring-white dark:ring-slate-900 shadow-xl" />
+            <div className="mt-3 flex items-center justify-center gap-1.5 max-w-full">
+              <span className="font-black text-lg text-slate-900 dark:text-white truncate">{name || 'اسم الموظف'}</span>
+              {isAdmin && <Crown className="w-5 h-5 text-amber-500 shrink-0" />}
             </div>
-            <div className="text-xs text-slate-500 truncate"><span dir="ltr" className="font-mono">@{username || 'username'}</span>{role ? ` · ${role}` : ''}</div>
-            <div className="mt-4 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-500">الأقسام المسموحة</span>
-                <b className="text-slate-900 dark:text-white tabular-nums">{granted} / {ALL_SECTIONS.length}</b>
-              </div>
-              <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                <div className="h-full rounded-full bg-gradient-to-l from-emerald-500 to-sky-500 transition-all" style={{ width: `${(granted / ALL_SECTIONS.length) * 100}%` }} />
-              </div>
-              {PERM_GROUPS.map(g => {
-                const n = isAdmin ? g.sections.length : g.sections.filter(s => perms[s.id]).length;
-                return (
-                  <div key={g.id} className="flex items-center justify-between text-[11px]">
-                    <span className="text-slate-500">{g.label}</span>
-                    <span className={`font-bold ${n ? 'text-emerald-600' : 'text-slate-400'}`}>{n ? `${n} قسم` : '—'}</span>
-                  </div>
-                );
-              })}
+            <div className="text-xs text-slate-500 truncate max-w-full" dir="ltr"><span className="font-mono">@{username || 'username'}</span></div>
+            <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">نشط</span>
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">{role || 'بدون وظيفة'}</span>
+              {isAdmin && <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">مدير النظام</span>}
             </div>
           </div>
+
+          <div className="px-6 py-5 mt-4 border-t border-slate-100 dark:border-slate-800 space-y-4 flex-1">
+            <div>
+              <div className="flex items-center justify-between text-xs mb-2">
+                <span className="font-bold text-slate-600 dark:text-slate-300">الأقسام المسموحة</span>
+                <b className="text-slate-900 dark:text-white tabular-nums">{granted} / {ALL_SECTIONS.length}</b>
+              </div>
+              <div className="h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                <div className="h-full rounded-full bg-gradient-to-l from-emerald-500 to-sky-500 transition-all duration-500" style={{ width: `${(granted / ALL_SECTIONS.length) * 100}%` }} />
+              </div>
+            </div>
+            <ul className="space-y-3">
+              {PERM_GROUPS.map(g => {
+                const total = g.sections.length;
+                const view = isAdmin ? 0 : g.sections.filter(s => perms[s.id] === 1).length;
+                const edit = isAdmin ? total : g.sections.filter(s => perms[s.id] === 2).length;
+                return (
+                  <li key={g.id}>
+                    <div className="flex items-center justify-between text-[11px] mb-1">
+                      <span className="font-bold text-slate-600 dark:text-slate-300">{g.label}</span>
+                      <span className={`font-bold tabular-nums ${view + edit ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>{view + edit ? `${view + edit} / ${total}` : '—'}</span>
+                    </div>
+                    <div className="flex h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                      <span className="bg-emerald-500 transition-all duration-500" style={{ width: `${(edit / total) * 100}%` }} />
+                      <span className="bg-sky-400 transition-all duration-500" style={{ width: `${(view / total) * 100}%` }} />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="flex items-center gap-4 text-[10px] font-bold text-slate-500">
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500" />عرض وتعديل</span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-sky-400" />عرض فقط</span>
+            </div>
+          </div>
+
+          <p className="px-6 py-3.5 text-[11px] text-slate-400 leading-relaxed border-t border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60">
+            المعاينة تتحدث أثناء الكتابة. الحساب يبدأ نشطًا ويستطيع الدخول فور إنشائه.
+          </p>
         </div>
-        <p className="text-[11px] text-slate-400 leading-relaxed px-1">المعاينة تتحدث أثناء الكتابة. الحساب يبدأ نشطًا ويستطيع الدخول فور إنشائه.</p>
       </aside>
     </div>
   );
