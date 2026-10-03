@@ -1,0 +1,282 @@
+/**
+ * الحفظ السحابي التلقائي.
+ * كل البيانات ما زالت تُكتب في localStorage كما هي، لكن أي تغيير يُرسل تلقائيًا للخادم
+ * (بعد لحظة قصيرة لتجميع التعديلات)، وعند فتح التطبيق تُسحب آخر نسخة من الخادم.
+ * بهذا لا تضيع البيانات عند إغلاق المتصفح أو مسحه، وتظهر نفسها في كل الأجهزة.
+ */
+
+import { hasSession, sessionHeaders, clearSession, SESSION_PROFILE_KEY, LAST_USER_KEY, LAST_NAME_KEY, BIO_USER_KEY } from './session';
+
+/** رمز الدخول القديم (قبل حسابات المستخدمين) — يُمسح فقط */
+export const TOKEN_KEY = 'sahara_cloud_token';
+const PENDING_KEY = 'sahara_cloud_pending';
+
+// مفاتيح خاصة بالجهاز نفسه فلا تُزامَن
+const LOCAL_ONLY = new Set([
+  TOKEN_KEY,
+  SESSION_PROFILE_KEY,
+  // بيانات الدخول الخاصة بهذا الجهاز فقط: لا تُزامَن أبدًا مع الأجهزة الأخرى
+  LAST_USER_KEY,
+  LAST_NAME_KEY,
+  BIO_USER_KEY,
+  'sahara_bio_cred',
+  'sahara_session_started',
+  'sahara_remember_me',
+  'sahara_welcome_seen',
+  PENDING_KEY,
+  'sahara_active_tab',
+  'sahara_theme_mode',
+  'sahara_language',
+  'sahara_sidebar_style',
+  'sahara_supabase_url',
+  'sahara_supabase_anon_key',
+  // حساب المحادثة وثيمها خاصّان بكل جهاز، والرسائل نفسها تُحفظ في خادم المحادثة
+  'sahara_chat_me',
+  // مفتاح الحساب السرّي: لا يغادر الجهاز أبدًا
+  'sahara_chat_key',
+  'sahara_chat_theme',
+  'sahara_chat_sound',
+  'sahara_chat_looks',
+  'sahara_chat_hidden',
+  'sahara_chat_starred',
+]);
+
+const shouldSync = (key: string) => !LOCAL_ONLY.has(key);
+
+export type SyncStatus = 'saved' | 'saving' | 'offline' | 'error';
+let status: SyncStatus = 'saved';
+const listeners = new Set<(s: SyncStatus) => void>();
+const setStatus = (s: SyncStatus) => {
+  status = s;
+  listeners.forEach(l => l(s));
+};
+export const getSyncStatus = () => status;
+export const onSyncStatus = (l: (s: SyncStatus) => void) => {
+  listeners.add(l);
+  return () => { listeners.delete(l); };
+};
+
+// الدوال الأصلية قبل اعتراضها (لكتابة البيانات القادمة من الخادم دون إعادة إرسالها)
+const rawSet = Storage.prototype.setItem;
+const rawRemove = Storage.prototype.removeItem;
+const rawGet = Storage.prototype.getItem;
+
+const getToken = () => hasSession();
+
+// المفاتيح التي تغيّرت ولم تصل للخادم بعد: { key: رقم نسخة التغيير }
+type Pending = Record<string, number>;
+const readPending = (): Pending => {
+  try {
+    return JSON.parse(rawGet.call(localStorage, PENDING_KEY) || '{}');
+  } catch {
+    return {};
+  }
+};
+const writePending = (p: Pending) => rawSet.call(localStorage, PENDING_KEY, JSON.stringify(p));
+
+let flushTimer: ReturnType<typeof setTimeout> | undefined;
+const scheduleFlush = (delay = 1000) => {
+  clearTimeout(flushTimer);
+  flushTimer = setTimeout(flush, delay);
+};
+
+const markPending = (key: string) => {
+  const p = readPending();
+  p[key] = (p[key] || 0) + 1;
+  writePending(p);
+  if (getToken()) {
+    setStatus('saving');
+    scheduleFlush();
+  }
+};
+
+const api = (path: string, init: RequestInit = {}) =>
+  fetch(path, {
+    ...init,
+    cache: 'no-store',
+    headers: { 'content-type': 'application/json', ...sessionHeaders(), ...(init.headers || {}) },
+  });
+
+const buildPayload = (pending: Pending) => {
+  const set: Record<string, string> = {};
+  const remove: string[] = [];
+  for (const key of Object.keys(pending)) {
+    const value = rawGet.call(localStorage, key);
+    if (value === null) remove.push(key);
+    else set[key] = value;
+  }
+  return { set, remove };
+};
+
+let flushing = false;
+async function flush(): Promise<void> {
+  if (flushing || !getToken()) return;
+  const pending = readPending();
+  if (!Object.keys(pending).length) {
+    setStatus('saved');
+    return;
+  }
+  flushing = true;
+  setStatus('saving');
+  try {
+    const res = await api('/api/state', { method: 'PUT', body: JSON.stringify(buildPayload(pending)) });
+    if (res.status === 401) {
+      // الرمز لم يعد صالحًا: نطلب الدخول مجددًا دون فقدان التعديلات المعلّقة
+      clearSession();
+      location.reload();
+      return;
+    }
+    if (!res.ok) throw new Error(String(res.status));
+    // إزالة ما وصل فقط، وإبقاء ما تغيّر أثناء الإرسال
+    const latest = readPending();
+    for (const [key, ver] of Object.entries(pending)) if (latest[key] === ver) delete latest[key];
+    writePending(latest);
+    flushing = false;
+    if (Object.keys(latest).length) scheduleFlush(200);
+    else setStatus('saved');
+  } catch {
+    flushing = false;
+    setStatus(navigator.onLine ? 'error' : 'offline');
+    scheduleFlush(15000); // إعادة المحاولة لاحقًا، والتعديلات محفوظة محليًا حتى تصل
+  }
+}
+
+/** اعتراض الكتابة في localStorage حتى يُرسل أي تغيير للخادم تلقائيًا */
+const installInterceptors = () => {
+  Storage.prototype.setItem = function (key: string, value: string) {
+    const changed = this === localStorage && shouldSync(key) && rawGet.call(this, key) !== String(value);
+    rawSet.call(this, key, value);
+    if (changed) markPending(key);
+  };
+  Storage.prototype.removeItem = function (key: string) {
+    const existed = this === localStorage && shouldSync(key) && rawGet.call(this, key) !== null;
+    rawRemove.call(this, key);
+    if (existed) markPending(key);
+  };
+};
+
+const localSyncKeys = () => Object.keys(localStorage).filter(shouldSync);
+
+/** حدث يُطلق بعد تطبيق تعديلات أجهزة أخرى أثناء فتح الصفحة؛ detail = المفاتيح التي تغيّرت */
+export const CLOUD_APPLIED_EVENT = 'cloud-state-applied';
+
+/** يطبّق نسخة الخادم محليًا (عدا ما تغيّر هنا ولم يُرسل بعد). يعيد المفاتيح التي تغيّرت */
+const applyServerState = (items: Record<string, string>): string[] => {
+  const pending = readPending();
+  const changed: string[] = [];
+  for (const [key, value] of Object.entries(items)) {
+    if (!shouldSync(key) || key in pending) continue;
+    if (rawGet.call(localStorage, key) !== value) {
+      rawSet.call(localStorage, key, value);
+      changed.push(key);
+    }
+  }
+  // مفاتيح حُذفت من جهاز آخر
+  for (const key of localSyncKeys()) {
+    if (!(key in items) && !(key in pending)) {
+      rawRemove.call(localStorage, key);
+      changed.push(key);
+    }
+  }
+  return changed;
+};
+
+const fetchState = async (timeoutMs = 8000) => {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    return await api('/api/state', { signal: ctrl.signal });
+  } finally {
+    clearTimeout(t);
+  }
+};
+
+export type InitResult = 'ready' | 'need-login';
+
+/** يُستدعى قبل عرض التطبيق: يسحب آخر نسخة من الخادم ثم يفعّل الحفظ التلقائي */
+export async function initCloudSync(): Promise<InitResult> {
+  rawRemove.call(localStorage, TOKEN_KEY);
+  if (!getToken()) return 'need-login';
+
+  // جهاز بلا بيانات محلية (أول دخول أو بعد مسح المتصفح): لا نعرض التطبيق قبل وصول نسخة الخادم،
+  // وإلا يبدأ بالبيانات الافتراضية ويرفعها فوق بيانات الخادم (حدث عند بطء تشغيل الخادم)
+  const freshDevice = localSyncKeys().length === 0;
+
+  try {
+    let res = await fetchState(freshDevice ? 30000 : 8000);
+    for (let attempt = 1; freshDevice && !res.ok && res.status !== 401 && attempt < 5; attempt++) {
+      await new Promise(r => setTimeout(r, 2000));
+      res = await fetchState(30000);
+    }
+    if (res.status === 401) {
+      clearSession();
+      return 'need-login';
+    }
+    if (!res.ok) throw new Error(String(res.status));
+    const { items } = (await res.json()) as { items: Record<string, string> };
+
+    if (!Object.keys(items).length) {
+      // الخادم فارغ (أول استخدام): رفع كل البيانات الموجودة في هذا الجهاز
+      const p = readPending();
+      localSyncKeys().forEach(k => { p[k] = (p[k] || 0) + 1; });
+      writePending(p);
+    } else {
+      applyServerState(items);
+    }
+  } catch {
+    // جهاز بلا بيانات محلية ولم يصل الخادم: نعود لشاشة الدخول بدل البدء بالبيانات الافتراضية
+    if (freshDevice) return 'need-login';
+    // لا اتصال: نعمل بالنسخة المحلية وتُرسل التعديلات عند عودة الاتصال
+    setStatus('offline');
+  }
+
+  installInterceptors();
+  flush();
+
+  window.addEventListener('online', () => flush());
+  // عند الإغلاق: محاولة أخيرة لإرسال ما تبقّى
+  window.addEventListener('pagehide', () => {
+    const pending = readPending();
+    if (!Object.keys(pending).length || !getToken()) return;
+    const body = JSON.stringify(buildPayload(pending));
+    if (body.length < 60000) {
+      fetch('/api/state', {
+        method: 'PUT',
+        keepalive: true,
+        body,
+        headers: { 'content-type': 'application/json', ...sessionHeaders() },
+      }).catch(() => {});
+    }
+  });
+  // عند العودة للتطبيق: جلب تعديلات الأجهزة الأخرى
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState !== 'visible' || Object.keys(readPending()).length) return;
+    try {
+      const res = await fetchState();
+      if (!res.ok) return;
+      const { items } = (await res.json()) as { items: Record<string, string> };
+      if (Object.keys(readPending()).length) return;
+      if (applyServerState(items).length) location.reload();
+    } catch {
+      /* تجاهل */
+    }
+  });
+
+  // أثناء فتح الصفحة: جلب تعديلات الأجهزة الأخرى بهدوء كل 30 ثانية (بدون إعادة تحميل)،
+  // والصفحات المشتركة في الحدث تحدّث نفسها فورًا
+  setInterval(async () => {
+    if (document.visibilityState !== 'visible' || Object.keys(readPending()).length || flushing) return;
+    try {
+      const res = await fetchState();
+      if (!res.ok) return;
+      const { items } = (await res.json()) as { items: Record<string, string> };
+      if (Object.keys(readPending()).length) return;
+      const changed = applyServerState(items);
+      if (changed.length) window.dispatchEvent(new CustomEvent(CLOUD_APPLIED_EVENT, { detail: changed }));
+    } catch {
+      /* تجاهل */
+    }
+  }, 30_000);
+
+  return 'ready';
+}

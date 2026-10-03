@@ -1,0 +1,48 @@
+﻿{
+    "version":  "0.0.1",
+    "configurations":  [
+                           {
+                               "name":  "dev",
+                               "runtimeExecutable":  "npm",
+                               "runtimeArgs":  [
+                                                   "run",
+                                                   "dev"
+                                               ],
+                               "port":  5173,
+                               "autoPort":  true
+                           },
+                           {
+                               "name":  "dev-3715",
+                               "runtimeExecutable":  "npm",
+                               "runtimeArgs":  [
+                                                   "run",
+                                                   "dev",
+                                                   "--",
+                                                   "--port",
+                                                   "3715",
+                                                   "--strictPort"
+                                               ],
+                               "port":  3715
+                           },
+                           {
+                               "name":  "prod-preview",
+                               "runtimeExecutable":  "npx",
+                               "runtimeArgs":  [
+                                                   "wrangler",
+                                                   "dev",
+                                                   "--port",
+                                                   "8799"
+                                               ],
+                               "port":  8799
+                           },
+                           {
+                               "name":  "dev-5173-shared",
+                               "runtimeExecutable":  "cmd",
+                               "runtimeArgs":  [
+                                                   "/c",
+                                                   "set PORT=5173\u0026\u0026 set STATE_PORT=3715\u0026\u0026 npm run dev -- --strictPort"
+                                               ],
+                               "port":  5173
+                           }
+                       ]
+}

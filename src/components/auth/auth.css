@@ -1,0 +1,212 @@
+/* ═════ شاشة الدخول للبرنامج ═════ */
+
+.auth-page {
+  --auth-brand: #0f766e;
+  --auth-brand-2: #115e59;
+  --auth-ring: rgba(15, 118, 110, .16);
+  --auth-card: #ffffff;
+  min-height: 100dvh;
+  background:
+    radial-gradient(60% 50% at 100% 0%, rgba(20, 184, 166, .08), transparent 60%),
+    radial-gradient(50% 50% at 0% 100%, rgba(15, 23, 42, .06), transparent 60%),
+    #e4eaef;
+}
+.dark .auth-page {
+  --auth-ring: rgba(45, 212, 191, .18);
+  --auth-card: #020617;
+  background:
+    radial-gradient(60% 50% at 100% 0%, rgba(20, 184, 166, .08), transparent 60%),
+    #050a13;
+}
+
+/* ───── الهاتف: رأس ملوّن + لوحة بيضاء ترتفع من الأسفل ───── */
+.auth-phone { --auth-brand: #0f766e; --auth-brand-2: #115e59; --auth-ring: rgba(15, 118, 110, .16); --auth-card: #ffffff; background: #ffffff; }
+.dark .auth-phone { --auth-ring: rgba(45, 212, 191, .18); --auth-card: #020617; background: #020617; }
+.auth-phone-top {
+  background:
+    radial-gradient(80% 60% at 100% 0%, rgba(94, 234, 212, .35), transparent 65%),
+    radial-gradient(70% 60% at 0% 100%, rgba(14, 165, 233, .18), transparent 65%),
+    linear-gradient(160deg, #14a39a 0%, #0f8a83 40%, #0f766e 100%);
+}
+.dark .auth-phone-top {
+  background:
+    radial-gradient(80% 60% at 100% 0%, rgba(45, 212, 191, .22), transparent 65%),
+    linear-gradient(160deg, #0f5f62 0%, #0b3f4a 60%, #08263a 100%);
+}
+.auth-headline b { color: #ccfbf1; font-weight: 900; }
+.auth-sheet { box-shadow: 0 -18px 40px -24px rgba(2, 44, 41, .45); }
+.auth-input-plain { transition: border-color .2s ease, box-shadow .2s ease; }
+.auth-input-plain:focus { outline: none; border-color: var(--auth-brand, #0f766e); box-shadow: 0 0 0 4px rgba(15, 118, 110, .16); }
+.dark .auth-input-plain:focus { border-color: #2dd4bf; }
+
+/* ───── الشرائح التعريفية ───── */
+.auth-onb-track { scrollbar-width: none; overscroll-behavior-x: contain; }
+.auth-onb-track::-webkit-scrollbar { display: none; }
+/* حركة بطيئة داخل الصورة (من --from إلى --to) مع تقريب خفيف */
+.auth-onb-pan { animation: auth-onb-pan 7s linear both; }
+@keyframes auth-onb-pan {
+  from { object-position: var(--from); transform: scale(1.02); }
+  to { object-position: var(--to); transform: scale(1.06); }
+}
+/* شريط تقدّم المؤقت في النقطة النشطة */
+.auth-onb-progress { width: 0; animation: auth-onb-progress 5s linear forwards; }
+@keyframes auth-onb-progress { to { width: 100%; } }
+/* سواد متدرج: كثيف في الأسفل (~30%) ثم يتلاشى تدريجيًا نحو الصورة */
+.auth-onb-shade {
+  background: linear-gradient(to top,
+    rgba(0, 0, 0, .94) 0%, rgba(0, 0, 0, .86) 22%, rgba(0, 0, 0, .55) 38%, rgba(0, 0, 0, .18) 54%, transparent 66%),
+    linear-gradient(to bottom, rgba(0, 0, 0, .35) 0%, transparent 18%);
+}
+
+/* ───── البصمة ───── */
+.auth-bio-hero {
+  background: linear-gradient(145deg, #2dd4bf, #0f766e 60%, #115e59);
+  box-shadow: 0 20px 40px -16px rgba(15, 118, 110, .7), inset 0 1px 0 rgba(255, 255, 255, .25);
+}
+.auth-bio-icon { box-shadow: 0 8px 18px -10px rgba(15, 118, 110, .55); }
+
+/* ───── شاشة الترحيب ───── */
+.auth-welcome-top {
+  background:
+    radial-gradient(70% 50% at 50% 45%, rgba(45, 212, 191, .28), transparent 70%),
+    radial-gradient(80% 50% at 100% 0%, rgba(94, 234, 212, .18), transparent 65%),
+    linear-gradient(165deg, #12928b 0%, #0d6b6a 38%, #0a4651 72%, #072a36 100%);
+}
+.dark .auth-welcome-top {
+  background:
+    radial-gradient(70% 50% at 50% 45%, rgba(45, 212, 191, .18), transparent 70%),
+    linear-gradient(165deg, #0c4f53 0%, #08313b 55%, #04161f 100%);
+}
+.auth-scene-glow { background: radial-gradient(closest-side, rgba(94, 234, 212, .35), transparent); filter: blur(18px); animation: auth-glow 6s ease-in-out infinite; }
+@keyframes auth-glow { 50% { opacity: .65; transform: scale(.96); } }
+.auth-road { animation: auth-road 1.6s linear infinite; }
+@keyframes auth-road { to { stroke-dashoffset: 26; } }
+.auth-truck { animation: auth-truck 2.4s ease-in-out infinite; }
+@keyframes auth-truck { 50% { transform: translateY(-1.5px); } }
+.auth-drop { transform-box: fill-box; transform-origin: center bottom; animation: auth-drop 4s ease-in-out infinite; }
+@keyframes auth-drop { 50% { transform: translateY(-5px); } }
+.auth-pump-screen { animation: auth-blink 2.2s steps(2, jump-none) infinite; }
+@keyframes auth-blink { 50% { opacity: .35; } }
+.auth-canopy-light { filter: drop-shadow(0 0 4px #5eead4); }
+/* بطاقات البيانات العائمة: زجاج خفيف */
+.auth-chip {
+  display: flex; flex-direction: column; padding: 7px 11px; border-radius: 14px; color: #fff; line-height: 1.35;
+  background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .22);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 12px 24px -14px rgba(0, 0, 0, .5);
+  animation: auth-chip 5s ease-in-out infinite;
+}
+.auth-chip.c2 { animation-delay: -1.7s; }
+.auth-chip.c3 { animation-delay: -3.3s; }
+@keyframes auth-chip { 50% { transform: translateY(-4px); } }
+/* إطار الشعار بتدرج وتوهج ناعم */
+.auth-logo-ring {
+  background: linear-gradient(140deg, #5eead4, #0f766e 55%, #fbbf24);
+  box-shadow: 0 14px 30px -12px rgba(15, 118, 110, .55);
+}
+/* ظهور متتابع لعناصر اللوحة */
+.auth-rise { animation: auth-rise .55s cubic-bezier(.2, .8, .2, 1) both; }
+.auth-rise.d1 { animation-delay: .08s; }
+.auth-rise.d2 { animation-delay: .16s; }
+.auth-rise.d3 { animation-delay: .24s; }
+@keyframes auth-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+/* الانتقال بين الترحيب والدخول والدعم */
+::view-transition-group(auth-top),
+::view-transition-group(auth-sheet) { animation-duration: .5s; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+::view-transition-old(auth-top),
+::view-transition-new(auth-top),
+::view-transition-old(auth-sheet),
+::view-transition-new(auth-sheet) { height: 100%; object-fit: cover; object-position: top; animation-duration: .35s; }
+
+/* ───── اللوحة الحيّة: Dark Teal → Deep Navy/Green ───── */
+.auth-show {
+  background:
+    radial-gradient(70% 55% at 85% 8%, rgba(45, 212, 191, .20), transparent 60%),
+    radial-gradient(60% 50% at 10% 95%, rgba(16, 185, 129, .12), transparent 60%),
+    linear-gradient(165deg, #0f5f62 0%, #0b3f4a 42%, #08263a 72%, #061b24 100%);
+}
+.auth-grid {
+  position: absolute; inset: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, .035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, .035) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse at 50% 35%, #000 20%, transparent 75%);
+}
+/* زجاج متوازن: Blur خفيف + شفافية منضبطة + إطار دقيق + ظل ناعم */
+.auth-glass {
+  background: rgba(255, 255, 255, .06);
+  border: 1px solid rgba(255, 255, 255, .12);
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  box-shadow: 0 18px 40px -22px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+.auth-live-dot { position: relative; }
+.auth-live-dot::after {
+  content: ''; position: absolute; inset: -4px; border-radius: 9999px;
+  background: currentColor; opacity: .35; animation: auth-ping 1.8s cubic-bezier(0, 0, .2, 1) infinite;
+}
+@keyframes auth-ping { 75%, 100% { transform: scale(2.2); opacity: 0; } }
+.auth-station-ring { transform-box: fill-box; transform-origin: center; animation: auth-ring 2.6s ease-out infinite; }
+@keyframes auth-ring { from { transform: scale(.6); opacity: .7; } to { transform: scale(2.4); opacity: 0; } }
+.auth-route { stroke-dasharray: 4 7; animation: auth-dash 2.2s linear infinite; }
+@keyframes auth-dash { to { stroke-dashoffset: -22; } }
+
+/* ───── حقول بعنوان عائم ───── */
+.fl-wrap { position: relative; }
+.fl-input {
+  transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease;
+}
+.fl-input:focus { outline: none; border-color: var(--auth-brand); box-shadow: 0 0 0 4px var(--auth-ring); }
+.dark .fl-input:focus { border-color: #2dd4bf; }
+.fl-input[aria-invalid='true'] { border-color: #e11d48; }
+.fl-label {
+  position: absolute; inset-inline-start: 2.6rem; top: 50%; transform: translateY(-50%);
+  padding: 0 .35rem; pointer-events: none; border-radius: .375rem;
+  font-size: 15px; color: #64748b;
+  transition: top .2s ease, font-size .2s ease, color .2s ease, inset-inline-start .2s ease;
+}
+.dark .fl-label { color: #94a3b8; }
+.fl-input:focus + .fl-label,
+.fl-input:not(:placeholder-shown) + .fl-label {
+  top: 0; inset-inline-start: .85rem; font-size: 12px; font-weight: 700;
+  background: var(--auth-card); color: #334155;
+}
+.dark .fl-input:focus + .fl-label,
+.dark .fl-input:not(:placeholder-shown) + .fl-label { color: #cbd5e1; }
+.fl-input:focus + .fl-label { color: var(--auth-brand) !important; }
+.dark .fl-input:focus + .fl-label { color: #2dd4bf !important; }
+.fl-icon { transition: color .2s ease, transform .2s ease; }
+.fl-wrap:focus-within .fl-icon { color: var(--auth-brand); transform: translateY(-50%) scale(1.1); }
+.dark .fl-wrap:focus-within .fl-icon { color: #2dd4bf; }
+
+/* ───── زر الدخول ───── */
+.auth-btn {
+  background: linear-gradient(180deg, #14918a 0%, var(--auth-brand) 55%, var(--auth-brand-2) 100%);
+  box-shadow: 0 10px 24px -12px rgba(15, 118, 110, .75), inset 0 1px 0 rgba(255, 255, 255, .2);
+  transition: transform .18s ease, filter .18s ease, background .25s ease, box-shadow .25s ease;
+}
+.auth-btn:hover:not(:disabled) { filter: brightness(1.06); }
+.auth-btn:active:not(:disabled) { transform: scale(.985); }
+.auth-btn.success { background: linear-gradient(180deg, #22c55e, #16a34a); box-shadow: 0 10px 24px -12px rgba(22, 163, 74, .8); }
+
+.auth-focus:focus-visible { outline: 2px solid var(--auth-brand); outline-offset: 2px; }
+.dark .auth-focus:focus-visible { outline-color: #2dd4bf; }
+
+.auth-shake { animation: auth-shake .42s cubic-bezier(.36, .07, .19, .97) both; }
+@keyframes auth-shake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(3px); }
+  30%, 50%, 70% { transform: translateX(-6px); }
+  40%, 60% { transform: translateX(6px); }
+}
+.auth-fade { animation: auth-fade .35s ease both; }
+@keyframes auth-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.auth-pop { animation: auth-pop .35s cubic-bezier(.2, .9, .3, 1.3) both; }
+@keyframes auth-pop { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-onb-pan, .auth-scene-glow, .auth-road, .auth-truck, .auth-drop, .auth-pump-screen, .auth-chip, .auth-rise, .auth-live-dot::after, .auth-station-ring, .auth-route, .auth-shake, .auth-fade, .auth-pop { animation: none; }
+  .fl-label, .fl-input, .fl-icon, .auth-btn { transition: none; }
+}

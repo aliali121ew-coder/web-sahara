@@ -1,0 +1,398 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@100..900&family=Cairo:wght@200..1000&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-canvas: #f8fafc;
+    --card-bg: #ffffff;
+    --border-color: #f1f5f9;
+    font-family: 'Noto Kufi Arabic', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  *, *::before, *::after {
+    font-family: 'Noto Kufi Arabic', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  .dark {
+    --bg-canvas: #090e17;
+    --card-bg: #111a2e;
+    --border-color: #1e293b;
+  }
+
+  body {
+    background-color: var(--bg-canvas);
+    color: #1e293b;
+    font-family: 'Noto Kufi Arabic', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  button, input, select, textarea {
+    font-family: 'Noto Kufi Arabic', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  .dark body {
+    color: #f1f5f9;
+  }
+}
+
+/* Instant Theme Transition helper to prevent background lag/flashing */
+.disable-transitions,
+.disable-transitions * {
+  -webkit-transition: none !important;
+  -moz-transition: none !important;
+  -o-transition: none !important;
+  -ms-transition: none !important;
+  transition: none !important;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.6);
+}
+
+/* Wave Animation for Tanks */
+@keyframes waveAnimation {
+  0% {
+    transform: translateX(0) translateZ(0) scaleY(1);
+  }
+  50% {
+    transform: translateX(-25%) translateZ(0) scaleY(0.85);
+  }
+  100% {
+    transform: translateX(-50%) translateZ(0) scaleY(1);
+  }
+}
+
+.animate-wave-slow {
+  animation: waveAnimation 6s ease-in-out infinite;
+}
+
+.animate-wave-fast {
+  animation: waveAnimation 4s linear infinite;
+}
+
+/* Glassmorphism Styles */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.dark .glass-panel {
+  background: rgba(17, 26, 46, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* 3D Elevated Cards & Neu-Modern Depth (بارزة وثلاثية الأبعاد) */
+.card-3d {
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 65%, #f3f6fa 100%);
+  border: 1px solid #e2e8f0;
+  border-top: 1px solid #ffffff;
+  border-bottom: 2px solid #cbd5e1;
+  box-shadow: 
+    0 1px 0 0 rgba(255, 255, 255, 0.95) inset,
+    0 5px 0 0 #e2e8f0,
+    0 14px 28px -6px rgba(15, 23, 42, 0.08),
+    0 4px 8px -2px rgba(15, 23, 42, 0.04);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateY(0);
+}
+
+.card-3d:hover {
+  transform: translateY(-3px);
+  box-shadow: 
+    0 1px 0 0 rgba(255, 255, 255, 0.95) inset,
+    0 8px 0 0 #cbd5e1,
+    0 22px 34px -8px rgba(15, 23, 42, 0.12),
+    0 6px 12px -3px rgba(15, 23, 42, 0.05);
+}
+
+.dark .card-3d {
+  background: linear-gradient(180deg, #131c31 0%, #0f172a 100%);
+  border: 1px solid rgba(51, 65, 85, 0.9);
+  border-top: 1px solid rgba(148, 163, 184, 0.35);
+  border-bottom: 2px solid #0b1120;
+  box-shadow: 
+    0 1px 0 0 rgba(255, 255, 255, 0.08) inset,
+    0 5px 0 0 #0b1120,
+    0 14px 28px -6px rgba(0, 0, 0, 0.55);
+}
+
+.dark .card-3d:hover {
+  transform: translateY(-3px);
+  box-shadow: 
+    0 1px 0 0 rgba(255, 255, 255, 0.12) inset,
+    0 8px 0 0 #070c18,
+    0 22px 34px -8px rgba(0, 0, 0, 0.75);
+}
+
+/* 3D Inset Wells / Recessed Capsule Badges */
+.inset-3d {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  box-shadow: inset 0 2px 4px 0 rgba(15, 23, 42, 0.05), 0 1px 0 0 #ffffff;
+}
+
+.dark .inset-3d {
+  background: #0b1222;
+  border: 1px solid #1e293b;
+  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.45), 0 1px 0 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Tank 3D Cylinder Illusion */
+.tank-cylinder-shadow {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.25) 0%,
+    rgba(255, 255, 255, 0.15) 30%,
+    rgba(255, 255, 255, 0) 50%,
+    rgba(0, 0, 0, 0.2) 100%
+  );
+}
+
+/* Shimmer Effect */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+/* Stream Flow Animation for Pipeline / Pumping Bars */
+@keyframes streamMove {
+  from { background-position: 0 0; }
+  to { background-position: 28px 0; }
+}
+
+.animate-stream-flow {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 255, 255, 0.25) 0,
+    rgba(255, 255, 255, 0.25) 7px,
+    transparent 7px,
+    transparent 14px
+  );
+  background-size: 28px 28px;
+  animation: streamMove 1s linear infinite;
+}
+
+/* Remove Recharts & SVG Focus Black Box Outline on Click */
+.recharts-pie-sector,
+.recharts-pie-sector:focus,
+.recharts-pie-sector:focus-visible,
+.recharts-sector,
+.recharts-sector:focus,
+.recharts-sector:focus-visible,
+.recharts-wrapper,
+.recharts-wrapper:focus,
+.recharts-wrapper:focus-visible,
+.recharts-surface,
+.recharts-surface:focus,
+.recharts-surface:focus-visible,
+svg path:focus,
+svg path:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+/* 🚀 High Refresh Rate (120 FPS / ProMotion) Performance Utilities */
+.contain-paint {
+  contain: paint;
+}
+
+.contain-content {
+  contain: content;
+}
+
+.touch-pan-y {
+  touch-action: pan-y;
+}
+
+.will-change-transform {
+  will-change: transform;
+}
+
+/* 🖨️ Official Clean Print Styles (For Enterprise Inbound Table Reports & Analytics) */
+@media screen {
+  .print-only {
+    display: none !important;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 6mm 8mm 6mm 8mm;
+  }
+
+  *, *::before, *::after {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  html, body, #root, #root > div {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    font-family: 'Cairo', 'Noto Kufi Arabic', system-ui, sans-serif !important;
+    font-size: 10px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  /* Force all dark mode classes to pure white background during print */
+  .dark, .dark body, .dark #root, .dark html, .dark div, .dark main {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  /* Hide all screen-only interactive UI, floating navigation, sidebars, buttons, modals & backdrops */
+  .no-print,
+  .no-print *,
+  header:not(.print-header):not(.report-header),
+  nav,
+  aside,
+  button,
+  input,
+  select,
+  .backdrop-blur-md,
+  .backdrop-blur-sm,
+  .backdrop-blur-xl,
+  .backdrop-blur-lg {
+    display: none !important;
+  }
+
+  /* Show the print-only report container full width */
+  .print-only {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    overflow: visible !important;
+  }
+
+  .print-report-root {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #ffffff !important;
+  }
+
+  .print-page-box {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+  }
+
+  .print-page-break {
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+
+  .print-header,
+  .report-header {
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  .print-flex-row {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .print-flex-1 {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+  }
+
+  /* Avoid page breaks inside table rows, cards, and signatures */
+  table {
+    page-break-inside: auto;
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tfoot {
+    display: table-footer-group !important;
+  }
+
+  .print-avoid-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid-page !important;
+    break-inside: avoid !important;
+  }
+}
+
+
+
+
+
+
+/* بطاقة النجاح بعد الحفظ: رسم الدائرة ثم علامة الصح مع نبضة */
+.success-pop { animation: successPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.success-circle { stroke-dasharray: 151; stroke-dashoffset: 151; animation: successDraw 0.5s ease-out 0.1s forwards; }
+.success-check { stroke-dasharray: 36; stroke-dashoffset: 36; animation: successDraw 0.35s ease-out 0.55s forwards; }
+.success-ring { transform: scale(0.6); opacity: 0; animation: successRing 0.9s ease-out 0.6s forwards; }
+@keyframes successPop { from { opacity: 0; transform: scale(0.85) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+@keyframes successDraw { to { stroke-dashoffset: 0; } }
+@keyframes successRing { 0% { transform: scale(0.6); opacity: 0.9; } 100% { transform: scale(1.45); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .success-pop, .success-circle, .success-check, .success-ring { animation: none; stroke-dashoffset: 0; }
+}

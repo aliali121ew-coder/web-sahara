@@ -1,0 +1,710 @@
+import React, { useEffect, useId, useRef, useState } from 'react';
+import {
+  User, Lock, Eye, EyeOff, Loader2, AlertCircle, Clock, ArrowUpWideNarrow, KeyRound, ShieldCheck, UserCog,
+  Sun, Moon, ArrowRight, Check, Truck, Fuel, Building2, LockKeyhole, Fingerprint, ScanFace, X,
+} from 'lucide-react';
+import {
+  authStatus, loginAccount, setupSystem, AuthError, LAST_USER_KEY, LAST_NAME_KEY,
+  biometricAvailable, biometricUser, enableBiometric, loginWithBiometric,
+} from '../../lib/session';
+import { PhoneFlow, type PhoneStep, type SupportKind } from './PhoneFlow';
+import './auth.css';
+
+// ───── أدوات ─────
+const strength = (p: string) => {
+  let s = 0;
+  if (p.length >= 8) s++;
+  if (p.length >= 12) s++;
+  if (/[A-Z]/.test(p) && /[a-z]/.test(p)) s++;
+  if (/\d/.test(p) && /[^A-Za-z0-9]/.test(p)) s++;
+  return Math.min(s, 4);
+};
+const STRENGTH = [
+  { label: 'ضعيفة جدًا', color: '#ef4444' },
+  { label: 'ضعيفة', color: '#f97316' },
+  { label: 'مقبولة', color: '#ca8a04' },
+  { label: 'جيدة', color: '#16a34a' },
+  { label: 'قوية', color: '#059669' },
+];
+const USERNAME_RE = /^[a-z0-9._-]{3,32}$/;
+const REMEMBER_KEY = 'sahara_remember_me';
+const WELCOME_KEY = 'sahara_welcome_seen';
+/** رفض عرض تفعيل البصمة لهذا الحساب على هذا الجهاز */
+const BIO_DECLINED_KEY = 'sahara_bio_declined_';
+
+/** هل الشاشة بعرض هاتف؟ */
+const useIsPhone = () => {
+  const q = '(max-width: 639px)';
+  const [phone, setPhone] = useState(() => typeof window !== 'undefined' && window.matchMedia(q).matches);
+  useEffect(() => {
+    const m = window.matchMedia(q);
+    const on = () => setPhone(m.matches);
+    m.addEventListener('change', on);
+    return () => m.removeEventListener('change', on);
+  }, []);
+  return phone;
+};
+const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+type Mode = 'loading' | 'login' | 'help' | 'setup';
+type BtnState = 'idle' | 'loading' | 'success';
+
+// ───── حقل بعنوان عائم ─────
+type FieldProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'placeholder'> & {
+  label: string;
+  icon: React.ElementType;
+  trailing?: React.ReactNode;
+  invalid?: boolean;
+  children?: React.ReactNode;
+};
+const Field = React.forwardRef<HTMLInputElement, FieldProps>(({ label, icon: Icon, trailing, invalid, children, id, ...rest }, ref) => (
+  <div className="space-y-1.5">
+    <div className="fl-wrap">
+      <Icon aria-hidden className="fl-icon absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-slate-400 pointer-events-none" />
+      <input
+        ref={ref}
+        id={id}
+        placeholder=" "
+        aria-invalid={invalid || undefined}
+        {...rest}
+        className="fl-input w-full h-14 rounded-xl border border-slate-200 bg-white pr-11 pl-14 pt-1 text-[15px] text-slate-900 dark:bg-slate-950 dark:border-slate-700 dark:text-white"
+      />
+      <label htmlFor={id} className="fl-label">{label}</label>
+      {trailing && <div className="absolute left-1.5 top-1/2 -translate-y-1/2">{trailing}</div>}
+    </div>
+    {children}
+  </div>
+));
+Field.displayName = 'Field';
+
+// ═════ الشاشة ═════
+export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
+  const [mode, setMode] = useState<Mode>('loading');
+  const [dark, setDark] = useState(() => localStorage.getItem('sahara_theme_mode') === 'dark');
+  const [username, setUsername] = useState(() => localStorage.getItem(LAST_USER_KEY) || '');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [name, setName] = useState('');
+  const [code, setCode] = useState('');
+  const [remember, setRemember] = useState(() => localStorage.getItem(REMEMBER_KEY) !== '0');
+  const [show, setShow] = useState(false);
+  const [caps, setCaps] = useState(false);
+  const [btn, setBtn] = useState<BtnState>('idle');
+  const [error, setError] = useState('');
+  const [shake, setShake] = useState(0);
+  const [lockedUntil, setLockedUntil] = useState(0);
+  const [now, setNow] = useState(Date.now());
+  const passRef = useRef<HTMLInputElement>(null);
+  const errId = useId();
+  const phone = useIsPhone();
+  // الشرائح التعريفية أول مرة فقط، والترحيب في كل مرة يُطلب فيها تسجيل الدخول (كل 24 ساعة أو بعد الخروج)
+  const [phoneStep, setPhoneStepState] = useState<PhoneStep>(() => (localStorage.getItem(WELCOME_KEY) ? 'welcome' : 'intro'));
+  const setPhoneStep = (s: PhoneStep) => {
+    if (s === 'login' || s === 'support') { try { localStorage.setItem(WELCOME_KEY, '1'); } catch { /* تجاهل */ } }
+    setPhoneStepState(s);
+    setError('');
+    window.scrollTo(0, 0);
+  };
+  const [supportKind, setSupportKind] = useState<SupportKind>('account');
+  // البصمة / بصمة الوجه
+  const [bioAvail, setBioAvail] = useState(false);
+  const [bioUser] = useState(biometricUser);
+  const [bioOffer, setBioOffer] = useState(false);
+  const [bioBusy, setBioBusy] = useState(false);
+  const lastName = (localStorage.getItem(LAST_NAME_KEY) || '').split(' ')[0];
+  useEffect(() => { biometricAvailable().then(setBioAvail); }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', dark);
+    try { localStorage.setItem('sahara_theme_mode', dark ? 'dark' : 'light'); } catch { /* تجاهل */ }
+  }, [dark]);
+
+  useEffect(() => {
+    authStatus().then(r => setMode(r.setup ? 'setup' : 'login')).catch(() => setMode('login'));
+  }, []);
+
+  useEffect(() => {
+    if (lockedUntil <= Date.now()) return;
+    const t = setInterval(() => {
+      setNow(Date.now());
+      if (Date.now() >= lockedUntil) { setLockedUntil(0); setError(''); }
+    }, 1000);
+    return () => clearInterval(t);
+  }, [lockedUntil]);
+  const lockLeft = Math.max(0, Math.ceil((lockedUntil - now) / 1000));
+
+  const fail = (e: unknown) => {
+    setError((e as Error).message || 'تعذّر الاتصال بالخادم');
+    setShake(s => s + 1);
+    if (e instanceof AuthError && e.code === 'locked') {
+      setLockedUntil(e.retryAt || Date.now() + 5 * 60_000);
+      setNow(Date.now());
+    }
+    setPassword('');
+    setConfirm('');
+    requestAnimationFrame(() => passRef.current?.focus());
+  };
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (btn !== 'idle' || lockLeft) return; // منع الإرسال المكرر
+    setError('');
+    const u = username.trim().toLowerCase();
+    const invalid = (msg: string) => { setError(msg); setShake(s => s + 1); };
+    if (mode === 'setup') {
+      if (!code.trim()) return invalid('أدخل رمز تفعيل النظام');
+      if (!name.trim()) return invalid('اكتب اسمك الكامل');
+      if (!USERNAME_RE.test(u)) return invalid('اسم المستخدم: 3–32 حرفًا إنجليزيًا صغيرًا أو أرقامًا أو . _ -');
+      if (password.length < 8) return invalid('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
+      if (password !== confirm) return invalid('كلمتا المرور غير متطابقتين');
+    } else if (!u || !password) {
+      return invalid('أدخل اسم المستخدم وكلمة المرور');
+    }
+    setBtn('loading');
+    try {
+      if (mode === 'setup') await setupSystem(code.trim(), { username: u, password, name: name.trim() });
+      else await loginAccount(u, password, remember);
+      localStorage.setItem(REMEMBER_KEY, remember ? '1' : '0');
+      setBtn('success');
+      // بعد أول دخول بكلمة المرور على جهاز يدعم البصمة: نعرض تفعيلها (مرة لكل حساب)
+      const offer = bioAvail && biometricUser() !== u && !localStorage.getItem(BIO_DECLINED_KEY + u);
+      setTimeout(() => (offer ? setBioOffer(true) : onSuccess()), reducedMotion() ? 0 : 650);
+    } catch (err) {
+      setBtn('idle');
+      fail(err);
+    }
+  };
+
+  const bioLogin = async () => {
+    if (bioBusy || btn !== 'idle') return;
+    setError('');
+    setBioBusy(true);
+    try {
+      await loginWithBiometric(bioUser);
+      setBtn('success');
+      setTimeout(onSuccess, reducedMotion() ? 0 : 500);
+    } catch (err) {
+      if (!(err instanceof AuthError && err.code === 'cancelled')) fail(err);
+    } finally {
+      setBioBusy(false);
+    }
+  };
+
+  const onKey = (e: React.KeyboardEvent) => setCaps(e.getModifierState?.('CapsLock') ?? false);
+  const setup = mode === 'setup';
+  const st = strength(password);
+  const hasError = !!error;
+
+  // نموذج الدخول نفسه (مشترك بين الحاسوب والهاتف)
+  const renderForm = (phone: boolean) => (
+    <>
+      {!setup && bioAvail && bioUser && (
+        <div className="mb-5 auth-fade">
+          <button type="button" onClick={bioLogin} disabled={bioBusy || btn !== 'idle'} aria-busy={bioBusy}
+            className="auth-focus w-full rounded-2xl p-4 flex items-center gap-4 text-right bg-teal-50 ring-1 ring-teal-200 hover:bg-teal-100/70 dark:bg-teal-500/10 dark:ring-teal-500/30 dark:hover:bg-teal-500/15 transition disabled:opacity-70">
+            <span className="auth-bio-icon w-14 h-14 shrink-0 rounded-2xl bg-white dark:bg-slate-900 ring-1 ring-teal-200 dark:ring-teal-500/30 flex items-center justify-center text-teal-700 dark:text-teal-300">
+              {bioBusy ? <Loader2 className="w-7 h-7 animate-spin" /> : <Fingerprint className="w-8 h-8" />}
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-[15px] font-black text-slate-900 dark:text-white">{lastName ? `مرحبًا مجددًا، ${lastName}` : 'مرحبًا مجددًا'}</span>
+              <span className="block text-[13px] font-semibold text-teal-800 dark:text-teal-300">الدخول بالبصمة أو بصمة الوجه</span>
+            </span>
+            <ScanFace className="w-6 h-6 text-teal-700/60 dark:text-teal-300/60 shrink-0" aria-hidden />
+          </button>
+          <div className="flex items-center gap-3 text-xs font-semibold text-slate-500 dark:text-slate-400 mt-5">
+            <span className="flex-1 h-px bg-slate-200 dark:bg-slate-800" /> أو بكلمة المرور <span className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
+          </div>
+        </div>
+      )}
+      <form key={shake} onSubmit={submit} noValidate aria-describedby={hasError ? errId : undefined}
+        className={`space-y-4 ${shake ? 'auth-shake' : 'auth-fade'}`}>
+        {setup && (
+          <>
+            <Field id="a-code" label="رمز تفعيل النظام" icon={KeyRound} dir="ltr" type="password" value={code}
+              onChange={e => setCode(e.target.value)} autoComplete="off" autoFocus={!phone} required />
+            <Field id="a-name" label="الاسم الكامل" icon={UserCog} value={name} onChange={e => setName(e.target.value)}
+              maxLength={60} autoComplete="name" required />
+          </>
+        )}
+        <Field
+          id="a-user" label="اسم المستخدم" icon={User} dir="ltr" value={username} invalid={hasError && !setup}
+          onChange={e => setUsername(e.target.value.replace(/\s/g, ''))}
+          maxLength={32} autoComplete="username" autoCapitalize="none" spellCheck={false} required
+          autoFocus={!phone && !setup && !username}
+        />
+        <Field
+          ref={passRef} id="a-pass" label="كلمة المرور" icon={Lock} dir="ltr" invalid={hasError && !setup}
+          type={show ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
+          onKeyDown={onKey} onKeyUp={onKey} maxLength={128} required
+          autoComplete={setup ? 'new-password' : 'current-password'} autoFocus={!phone && !setup && !!username}
+          trailing={
+            <button type="button" onClick={() => setShow(v => !v)} aria-pressed={show}
+              aria-label={show ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+              className="auth-focus w-11 h-11 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition">
+              {show ? <EyeOff className="w-[18px] h-[18px]" /> : <Eye className="w-[18px] h-[18px]" />}
+            </button>
+          }
+        >
+          {caps && (
+            <p className="flex items-center gap-1.5 text-xs font-bold text-amber-700 dark:text-amber-400" role="status">
+              <ArrowUpWideNarrow className="w-3.5 h-3.5" /> زر الأحرف الكبيرة (Caps Lock) مفعّل
+            </p>
+          )}
+          {setup && password && (
+            <div className="flex items-center gap-2 pt-0.5">
+              <div className="flex-1 grid grid-cols-4 gap-1" aria-hidden>
+                {[0, 1, 2, 3].map(i => (
+                  <span key={i} className="h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 transition-colors" style={i < st ? { background: STRENGTH[st].color } : undefined} />
+                ))}
+              </div>
+              <span className="text-xs font-bold" style={{ color: STRENGTH[st].color }}>قوة كلمة المرور: {STRENGTH[st].label}</span>
+            </div>
+          )}
+        </Field>
+        {setup && (
+          <Field id="a-confirm" label="تأكيد كلمة المرور" icon={Lock} dir="ltr" type={show ? 'text' : 'password'}
+            value={confirm} onChange={e => setConfirm(e.target.value)} maxLength={128} autoComplete="new-password" required />
+        )}
+
+        {!setup && (
+          <div className="flex items-center justify-between gap-2">
+            <label className="inline-flex items-center gap-2.5 min-h-[44px] cursor-pointer select-none text-sm font-semibold text-slate-700 dark:text-slate-300">
+              <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)}
+                className="auth-focus w-[18px] h-[18px] rounded accent-teal-700" />
+              تذكّرني
+            </label>
+            {phone && (
+              <button type="button" onClick={() => { setSupportKind('password'); setPhoneStep('support'); }}
+                className="auth-focus min-h-[44px] text-sm font-bold text-teal-700 dark:text-teal-300 rounded-md">
+                نسيت كلمة المرور؟
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* رسالة الخطأ: أيقونة + نص (لا نعتمد على اللون وحده) */}
+        <div aria-live="assertive" id={errId}>
+          {error && (
+            <div role="alert" className="flex items-start gap-2.5 rounded-xl px-3.5 py-3 text-[13px] font-bold leading-6 bg-rose-50 text-rose-800 ring-1 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-200 dark:ring-rose-500/30">
+              {lockLeft ? <Clock className="w-[18px] h-[18px] shrink-0 mt-0.5" /> : <AlertCircle className="w-[18px] h-[18px] shrink-0 mt-0.5" />}
+              <span className="flex-1">
+                {error}
+                {lockLeft > 0 && (
+                  <span dir="ltr" className="block font-mono text-base mt-0.5">
+                    {String(Math.floor(lockLeft / 60)).padStart(2, '0')}:{String(lockLeft % 60).padStart(2, '0')}
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <button type="submit" disabled={btn !== 'idle' || lockLeft > 0} aria-busy={btn === 'loading'}
+          className={`auth-btn auth-focus w-full h-14 rounded-xl text-white font-bold text-base flex items-center justify-center gap-2 disabled:cursor-not-allowed ${btn === 'success' ? 'success' : ''} ${btn === 'idle' && lockLeft ? 'opacity-60' : ''}`}>
+          {btn === 'loading' && <><Loader2 className="w-5 h-5 animate-spin" /> جارٍ تسجيل الدخول...</>}
+          {btn === 'success' && <><Check className="w-5 h-5 auth-pop" strokeWidth={3} /> تم تسجيل الدخول</>}
+          {btn === 'idle' && (setup ? 'إنشاء الحساب والدخول' : 'تسجيل الدخول')}
+        </button>
+      </form>
+
+      {/* الاستعادة والمساعدة: مباشرة أسفل النموذج (الحاسوب) */}
+      {!setup && !phone && (
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-2 text-sm">
+          <button type="button" onClick={() => setMode('help')}
+            className="auth-focus min-h-[44px] font-bold text-teal-800 hover:text-teal-950 underline-offset-4 hover:underline dark:text-teal-300 dark:hover:text-teal-200 rounded-md">
+            نسيت كلمة المرور؟
+          </button>
+          <button type="button" onClick={() => setMode('help')}
+            className="auth-focus min-h-[44px] font-semibold text-slate-600 hover:text-slate-900 underline-offset-4 hover:underline dark:text-slate-400 dark:hover:text-white rounded-md">
+            طلب حساب جديد
+          </button>
+        </div>
+      )}
+      {!setup && <SocialLogin />}
+    </>
+  );
+
+  const offerEl = bioOffer && (
+    <BioOffer
+      onEnable={async () => { await enableBiometric(); onSuccess(); }}
+      onSkip={() => { try { localStorage.setItem(BIO_DECLINED_KEY + username.trim().toLowerCase(), '1'); } catch { /* تجاهل */ } onSuccess(); }}
+    />
+  );
+
+  // ═════ الهاتف: ترحيب ← دخول ← دعم ═════
+  if (phone) {
+    return (
+      <>
+      {offerEl}
+      <PhoneFlow
+        step={setup ? 'login' : phoneStep}
+        setStep={setPhoneStep}
+        setup={setup}
+        loading={mode === 'loading'}
+        dark={dark}
+        onToggleDark={() => setDark(d => !d)}
+        supportKind={supportKind}
+        setSupportKind={setSupportKind}
+        username={username}
+        form={renderForm(true)}
+      />
+      </>
+    );
+  }
+
+  return (
+    <div dir="rtl" className="auth-page relative flex items-center justify-center p-5 lg:p-8">
+      {offerEl}
+      <div className="relative w-full max-w-[1280px] rounded-[28px] bg-white/60 dark:bg-white/[.03] p-2.5 shadow-[0_30px_80px_-35px_rgba(15,23,42,.35)] ring-1 ring-white/80 dark:ring-white/5">
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.12fr)] gap-2.5 lg:h-[min(840px,calc(100dvh-5rem))]">
+
+          {/* ═════ بطاقة الدخول ═════ */}
+          <section className="relative flex flex-col bg-white dark:bg-slate-950 rounded-[22px] border border-slate-200/80 dark:border-slate-800 px-10 xl:px-16 py-7 overflow-y-auto">
+            <header className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="w-11 h-11 rounded-xl bg-white ring-1 ring-slate-200 dark:ring-slate-700 flex items-center justify-center overflow-hidden">
+                  <img src="/logos/sahara.png" alt="" className="w-9 h-9 object-contain" />
+                </span>
+                <div className="leading-tight">
+                  <div className="font-black text-base text-slate-900 dark:text-white">صحاري كربلاء</div>
+                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">منظومة إدارة المحروقات</div>
+                </div>
+              </div>
+              <ThemeButton dark={dark} onToggle={() => setDark(d => !d)} />
+            </header>
+
+            <main className="flex-1 flex flex-col justify-center w-full max-w-[400px] mx-auto py-10">
+              {mode === 'loading' ? (
+                <div className="flex justify-center py-20" role="status" aria-label="جارٍ التحميل"><Loader2 className="w-8 h-8 animate-spin text-teal-600" /></div>
+              ) : mode === 'help' ? (
+                <HelpView onBack={() => setMode('login')} />
+              ) : (
+                <>
+                  <div className="mb-8">
+                    {setup && <SetupBadge />}
+                    <h1 className="text-[32px] font-black tracking-tight text-slate-900 dark:text-white leading-[1.3]">
+                      {setup ? 'إنشاء حساب المدير' : 'مرحبًا بك'}
+                    </h1>
+                    <p className="mt-2 text-[15px] leading-7 text-slate-600 dark:text-slate-400">
+                      {setup ? 'أدخل رمز تفعيل النظام ثم أنشئ حساب المدير لإضافة حسابات الموظفين.' : 'سجّل الدخول بحسابك المعتمد للمتابعة.'}
+                    </p>
+                  </div>
+                  {renderForm(false)}
+                </>
+              )}
+            </main>
+
+            <footer className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+              <span className="inline-flex items-center gap-1.5"><LockKeyhole className="w-3.5 h-3.5" /> اتصال مشفّر وحساب شخصي لكل موظف</span>
+              <span>© {new Date().getFullYear()} صحاري كربلاء</span>
+            </footer>
+          </section>
+
+          <FleetShowcase />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/** عرض تفعيل الدخول بالبصمة / بصمة الوجه بعد الدخول بكلمة المرور */
+const BioOffer: React.FC<{ onEnable: () => Promise<void>; onSkip: () => void }> = ({ onEnable, onSkip }) => {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const enable = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      await onEnable();
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+    }
+  };
+  return (
+    <div dir="rtl" role="dialog" aria-modal="true" aria-labelledby="bio-title"
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-slate-950/55 backdrop-blur-sm p-0 sm:p-6 auth-fade">
+      <div className="relative w-full sm:max-w-md bg-white dark:bg-slate-950 rounded-t-[32px] sm:rounded-[28px] px-7 pt-9 pb-[max(1.75rem,env(safe-area-inset-bottom))] text-center shadow-2xl auth-rise">
+        <button type="button" onClick={onSkip} aria-label="إغلاق" className="auth-focus absolute top-4 left-4 w-11 h-11 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
+          <X className="w-5 h-5" />
+        </button>
+        <div className="mx-auto w-24 h-24 rounded-[28px] auth-bio-hero flex items-center justify-center text-white">
+          <Fingerprint className="w-12 h-12" />
+        </div>
+        <h2 id="bio-title" className="mt-6 text-[22px] font-black text-slate-900 dark:text-white">ادخل أسرع بالبصمة</h2>
+        <p className="mt-2 text-[15px] leading-7 text-slate-600 dark:text-slate-400">
+          فعّل الدخول ببصمة الإصبع أو بصمة الوجه على هذا الجهاز. البصمة تبقى في جهازك ولا تُرسل لأي خادم.
+        </p>
+        <div className="mt-5 flex justify-center gap-6 text-slate-500 dark:text-slate-400 text-xs font-bold">
+          <span className="flex flex-col items-center gap-1.5"><Fingerprint className="w-6 h-6 text-teal-600 dark:text-teal-400" /> بصمة الإصبع</span>
+          <span className="flex flex-col items-center gap-1.5"><ScanFace className="w-6 h-6 text-teal-600 dark:text-teal-400" /> بصمة الوجه</span>
+        </div>
+        {error && (
+          <p role="alert" className="mt-4 flex items-center justify-center gap-2 text-[13px] font-bold text-rose-700 dark:text-rose-300">
+            <AlertCircle className="w-4 h-4" /> {error}
+          </p>
+        )}
+        <button type="button" onClick={enable} disabled={busy} autoFocus
+          className="auth-btn auth-focus mt-6 w-full h-14 rounded-2xl text-white font-bold text-base flex items-center justify-center gap-2 disabled:opacity-70">
+          {busy ? <><Loader2 className="w-5 h-5 animate-spin" /> بانتظار البصمة...</> : 'تفعيل الآن'}
+        </button>
+        <button type="button" onClick={onSkip} disabled={busy}
+          className="auth-focus mt-2 w-full h-12 rounded-2xl text-[15px] font-bold text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-900">
+          ليس الآن
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const ThemeButton: React.FC<{ dark: boolean; onToggle: () => void; onColor?: boolean }> = ({ dark, onToggle, onColor }) => (
+  <button type="button" onClick={onToggle} aria-label={dark ? 'التبديل إلى الوضع الفاتح' : 'التبديل إلى الوضع الداكن'}
+    className={`auth-focus w-11 h-11 rounded-xl flex items-center justify-center transition ${
+      onColor ? 'text-white bg-white/10 ring-1 ring-white/20 hover:bg-white/20'
+        : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800'}`}>
+    {dark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+  </button>
+);
+
+const SetupBadge = () => (
+  <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30 mb-3">
+    <UserCog className="w-3.5 h-3.5" /> الإعداد الأول للنظام
+  </span>
+);
+
+// ───── الدخول عبر مزوّدات خارجية (تُفعَّل لاحقًا) ─────
+/**
+ * لتفعيل مزوّد: اجعل enabled: true واربط onClick بمسار المصادقة على الخادم (OAuth).
+ * الدخول الخارجي يجب أن يُربط بحساب موجود أصدره مدير النظام، ولا يُنشئ حسابًا جديدًا.
+ */
+const SSO_PROVIDERS: { id: string; name: string; enabled: boolean; icon: React.ReactNode }[] = [
+  {
+    id: 'google', name: 'Google', enabled: false,
+    icon: (
+      <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" aria-hidden>
+        <path fill="#4285F4" d="M23.5 12.27c0-.79-.07-1.54-.2-2.27H12v4.3h6.47a5.53 5.53 0 0 1-2.4 3.63v3h3.88c2.27-2.09 3.55-5.17 3.55-8.66z" />
+        <path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.95-2.9l-3.88-3c-1.08.72-2.45 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.96H1.27v3.1A12 12 0 0 0 12 24z" />
+        <path fill="#FBBC05" d="M5.27 14.29A7.2 7.2 0 0 1 4.9 12c0-.8.14-1.57.37-2.29V6.6H1.27A12 12 0 0 0 0 12c0 1.94.46 3.77 1.27 5.4l4-3.11z" />
+        <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.44-3.44A11.5 11.5 0 0 0 12 0 12 12 0 0 0 1.27 6.6l4 3.11C6.22 6.86 8.87 4.75 12 4.75z" />
+      </svg>
+    ),
+  },
+  {
+    id: 'apple', name: 'Apple', enabled: false,
+    icon: (
+      <svg viewBox="0 0 24 24" className="w-[18px] h-[18px] text-slate-900 dark:text-white" fill="currentColor" aria-hidden>
+        <path d="M16.37 12.73c-.03-2.6 2.13-3.86 2.22-3.92-1.21-1.77-3.1-2.01-3.77-2.04-1.6-.16-3.13.95-3.94.95-.82 0-2.07-.93-3.4-.9a5.04 5.04 0 0 0-4.26 2.58c-1.82 3.15-.47 7.82 1.3 10.38.87 1.25 1.9 2.66 3.25 2.61 1.3-.05 1.8-.84 3.38-.84 1.57 0 2.02.84 3.4.81 1.4-.02 2.29-1.27 3.15-2.53.99-1.45 1.4-2.86 1.42-2.93-.03-.01-2.72-1.04-2.75-4.17zM13.8 5.08c.72-.87 1.2-2.08 1.07-3.28-1.03.04-2.28.69-3.02 1.56-.66.77-1.24 2-1.09 3.18 1.15.09 2.32-.58 3.04-1.46z" />
+      </svg>
+    ),
+  },
+  {
+    id: 'facebook', name: 'Facebook', enabled: false,
+    icon: (
+      <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" aria-hidden>
+        <path fill="#1877F2" d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.89v2.25h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07z" />
+      </svg>
+    ),
+  },
+  {
+    id: 'x', name: 'X', enabled: false,
+    icon: (
+      <svg viewBox="0 0 24 24" className="w-[18px] h-[18px] text-slate-900 dark:text-white" fill="currentColor" aria-hidden>
+        <path d="M18.24 2.25h3.31l-7.23 8.26 8.5 11.24h-6.66l-5.21-6.82-5.97 6.82H1.67l7.73-8.84L1.25 2.25h6.83l4.71 6.23 5.45-6.23zm-1.16 17.52h1.83L7.08 4.13H5.12l11.96 15.64z" />
+      </svg>
+    ),
+  },
+];
+
+const SocialLogin: React.FC = () => {
+  const [note, setNote] = useState('');
+  return (
+    <div className="mt-6">
+      <div className="flex items-center gap-3 text-xs font-semibold text-slate-500 dark:text-slate-400 mb-4">
+        <span className="flex-1 h-px bg-slate-200 dark:bg-slate-800" /> أو المتابعة عبر <span className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
+      </div>
+      <div className="flex justify-center gap-2.5">
+        {SSO_PROVIDERS.map(p => (
+          <button
+            key={p.id}
+            type="button"
+            aria-disabled={!p.enabled}
+            aria-label={`الدخول عبر ${p.name}`}
+            title={`الدخول عبر ${p.name}`}
+            onClick={() => setNote(p.enabled ? '' : `الدخول عبر ${p.name} غير مفعّل بعد، وسيتاح بعد ربطه من مدير النظام.`)}
+            className="auth-focus w-11 h-11 rounded-xl bg-slate-100/80 hover:bg-slate-200/70 dark:bg-slate-900 dark:hover:bg-slate-800 flex items-center justify-center transition active:scale-95"
+          >
+            {p.icon}
+          </button>
+        ))}
+      </div>
+      <p aria-live="polite" className="empty:hidden mt-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400">{note}</p>
+    </div>
+  );
+};
+
+// ───── المساعدة: نسيت كلمة المرور / طلب حساب ─────
+const HelpView: React.FC<{ onBack: () => void }> = ({ onBack }) => (
+  <div className="auth-fade">
+    <h1 className="text-[28px] font-black tracking-tight text-slate-900 dark:text-white leading-[1.3]">المساعدة في الدخول</h1>
+    <p className="mt-2 mb-7 text-[15px] leading-7 text-slate-600 dark:text-slate-400">
+      الحسابات وكلمات المرور يديرها مدير النظام فقط لحماية بيانات المنظومة.
+    </p>
+    <ol className="space-y-4">
+      {[
+        { icon: ShieldCheck, t: 'تواصل مع مدير النظام', d: 'لطلب حساب جديد أو إعادة تعيين كلمة المرور.' },
+        { icon: KeyRound, t: 'استلم بيانات الدخول', d: 'اسم مستخدم وكلمة مرور مؤقتة باسمك.' },
+        { icon: Lock, t: 'غيّر كلمة المرور', d: 'من «حسابي» بعد أول دخول، ولا تشاركها مع أحد.' },
+      ].map(({ icon: Icon, t, d }) => (
+        <li key={t} className="flex items-start gap-3.5">
+          <span className="w-11 h-11 shrink-0 rounded-xl bg-teal-50 text-teal-800 ring-1 ring-teal-100 dark:bg-teal-500/10 dark:text-teal-300 dark:ring-teal-500/20 flex items-center justify-center">
+            <Icon className="w-5 h-5" />
+          </span>
+          <div className="pt-0.5">
+            <div className="text-[15px] font-bold text-slate-900 dark:text-white">{t}</div>
+            <div className="text-sm text-slate-600 dark:text-slate-400">{d}</div>
+          </div>
+        </li>
+      ))}
+    </ol>
+    <button type="button" onClick={onBack} autoFocus
+      className="auth-focus mt-8 w-full h-14 rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 ring-1 ring-slate-300 text-slate-800 hover:bg-slate-50 dark:ring-slate-700 dark:text-slate-100 dark:hover:bg-slate-900 transition">
+      <ArrowRight className="w-4 h-4" /> العودة لتسجيل الدخول
+    </button>
+  </div>
+);
+
+// ───── اللوحة الحيّة لمراقبة الأسطول ─────
+const STATIONS = [
+  { x: 92, y: 74, name: 'الحسينية' },
+  { x: 470, y: 62, name: 'الحر' },
+  { x: 498, y: 252, name: 'طويريج' },
+  { x: 104, y: 262, name: 'عين التمر' },
+  { x: 300, y: 36, name: 'الجدول الغربي' },
+];
+const DEPOT = { x: 290, y: 160 };
+const route = (s: { x: number; y: number }, k: number) => {
+  const cx = (DEPOT.x + s.x) / 2 + (k % 2 ? 40 : -40);
+  const cy = (DEPOT.y + s.y) / 2 + (k % 2 ? -30 : 30);
+  return `M${DEPOT.x},${DEPOT.y} Q${cx},${cy} ${s.x},${s.y}`;
+};
+const KPIS = [
+  { icon: Truck, value: 42, label: 'مركبة نشطة' },
+  { icon: Building2, value: 18, label: 'محطة توزيع' },
+  { icon: Fuel, value: 705021, label: 'لتر إجمالي الوقود' },
+];
+
+/** عدّاد يصعد بنعومة عند الظهور */
+const CountUp: React.FC<{ to: number }> = ({ to }) => {
+  const [v, setV] = useState(() => (reducedMotion() ? to : 0));
+  useEffect(() => {
+    if (reducedMotion()) return;
+    let raf = 0;
+    const t0 = performance.now();
+    const step = (t: number) => {
+      // rAF قد يمرّر وقتًا أقدم قليلًا من t0، فنقيّد التقدّم بين 0 و 1
+      const p = Math.min(1, Math.max(0, (t - t0) / 1400));
+      setV(Math.round(to * (1 - Math.pow(1 - p, 3))));
+      if (p < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [to]);
+  return <>{v.toLocaleString('en-US')}</>;
+};
+
+const FleetShowcase: React.FC = () => {
+  const [time, setTime] = useState(() => new Date());
+  const motion = !reducedMotion();
+  useEffect(() => {
+    const t = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  return (
+    <section aria-label="لوحة مراقبة الأسطول" className="auth-show hidden lg:flex relative overflow-hidden rounded-[22px] text-white flex-col p-7 xl:p-9">
+      <div className="auth-grid" />
+
+      {/* شريط الحالة */}
+      <div className="relative flex items-center justify-between">
+        <span className="inline-flex items-center gap-2 h-9 px-3.5 rounded-full auth-glass text-[13px] font-bold">
+          <span className="auth-live-dot w-2 h-2 rounded-full bg-emerald-400 text-emerald-400" /> مراقبة مباشرة
+        </span>
+        <span dir="ltr" className="font-mono text-[13px] text-white/70 tabular-nums">
+          {time.toLocaleTimeString('en-GB', { hour12: false })}
+        </span>
+      </div>
+
+      {/* الخريطة المصغّرة */}
+      <div className="relative flex-1 min-h-0 flex items-center justify-center py-6">
+        <div className="auth-glass w-full max-w-[600px] rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-2 px-1">
+            <span className="text-sm font-bold">مسارات الصهاريج — كربلاء</span>
+            <span className="flex items-center gap-3 text-[11px] text-white/65">
+              <span className="flex items-center gap-1.5"><i className="w-2 h-2 rounded-full bg-amber-300" /> صهريج</span>
+              <span className="flex items-center gap-1.5"><i className="w-2 h-2 rounded-full ring-2 ring-teal-300" /> محطة</span>
+            </span>
+          </div>
+          <svg viewBox="0 0 580 300" className="w-full h-auto" role="img" aria-label="خريطة توضيحية لمسارات الصهاريج بين المستودع والمحطات">
+            <defs>
+              <radialGradient id="auth-depot" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#5eead4" stopOpacity=".55" />
+                <stop offset="100%" stopColor="#5eead4" stopOpacity="0" />
+              </radialGradient>
+            </defs>
+            {/* طرق خلفية */}
+            <path d="M0,210 C120,190 200,240 330,215 S520,150 580,170" fill="none" stroke="rgba(255,255,255,.07)" strokeWidth="10" strokeLinecap="round" />
+            <path d="M40,0 C90,90 150,140 190,300" fill="none" stroke="rgba(255,255,255,.05)" strokeWidth="8" strokeLinecap="round" />
+            {STATIONS.map((s, k) => (
+              <path key={k} id={`auth-r${k}`} d={route(s, k)} fill="none" stroke="rgba(94,234,212,.45)" strokeWidth="1.6" className="auth-route" />
+            ))}
+            {/* المستودع */}
+            <circle cx={DEPOT.x} cy={DEPOT.y} r="34" fill="url(#auth-depot)" />
+            <circle cx={DEPOT.x} cy={DEPOT.y} r="9" fill="#14b8a6" stroke="#ccfbf1" strokeWidth="2.5" />
+            <text x={DEPOT.x} y={DEPOT.y + 28} textAnchor="middle" fill="#fff" fontSize="12" fontWeight="700">المستودع المركزي</text>
+            {/* المحطات */}
+            {STATIONS.map((s, k) => (
+              <g key={s.name}>
+                <circle cx={s.x} cy={s.y} r="6" fill="none" stroke="#5eead4" strokeWidth="1.5" className="auth-station-ring" style={{ animationDelay: `${k * 0.45}s` }} />
+                <circle cx={s.x} cy={s.y} r="5" fill="#0b3f4a" stroke="#5eead4" strokeWidth="2" />
+                <text x={s.x} y={s.y - 12} textAnchor="middle" fill="rgba(255,255,255,.8)" fontSize="11" fontWeight="600">{s.name}</text>
+              </g>
+            ))}
+            {/* الصهاريج المتحركة */}
+            {STATIONS.map((_, k) => (
+              <g key={`t${k}`}>
+                <circle r="9" fill="rgba(252,211,77,.22)">
+                  {motion && <animateMotion dur={`${7 + k * 1.3}s`} repeatCount="indefinite" keyPoints="0;1;0" keyTimes="0;0.5;1" calcMode="linear" begin={`${-k * 1.1}s`}><mpath href={`#auth-r${k}`} /></animateMotion>}
+                </circle>
+                <circle r="4" fill="#fcd34d" stroke="#fff7d6" strokeWidth="1.2">
+                  {motion && <animateMotion dur={`${7 + k * 1.3}s`} repeatCount="indefinite" keyPoints="0;1;0" keyTimes="0;0.5;1" calcMode="linear" begin={`${-k * 1.1}s`}><mpath href={`#auth-r${k}`} /></animateMotion>}
+                </circle>
+              </g>
+            ))}
+          </svg>
+        </div>
+      </div>
+
+      {/* المؤشرات */}
+      <div className="relative grid grid-cols-3 gap-3">
+        {KPIS.map(({ icon: Icon, value, label }) => (
+          <div key={label} className="auth-glass rounded-2xl px-4 py-3.5">
+            <div className="flex items-center gap-2 text-white/70 text-xs font-semibold mb-1.5">
+              <Icon className="w-4 h-4 text-teal-300" /> {label}
+            </div>
+            <div className="text-[22px] xl:text-2xl font-black tabular-nums" dir="ltr" style={{ textAlign: 'right' }}><CountUp to={value} /></div>
+          </div>
+        ))}
+      </div>
+
+      {/* الرسالة */}
+      <div className="relative mt-7">
+        <h2 className="text-[26px] xl:text-[30px] font-black leading-[1.35] tracking-tight">
+          منصة موحّدة لإدارة <span className="text-teal-300">أسطول المحروقات</span>
+        </h2>
+        <p className="mt-2 text-[15px] leading-7 text-white/70 max-w-lg">
+          الأرصدة والخزانات والتوريدات وحركة الصهاريج في مكان واحد، مع تواصل فوري بين المحطات والإدارة.
+        </p>
+      </div>
+    </section>
+  );
+};
