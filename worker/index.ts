@@ -8,24 +8,8 @@ import { extractSaharaReport } from './extractSaharaReport';
 import { audit, handleChat, verifySession, type Session } from './chat';
 import { canReadKey, canWriteKey, isServerForbiddenKey, keySectionLabel, levelOf } from '../src/lib/permCatalog';
 
-interface D1Result<T> { results: T[] }
-interface D1PreparedStatement {
-  bind(...values: unknown[]): D1PreparedStatement;
-  all<T>(): Promise<D1Result<T>>;
-  run(): Promise<unknown>;
-}
-interface D1Database {
-  prepare(query: string): D1PreparedStatement;
-  batch(statements: D1PreparedStatement[]): Promise<unknown>;
-  exec(query: string): Promise<unknown>;
-}
-
-interface Env {
-  DB: D1Database;
-  APP_TOKEN?: string;
-  ANTHROPIC_API_KEY?: string;
-  ASSETS: { fetch(request: Request): Promise<Response> };
-}
+import { loadFile, removeFile, storeFile } from './storage/files';
+import type { D1Database, D1PreparedStatement, Env, R2Bucket } from './types';
 
 type StateRow = { key: string; value: string; updated_at: number };
 
@@ -61,13 +45,11 @@ const forbidden = (error = 'لا تملك صلاحية لهذا القسم') => 
 const tooLarge = (request: Request, max: number) => Number(request.headers.get('content-length') || 0) > max;
 
 /**
- * المرفقات: الملف يُخزَّن في D1 مقسّمًا إلى أجزاء base64 (كل قيمة في D1 حدّها ~2MB)،
- * والبيانات الوصفية في جدول منفصل حتى تكون القائمة خفيفة.
+ * مرفقات رصيد الصحاري: المحتوى في R2 (حاوية FILES تحت sahara/)، والبيانات الوصفية في جدول sahara_files.
  */
 type FileRow = { id: string; record_id: string; name: string; type: string; size: number; created_at: number };
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
-const CHUNK_BYTES = 1024 * 1024; // 1MB خام ≈ 1.4MB base64
 const ALLOWED_FILE_TYPES = new Set([
   'application/pdf',
   'application/vnd.ms-excel',
@@ -78,23 +60,10 @@ let filesTableReady = false;
 const ensureFilesTables = async (db: D1Database) => {
   if (filesTableReady) return;
   await db.exec('CREATE TABLE IF NOT EXISTS sahara_files (id TEXT PRIMARY KEY, record_id TEXT NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL, size INTEGER NOT NULL, created_at INTEGER NOT NULL)');
-  await db.exec('CREATE TABLE IF NOT EXISTS sahara_file_chunks (file_id TEXT NOT NULL, idx INTEGER NOT NULL, data TEXT NOT NULL, PRIMARY KEY (file_id, idx))');
   filesTableReady = true;
 };
 
-const bytesToBase64 = (bytes: Uint8Array) => {
-  let s = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(s);
-};
-const base64ToBytes = (b64: string) => {
-  const s = atob(b64);
-  const out = new Uint8Array(s.length);
-  for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
-  return out;
-};
-
-const handleFiles = async (request: Request, url: URL, db: D1Database, session: Session): Promise<Response> => {
+const handleFiles = async (request: Request, url: URL, db: D1Database, bucket: R2Bucket, session: Session): Promise<Response> => {
   // مرفقات رصيد الصحاري: العرض يتطلب صلاحية عرض، والرفع والحذف يتطلبان صلاحية تعديل
   const level = levelOf(session.perms, session.admin, 'sahara.balance');
   if (level < (request.method === 'GET' ? 1 : 2)) return forbidden();
@@ -124,15 +93,10 @@ const handleFiles = async (request: Request, url: URL, db: D1Database, session: 
     if (dup.length) return json({ error: 'الملف مرفوع مسبقًا لهذا اليوم' }, 409);
 
     const row: FileRow = { id: crypto.randomUUID(), record_id: recordId, name, type, size: bytes.length, created_at: Date.now() };
-    const statements = [
-      db.prepare('INSERT INTO sahara_files (id, record_id, name, type, size, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-        .bind(row.id, row.record_id, row.name, row.type, row.size, row.created_at)
-    ];
-    for (let i = 0, idx = 0; i < bytes.length; i += CHUNK_BYTES, idx++) {
-      statements.push(db.prepare('INSERT INTO sahara_file_chunks (file_id, idx, data) VALUES (?, ?, ?)')
-        .bind(row.id, idx, bytesToBase64(bytes.subarray(i, i + CHUNK_BYTES))));
-    }
-    await db.batch(statements);
+    // المحتوى أولًا في R2، ثم السجل في D1 (لو فشل السجل يبقى ملف يتيم تنظفه الصيانة الشهرية)
+    await storeFile(bucket, 'sahara', row.id, bytes, type, { name, record: recordId, owner: session.id });
+    await db.prepare('INSERT INTO sahara_files (id, record_id, name, type, size, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .bind(row.id, row.record_id, row.name, row.type, row.size, row.created_at).run();
     await audit(db, request, session.id, 'file.upload', name);
     return json({ ok: true, item: row });
   }
@@ -143,12 +107,9 @@ const handleFiles = async (request: Request, url: URL, db: D1Database, session: 
   if (request.method === 'GET') {
     const { results: meta } = await db.prepare('SELECT id, record_id, name, type, size, created_at FROM sahara_files WHERE id = ?').bind(id).all<FileRow>();
     if (!meta.length) return json({ error: 'الملف غير موجود' }, 404);
-    const { results: chunks } = await db.prepare('SELECT data FROM sahara_file_chunks WHERE file_id = ? ORDER BY idx').bind(id).all<{ data: string }>();
-    const parts = chunks.map(c => base64ToBytes(c.data));
-    const out = new Uint8Array(parts.reduce((a, p) => a + p.length, 0));
-    let offset = 0;
-    for (const p of parts) { out.set(p, offset); offset += p.length; }
-    return new Response(out, {
+    const body = await loadFile(bucket, db, 'sahara', id);
+    if (!body) return json({ error: 'محتوى الملف غير موجود' }, 404);
+    return new Response(body, {
       headers: {
         'content-type': meta[0].type,
         'content-disposition': `inline; filename*=UTF-8''${encodeURIComponent(meta[0].name)}`,
@@ -162,10 +123,8 @@ const handleFiles = async (request: Request, url: URL, db: D1Database, session: 
   // حذف الملف
   if (request.method === 'DELETE') {
     const { results: gone } = await db.prepare('SELECT name FROM sahara_files WHERE id = ?').bind(id).all<{ name: string }>();
-    await db.batch([
-      db.prepare('DELETE FROM sahara_file_chunks WHERE file_id = ?').bind(id),
-      db.prepare('DELETE FROM sahara_files WHERE id = ?').bind(id)
-    ]);
+    await removeFile(bucket, db, 'sahara', id);
+    await db.prepare('DELETE FROM sahara_files WHERE id = ?').bind(id).run();
     await audit(db, request, session.id, 'file.delete', gone[0]?.name || id);
     return json({ ok: true });
   }
@@ -182,7 +141,7 @@ export default {
 
     // تسجيل الدخول والإعداد الأول متاحان بدون جلسة (الإعداد يتحقق من APP_TOKEN بنفسه)
     if (url.pathname.startsWith('/api/chat/auth/') && ['/api/chat/auth/status', '/api/chat/auth/login', '/api/chat/auth/setup', '/api/chat/auth/support', '/api/chat/auth/webauthn/login-options', '/api/chat/auth/webauthn/login'].includes(url.pathname)) {
-      return handleChat(request, url, env.DB, env.APP_TOKEN);
+      return handleChat(request, url, env.DB, env.APP_TOKEN, env.FILES);
     }
 
     // كل ما عدا ذلك يتطلب جلسة حساب معتمد (اسم مستخدم + كلمة مرور)
@@ -241,12 +200,12 @@ export default {
 
     // المحادثة: الحسابات والغرف والرسائل والمرفقات
     if (url.pathname.startsWith('/api/chat/')) {
-      return handleChat(request, url, env.DB, env.APP_TOKEN);
+      return handleChat(request, url, env.DB, env.APP_TOKEN, env.FILES);
     }
 
     // مرفقات سجلات رصيد الصحاري (PDF و Excel)
     if (url.pathname === '/api/files' || url.pathname.startsWith('/api/files/')) {
-      return handleFiles(request, url, env.DB, session);
+      return handleFiles(request, url, env.DB, env.FILES, session);
     }
 
     // قراءة صورة الكشف اليومي للصحاري وتعبئة نافذة الإدخال

@@ -9,19 +9,11 @@
  */
 
 import { checkPublicKey, parseClientData, randomChallenge, verifyAssertion } from './webauthn';
+import { loadFile, removeFile, storeFile } from './storage/files';
+import type { D1Database, D1PreparedStatement, R2Bucket } from './types';
 import { levelOf, parsePerms, sanitizePerms, type Perms } from '../src/lib/permCatalog';
 
-interface D1Result<T> { results: T[] }
-interface D1PreparedStatement {
-  bind(...values: unknown[]): D1PreparedStatement;
-  all<T>(): Promise<D1Result<T>>;
-  run(): Promise<unknown>;
-}
-export interface ChatDB {
-  prepare(query: string): D1PreparedStatement;
-  batch(statements: D1PreparedStatement[]): Promise<unknown>;
-  exec(query: string): Promise<unknown>;
-}
+export type ChatDB = D1Database;
 
 type UserRow = { id: string; name: string; role: string; bio: string; avatar: string; color: string; last_seen: number; typing_room: string; typing_at: number; updated_at: number };
 type RoomRow = { id: string; type: string; name: string; description: string; avatar: string; created_by: string; created_at: number; updated_at: number; pinned_msg: string };
@@ -31,7 +23,6 @@ type FileRow = { id: string; name: string; type: string; size: number; created_a
 
 const GENERAL_ROOM = 'general';
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
-const CHUNK_BYTES = 1024 * 1024;
 const MAX_AVATAR_CHARS = 400_000;
 /** الحذف للجميع مسموح خلال ساعة من الإرسال */
 const DELETE_WINDOW_MS = 60 * 60_000;
@@ -91,18 +82,6 @@ const ensureTables = async (db: ChatDB) => {
   await db.prepare("INSERT OR IGNORE INTO chat_rooms (id, type, name, description, avatar, created_by, created_at, updated_at) VALUES (?1, 'group', ?2, ?3, '', '', ?4, ?4)")
     .bind(GENERAL_ROOM, 'غرفة العمليات العامة', 'القناة الرئيسية لكل فريق الموقع', now).run();
   ready = true;
-};
-
-const bytesToBase64 = (bytes: Uint8Array) => {
-  let s = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(s);
-};
-const base64ToBytes = (b64: string) => {
-  const s = atob(b64);
-  const out = new Uint8Array(s.length);
-  for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
-  return out;
 };
 
 const parseMessage = (m: MessageRow) => ({
@@ -254,7 +233,7 @@ const readBody = async <T>(request: Request): Promise<T | null> => {
   }
 };
 
-export async function handleChat(request: Request, url: URL, db: ChatDB, appToken = ''): Promise<Response> {
+export async function handleChat(request: Request, url: URL, db: ChatDB, appToken = '', files?: R2Bucket): Promise<Response> {
   await ensureTables(db);
   const path = url.pathname.slice('/api/chat'.length) || '/';
   const method = request.method;
@@ -843,14 +822,16 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
 
     if (!msgMatch[2] && method === 'DELETE') {
       if (now - msg.created_at > DELETE_WINDOW_MS) return json({ error: 'انتهت مهلة الحذف للجميع (ساعة واحدة)' }, 403);
-      const files = (JSON.parse(msg.attachments || '[]') as { fileId?: string }[]).map(a => a.fileId).filter(Boolean) as string[];
+      const fileIds = (JSON.parse(msg.attachments || '[]') as { fileId?: string }[]).map(a => a.fileId).filter(Boolean) as string[];
+      // تُحذف فقط ملفات المرسل نفسه (المرفقات مقيّدة بمالكها عند الإرسال أيضًا)
+      const { results: own } = fileIds.length
+        ? await db.prepare(`SELECT id FROM chat_files WHERE owner = ? AND id IN (${fileIds.map(() => '?').join(',')})`).bind(authId, ...fileIds).all<{ id: string }>()
+        : { results: [] as { id: string }[] };
       await db.batch([
         db.prepare("UPDATE chat_messages SET deleted = 1, text = '', attachments = '[]', reactions = '{}', updated_at = ? WHERE id = ?").bind(now, id),
-        ...files.flatMap(f => [
-          db.prepare('DELETE FROM chat_file_chunks WHERE file_id = ? AND file_id IN (SELECT id FROM chat_files WHERE owner = ?)').bind(f, authId),
-          db.prepare('DELETE FROM chat_files WHERE id = ? AND owner = ?').bind(f, authId),
-        ]),
+        ...own.map(f => db.prepare('DELETE FROM chat_files WHERE id = ?').bind(f.id)),
       ]);
+      if (files) for (const f of own) await removeFile(files, db, 'chat', f.id);
       return json({ ok: true });
     }
   }
@@ -862,14 +843,11 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     const bytes = new Uint8Array(await request.arrayBuffer());
     if (!bytes.length) return json({ error: 'الملف فارغ' }, 400);
     if (bytes.length > MAX_FILE_BYTES) return json({ error: 'الحد الأقصى لحجم الملف 50MB' }, 413);
+    if (!files) return json({ error: 'تخزين الملفات غير مهيأ على الخادم' }, 503);
     const row: FileRow = { id: uid(), name, type, size: bytes.length, created_at: now };
-    const statements = [
-      db.prepare('INSERT INTO chat_files (id, name, type, size, created_at, owner) VALUES (?, ?, ?, ?, ?, ?)').bind(row.id, row.name, row.type, row.size, row.created_at, authId),
-    ];
-    for (let i = 0, idx = 0; i < bytes.length; i += CHUNK_BYTES, idx++) {
-      statements.push(db.prepare('INSERT INTO chat_file_chunks (file_id, idx, data) VALUES (?, ?, ?)').bind(row.id, idx, bytesToBase64(bytes.subarray(i, i + CHUNK_BYTES))));
-    }
-    await db.batch(statements);
+    // المحتوى في R2، والسجل في D1 بعد نجاح الرفع
+    await storeFile(files, 'chat', row.id, bytes, type, { name, owner: authId });
+    await db.prepare('INSERT INTO chat_files (id, name, type, size, created_at, owner) VALUES (?, ?, ?, ?, ?, ?)').bind(row.id, row.name, row.type, row.size, row.created_at, authId).run();
     return json({ ok: true, item: row });
   }
 
@@ -878,12 +856,10 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     const id = decodeURIComponent(fileMatch[1]);
     const { results: meta } = await db.prepare('SELECT * FROM chat_files WHERE id = ?').bind(id).all<FileRow>();
     if (!meta.length) return json({ error: 'الملف غير موجود' }, 404);
-    const { results: chunks } = await db.prepare('SELECT data FROM chat_file_chunks WHERE file_id = ? ORDER BY idx').bind(id).all<{ data: string }>();
-    const parts = chunks.map(c => base64ToBytes(c.data));
-    const out = new Uint8Array(parts.reduce((a, p) => a + p.length, 0));
-    let offset = 0;
-    for (const p of parts) { out.set(p, offset); offset += p.length; }
-    return new Response(out, {
+    if (!files) return json({ error: 'تخزين الملفات غير مهيأ على الخادم' }, 503);
+    const body = await loadFile(files, db, 'chat', id);
+    if (!body) return json({ error: 'محتوى الملف غير موجود' }, 404);
+    return new Response(body, {
       headers: {
         'content-type': meta[0].type,
         'content-disposition': `attachment; filename*=UTF-8''${encodeURIComponent(meta[0].name)}`,

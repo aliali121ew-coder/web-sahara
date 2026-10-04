@@ -17,5 +17,14 @@
       "binding": "DB",
       "database_name": "etihad-company-data"
     }
-  ]
+  ],
+  // R2: الملفات (مرفقات الصحاري والمحادثة) في حاوية، والنسخ الاحتياطية والأرشيف في حاوية منفصلة
+  "r2_buckets": [
+    { "binding": "FILES", "bucket_name": "etihad-files" },
+    { "binding": "BACKUPS", "bucket_name": "etihad-backups" }
+  ],
+  // نسخة احتياطية يومية 00:00 UTC (03:00 بتوقيت العراق)، والصيانة الشهرية تُشغَّل من نفس المهمة في أول كل شهر
+  "triggers": {
+    "crons": ["0 0 * * *"]
+  }
 }
