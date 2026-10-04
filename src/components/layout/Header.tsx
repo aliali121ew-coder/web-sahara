@@ -76,7 +76,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onToggleSidebar}
               title={tr('فتح / طي القائمة الجانبية')}
-              className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 transition-colors shrink-0"
+              className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 transition-colors shrink-0 lg:hidden"
             >
               <Menu className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </button>

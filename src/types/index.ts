@@ -1,5 +1,20 @@
 export type ThemeMode = 'light' | 'dark';
-export type SidebarStyle = 'navy' | 'light' | 'gradient' | 'unified';
+export type SidebarStyle = 'navy' | 'light' | 'gradient' | 'unified' | 'glass' | 'match-bg';
+export type BgGradientTheme =
+  | 'none'
+  | 'titanium-slate'
+  | 'petrol-blue'
+  | 'frost-snow'
+  | 'glacier-blue'
+  | 'emerald-flow'
+  | 'ocean-cyan'
+  | 'royal-violet'
+  | 'sahara-amber'
+  | 'desert-bronze';
+export type BgType = 'gradient' | 'solid';
+export type GradientIntensity = 'subtle' | 'vibrant';
+export type GradientShadeLevel = number; // 1 (فاتح وهادئ جداً) إلى 10 (أغمق قليلاً)
+export type UiDensity = 'standard' | 'compact';
 export type CompanyScope = 'sahara' | 'etihad';
 export type UserRole = 'admin' | 'sahara_operator' | 'etihad_operator' | 'supervisor';
 

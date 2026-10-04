@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, ChevronLeft, ChevronRight } from 'lucide-react';
-import { ThemeProvider } from './context/ThemeContext';
+import { Menu } from 'lucide-react';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { FuelDataProvider, useFuelData } from './context/FuelDataContext';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { QuickActionContext } from './context/QuickActionContext';
+import { getAmbientGradientStyle, getAmbientBgColor } from './lib/themeGradients';
 
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
@@ -25,6 +26,7 @@ import { useCanOpenTab, TAB_SECTION } from './lib/usePermission';
 import type { NavTabId } from './types';
 
 const AppContent: React.FC = () => {
+  const { themeMode, bgGradient, gradientIntensity, shadeLevel } = useTheme();
   const { activeTab, setActiveTab } = useFuelData();
   const canOpenTab = useCanOpenTab();
   const firstAllowed = Object.keys(TAB_SECTION).find(canOpenTab) as NavTabId | undefined;
@@ -35,6 +37,8 @@ const AppContent: React.FC = () => {
   }, [activeTab, firstAllowed]); // eslint-disable-line react-hooks/exhaustive-deps
   const { tr, direction } = useLanguage();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(true);
+  const toggleSidebarCollapsed = () => setSidebarCollapsed(prev => !prev);
   const [quickActionOpen, setQuickActionOpen] = useState(false);
   const [quickActionData, setQuickActionData] = useState<any>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -68,19 +72,15 @@ const AppContent: React.FC = () => {
     isNavigatingRef.current = true;
     const targetY = scrollPositions.current[activeTab] ?? 0;
 
-    // Apply scroll immediately and after frame render
+    // Apply scroll immediately
     window.scrollTo({ top: targetY, left: 0, behavior: 'instant' as ScrollBehavior });
 
-    const raf1 = requestAnimationFrame(() => {
-      window.scrollTo({ top: targetY, left: 0, behavior: 'instant' as ScrollBehavior });
-      const raf2 = requestAnimationFrame(() => {
-        window.scrollTo({ top: targetY, left: 0, behavior: 'instant' as ScrollBehavior });
-        isNavigatingRef.current = false;
-      });
-      return () => cancelAnimationFrame(raf2);
-    });
+    // Allow render to complete before accepting new scroll positions
+    const timer = setTimeout(() => {
+      isNavigatingRef.current = false;
+    }, 100);
 
-    return () => cancelAnimationFrame(raf1);
+    return () => clearTimeout(timer);
   }, [activeTab]);
 
   const handleOpenQuickAction = (data?: any) => {
@@ -141,34 +141,51 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#090E17] text-slate-800 dark:text-slate-100 flex flex-col print:bg-white print:min-h-0">
+    <div
+      className="min-h-screen text-slate-800 dark:text-slate-100 flex flex-row print:bg-white print:min-h-0 transition-colors duration-300 relative w-full overflow-x-clip"
+      dir={direction}
+      style={{
+        backgroundColor: getAmbientBgColor(bgGradient, themeMode, shadeLevel),
+        backgroundImage: getAmbientGradientStyle(bgGradient, gradientIntensity, themeMode, shadeLevel),
+        backgroundAttachment: 'fixed',
+        backgroundRepeat: 'no-repeat',
+        backgroundSize: 'cover',
+      }}
+    >
       
-      {/* 🌟 Floating Sidebar Navigation Overlay */}
-      <div className="no-print">
+      {/* 🌟 Embedded In-Page Sidebar Navigation (Desktop embedded & sticky, Mobile drawer) */}
+      <div className="no-print shrink-0 lg:w-[54px]">
         <Sidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
+          isCollapsed={sidebarCollapsed}
+          onToggleCollapse={toggleSidebarCollapsed}
         />
       </div>
 
-      {/* Sleek Floating Edge Tab to Open Sidebar if Closed */}
+      {/* 🌟 Floating Visible Icon to Open Sidebar on Mobile (< lg) */}
       {!sidebarOpen && (
         <button
           onClick={() => setSidebarOpen(true)}
-          title={tr('فتح القائمة الجانبية (شريط العمليات)')}
-          className={`no-print fixed top-1/2 -translate-y-1/2 z-40 w-6 hover:w-8 h-14 bg-gradient-to-b from-blue-700 to-indigo-600 text-white shadow-xl flex items-center justify-center transition-all duration-200 cursor-pointer group border-y border-white/20 hover:shadow-blue-500/30 ${
-            isRtl ? 'right-0 rounded-l-xl border-l' : 'left-0 rounded-r-xl border-r'
+          title={tr('فتح القائمة الجانبية')}
+          aria-label={tr('فتح القائمة الجانبية')}
+          className={`no-print lg:hidden fixed top-24 z-40 flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-600 text-white shadow-xl cursor-pointer active:scale-95 group border-y border-white/20 ${
+            isRtl
+              ? 'right-0 rounded-l-2xl border-l'
+              : 'left-0 rounded-r-2xl border-r'
           }`}
         >
-          {isRtl ? (
-            <ChevronLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
-          ) : (
-            <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-          )}
+          <div className="relative flex items-center justify-center">
+            <Menu className="w-[18px] h-[18px] text-white" />
+            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-blue-700 animate-pulse" />
+          </div>
+          <span className="text-xs font-bold tracking-tight">
+            {tr('القائمة')}
+          </span>
         </button>
       )}
 
-      {/* Main Workspace Container - 100% Expansive Full Width */}
+      {/* Main Workspace Container - Expansive Full Width beside sidebar */}
       <div className="flex-1 flex flex-col min-w-0 w-full transition-all duration-300 print:p-0 print:m-0">
         
         {/* Mobile Header Bar & Hamburger */}
@@ -189,7 +206,13 @@ const AppContent: React.FC = () => {
         <div className="no-print">
           <Header
             onOpenQuickAction={handleOpenQuickAction}
-            onToggleSidebar={() => setSidebarOpen(prev => !prev)}
+            onToggleSidebar={() => {
+              if (window.innerWidth >= 1024) {
+                toggleSidebarCollapsed();
+              } else {
+                setSidebarOpen(prev => !prev);
+              }
+            }}
             onOpenCommandPalette={() => setCommandPaletteOpen(true)}
           />
         </div>

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, startTransition } from 'react';
 import {
   TankItem,
   FuelProductMetric,
@@ -131,8 +131,10 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [currentSubpage, setCurrentSubpage] = useState<SubpageInfo | null>(null);
 
   const setActiveTab = useCallback((tab: NavTabId) => {
-    setActiveTabState(tab);
-    setCurrentSubpage(null); // Automatically reset subpage when navigating tabs
+    startTransition(() => {
+      setActiveTabState(tab);
+      setCurrentSubpage(null); // Automatically reset subpage when navigating tabs
+    });
     try {
       localStorage.setItem('sahara_active_tab', tab);
       if (typeof window !== 'undefined' && window.location.hash !== `#${tab}`) {
@@ -167,8 +169,10 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const handleHashChange = () => {
         const hash = window.location.hash.replace(/^#/, '');
         if (VALID_TABS.includes(hash as NavTabId)) {
-          setActiveTabState(hash as NavTabId);
-          setCurrentSubpage(null);
+          startTransition(() => {
+            setActiveTabState(hash as NavTabId);
+            setCurrentSubpage(null);
+          });
           try {
             localStorage.setItem('sahara_active_tab', hash);
           } catch (e) {}

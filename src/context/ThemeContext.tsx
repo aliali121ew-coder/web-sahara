@@ -1,12 +1,32 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { ThemeMode, SidebarStyle } from '../types';
+import {
+  ThemeMode,
+  SidebarStyle,
+  BgGradientTheme,
+  BgType,
+  GradientIntensity,
+  UiDensity,
+} from '../types';
 
 interface ThemeContextType {
   themeMode: ThemeMode;
   sidebarStyle: SidebarStyle;
+  bgGradient: BgGradientTheme;
+  bgType: BgType;
+  gradientIntensity: GradientIntensity;
+  shadeLevel: number;
+  glassmorphism: boolean;
+  uiDensity: UiDensity;
   toggleThemeMode: () => void;
   setThemeMode: (mode: ThemeMode) => void;
   setSidebarStyle: (style: SidebarStyle) => void;
+  setBgGradient: (gradient: BgGradientTheme) => void;
+  setBgType: (type: BgType) => void;
+  setGradientIntensity: (intensity: GradientIntensity) => void;
+  setShadeLevel: (level: number) => void;
+  setGlassmorphism: (enabled: boolean) => void;
+  setUiDensity: (density: UiDensity) => void;
+  resetAllAppearance: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -22,9 +42,38 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return (saved as SidebarStyle) || 'navy';
   });
 
+  const [bgGradient, setBgGradientState] = useState<BgGradientTheme>(() => {
+    const saved = localStorage.getItem('sahara_bg_gradient');
+    return (saved as BgGradientTheme) || 'petrol-blue';
+  });
+
+  const [bgType, setBgTypeState] = useState<BgType>(() => {
+    const saved = localStorage.getItem('sahara_bg_type');
+    return (saved as BgType) || 'gradient';
+  });
+
+  const [gradientIntensity, setGradientIntensityState] = useState<GradientIntensity>(() => {
+    const saved = localStorage.getItem('sahara_gradient_intensity');
+    return (saved as GradientIntensity) || 'subtle';
+  });
+
+  const [shadeLevel, setShadeLevelState] = useState<number>(() => {
+    const saved = localStorage.getItem('sahara_shade_level');
+    return saved ? Math.min(10, Math.max(1, Number(saved))) : 4;
+  });
+
+  const [glassmorphism, setGlassmorphismState] = useState<boolean>(() => {
+    const saved = localStorage.getItem('sahara_glassmorphism');
+    return saved !== null ? saved === 'true' : true;
+  });
+
+  const [uiDensity, setUiDensityState] = useState<UiDensity>(() => {
+    const saved = localStorage.getItem('sahara_ui_density');
+    return (saved as UiDensity) || 'standard';
+  });
+
   const applyThemeMode = (mode: ThemeMode) => {
     const root = document.documentElement;
-    // Temporarily disable transitions during theme swap to eliminate white/dark flash/lag
     root.classList.add('disable-transitions');
 
     if (mode === 'dark') {
@@ -33,11 +82,40 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       root.classList.remove('dark');
     }
 
-    // Force style recalculation then remove helper class
     window.getComputedStyle(root).opacity;
     requestAnimationFrame(() => {
       root.classList.remove('disable-transitions');
     });
+  };
+
+  const applyAttributes = (
+    gradient: BgGradientTheme,
+    bgTypeVal: BgType,
+    intensity: GradientIntensity,
+    shade: number,
+    glass: boolean,
+    density: UiDensity
+  ) => {
+    const root = document.documentElement;
+    const body = document.body;
+
+    root.dataset.bgGradient = gradient;
+    body.dataset.bgGradient = gradient;
+
+    root.dataset.bgType = bgTypeVal;
+    body.dataset.bgType = bgTypeVal;
+
+    root.dataset.gradientIntensity = intensity;
+    body.dataset.gradientIntensity = intensity;
+
+    root.dataset.shadeLevel = String(shade);
+    body.dataset.shadeLevel = String(shade);
+
+    root.dataset.glassmorphism = String(glass);
+    body.dataset.glassmorphism = String(glass);
+
+    root.dataset.uiDensity = density;
+    body.dataset.uiDensity = density;
   };
 
   useEffect(() => {
@@ -48,6 +126,17 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     localStorage.setItem('sahara_sidebar_style', sidebarStyle);
   }, [sidebarStyle]);
+
+  useEffect(() => {
+    localStorage.setItem('sahara_bg_gradient', bgGradient);
+    localStorage.setItem('sahara_bg_type', bgType);
+    localStorage.setItem('sahara_gradient_intensity', gradientIntensity);
+    localStorage.setItem('sahara_shade_level', String(shadeLevel));
+    localStorage.setItem('sahara_glassmorphism', String(glassmorphism));
+    localStorage.setItem('sahara_ui_density', uiDensity);
+
+    applyAttributes(bgGradient, bgType, gradientIntensity, shadeLevel, glassmorphism, uiDensity);
+  }, [bgGradient, bgType, gradientIntensity, shadeLevel, glassmorphism, uiDensity]);
 
   const toggleThemeMode = () => {
     setThemeModeState((prev) => (prev === 'light' ? 'dark' : 'light'));
@@ -61,22 +150,68 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setSidebarStyleState(style);
   };
 
+  const setBgGradient = (gradient: BgGradientTheme) => {
+    setBgGradientState(gradient);
+  };
+
+  const setBgType = (type: BgType) => {
+    setBgTypeState(type);
+  };
+
+  const setGradientIntensity = (intensity: GradientIntensity) => {
+    setGradientIntensityState(intensity);
+  };
+
+  const setShadeLevel = (level: number) => {
+    setShadeLevelState(Math.min(10, Math.max(1, Math.round(level))));
+  };
+
+  const setGlassmorphism = (enabled: boolean) => {
+    setGlassmorphismState(enabled);
+  };
+
+  const setUiDensity = (density: UiDensity) => {
+    setUiDensityState(density);
+  };
+
+  const resetAllAppearance = () => {
+    setThemeModeState('light');
+    setSidebarStyleState('navy');
+    setBgGradientState('none');
+    setBgTypeState('gradient');
+    setGradientIntensityState('subtle');
+    setShadeLevelState(4);
+    setGlassmorphismState(true);
+    setUiDensityState('standard');
+  };
+
   return (
     <ThemeContext.Provider
       value={{
         themeMode,
         sidebarStyle,
+        bgGradient,
+        bgType,
+        gradientIntensity,
+        shadeLevel,
+        glassmorphism,
+        uiDensity,
         toggleThemeMode,
         setThemeMode,
         setSidebarStyle,
+        setBgGradient,
+        setBgType,
+        setGradientIntensity,
+        setShadeLevel,
+        setGlassmorphism,
+        setUiDensity,
+        resetAllAppearance,
       }}
     >
       {children}
     </ThemeContext.Provider>
   );
 };
-
-
 
 export const useTheme = (): ThemeContextType => {
   const context = useContext(ThemeContext);
@@ -85,3 +220,4 @@ export const useTheme = (): ThemeContextType => {
   }
   return context;
 };
+
