@@ -14,14 +14,16 @@ import {
   ArrowRight,
   ShieldCheck,
   HardDrive,
+  Server,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useFuelData } from '../../context/FuelDataContext';
 import { SidebarStyle } from '../../types';
 import { UsersAdmin } from '../admin/UsersAdmin';
+import { SystemConsole } from '../system/SystemConsole';
 import { usePermissions } from '../../lib/usePermission';
 
-type SectionId = 'users' | 'appearance' | 'navigation' | 'cloud' | 'data';
+type SectionId = 'users' | 'system' | 'appearance' | 'navigation' | 'cloud' | 'data';
 
 interface SectionDef {
   id: SectionId;
@@ -34,6 +36,7 @@ interface SectionDef {
 
 const SECTIONS: SectionDef[] = [
   { id: 'users', title: 'إدارة المستخدمين', desc: 'الحسابات والصلاحيات، طلبات الموظفين، وسجل العمليات', icon: Users, gradient: 'from-violet-600 to-indigo-600', adminOnly: true },
+  { id: 'system', title: 'إدارة النظام', desc: 'قاعدة البيانات والملفات، النسخ الاحتياطية والاسترجاع، والصيانة', icon: Server, gradient: 'from-slate-700 to-slate-900', adminOnly: true },
   { id: 'appearance', title: 'المظهر والإضاءة', desc: 'الوضع الفاتح أو الليلي حسب راحتك', icon: Palette, gradient: 'from-amber-500 to-orange-600' },
   { id: 'navigation', title: 'شريط التنقل', desc: 'ألوان وتصميم القائمة الجانبية', icon: Layout, gradient: 'from-sky-500 to-blue-600' },
   { id: 'cloud', title: 'التكامل السحابي', desc: 'ربط المنظومة بمشروع Supabase', icon: Database, gradient: 'from-emerald-500 to-teal-600' },
@@ -60,7 +63,7 @@ export const SettingsView: React.FC = () => {
   const current = visible.find(s => s.id === section) || null;
 
   return (
-    <div className={`space-y-5 mx-auto w-full ${current?.id === 'users' ? 'xl:w-[95%]' : 'max-w-4xl'}`}>
+    <div className={`space-y-5 mx-auto w-full ${current?.id === 'users' || current?.id === 'system' ? 'xl:w-[95%]' : 'max-w-4xl'}`}>
       {/* صفحة المستخدمين: 95% من عرض الشاشة على الكمبيوتر، وكامل العرض على الشاشات الأصغر */}
       {/* الترويسة: عنوان الإعدادات أو مسار القسم المفتوح */}
       {current ? (
@@ -116,6 +119,7 @@ export const SettingsView: React.FC = () => {
       )}
 
       {current?.id === 'users' && <UsersAdmin />}
+      {current?.id === 'system' && <SystemConsole />}
       {current?.id === 'appearance' && <AppearanceSection />}
       {current?.id === 'navigation' && <NavigationSection />}
       {current?.id === 'cloud' && <CloudSection />}
