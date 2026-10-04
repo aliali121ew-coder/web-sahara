@@ -117,7 +117,18 @@ export const isServerForbiddenKey = (k: string) =>
  * مجموعات كبيرة تُخزَّن سطرًا لكل عنصر على الخادم (جدول collection_items) بدل نص JSON واحد،
  * ويرسل التطبيق الفرق فقط عند الحفظ. كل عنصر يُعرَّف بحقل id.
  */
-export const COLLECTION_KEYS = ['sahara_inbound_deliveries', 'etihad_inbound_deliveries', 'sahara_notifications'] as const;
+export const COLLECTION_KEYS = [
+  // الواردات والإشعارات
+  'sahara_inbound_deliveries', 'etihad_inbound_deliveries', 'sahara_notifications',
+  // الدفاتر والأرصدة المالية: تعديلان متزامنان على قيدين مختلفين يُحفظان معًا بدل أن يمسح أحدهما الآخر
+  'sahara_company_balance_ledger_v1', 'sahara_company_balance_published_v1',
+  'sahara_petrol_ledger_v1', 'sahara_petrol_published_v1',
+  'sahara_black_oil_daily_ledger_v1', 'etihad_black_oil_daily_ledger_v1',
+  'sahara_etihad_balance_records_v2',
+  // التشغيل
+  'sahara_tanks', 'sahara_fuel_metrics', 'sahara_supplier_prices',
+  'sahara_tasks', 'sahara_supply_requests', 'sahara_messages',
+] as const;
 /** نسخة محلية من آخر قيمة وصلت من الخادم لكل مجموعة (لحساب الفرق) — لا تُزامَن أبدًا */
 export const SHADOW_PREFIX = 'sahara_shadow:';
 
