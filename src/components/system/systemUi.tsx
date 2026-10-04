@@ -22,6 +22,9 @@ export const TABLE_LABELS: Record<string, string> = {
   webauthn_challenges: 'تحديات البصمة المؤقتة',
   sahara_file_chunks: 'أجزاء ملفات قديمة',
   chat_file_chunks: 'أجزاء مرفقات قديمة',
+  v_sahara_inbound_deliveries: 'عرض: واردات الصحاري',
+  v_etihad_inbound_deliveries: 'عرض: واردات الاتحاد',
+  v_notifications: 'عرض: الإشعارات',
 };
 export const PREFIX_LABELS: Record<string, string> = {
   sahara: 'مرفقات الصحاري',

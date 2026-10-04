@@ -25,7 +25,37 @@ export const ensureCollections = async (db: D1Database, backups?: R2Bucket) => {
   await db.exec('CREATE INDEX IF NOT EXISTS collection_items_order ON collection_items (key, pos, updated_at)');
   await db.exec('CREATE TABLE IF NOT EXISTS system_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL)');
   for (const key of COLLECTION_KEYS) await migrateKey(db, key, backups);
+  await ensureViews(db);
   ready = true;
+};
+
+/**
+ * عروض SQL بأعمدة حقيقية فوق collection_items (بدون نسخ البيانات): للتقارير والاستعلام،
+ * وأساس جاهز للنقل إلى PostgreSQL لاحقًا (كل عرض يقابل جدولًا مستقبليًا).
+ * تُعاد كتابتها عند كل تشغيل حتى تبقى مطابقة لآخر تعريف.
+ */
+const j = (field: string, as: string, cast?: 'REAL' | 'INTEGER') =>
+  cast ? `CAST(json_extract(data, '$.${field}') AS ${cast}) AS ${as}` : `json_extract(data, '$.${field}') AS ${as}`;
+const DELIVERY_COLUMNS = [
+  'id', j('date', 'date'), j('time', 'time'), j('receiptUnloadDate', 'unload_date'),
+  j('supplierCompany', 'supplier_company'), j('supplierName', 'supplier_name'),
+  j('driverName', 'driver_name'), j('driverPhone', 'driver_phone'), j('truckNumber', 'truck_number'),
+  j('voucherNumber', 'voucher_number'), j('receiptNumber', 'receipt_number'),
+  j('stationName', 'station_name'), j('tankCode', 'tank_code'), j('product', 'product'), j('productColor', 'product_color'),
+  j('productDensity', 'density', 'REAL'), j('receivedQuantity', 'received_quantity', 'REAL'), j('volumeLiters', 'volume_liters', 'REAL'),
+  j('pricePerLiter', 'price_per_liter', 'REAL'), j('productPrice', 'product_price', 'REAL'), j('productCost', 'product_cost', 'REAL'),
+  j('totalCostIqd', 'total_cost_iqd', 'REAL'), j('status', 'status'), 'updated_at', 'updated_by',
+].join(', ');
+const VIEWS: Record<string, string> = {
+  v_sahara_inbound_deliveries: `SELECT ${DELIVERY_COLUMNS} FROM collection_items WHERE key = 'sahara_inbound_deliveries'`,
+  v_etihad_inbound_deliveries: `SELECT ${DELIVERY_COLUMNS} FROM collection_items WHERE key = 'etihad_inbound_deliveries'`,
+  v_notifications: `SELECT id, ${j('title', 'title')}, ${j('message', 'message')}, ${j('timestamp', 'created_at')}, ${j('read', 'is_read', 'INTEGER')}, ${j('type', 'type')}, updated_at FROM collection_items WHERE key = 'sahara_notifications'`,
+};
+const ensureViews = async (db: D1Database) => {
+  for (const [name, sql] of Object.entries(VIEWS)) {
+    await db.exec(`DROP VIEW IF EXISTS ${name}`);
+    await db.exec(`CREATE VIEW ${name} AS ${sql}`);
+  }
 };
 
 /** ترحيل مفتاح واحد من app_state إلى جدول المجموعات (مرة واحدة) */

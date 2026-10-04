@@ -23,7 +23,7 @@ const cell = (v: unknown) => {
 };
 
 /** متصفح جداول D1 للقراءة فقط: الحقول السرّية مخفية والنصوص الطويلة مختصرة من الخادم */
-export const DbBrowser: React.FC<{ tables: { name: string; rows: number }[] }> = ({ tables }) => {
+export const DbBrowser: React.FC<{ tables: { name: string; rows: number; view?: boolean }[] }> = ({ tables }) => {
   const [active, setActive] = useState(() => (tables.find(t => t.name === 'collection_items') || tables[0])?.name || '');
   const [search, setSearch] = useState('');
   const q = useDebounced(search.trim());
@@ -43,20 +43,21 @@ export const DbBrowser: React.FC<{ tables: { name: string; rows: number }[] }> =
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setOffset(0); setOpen(null); }, [active, q]);
 
-  const sorted = useMemo(() => [...tables].sort((a, b) => (TABLE_LABELS[a.name] ? 0 : 1) - (TABLE_LABELS[b.name] ? 0 : 1) || b.rows - a.rows), [tables]);
+  // الجداول أولًا (الأكبر فالأصغر)، ثم العروض
+  const sorted = useMemo(() => [...tables].sort((a, b) => Number(!!a.view) - Number(!!b.view) || b.rows - a.rows), [tables]);
   const cols = page?.columns || [];
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] gap-4 items-start">
       {/* قائمة الجداول */}
       <nav aria-label="الجداول" className={`${cardCls} p-2 lg:sticky lg:top-20 max-h-[70vh] overflow-y-auto`}>
-        <div className="px-2 py-2 text-[11px] font-black text-slate-400 flex items-center gap-1.5"><Database className="w-3.5 h-3.5" />{tables.length} جدول</div>
+        <div className="px-2 py-2 text-[11px] font-black text-slate-400 flex items-center gap-1.5"><Database className="w-3.5 h-3.5" />{tables.filter(t => !t.view).length} جدول · {tables.filter(t => t.view).length} عرض</div>
         <ul className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible no-scrollbar">
           {sorted.map(t => (
             <li key={t.name} className="shrink-0">
               <button onClick={() => setActive(t.name)} aria-current={active === t.name}
                 className={`w-full text-right px-3 py-2 rounded-xl transition flex items-center gap-2 ${active === t.name ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300' : 'hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-200'}`}>
-                <Table2 className="w-4 h-4 shrink-0 opacity-70" />
+                {t.view ? <Eye className="w-4 h-4 shrink-0 opacity-70 text-violet-500" aria-label="عرض SQL" /> : <Table2 className="w-4 h-4 shrink-0 opacity-70" />}
                 <span className="min-w-0 flex-1">
                   <span className="block text-xs font-bold truncate">{TABLE_LABELS[t.name] || t.name}</span>
                   <span className="block text-[10px] text-slate-400 font-mono truncate" dir="ltr">{t.name}</span>

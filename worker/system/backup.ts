@@ -31,6 +31,12 @@ export const ensureSystemTables = async (db: D1Database) => {
   ready = true;
 };
 
+/** عروض SQL (للتصفح والتقارير فقط؛ لا تُنسخ ولا تُسترجع لأنها لا تحمل بيانات) */
+export const userViews = async (db: D1Database) => {
+  const { results } = await db.prepare("SELECT name FROM sqlite_master WHERE type = 'view' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' ORDER BY name").all<{ name: string }>();
+  return results.map(r => r.name);
+};
+
 /** أسماء جداول المستخدم (بدون جداول SQLite و Cloudflare الداخلية) */
 export const userTables = async (db: D1Database) => {
   const { results } = await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name NOT LIKE 'd1_%' ORDER BY name").all<{ name: string }>();

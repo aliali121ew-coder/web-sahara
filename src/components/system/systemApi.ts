@@ -9,7 +9,7 @@ export interface BackupRow {
 export interface JobRow { id: number; name: string; started_at: number; finished_at: number; status: 'running' | 'ok' | 'error'; details: string; triggered_by: string }
 export interface Usage { count: number; bytes: number; byPrefix: Record<string, { count: number; bytes: number }> }
 export interface Overview {
-  db: { latencyMs: number; sizeBytes: number | null; tables: { name: string; rows: number }[] };
+  db: { latencyMs: number; sizeBytes: number | null; tables: { name: string; rows: number; view?: boolean }[] };
   r2: { latencyMs: number; files: Usage; backups: Usage };
   collections: Record<string, number>;
   legacyFiles: number;

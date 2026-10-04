@@ -4,7 +4,7 @@
 import type { Env, R2Bucket } from '../types';
 import type { Session } from '../chat';
 import { audit } from '../chat';
-import { createBackup, ensureSystemTables, getMaintenance, restoreBackup, setMaintenance, userTables, type BackupRow } from './backup';
+import { createBackup, ensureSystemTables, getMaintenance, restoreBackup, setMaintenance, userTables, userViews, type BackupRow } from './backup';
 import { cleanup, dailyJob, monthlyJob, nextRun } from './maintenance';
 import { findOrphanFiles, legacyFileCount, migrateLegacyFiles } from '../storage/files';
 import { collectionCounts } from '../storage/collections';
@@ -53,10 +53,14 @@ export async function handleSystem(request: Request, url: URL, env: Env, session
     const t0 = Date.now();
     const ping = await db.prepare('SELECT 1').run();
     const dbLatency = Date.now() - t0;
-    const tables = [];
+    const tables: { name: string; rows: number; view?: boolean }[] = [];
     for (const name of await userTables(db)) {
       const { results } = await db.prepare(`SELECT COUNT(*) AS n FROM ${quote(name)}`).all<{ n: number }>();
       tables.push({ name, rows: results[0]?.n || 0 });
+    }
+    for (const name of await userViews(db)) {
+      const { results } = await db.prepare(`SELECT COUNT(*) AS n FROM ${quote(name)}`).all<{ n: number }>();
+      tables.push({ name, rows: results[0]?.n || 0, view: true });
     }
     const t1 = Date.now();
     const [files, backups] = await Promise.all([bucketUsage(env.FILES), bucketUsage(env.BACKUPS)]);
@@ -79,7 +83,7 @@ export async function handleSystem(request: Request, url: URL, env: Env, session
   const tm = path.match(/^\/tables\/([^/]+)$/);
   if (tm && method === 'GET') {
     const name = decodeURIComponent(tm[1]);
-    if (!(await userTables(db)).includes(name)) return json({ error: 'الجدول غير موجود' }, 404);
+    if (![...(await userTables(db)), ...(await userViews(db))].includes(name)) return json({ error: 'الجدول غير موجود' }, 404);
     const { results: cols } = await db.prepare(`PRAGMA table_info(${quote(name)})`).all<{ name: string; type: string; pk: number }>();
     const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 50, 1), 200);
     const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0);

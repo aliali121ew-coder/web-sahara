@@ -80,13 +80,14 @@ export const SystemConsole: React.FC = () => {
 // ───── نظرة عامة ─────
 const OverviewTab: React.FC<{ ov: Overview | null }> = ({ ov }) => {
   if (!ov) return <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">{Array.from({ length: 4 }, (_, i) => <div key={i} className="h-20 rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse" />)}</div>;
-  const rows = ov.db.tables.reduce((a, t) => a + t.rows, 0);
+  const realTables = ov.db.tables.filter(t => !t.view);
+  const rows = realTables.reduce((a, t) => a + t.rows, 0);
   const last = ov.lastBackup;
   const lastAgeH = last ? (Date.now() - last.created_at) / 3600_000 : Infinity;
   const r2Items = [...Object.entries(ov.r2.files.byPrefix), ...Object.entries(ov.r2.backups.byPrefix)]
     .map(([p, u]) => ({ label: PREFIX_LABELS[p] || p, sub: `${fmtNum(u.count)} ملف`, value: u.bytes, display: fmtBytes(u.bytes) }))
     .sort((a, b) => b.value - a.value);
-  const tableItems = ov.db.tables.filter(t => t.rows > 0).sort((a, b) => b.rows - a.rows).slice(0, 10)
+  const tableItems = realTables.filter(t => t.rows > 0).sort((a, b) => b.rows - a.rows).slice(0, 10)
     .map(t => ({ label: TABLE_LABELS[t.name] || t.name, sub: t.name, value: t.rows, display: fmtNum(t.rows) }));
 
   return (
@@ -103,7 +104,7 @@ const OverviewTab: React.FC<{ ov: Overview | null }> = ({ ov }) => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <section className={`${cardCls} p-5`}>
           <h4 className="font-extrabold text-sm text-slate-900 dark:text-white mb-1">أكبر الجداول (عدد السطور)</h4>
-          <p className="text-[11px] text-slate-400 mb-4">D1 · {ov.db.tables.length} جدول</p>
+          <p className="text-[11px] text-slate-400 mb-4">D1 · {realTables.length} جدول · {ov.db.tables.length - realTables.length} عرض</p>
           <BarList items={tableItems} />
         </section>
         <section className={`${cardCls} p-5`}>
