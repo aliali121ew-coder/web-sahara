@@ -91,7 +91,7 @@ const parseMessage = (m: MessageRow) => ({
 });
 
 // ───── سجل العمليات ─────
-const AUDIT_KEEP_MS = 180 * 24 * 3600_000; // يُحتفظ بالسجل 6 أشهر
+// السجل الأقدم من 180 يومًا يُنقل إلى الأرشيف الشهري في R2 (worker/system/maintenance.ts)
 const AUDIT_MERGE_MS = 10 * 60_000; // حفظ البيانات المتكرر من نفس الحساب يُدمج في سطر واحد كل 10 دقائق
 
 /** تسجيل عملية. merge: يدمج تفاصيل (قائمة مفصولة بفاصلة) مع آخر سطر لنفس الحساب والعملية خلال 10 دقائق */
@@ -116,7 +116,6 @@ export const audit = async (db: ChatDB, request: Request, userId: string, action
     }
     await db.prepare('INSERT INTO audit_log (at, user_id, username, action, detail, ip) VALUES (?, ?, ?, ?, ?, ?)')
       .bind(now, userId, username, action, detail.slice(0, 1000), ip).run();
-    if (Math.random() < 0.01) await db.prepare('DELETE FROM audit_log WHERE at < ?').bind(now - AUDIT_KEEP_MS).run();
   } catch {
     /* السجل لا يجب أن يُفشل العملية الأصلية */
   }

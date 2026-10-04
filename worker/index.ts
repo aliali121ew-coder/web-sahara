@@ -11,7 +11,10 @@ import { canReadKey, canWriteKey, isServerForbiddenKey, keySectionLabel, levelOf
 import { loadFile, removeFile, storeFile } from './storage/files';
 import { applyCollectionOps, clearCollection, ensureCollections, isCollectionKey, readCollection, replaceCollection, type CollectionOps } from './storage/collections';
 import { COLLECTION_KEYS } from '../src/lib/permCatalog';
-import type { D1Database, D1PreparedStatement, Env, R2Bucket } from './types';
+import type { D1Database, D1PreparedStatement, Env, ExecutionContext, R2Bucket, ScheduledController } from './types';
+import { handleSystem } from './system/api';
+import { ensureSystemTables, getMaintenance } from './system/backup';
+import { onSchedule } from './system/maintenance';
 
 type StateRow = { key: string; value: string; updated_at: number };
 
@@ -152,6 +155,16 @@ export default {
 
     await ensureTable(env.DB);
     await ensureCollections(env.DB, env.BACKUPS);
+    await ensureSystemTables(env.DB);
+
+    // لوحة إدارة النظام (لمدير النظام فقط)
+    if (url.pathname.startsWith('/api/system/')) return handleSystem(request, url, env, session);
+
+    // أثناء الاسترجاع: تُرفض أي كتابة حتى لا تختلط بالبيانات المُعادة
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      const m = await getMaintenance(env.DB);
+      if (m) return json({ error: 'النظام في وضع الصيانة (استرجاع نسخة احتياطية). حاول بعد دقائق', code: 'maintenance' }, 503);
+    }
 
     if (url.pathname === '/api/state' && request.method === 'GET') {
       const { results } = await env.DB.prepare('SELECT key, value, updated_at FROM app_state').all<StateRow>();
@@ -259,5 +272,10 @@ export default {
     }
 
     return json({ error: 'غير موجود' }, 404);
+  },
+
+  /** المهمة المجدولة اليومية (wrangler.jsonc → triggers.crons): نسخة يومية، وفي أول الشهر الصيانة الشهرية */
+  async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(onSchedule(env, controller.scheduledTime).catch(e => console.error('scheduled job failed', e)));
   },
 };
