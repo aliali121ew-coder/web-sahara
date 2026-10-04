@@ -110,7 +110,16 @@ const KEY_RULES: Rule[] = [
 /** مفاتيح لا تُخزَّن على الخادم أبدًا (أسرار الجلسة وإعدادات الجهاز) */
 export const isServerForbiddenKey = (k: string) =>
   k.startsWith('sahara_chat_') || k.startsWith('sahara_session_') || k.startsWith('sahara_cloud_')
-  || k.endsWith('_token') || k.includes('supabase') || k === 'sahara_bio_cred' || k === 'sahara_last_username' || k === 'sahara_last_name' || k === 'sahara_bio_user';
+  || k.endsWith('_token') || k.includes('supabase') || k === 'sahara_bio_cred' || k === 'sahara_last_username' || k === 'sahara_last_name' || k === 'sahara_bio_user'
+  || k.startsWith(SHADOW_PREFIX);
+
+/**
+ * مجموعات كبيرة تُخزَّن سطرًا لكل عنصر على الخادم (جدول collection_items) بدل نص JSON واحد،
+ * ويرسل التطبيق الفرق فقط عند الحفظ. كل عنصر يُعرَّف بحقل id.
+ */
+export const COLLECTION_KEYS = ['sahara_inbound_deliveries', 'etihad_inbound_deliveries', 'sahara_notifications'] as const;
+/** نسخة محلية من آخر قيمة وصلت من الخادم لكل مجموعة (لحساب الفرق) — لا تُزامَن أبدًا */
+export const SHADOW_PREFIX = 'sahara_shadow:';
 
 const ruleFor = (k: string) => KEY_RULES.find(r => r.match(k));
 

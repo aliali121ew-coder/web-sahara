@@ -9,6 +9,8 @@ import { audit, handleChat, verifySession, type Session } from './chat';
 import { canReadKey, canWriteKey, isServerForbiddenKey, keySectionLabel, levelOf } from '../src/lib/permCatalog';
 
 import { loadFile, removeFile, storeFile } from './storage/files';
+import { applyCollectionOps, clearCollection, ensureCollections, isCollectionKey, readCollection, replaceCollection, type CollectionOps } from './storage/collections';
+import { COLLECTION_KEYS } from '../src/lib/permCatalog';
 import type { D1Database, D1PreparedStatement, Env, R2Bucket } from './types';
 
 type StateRow = { key: string; value: string; updated_at: number };
@@ -149,21 +151,28 @@ export default {
     if (!session) return json({ error: 'انتهت الجلسة، سجّل الدخول مجددًا', code: 'chat_auth' }, 401);
 
     await ensureTable(env.DB);
+    await ensureCollections(env.DB, env.BACKUPS);
 
     if (url.pathname === '/api/state' && request.method === 'GET') {
       const { results } = await env.DB.prepare('SELECT key, value, updated_at FROM app_state').all<StateRow>();
       // كل حساب يستلم فقط مفاتيح الأقسام المسموح له بعرضها
       const visible = results.filter(r => canReadKey(session.perms, session.admin, r.key));
+      const items: Record<string, string> = Object.fromEntries(visible.map(r => [r.key, r.value]));
+      // المجموعات الكبيرة تُجمَّع من سطورها وتُعاد بنفس الشكل (نص JSON)
+      for (const key of COLLECTION_KEYS) {
+        if (canReadKey(session.perms, session.admin, key)) items[key] = await readCollection(env.DB, key);
+      }
       return json({
-        items: Object.fromEntries(visible.map(r => [r.key, r.value])),
+        items,
         admin: session.admin,
-        readOnly: visible.filter(r => !canWriteKey(session.perms, session.admin, r.key)).map(r => r.key),
+        collections: COLLECTION_KEYS,
+        readOnly: Object.keys(items).filter(k => !canWriteKey(session.perms, session.admin, k)),
       });
     }
 
     if (url.pathname === '/api/state' && request.method === 'PUT') {
       if (tooLarge(request, MAX_STATE_BODY)) return json({ error: 'حجم البيانات كبير جدًا' }, 413);
-      let body: { set?: Record<string, string>; remove?: string[] };
+      let body: { set?: Record<string, string>; remove?: string[]; collections?: Record<string, CollectionOps> };
       try {
         body = await request.json();
       } catch {
@@ -173,9 +182,25 @@ export default {
       const statements: D1PreparedStatement[] = [];
       // المفاتيح التي لا يملك الحساب صلاحية تعديلها تُرفض وتُعاد للتطبيق ليستعيد نسخة الخادم
       const rejected: string[] = [];
+      let collectionOps = 0;
+      // فروق المجموعات (الطريقة الحديثة: عناصر جديدة/معدّلة ومحذوفة فقط)
+      for (const [key, ops] of Object.entries(body.collections || {})) {
+        if (!isCollectionKey(key) || !ops || typeof ops !== 'object') continue;
+        if (!canWriteKey(session.perms, session.admin, key)) { rejected.push(key); continue; }
+        const r = await applyCollectionOps(env.DB, key, ops, session.id, now);
+        if (typeof r === 'string') return json({ error: r }, 400);
+        collectionOps += r;
+      }
       for (const [key, value] of Object.entries(body.set || {})) {
         if (typeof value !== 'string') continue;
         if (!canWriteKey(session.perms, session.admin, key)) { rejected.push(key); continue; }
+        // نسخة قديمة من التطبيق أرسلت المجموعة كاملة: تُستبدل بسطورها
+        if (isCollectionKey(key)) {
+          const r = await replaceCollection(env.DB, key, value, session.id, now);
+          if (typeof r === 'string') return json({ error: r }, 400);
+          collectionOps += r;
+          continue;
+        }
         statements.push(
           env.DB.prepare(
             'INSERT INTO app_state (key, value, updated_at) VALUES (?1, ?2, ?3) ON CONFLICT(key) DO UPDATE SET value = ?2, updated_at = ?3'
@@ -185,17 +210,18 @@ export default {
       for (const key of body.remove || []) {
         if (typeof key !== 'string') continue;
         if (!canWriteKey(session.perms, session.admin, key)) { rejected.push(key); continue; }
+        if (isCollectionKey(key)) { await clearCollection(env.DB, key); collectionOps++; continue; }
         statements.push(env.DB.prepare('DELETE FROM app_state WHERE key = ?1').bind(key));
       }
-      if (statements.length) {
-        await env.DB.batch(statements);
+      if (statements.length) await env.DB.batch(statements);
+      if (statements.length || collectionOps) {
         // سجل العمليات: الأقسام التي حُفظت (يُدمج الحفظ التلقائي المتكرر في سطر واحد)
-        const touched = [...Object.keys(body.set || {}), ...(body.remove || [])].filter(k => typeof k === 'string' && !rejected.includes(k));
+        const touched = [...Object.keys(body.set || {}), ...(body.remove || []), ...Object.keys(body.collections || {})].filter(k => typeof k === 'string' && !rejected.includes(k));
         const sections = Array.from(new Set(touched.map(keySectionLabel).filter(l => l !== 'بيانات عامة')));
         if (sections.length) await audit(env.DB, request, session.id, 'data.save', sections.join('، '), { merge: true });
       }
       if (rejected.length) await audit(env.DB, request, session.id, 'data.denied', Array.from(new Set(rejected.map(keySectionLabel))).join('، '), { merge: true });
-      return json({ ok: true, saved: statements.length, rejected });
+      return json({ ok: true, saved: statements.length + collectionOps, rejected });
     }
 
     // المحادثة: الحسابات والغرف والرسائل والمرفقات

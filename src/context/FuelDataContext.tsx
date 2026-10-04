@@ -76,8 +76,15 @@ const VALID_TABS: NavTabId[] = [
 ];
 
 /** معرّف فريد للشحنة (الاستيراد يضيف عشرات الشحنات في نفس الجزء من الثانية، فالوقت + رقم عشوائي صغير كان يتكرر) */
-const newDeliveryId = (): string =>
-  `del-${Date.now()}-${typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 10)}`;
+const randomTag = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 10));
+const newDeliveryId = (): string => `del-${Date.now()}-${randomTag()}`;
+/** معرّف فريد (الوقت وحده يتكرر عند إنشاء عنصرين في نفس الجزء من الثانية، وكان يكرر الإشعارات) */
+const newId = (prefix: string) => `${prefix}-${Date.now()}-${randomTag()}`;
+/** حذف العناصر المكررة بنفس المعرّف (يُبقى أول ظهور) */
+const dedupeById = <T extends { id: string }>(list: T[]): T[] => {
+  const seen = new Set<string>();
+  return list.filter(x => (seen.has(x.id) ? false : (seen.add(x.id), true)));
+};
 
 /** الشحنات التجريبية القديمة (del-1 … del-50) تُحذف؛ المرفوعة من الإكسل أو المضافة يدويًا معرّفها del-<وقت>-… */
 const isRealDelivery = (d: InboundDelivery) => !/^del-\d{1,3}$/.test(d.id || '');
@@ -327,7 +334,7 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const [notifications, setNotifications] = useState<SystemNotification[]>(() => {
     const saved = localStorage.getItem('sahara_notifications');
-    return saved ? JSON.parse(saved) : INITIAL_NOTIFICATIONS;
+    return saved ? dedupeById(JSON.parse(saved)) : INITIAL_NOTIFICATIONS;
   });
 
   // Save changes to localStorage
@@ -416,7 +423,7 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // Add notification
     const newNotif: SystemNotification = {
-      id: `notif-${Date.now()}`,
+      id: newId('notif'),
       title: 'شحنة واردة جديدة',
       message: `تم تسجيل وصول الشحنة وفوجر رقم ${voucher} بحجم ${qty.toLocaleString()} لتر لصالح ${assignedCompany}.`,
       timestamp: 'الآن',
@@ -467,12 +474,12 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const addSupplyRequest = (request: Omit<SupplyRequest, 'id'>) => {
     const newRequest: SupplyRequest = {
       ...request,
-      id: `req-${Date.now()}`,
+      id: newId('req'),
     };
     setSupplyRequests((prev) => [newRequest, ...prev]);
 
     const newNotif: SystemNotification = {
-      id: `notif-${Date.now()}`,
+      id: newId('notif'),
       title: 'طلب تجهيز وقود جديد',
       message: `تم إرسال طلب تزويد ${request.volumeLiters.toLocaleString()} لتر لصالح ${request.beneficiary}.`,
       timestamp: 'الآن',
@@ -484,7 +491,7 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const addMessage = (text: string, isEmergency = false) => {
     const newMsg: DispatchMessage = {
-      id: `msg-${Date.now()}`,
+      id: newId('msg'),
       sender: 'ali - مدير النظام',
       role: 'الإدارة المركزية',
       text,

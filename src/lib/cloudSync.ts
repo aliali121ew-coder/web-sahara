@@ -6,6 +6,7 @@
  */
 
 import { hasSession, sessionHeaders, clearSession, SESSION_PROFILE_KEY, LAST_USER_KEY, LAST_NAME_KEY, BIO_USER_KEY } from './session';
+import { COLLECTION_KEYS, SHADOW_PREFIX } from './permCatalog';
 
 /** رمز الدخول القديم (قبل حسابات المستخدمين) — يُمسح فقط */
 export const TOKEN_KEY = 'sahara_cloud_token';
@@ -41,7 +42,7 @@ const LOCAL_ONLY = new Set([
   'sahara_chat_starred',
 ]);
 
-const shouldSync = (key: string) => !LOCAL_ONLY.has(key);
+const shouldSync = (key: string) => !LOCAL_ONLY.has(key) && !key.startsWith(SHADOW_PREFIX);
 
 export type SyncStatus = 'saved' | 'saving' | 'offline' | 'error';
 let status: SyncStatus = 'saved';
@@ -106,15 +107,55 @@ const api = (path: string, init: RequestInit = {}) =>
     headers: { 'content-type': 'application/json', ...sessionHeaders(), ...(init.headers || {}) },
   });
 
+// ───── المجموعات الكبيرة: إرسال الفرق فقط ─────
+// لكل مجموعة نحتفظ محليًا بآخر نسخة وصلت من الخادم (shadow)، والفرق بينها وبين القيمة الحالية هو ما يُرسل.
+// لا تُحدَّث النسخة أثناء وجود تعديلات معلّقة، حتى لا تُحذف عناصر أضافها مستخدمون آخرون.
+const isCollection = (k: string) => (COLLECTION_KEYS as readonly string[]).includes(k);
+const getShadow = (k: string) => rawGet.call(localStorage, SHADOW_PREFIX + k);
+const setShadow = (k: string, v: string | null) => (v === null ? rawRemove.call(localStorage, SHADOW_PREFIX + k) : rawSet.call(localStorage, SHADOW_PREFIX + k, v));
+
+type CollectionOps = { upsert: { id: string; pos: number; data: string }[]; remove: string[] };
+/** نفس قاعدة الخادم: حقل id، أو موضع العنصر إن لم يوجد */
+const itemId = (item: unknown, i: number) => {
+  const id = item && typeof item === 'object' ? (item as { id?: unknown }).id : undefined;
+  return id !== undefined && id !== null && String(id) ? String(id).slice(0, 200) : `auto-${i}`;
+};
+const diffCollection = (current: string, shadow: string | null): CollectionOps | null => {
+  let cur: unknown;
+  let old: unknown = [];
+  try { cur = JSON.parse(current); if (shadow) old = JSON.parse(shadow); } catch { return null; }
+  if (!Array.isArray(cur) || !Array.isArray(old)) return null;
+  const before = new Map<string, string>();
+  old.forEach((item, i) => { const id = itemId(item, i); if (!before.has(id)) before.set(id, JSON.stringify(item)); });
+  const seen = new Set<string>();
+  const upsert: CollectionOps['upsert'] = [];
+  cur.forEach((item, i) => {
+    const id = itemId(item, i);
+    if (seen.has(id)) return;
+    seen.add(id);
+    const data = JSON.stringify(item);
+    if (before.get(id) !== data) upsert.push({ id, pos: i, data });
+  });
+  return { upsert, remove: [...before.keys()].filter(id => !seen.has(id)) };
+};
+
 const buildPayload = (pending: Pending) => {
   const set: Record<string, string> = {};
   const remove: string[] = [];
+  const collections: Record<string, CollectionOps> = {};
+  /** القيم التي حُسب منها الفرق: تصبح النسخة المرجعية بعد نجاح الإرسال */
+  const snapshots: Record<string, string | null> = {};
   for (const key of Object.keys(pending)) {
     const value = rawGet.call(localStorage, key);
-    if (value === null) remove.push(key);
-    else set[key] = value;
+    if (value === null) { remove.push(key); if (isCollection(key)) snapshots[key] = null; continue; }
+    if (isCollection(key)) {
+      const ops = diffCollection(value, getShadow(key));
+      snapshots[key] = value;
+      if (ops) { if (ops.upsert.length || ops.remove.length) collections[key] = ops; continue; }
+    }
+    set[key] = value;
   }
-  return { set, remove };
+  return { body: { set, remove, collections }, snapshots };
 };
 
 let flushing = false;
@@ -128,7 +169,8 @@ async function flush(): Promise<void> {
   flushing = true;
   setStatus('saving');
   try {
-    const res = await api('/api/state', { method: 'PUT', body: JSON.stringify(buildPayload(pending)) });
+    const { body, snapshots } = buildPayload(pending);
+    const res = await api('/api/state', { method: 'PUT', body: JSON.stringify(body) });
     if (res.status === 401) {
       // الرمز لم يعد صالحًا: نطلب الدخول مجددًا دون فقدان التعديلات المعلّقة
       clearSession();
@@ -142,6 +184,7 @@ async function flush(): Promise<void> {
     for (const [key, ver] of Object.entries(pending)) if (latest[key] === ver) delete latest[key];
     // ما رفضه الخادم (لا صلاحية تعديل): لا يُعاد إرساله، وتُستعاد نسخة الخادم بهدوء
     rejected.forEach(k => { blocked.add(k); delete latest[k]; });
+    for (const [k, v] of Object.entries(snapshots)) if (!rejected.includes(k)) setShadow(k, v);
     writePending(latest);
     if (rejected.length) restoreRejected(rejected);
     flushing = false;
@@ -183,6 +226,7 @@ const applyServerState = (items: Record<string, string>): string[] => {
       rawSet.call(localStorage, key, value);
       changed.push(key);
     }
+    if (isCollection(key)) setShadow(key, value);
   }
   // مفاتيح حُذفت من جهاز آخر
   for (const key of localSyncKeys()) {
@@ -204,6 +248,7 @@ const restoreRejected = async (keys: string[]) => {
     for (const k of keys) {
       if (k in data.items) rawSet.call(localStorage, k, data.items[k]);
       else rawRemove.call(localStorage, k);
+      if (isCollection(k)) setShadow(k, k in data.items ? data.items[k] : null);
     }
     window.dispatchEvent(new CustomEvent(CLOUD_APPLIED_EVENT, { detail: keys }));
   } catch {
@@ -271,7 +316,7 @@ export async function initCloudSync(): Promise<InitResult> {
   window.addEventListener('pagehide', () => {
     const pending = readPending();
     if (!Object.keys(pending).length || !getToken()) return;
-    const body = JSON.stringify(buildPayload(pending));
+    const body = JSON.stringify(buildPayload(pending).body);
     if (body.length < 60000) {
       fetch('/api/state', {
         method: 'PUT',
