@@ -29,8 +29,6 @@ const LOCAL_ONLY = new Set([
   'sahara_theme_mode',
   'sahara_language',
   'sahara_sidebar_style',
-  'sahara_supabase_url',
-  'sahara_supabase_anon_key',
   // حساب المحادثة وثيمها خاصّان بكل جهاز، والرسائل نفسها تُحفظ في خادم المحادثة
   'sahara_chat_me',
   // مفتاح الحساب السرّي: لا يغادر الجهاز أبدًا
@@ -271,6 +269,8 @@ export type InitResult = 'ready' | 'need-login';
 /** يُستدعى قبل عرض التطبيق: يسحب آخر نسخة من الخادم ثم يفعّل الحفظ التلقائي */
 export async function initCloudSync(): Promise<InitResult> {
   rawRemove.call(localStorage, TOKEN_KEY);
+  // بقايا إعدادات Supabase القديمة (غير مستخدمة)
+  for (const k of ['sahara_supabase_url', 'sahara_supabase_anon_key']) rawRemove.call(localStorage, k);
   if (!getToken()) return 'need-login';
 
   // جهاز بلا بيانات محلية (أول دخول أو بعد مسح المتصفح): لا نعرض التطبيق قبل وصول نسخة الخادم،

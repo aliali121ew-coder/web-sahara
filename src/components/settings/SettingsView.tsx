@@ -5,8 +5,6 @@ import {
   Layout,
   Sun,
   Moon,
-  Database,
-  Save,
   RotateCcw,
   CheckCircle2,
   Users,
@@ -23,7 +21,7 @@ import { UsersAdmin } from '../admin/UsersAdmin';
 import { SystemConsole } from '../system/SystemConsole';
 import { usePermissions } from '../../lib/usePermission';
 
-type SectionId = 'users' | 'system' | 'appearance' | 'navigation' | 'cloud' | 'data';
+type SectionId = 'users' | 'system' | 'appearance' | 'navigation' | 'data';
 
 interface SectionDef {
   id: SectionId;
@@ -39,7 +37,6 @@ const SECTIONS: SectionDef[] = [
   { id: 'system', title: 'إدارة النظام', desc: 'قاعدة البيانات والملفات، النسخ الاحتياطية والاسترجاع، والصيانة', icon: Server, gradient: 'from-slate-700 to-slate-900', adminOnly: true },
   { id: 'appearance', title: 'المظهر والإضاءة', desc: 'الوضع الفاتح أو الليلي حسب راحتك', icon: Palette, gradient: 'from-amber-500 to-orange-600' },
   { id: 'navigation', title: 'شريط التنقل', desc: 'ألوان وتصميم القائمة الجانبية', icon: Layout, gradient: 'from-sky-500 to-blue-600' },
-  { id: 'cloud', title: 'التكامل السحابي', desc: 'ربط المنظومة بمشروع Supabase', icon: Database, gradient: 'from-emerald-500 to-teal-600' },
   { id: 'data', title: 'إدارة البيانات', desc: 'إعادة ضبط البيانات والذاكرة المؤقتة', icon: HardDrive, gradient: 'from-rose-500 to-red-600', adminOnly: true },
 ];
 
@@ -122,7 +119,6 @@ export const SettingsView: React.FC = () => {
       {current?.id === 'system' && <SystemConsole />}
       {current?.id === 'appearance' && <AppearanceSection />}
       {current?.id === 'navigation' && <NavigationSection />}
-      {current?.id === 'cloud' && <CloudSection />}
       {current?.id === 'data' && <DataSection />}
     </div>
   );
@@ -182,52 +178,6 @@ const NavigationSection: React.FC = () => {
           </button>
         ))}
       </div>
-    </div>
-  );
-};
-
-// ───── التكامل السحابي ─────
-const CloudSection: React.FC = () => {
-  const [supabaseUrl, setSupabaseUrl] = useState(() => localStorage.getItem('sahara_supabase_url') || '');
-  const [supabaseKey, setSupabaseKey] = useState(() => localStorage.getItem('sahara_supabase_anon_key') || '');
-  const [savedSuccess, setSavedSuccess] = useState(false);
-
-  const handleSaveCredentials = (e: React.FormEvent) => {
-    e.preventDefault();
-    localStorage.setItem('sahara_supabase_url', supabaseUrl);
-    localStorage.setItem('sahara_supabase_anon_key', supabaseKey);
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 2500);
-  };
-
-  const inputCls = 'w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none font-mono';
-  return (
-    <div className={`${cardCls} space-y-4`}>
-      <p className="text-xs text-slate-500 leading-relaxed">
-        تعمل المنظومة فورياً دون أي تأخير مع نظام التخزين المحلي التلقائي. يمكنك ربطها مع مشروع Supabase حقيقي عبر إدخال المفاتيح التالية:
-      </p>
-      <form onSubmit={handleSaveCredentials} className="space-y-3">
-        <label className="block">
-          <span className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">رابط مشروع Supabase URL</span>
-          <input type="text" placeholder="https://your-project.supabase.co" value={supabaseUrl} onChange={e => setSupabaseUrl(e.target.value)} className={inputCls} />
-        </label>
-        <label className="block">
-          <span className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">مفتاح الوصول العام Supabase Anon Key</span>
-          <input type="password" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." value={supabaseKey} onChange={e => setSupabaseKey(e.target.value)} className={inputCls} />
-        </label>
-        <div className="flex items-center justify-between pt-2">
-          <button type="submit" className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-blue-500/20 active:scale-95 transition-all">
-            <Save className="w-4 h-4" />
-            <span>حفظ الإعدادات</span>
-          </button>
-          {savedSuccess && (
-            <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-bold">
-              <CheckCircle2 className="w-4 h-4" />
-              <span>تم الحفظ والتطبيق بنجاح</span>
-            </span>
-          )}
-        </div>
-      </form>
     </div>
   );
 };

@@ -1,8 +1,8 @@
 # رؤوس الأمان لكل صفحات وملفات الموقع (تطبّقها Cloudflare على الملفات الثابتة)
 # CSP: السكربتات من نفس الموقع فقط (بلا سكربتات مضمّنة ولا eval)، الخطوط من Google Fonts،
-# الاتصال بالخادم نفسه و Supabase فقط، ومنع تضمين الموقع داخل مواقع أخرى
+# الاتصال بالخادم نفسه فقط، ومنع تضمين الموقع داخل مواقع أخرى
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self' blob:; frame-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; frame-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
