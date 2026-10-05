@@ -26,7 +26,7 @@
     background-color: var(--bg-canvas);
     color: #1e293b;
     font-family: 'Noto Kufi Arabic', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    /* بدون "cv02/cv03/cv04/cv11": بدائل لخطوط لاتينية كانت تفعّل في الخطوط العربية ياءً أخيرة بلا نقاط (الصحاري ← الصحارى) */
   }
 
   button, input, select, textarea {
