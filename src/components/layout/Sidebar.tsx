@@ -438,7 +438,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const desktopExpanded = isDesktop && !collapsedPref;
-  // اللوحة التلقائية المفتوحة: بلا حد، بحواف داخلية ناعمة وظل يتلاشى بدل الخط
+  // اللوحة المفتوحة: ملتصقة بحواف الشاشة بلا حد ولا زوايا، والظل الناعم وحده يفصلها عن الصفحة
   const softPanel = !isCollapsed && ((sidebarStyle === 'match-bg' && bgGradient === 'none') || sidebarStyle === 'unified');
   const softShadow = themeMode === 'dark'
     ? `${isRtl ? '-10px' : '10px'} 0 48px -12px rgba(0,0,0,0.55), ${isRtl ? '-30px' : '30px'} 0 120px -40px rgba(0,0,0,0.45)`
@@ -463,12 +463,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         inert={!isDesktop && !isOpen}
         id="main-sidebar"
         dir={direction}
-        style={{ ...(softPanel ? { boxShadow: softShadow, top: 8, bottom: 8, [isRtl ? 'right' : 'left']: 8 } : null), ...getSidebarInlineStyle(), contain: 'layout style', willChange: 'width, transform' }}
+        style={{ ...(softPanel ? { boxShadow: softShadow } : null), ...getSidebarInlineStyle(), contain: 'layout style', willChange: 'width, transform' }}
         aria-label={t('brandTitle')}
         aria-modal={!isDesktop && isOpen ? true : undefined}
         className={`fixed top-0 bottom-0 z-50 flex flex-col shrink-0 select-none whitespace-nowrap transition-[width,transform] duration-200 ease-out motion-reduce:transition-none ${
           isRtl ? 'right-0 border-l' : 'left-0 border-r'
-        } ${softPanel ? '!border-transparent rounded-[24px]' : ''} ${
+        } ${softPanel ? '!border-transparent' : ''} ${
           isOpen
             ? 'translate-x-0'
             : isRtl
