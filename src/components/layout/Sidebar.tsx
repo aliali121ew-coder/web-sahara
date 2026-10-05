@@ -4,8 +4,6 @@ import {
   LayoutDashboard,
   Database,
   Users,
-  CheckSquare,
-  BarChart3,
   MessageSquare,
   Settings,
   Flame,
@@ -21,7 +19,6 @@ import {
   LogOut,
   Loader2,
   Search,
-  Truck,
   UserCheck
 } from 'lucide-react';
 import { initials, logout, useSessionProfile } from '../../lib/session';
@@ -272,15 +269,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: 'dashboard', label: t('navDashboard') || 'لوحة التحكم', icon: LayoutDashboard },
         { id: 'tanks', label: t('navTanks') || 'الخزانات والمستودعات', icon: Database },
         { id: 'prices', label: t('navPrices') || 'أسعار الوقود', icon: Tags },
-        {
-          id: 'deliveries',
-          label: t('navDeliveries') || 'الواردات والتفريغ',
-          icon: Truck,
-          children: [
-            { id: 'deliveries-sahara', label: t('navDeliveriesSahara') || 'واردات صحاري كربلاء' },
-            { id: 'deliveries-etihad', label: t('navDeliveriesEtihad') || 'واردات شركة الاتحاد' },
-          ]
-        },
       ]
     },
     {
@@ -296,13 +284,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           ]
         },
         { id: 'managers', label: t('navManagers') || 'مسؤولو المحطات', icon: Users },
-        { id: 'tasks', label: t('navTasks') || 'المهام واللوجستيات', icon: CheckSquare },
       ]
     },
     {
       groupTitle: t('groupAnalytics') || 'التحليلات والمتابعة',
       items: [
-        { id: 'reports', label: t('navReports') || 'التقارير المتقدمة', icon: BarChart3 },
         { id: 'chat', label: t('navChat') || 'المساعد الذكي', icon: MessageSquare },
         { id: 'settings', label: t('navSettings') || 'إعدادات المنظومة', icon: Settings },
       ]
