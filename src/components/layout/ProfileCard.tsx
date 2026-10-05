@@ -160,15 +160,6 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
           >
             <X className="w-4 h-4" />
           </button>
-          {onSaveSelf && !editing && (
-            <button
-              type="button"
-              onClick={startEdit}
-              className={`absolute top-3 ${isRtl ? 'right-3' : 'left-3'} h-8 px-3 rounded-full bg-white/90 dark:bg-slate-900/80 text-slate-700 dark:text-slate-200 inline-flex items-center gap-1.5 text-[11.5px] font-bold shadow-sm hover:bg-white cursor-pointer`}
-            >
-              <PenLine className="w-3.5 h-3.5" />{tr('تعديل الاسم والصورة')}
-            </button>
-          )}
         </div>
 
         <div className="px-5 pb-5 -mt-14 relative">
@@ -269,10 +260,10 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
           ) : (
           <button
             type="button"
-            onClick={() => { onOpenProfile(); close(); }}
+            onClick={() => { if (onSaveSelf) { startEdit(); return; } onOpenProfile(); close(); }}
             className="mt-4 w-full h-11 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-slate-800 dark:hover:bg-slate-100 active:scale-[0.98] transition-all cursor-pointer"
           >
-            <Settings className="w-4 h-4" />{actionLabel ?? tr('الملف الشخصي والحساب')}
+            {onSaveSelf ? <PenLine className="w-4 h-4" /> : <Settings className="w-4 h-4" />}{onSaveSelf ? tr('تحديث المعلومات') : actionLabel ?? tr('الملف الشخصي والحساب')}
           </button>
           )}
         </div>
