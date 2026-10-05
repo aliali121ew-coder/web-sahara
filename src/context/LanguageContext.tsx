@@ -23,6 +23,10 @@ export const LANGUAGES: LanguageOption[] = [
   { code: 'ko', name: 'الكورية', nativeName: '한국어', flag: '🇰🇷', dir: 'ltr' },
 ];
 
+/** اللغات المفعّلة حاليًا في القائمة؛ البقية مخفية وترجماتها محفوظة لتُفعَّل لاحقًا */
+const ENABLED: SupportedLanguage[] = ['ar', 'en'];
+export const ACTIVE_LANGUAGES = LANGUAGES.filter(l => ENABLED.includes(l.code));
+
 interface LanguageContextType {
   currentLanguage: SupportedLanguage;
   language: SupportedLanguage;
@@ -40,7 +44,8 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentLanguage, setCurrentLanguageState] = useState<SupportedLanguage>(() => {
     const saved = localStorage.getItem('sahara_language');
-    return (saved as SupportedLanguage) || 'ar';
+    // لغة محفوظة غير مفعّلة الآن تعود للعربية
+    return saved && ENABLED.includes(saved as SupportedLanguage) ? (saved as SupportedLanguage) : 'ar';
   });
 
   const currentLangInfo = LANGUAGES.find((l) => l.code === currentLanguage) || LANGUAGES[0];

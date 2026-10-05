@@ -17,7 +17,7 @@ import {
 import { initials, logout, useSessionProfile } from '../../lib/session';
 import { useTheme } from '../../context/ThemeContext';
 import { useFuelData } from '../../context/FuelDataContext';
-import { useLanguage, LANGUAGES } from '../../context/LanguageContext';
+import { useLanguage, ACTIVE_LANGUAGES } from '../../context/LanguageContext';
 
 interface HeaderProps {
   onOpenQuickAction?: () => void;
@@ -126,7 +126,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
 
                 <div className="max-h-72 overflow-y-auto divide-y divide-slate-50 dark:divide-slate-800/50 py-1 no-scrollbar">
-                  {LANGUAGES.map((lang) => {
+                  {ACTIVE_LANGUAGES.map((lang) => {
                     const isSelected = currentLanguage === lang.code;
 
                     return (
