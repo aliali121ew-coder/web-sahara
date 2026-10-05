@@ -1,0 +1,44 @@
+{
+  "reports": {
+    "title": "Analytical reports and full fuel inventory",
+    "subtitle": "Approved official periodic statements that can be printed and exported as Excel and PDF",
+    "csv": "Export Excel/CSV",
+    "print": "Print official report",
+    "country": "Republic of Iraq - Holy Karbala Governorate",
+    "docTitle": "Sahara Karbala 2026 daily fuel and tank status report",
+    "stock": "Total actual stock",
+    "inbound": "Total inbound for the period",
+    "dispatched": "Total fuel dispatched",
+    "tableTitle": "1. Field tank inventory table",
+    "col": {
+      "code": "Code",
+      "name": "Tank name",
+      "fuel": "Fuel type",
+      "company": "Company",
+      "capacity": "Total capacity",
+      "current": "Current stock",
+      "fill": "Fill level",
+      "status": "Status"
+    },
+    "csvHeader": "Tank code,Name,Type,Company,Capacity,Actual stock,Ratio",
+    "csvFile": "sahara_karbala_fuel_report",
+    "ref": "Reference no.:",
+    "issued": "Issue date:",
+    "issuer": "Issued by:",
+    "issuerName": "Field control and operations center",
+    "signed": "Electronically approved by the general supervisor:",
+    "signer": "ali - System administrator",
+    "stamp": "Control and operations stamp:"
+  },
+  "tasks": {
+    "title": "Task and logistics management",
+    "subtitle": "Schedule and track quality checks, sensor maintenance and tanker unloading",
+    "done": "{{done}} of {{count}} tasks completed",
+    "priority": "{{value}} priority"
+  },
+  "managers": {
+    "title": "Site staff and field operations managers",
+    "subtitle": "Field supervisors, safety officers, tank farm management and work shifts",
+    "shift": "Shift: {{value}}"
+  }
+}

@@ -95,7 +95,8 @@
       "gasoline": "بنزين",
       "gasoil": "كاز",
       "diesel": "ديزل",
-      "gasoilDiesel": "كاز / ديزل"
+      "gasoilDiesel": "كاز / ديزل",
+      "premiumDiesel": "ديزل ممتاز"
     },
     "category": {
       "all": "الكل",
@@ -141,6 +142,28 @@
     },
     "room": {
       "general": "غرفة العمليات العامة"
+    },
+    "task": {
+      "maintenance": "صيانة",
+      "unloading": "تفريغ",
+      "quality": "فحص جودة",
+      "inventory": "جرد"
+    },
+    "priority": {
+      "high": "عالية",
+      "medium": "متوسطة",
+      "low": "منخفضة"
+    },
+    "shift": {
+      "onDuty": "على رأس العمل",
+      "onBreak": "في استراحة",
+      "leave": "إجازة"
+    },
+    "level": {
+      "stable": "مستقر",
+      "high": "مرتفع",
+      "low": "منخفض",
+      "critical": "حرج"
     }
   },
   "calendar": {

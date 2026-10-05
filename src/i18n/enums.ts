@@ -25,6 +25,12 @@ const SLUG: Record<string, string> = {
   'احمر': 'color.red', 'اصفر': 'color.yellow', 'عسلي': 'color.honey', 'نفط ابيض': 'color.kerosene', 'أصفر مخضر': 'color.greenishYellow',
   'تم الاستلام': 'shipment.received', 'في الطريق': 'shipment.enRoute', 'قيد الفحص': 'shipment.inspection', 'ملغي': 'shipment.cancelled',
   'مصفى كربلاء الدولي': 'supplier.karbalaRefinery', 'مصفى كربلاء': 'supplier.karbalaRefineryShort',
+  'ديزل ممتاز': 'product.premiumDiesel',
+  // الصفحات المخفية: تصنيفات المهام وأولوياتها، حالة المناوبة، ومستوى الخزان
+  'صيانة': 'task.maintenance', 'تفريغ': 'task.unloading', 'فحص جودة': 'task.quality', 'جرد': 'task.inventory',
+  'عالية': 'priority.high', 'متوسطة': 'priority.medium', 'منخفضة': 'priority.low',
+  'على رأس العمل': 'shift.onDuty', 'في استراحة': 'shift.onBreak', 'إجازة': 'shift.leave',
+  'مستقر': 'level.stable', 'مرتفع': 'level.high', 'منخفض': 'level.low', 'حرج': 'level.critical',
   // تصنيفات الموردين وحالة التوفر
   'الكل': 'category.all', 'تجاري': 'category.commercial', 'رسمي': 'category.official', 'حكومي': 'category.government',
   'متوفر': 'availability.available', 'محدود': 'availability.limited', 'غير متوفر': 'availability.unavailable',

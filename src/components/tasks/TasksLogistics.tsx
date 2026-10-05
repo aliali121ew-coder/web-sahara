@@ -1,8 +1,11 @@
+import { useTranslation } from 'react-i18next';
+import { enumText } from '../../i18n/enums';
 import React, { useState } from 'react';
 import { CheckSquare, Clock, User, CheckCircle2, Circle } from 'lucide-react';
 import { useFuelData } from '../../context/FuelDataContext';
 
 export const TasksLogistics: React.FC = () => {
+  const { t } = useTranslation(['pages', 'common']);
   const { tasks, toggleTask, searchQuery } = useFuelData();
   const [filterCategory, setFilterCategory] = useState<string>('الكل');
 
@@ -26,15 +29,15 @@ export const TasksLogistics: React.FC = () => {
         <div>
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
             <CheckSquare className="w-6 h-6 text-blue-600" />
-            <span>إدارة المهام والعمليات اللوجستية</span>
+            <span>{t('pages:tasks.title')}</span>
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            جدولة وتتبع مهام فحص الجودة، صيانة الحساسات، وتفريغ الصهاريج
+            {t('pages:tasks.subtitle')}
           </p>
         </div>
 
         <div className="px-4 py-2 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-xs font-bold text-blue-700 dark:text-blue-300">
-          تم إنجاز {completedCount} من أصل {tasks.length} مهام
+          {t('pages:tasks.done', { done: completedCount, count: tasks.length })}
         </div>
       </div>
 
@@ -52,7 +55,7 @@ export const TasksLogistics: React.FC = () => {
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
               }`}
             >
-              {cat}
+              {enumText(cat)}
             </button>
           ))}
         </div>
@@ -100,7 +103,7 @@ export const TasksLogistics: React.FC = () => {
                       {task.dueDate}
                     </span>
                     <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 font-bold text-slate-600 dark:text-slate-300">
-                      {task.category}
+                      {enumText(task.category)}
                     </span>
                   </div>
                 </div>
@@ -113,7 +116,7 @@ export const TasksLogistics: React.FC = () => {
                     : 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300'
                 }`}
               >
-                أولوية {task.priority}
+                {t('pages:tasks.priority', { value: enumText(task.priority) })}
               </span>
             </div>
           ))}

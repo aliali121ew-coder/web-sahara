@@ -87,7 +87,8 @@
       "gasoline": "Gasoline",
       "gasoil": "Gasoil",
       "diesel": "Diesel",
-      "gasoilDiesel": "Gasoil / diesel"
+      "gasoilDiesel": "Gasoil / diesel",
+      "premiumDiesel": "Premium diesel"
     },
     "category": {
       "all": "All",
@@ -133,6 +134,28 @@
     },
     "room": {
       "general": "General operations room"
+    },
+    "task": {
+      "maintenance": "Maintenance",
+      "unloading": "Unloading",
+      "quality": "Quality check",
+      "inventory": "Inventory"
+    },
+    "priority": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "shift": {
+      "onDuty": "On duty",
+      "onBreak": "On break",
+      "leave": "On leave"
+    },
+    "level": {
+      "stable": "Stable",
+      "high": "High",
+      "low": "Low",
+      "critical": "Critical"
     }
   },
   "calendar": {
