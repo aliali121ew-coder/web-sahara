@@ -26,6 +26,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { NavTabId } from '../../types';
 import { getAmbientBgColor, getAmbientGradientStyle } from '../../lib/themeGradients';
 import { ProfileCard } from './ProfileCard';
+import { useConnection } from '../../lib/useConnection';
 import { chatApi } from '../chat/chatApi';
 
 /* ==========================================================================
@@ -265,6 +266,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const canOpenTab = useCanOpenTab();
   const profile = useSessionProfile();
+  const online = useConnection();
   const tokens = useMemo(() => getDesignTokens(sidebarStyle, themeMode), [sidebarStyle, themeMode]);
 
   // Master Navigation Groups with Enterprise Submenus
@@ -891,8 +893,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <div className="flex items-center gap-2.5 min-w-0">
               <div
-                className="relative rounded-2xl text-white font-black text-sm flex items-center justify-center shadow-xs overflow-hidden shrink-0 ring-[1.5px] ring-emerald-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900"
-                title={t('online')}
+                className={`relative rounded-2xl text-white font-black text-sm flex items-center justify-center shadow-xs overflow-hidden shrink-0 ring-[1.5px] ring-offset-2 ring-offset-white dark:ring-offset-slate-900 transition-shadow ${online ? 'ring-emerald-500' : 'ring-rose-500'}`}
+                title={online ? 'متصل' : 'غير متصل'}
                 style={{
                   background: profile?.color || '#2563eb',
                   width: isCollapsed ? '38px' : '40px',

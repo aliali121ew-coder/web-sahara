@@ -4,6 +4,7 @@ import { Briefcase, AtSign, ShieldCheck, Settings, X, LayoutGrid, Clock, Camera,
 import { resizeAvatar } from '../admin/adminUi';
 import { initials, getSessionStarted, type SessionProfile } from '../../lib/session';
 import { useLanguage } from '../../context/LanguageContext';
+import { useConnection } from '../../lib/useConnection';
 
 type CardProfile = Pick<SessionProfile, 'name' | 'username' | 'role' | 'avatar' | 'color' | 'is_admin'>;
 
@@ -43,6 +44,7 @@ const sinceText = (started: number, tr: (s: string) => string) => {
 /** بطاقة الملف الشخصي: غلاف بمنظر جبلي يتلاشى للأبيض، صورة دائرية، الاسم والدور، إحصاءات، وزر رئيسي */
 export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, isRtl, sectionsCount, status, lastStat, actionLabel, onSaveSelf, onOpenProfile, onClose }) => {
   const { tr } = useLanguage();
+  const online = useConnection();
   const [open, setOpen] = useState(false);
   // تعديل الاسم والصورة (حسابي فقط)
   const [editing, setEditing] = useState(false);
@@ -220,7 +222,7 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
               <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{role}</div>
             </div>
             {(() => {
-              const st = status ?? { label: tr('متصل'), on: true };
+              const st = status ?? (online ? { label: tr('متصل'), on: true } : { label: tr('غير متصل'), on: false });
               return (
                 <span className={`shrink-0 mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-black ring-1 ${st.on ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-900' : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 ring-rose-200 dark:ring-rose-900'}`}>
                   <span className={`w-1.5 h-1.5 rounded-full ${st.on ? 'bg-emerald-500' : 'bg-rose-500'}`} />{st.label}
