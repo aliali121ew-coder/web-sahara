@@ -17,6 +17,7 @@
 - إدارة النظام (`system`): أسماء الجداول والمجلدات وأنواع النسخ والمهام عبر `tableLabel/prefixLabel/kindLabel/jobLabel` في `systemUi.tsx`. سبب الصيانة اليدوية وكلمة `confirm: 'استرجاع'` المرسلة للخادم قيم بروتوكول بقيت كما هي.
 - الصفحات المخفية (`pages`): التقارير التحليلية والمهام والمدراء؛ القيم التجريبية (تصنيفات المهام، الأولوية، حالة المناوبة، مستوى الخزان) عبر `enumText`.
 - رسائل الخادم: كل خطأ يعيده الخادم يحمل `code` (و`codedError` في `worker/errors.ts` للأخطاء المرمية)، والواجهة تعرضه عبر `serverText(data, fallback)` من `src/i18n/errors.ts` بمفاتيح `server:errors.<code>` (العربية تعرض نص الخادم كما هو). رسائل النظام في المحادثات تُترجم عند العرض عبر `systemText`. تفاصيل سجل العمليات (`audit detail`) ما زالت نصًا عربيًا مخزّنًا.
+- حُذف النظام القديم: `src/lib/translations.ts` و`translateDomTree` و`t`/`tr` من `LanguageContext` (يبقى `direction`/`isRTL`/`setLanguage` مبنية على i18next). الإشعارات الجديدة تُخزّن `key` و`params` وتُترجم عند العرض؛ القديمة تُعرض بنصها.
 
 ## ما بقي
 الرقم = عدد الأسطر التي فيها عربي (يشمل بيانات ومقارنات تبقى كما هي).
@@ -25,7 +26,6 @@
 - `eslint-plugin-i18next` لمنع النصوص المكتوبة مباشرة في JSX.
 - اختبارات Vitest/Playwright لتبديل اللغة والاتجاه.
 - cspell للإنجليزية.
-- بعد اكتمال كل ما سبق: احذف النظام القديم (`src/lib/translations.ts`، `translateDomTree`، و`tr`/`t` القديمة في `src/context/LanguageContext.tsx`) وأبقِ `direction`/`setLanguage` مبنية على i18next.
 
 ## قواعد إلزامية
 1. ملفات الترجمة: `src/i18n/locales/{ar,en}/<namespace>.json`، مفاتيح وصفية (مثل `balance.totalInbound`) وليست نصوصًا.

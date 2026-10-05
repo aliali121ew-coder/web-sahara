@@ -19,6 +19,8 @@ import { useTheme } from '../../context/ThemeContext';
 import { useFuelData } from '../../context/FuelDataContext';
 import { useLanguage, ACTIVE_LANGUAGES } from '../../context/LanguageContext';
 import { useTranslation } from 'react-i18next';
+import { enumText } from '../../i18n/enums';
+import { fmtNumber } from '../../i18n/format';
 
 interface HeaderProps {
   onOpenQuickAction?: () => void;
@@ -31,7 +33,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenCommandPalette 
 }) => {
   const { themeMode, toggleThemeMode } = useTheme();
-  const { currentLanguage, currentLangInfo, setLanguage, tr } = useLanguage();
+  const { currentLanguage, currentLangInfo, setLanguage } = useLanguage();
   const { t } = useTranslation(['nav', 'common']);
   // اسم كل لغة بلغة الواجهة الحالية (Arabic / العربية) عبر Intl
   const langName = (code: string) => {
@@ -244,13 +246,13 @@ export const Header: React.FC<HeaderProps> = ({
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-xs text-slate-900 dark:text-white">
-                              {tr(notif.title)}
+                              {notif.key ? t(`common:notif.${notif.key}.title`) : notif.title}
                             </span>
-                            <span className="text-[10px] text-slate-400 font-mono">{notif.timestamp}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">{enumText(notif.timestamp)}</span>
                           </div>
 
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
-                            {tr(notif.message)}
+                            {notif.key ? t(`common:notif.${notif.key}.message`, { ...notif.params, qty: fmtNumber(Number(notif.params?.qty) || 0), company: enumText(String(notif.params?.company ?? '')) }) : notif.message}
                           </p>
                         </div>
                       </div>

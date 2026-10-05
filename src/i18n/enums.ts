@@ -8,7 +8,7 @@ const SLUG: Record<string, string> = {
   // أيام الأسبوع (بالإملاءين الشائعين للإثنين)
   'السبت': 'weekday.sat', 'الأحد': 'weekday.sun', 'الإثنين': 'weekday.mon', 'الاثنين': 'weekday.mon',
   'الثلاثاء': 'weekday.tue', 'الأربعاء': 'weekday.wed', 'الخميس': 'weekday.thu', 'الجمعة': 'weekday.fri',
-  'اليوم': 'relative.today',
+  'اليوم': 'relative.today', 'الآن': 'relative.now',
   // غرفة المحادثة العامة التي ينشئها الخادم
   'غرفة العمليات العامة': 'room.general', 'القناة الرئيسية لكل فريق الموقع': 'room.generalDesc',
   SAT: 'weekday.sat', SUN: 'weekday.sun', MON: 'weekday.mon', TUE: 'weekday.tue', WED: 'weekday.wed', THU: 'weekday.thu', FRI: 'weekday.fri',

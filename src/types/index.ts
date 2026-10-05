@@ -178,4 +178,7 @@ export interface SystemNotification {
   timestamp: string;
   read: boolean;
   type: 'alert' | 'warning' | 'info' | 'success';
+  /** مفتاح الترجمة (common:notif.<key>.title / .message) ومتغيراته؛ النص العربي أعلاه يبقى للإشعارات القديمة */
+  key?: string;
+  params?: Record<string, string | number>;
 }

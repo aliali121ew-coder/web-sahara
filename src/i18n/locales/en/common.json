@@ -113,7 +113,8 @@
       "sahara": "Sahara site"
     },
     "relative": {
-      "today": "Today"
+      "today": "Today",
+      "now": "Just now"
     },
     "color": {
       "red": "Red",
@@ -211,5 +212,15 @@
     "showing": "Showing records <1>{{from}}</1> to <1>{{to}}</1> of <2>{{total}}</2>",
     "prev": "Previous",
     "next": "Next"
+  },
+  "notif": {
+    "inbound": {
+      "title": "New inbound shipment",
+      "message": "Shipment with voucher {{voucher}} ({{qty}} L) was received for {{company}}."
+    },
+    "supply": {
+      "title": "New fuel supply request",
+      "message": "A supply request for {{qty}} L was sent for {{beneficiary}}."
+    }
   }
 }
