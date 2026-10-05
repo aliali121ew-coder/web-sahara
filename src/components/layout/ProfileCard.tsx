@@ -12,6 +12,8 @@ interface Props {
   anchor?: DOMRect | null;
   /** الشريط مطوي: البطاقة تظهر بجانبه بدل فوقه */
   beside?: boolean;
+  /** ملاصقة للعنصر (زر العين): يمينه أو يساره حسب المساحة، وتبدأ من مستواه */
+  nextTo?: boolean;
   isRtl: boolean;
   /** عدد الأقسام المتاحة للمستخدم (null = كل الأقسام) */
   sectionsCount: number | null;
@@ -25,6 +27,7 @@ interface Props {
 }
 
 const WIDTH = 330;
+const EST_HEIGHT = 410;
 
 const sinceText = (started: number, tr: (s: string) => string) => {
   if (!started) return '—';
@@ -35,7 +38,7 @@ const sinceText = (started: number, tr: (s: string) => string) => {
 };
 
 /** بطاقة الملف الشخصي: غلاف بمنظر جبلي يتلاشى للأبيض، صورة دائرية، الاسم والدور، إحصاءات، وزر رئيسي */
-export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, isRtl, sectionsCount, status, lastStat, actionLabel, onOpenProfile, onClose }) => {
+export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, isRtl, sectionsCount, status, lastStat, actionLabel, onOpenProfile, onClose }) => {
   const { tr } = useLanguage();
   const [open, setOpen] = useState(false);
 
@@ -64,6 +67,13 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, isRtl, s
     style.top = '50%';
     style.left = `calc(50% - ${width / 2}px)`;
     style.marginTop = -200;
+  } else if (nextTo) {
+    const gap = 8;
+    const spaceLeft = anchor.left - gap, spaceRight = vw - anchor.right - gap;
+    // يمين/يسار الصف حسب المساحة الأكبر، وإن لم تكفِ أيٌّ منهما يغطي طرف الصف
+    if (spaceLeft >= width || spaceLeft >= spaceRight) style.left = Math.max(8, anchor.left - gap - width);
+    else style.left = Math.min(vw - width - 8, anchor.right + gap);
+    style.top = Math.min(Math.max(8, anchor.top - 24), Math.max(8, vh - EST_HEIGHT - 8));
   } else if (beside) {
     style.bottom = Math.max(8, vh - anchor.bottom);
     if (isRtl) style.right = vw - anchor.left + 10; else style.left = anchor.right + 10;
@@ -77,7 +87,11 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, isRtl, s
 
   return createPortal(
     <>
-      <div className="fixed inset-0 z-[70]" onClick={close} aria-hidden="true" />
+      <div
+        className={`fixed inset-0 z-[70] bg-slate-900/25 dark:bg-black/50 backdrop-blur-[6px] backdrop-saturate-150 transition-opacity duration-200 ${open ? 'opacity-100' : 'opacity-0'}`}
+        onClick={close}
+        aria-hidden="true"
+      />
       <div
         dir={isRtl ? 'rtl' : 'ltr'}
         role="dialog"
@@ -87,7 +101,7 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, isRtl, s
           ...style,
           transform: open ? 'translateY(0) scale(1)' : 'translateY(18px) scale(0.97)',
           opacity: open ? 1 : 0,
-          transformOrigin: 'bottom center',
+          transformOrigin: nextTo ? (style.left !== undefined && Number(style.left) < anchor!.left ? 'top right' : 'top left') : 'bottom center',
           transition: 'transform 260ms cubic-bezier(0.2, 0.9, 0.25, 1.1), opacity 180ms ease-out',
         }}
       >

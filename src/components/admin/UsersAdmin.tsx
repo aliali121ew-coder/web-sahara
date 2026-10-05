@@ -140,7 +140,7 @@ const UsersTab: React.FC<{
   const [issued, setIssued] = useState<{ name: string; username: string; password: string } | null>(null);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
-  const [viewing, setViewing] = useState<Account | null>(null);
+  const [viewing, setViewing] = useState<{ acc: Account; rect: DOMRect } | null>(null);
 
   const filtered = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -220,7 +220,7 @@ const UsersTab: React.FC<{
                   </div>
                 </button>
                 <div className="flex flex-col gap-1">
-                  <button onClick={() => setViewing(a)} title="عرض الملف الشخصي" aria-label={`عرض الملف الشخصي: ${a.name}`} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/40">
+                  <button onClick={e => setViewing({ acc: a, rect: e.currentTarget.getBoundingClientRect() })} title="عرض الملف الشخصي" aria-label={`عرض الملف الشخصي: ${a.name}`} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/40">
                     <Eye className="w-4 h-4" />
                   </button>
                   <button onClick={() => setEditTarget({ acc: a })} title="تعديل الحساب والصلاحيات" className="w-9 h-9 rounded-xl flex items-center justify-center text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/40">
@@ -238,18 +238,23 @@ const UsersTab: React.FC<{
           })}
         </ul>
       )}
-      {viewing && (
-        <ProfileCard
-          profile={viewing}
-          isRtl
-          sectionsCount={viewing.is_admin ? null : Object.keys(viewing.perms || {}).length}
-          status={viewing.disabled ? { label: 'موقوف', on: false } : { label: 'نشط', on: true }}
-          lastStat={{ label: 'آخر ظهور', value: viewing.last_seen ? lastSeenText(viewing.last_seen).replace(/^آخر ظهور\s*/, '') : 'لم يدخل' }}
-          actionLabel="تعديل الحساب والصلاحيات"
-          onOpenProfile={() => setEditTarget({ acc: viewing })}
-          onClose={() => setViewing(null)}
-        />
-      )}
+      {viewing && (() => {
+        const v = viewing.acc;
+        return (
+          <ProfileCard
+            profile={v}
+            anchor={viewing.rect}
+            nextTo
+            isRtl
+            sectionsCount={v.is_admin ? null : Object.keys(v.perms || {}).length}
+            status={v.disabled ? { label: 'موقوف', on: false } : { label: 'نشط', on: true }}
+            lastStat={{ label: 'آخر ظهور', value: v.last_seen ? lastSeenText(v.last_seen).replace(/^آخر ظهور\s*/, '') : 'لم يدخل' }}
+            actionLabel="تعديل الحساب والصلاحيات"
+            onOpenProfile={() => setEditTarget({ acc: v })}
+            onClose={() => setViewing(null)}
+          />
+        );
+      })()}
     </div>
   );
 };
