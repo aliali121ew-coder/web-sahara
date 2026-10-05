@@ -351,11 +351,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Inline custom style for match-bg
   const getSidebarInlineStyle = (): React.CSSProperties => {
     if (sidebarStyle === 'match-bg' && bgGradient === 'none') {
-      // التلقائي: الشريط المطوي أبيض (أو كحلي ليلًا)، والمفتوح أبيض يتلاشى تدريجيًا إلى أزرق مُعتّم خفيف في الأسفل
-      if (isCollapsed) return { backgroundColor: themeMode === 'dark' ? '#0d1526' : '#ffffff', backgroundImage: 'none' };
-      return themeMode === 'dark'
-        ? { backgroundColor: '#0b1220', backgroundImage: 'linear-gradient(180deg, #111a2e 0%, #0d1526 40%, #0b1322 70%, #0a1a33 100%)' }
-        : { backgroundColor: '#f8fafc', backgroundImage: 'linear-gradient(180deg, #ffffff 0%, #fbfcfe 30%, #eef3fa 65%, #dde6f3 100%)' };
+      // التلقائي: الشريط المطوي سطح سادة، والمفتوح سطح نظيف بتوهّج أزرق خافت جدًا من زاوية الشعار
+      // ولمسة نيلية باهتة أسفله، مع ظل ناعم على حافته يفصله عن الصفحة دون خطوط حادة
+      const dark = themeMode === 'dark';
+      if (isCollapsed) return { backgroundColor: dark ? '#0d1526' : '#ffffff', backgroundImage: 'none' };
+      const corner = isRtl ? '100% 0%' : '0% 0%';
+      const far = isRtl ? '0% 100%' : '100% 100%';
+      const edge = isRtl ? '-1px' : '1px';
+      const spread = isRtl ? '-18px' : '18px';
+      return dark
+        ? {
+            backgroundColor: '#0b1220',
+            backgroundImage: `radial-gradient(130% 45% at ${corner}, rgba(59,130,246,0.16), transparent 62%), radial-gradient(110% 35% at ${far}, rgba(99,102,241,0.10), transparent 70%), linear-gradient(180deg, #0f172a 0%, #0b1220 100%)`,
+            boxShadow: `${edge} 0 0 rgba(148,163,184,0.10), ${spread} 0 40px -20px rgba(0,0,0,0.55)`,
+          }
+        : {
+            backgroundColor: '#ffffff',
+            backgroundImage: `radial-gradient(130% 45% at ${corner}, rgba(37,99,235,0.075), transparent 62%), radial-gradient(110% 35% at ${far}, rgba(99,102,241,0.055), transparent 70%), linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%)`,
+            boxShadow: `${edge} 0 0 rgba(15,23,42,0.06), ${spread} 0 40px -20px rgba(15,23,42,0.14)`,
+          };
     }
     if (sidebarStyle === 'match-bg') {
       return {
