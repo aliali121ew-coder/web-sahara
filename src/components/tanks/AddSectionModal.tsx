@@ -11,6 +11,7 @@ import {
   FileText
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { enumText } from '../../i18n/enums';
 import { TankSectionConfig } from './TanksOverview';
 
 interface AddSectionModalProps {
@@ -22,7 +23,6 @@ interface AddSectionModalProps {
 const COLOR_PRESETS = [
   {
     key: 'blue',
-    label: 'أزرق نفطي (صحاري)',
     accentColor: '#2563eb',
     badgeBg: 'bg-blue-50 dark:bg-blue-950/50',
     badgeText: 'text-blue-700 dark:text-blue-300',
@@ -33,7 +33,6 @@ const COLOR_PRESETS = [
   },
   {
     key: 'emerald',
-    label: 'أخضر زمردي (كاز وبنزين)',
     accentColor: '#059669',
     badgeBg: 'bg-emerald-50 dark:bg-emerald-950/50',
     badgeText: 'text-emerald-700 dark:text-emerald-300',
@@ -44,7 +43,6 @@ const COLOR_PRESETS = [
   },
   {
     key: 'amber',
-    label: 'برتقالي كهرماني (ديزل وبفر)',
     accentColor: '#d97706',
     badgeBg: 'bg-amber-50 dark:bg-amber-950/50',
     badgeText: 'text-amber-700 dark:text-amber-300',
@@ -55,7 +53,6 @@ const COLOR_PRESETS = [
   },
   {
     key: 'cyan',
-    label: 'سماوي (الاتحاد)',
     accentColor: '#0891b2',
     badgeBg: 'bg-cyan-50 dark:bg-cyan-950/50',
     badgeText: 'text-cyan-700 dark:text-cyan-300',
@@ -66,7 +63,6 @@ const COLOR_PRESETS = [
   },
   {
     key: 'purple',
-    label: 'أرجواني ملكي',
     accentColor: '#7c3aed',
     badgeBg: 'bg-purple-50 dark:bg-purple-950/50',
     badgeText: 'text-purple-700 dark:text-purple-300',
@@ -151,7 +147,7 @@ export const AddSectionModal: React.FC<AddSectionModalProps> = ({
           <button
             onClick={onClose}
             className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/25 text-white flex items-center justify-center transition-colors relative z-10 cursor-pointer"
-            aria-label="إغلاق"
+            aria-label={t('common:actions.close')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -168,7 +164,7 @@ export const AddSectionModal: React.FC<AddSectionModalProps> = ({
             <input
               type="text"
               required
-              placeholder="مثال: خزانات البنزين المحسن - الموقع 3"
+              placeholder={t('tanks:section.namePlaceholder')}
               value={sectionName}
               onChange={(e) => setSectionName(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs sm:text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-slate-400 placeholder:font-normal"
@@ -186,9 +182,9 @@ export const AddSectionModal: React.FC<AddSectionModalProps> = ({
               onChange={(e) => setCompany(e.target.value as any)}
               className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs sm:text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all cursor-pointer"
             >
-              <option value="صحاري كربلاء">صحاري كربلاء</option>
-              <option value="شركة الاتحاد">شركة الاتحاد</option>
-              <option value="شركة صحاري كربلاء">شركة صحاري كربلاء</option>
+              <option value="صحاري كربلاء">{enumText('صحاري كربلاء')}</option>
+              <option value="شركة الاتحاد">{enumText('شركة الاتحاد')}</option>
+              <option value="شركة صحاري كربلاء">{enumText('شركة صحاري كربلاء')}</option>
             </select>
           </div>
 
@@ -200,7 +196,7 @@ export const AddSectionModal: React.FC<AddSectionModalProps> = ({
             </label>
             <input
               type="text"
-              placeholder="مثال: منظومة تخزين ومضخات التغذية لمحطة التوليد"
+              placeholder={t('tanks:section.descriptionPlaceholder')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs sm:text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-slate-400 placeholder:font-normal"
@@ -220,7 +216,7 @@ export const AddSectionModal: React.FC<AddSectionModalProps> = ({
                     key={preset.key}
                     type="button"
                     onClick={() => setSelectedColorKey(preset.key)}
-                    className={`p-2.5 rounded-xl border text-right text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                    className={`p-2.5 rounded-xl border text-start text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
                       isSelected
                         ? 'border-blue-500 ring-2 ring-blue-400/30 bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300'
                         : 'border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -230,7 +226,7 @@ export const AddSectionModal: React.FC<AddSectionModalProps> = ({
                       className="w-3 h-3 rounded-full shrink-0 shadow-xs"
                       style={{ backgroundColor: preset.accentColor }}
                     />
-                    <span className="truncate text-[11px]">{preset.label}</span>
+                    <span className="truncate text-[11px]">{t(`tanks:section.colors.${preset.key}`)}</span>
                   </button>
                 );
               })}

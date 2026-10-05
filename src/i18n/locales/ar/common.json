@@ -83,7 +83,8 @@
     "company": {
       "sahara": "صحاري كربلاء",
       "etihad": "شركة الاتحاد",
-      "mainDepot": "المستودع الرئيسي"
+      "mainDepot": "المستودع الرئيسي",
+      "saharaCompany": "شركة صحاري كربلاء"
     },
     "product": {
       "saharaGasoline": "بنزين الصحاري",

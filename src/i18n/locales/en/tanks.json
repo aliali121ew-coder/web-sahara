@@ -19,7 +19,16 @@
     "delete": "Delete this whole section",
     "total": "Table stock total",
     "confirmDeleteTitle": "Delete this section?",
-    "confirmDeleteText": "Are you sure you want to delete <1>“{{name}}”</1>? All tanks in this section will be removed right away."
+    "confirmDeleteText": "Are you sure you want to delete <1>“{{name}}”</1>? All tanks in this section will be removed right away.",
+    "namePlaceholder": "e.g. Premium gasoline tanks - Site 3",
+    "descriptionPlaceholder": "e.g. Storage and feed pumps for the power plant",
+    "colors": {
+      "blue": "Petroleum blue (Sahara)",
+      "emerald": "Emerald green (gasoil and gasoline)",
+      "amber": "Amber orange (diesel and buffer)",
+      "cyan": "Sky blue (Etihad)",
+      "purple": "Royal purple"
+    }
   },
   "tank": {
     "nameRequired": "Please enter a tank name",
@@ -62,5 +71,37 @@
   "irreversibleTank": "This can't be undone. The tank will be removed from the system right away.",
   "confirmDeleteTankRecords": "Are you sure you want to delete <1>“{{name}}”</1>? This can't be undone, and all of the tank's records and data will be removed permanently.",
   "count_one": "{{count}} tank",
-  "count_other": "{{count}} tanks"
+  "count_other": "{{count}} tanks",
+  "level": {
+    "excellent": "Excellent",
+    "good": "Good",
+    "low": "Low",
+    "critical": "Critical"
+  },
+  "card": {
+    "lowLevelWarning": "Warning: low level ({{value}}%)",
+    "show": "Show this tank and count it in balances",
+    "hide": "Hide this tank and exclude it from balances",
+    "editAll": "Edit all details of this tank",
+    "delete": "Delete this tank",
+    "hiddenBadge": "Hidden — not counted",
+    "dragLevel": "Drag to set the level",
+    "levelLocked": "Level editing is locked — press “Edit tanks” above",
+    "levelSliderAria": "Adjust level of {{name}}",
+    "levelInputAria": "Level of {{name}}",
+    "stored": "Actual stock",
+    "capacity": "Capacity:",
+    "fill": "Fill level:",
+    "level": "Level:"
+  },
+  "gauge": {
+    "safe": "Safe and stable",
+    "warning": "Level warning",
+    "critical": "Critical",
+    "temperature": "Temperature",
+    "pressure": "Pressure",
+    "sediment": "Sediment",
+    "draw": "Draw {{amount}} L",
+    "fill": "Fill {{amount}} L"
+  }
 }

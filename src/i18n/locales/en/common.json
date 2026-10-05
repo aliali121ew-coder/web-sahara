@@ -75,7 +75,8 @@
     "company": {
       "sahara": "Sahara Karbala",
       "etihad": "Etihad Company",
-      "mainDepot": "Main depot"
+      "mainDepot": "Main depot",
+      "saharaCompany": "Sahara Karbala Company"
     },
     "product": {
       "saharaGasoline": "Sahara gasoline",

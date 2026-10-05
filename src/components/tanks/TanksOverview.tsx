@@ -378,11 +378,12 @@ export const OFFICIAL_TABLE_TANK_UNITS: TankUnitRow[] = [
 ];
 
 // Adaptive Fluid Theme based strictly on percentage
+// statusLabel مفتاح ترجمة: tanks:level.<statusLabel>
 export const getFillLevelTheme = (percent: number) => {
   if (percent >= 80) {
     return {
       status: 'safe',
-      statusLabel: 'ممتاز',
+      statusLabel: 'excellent',
       gradientFrom: '#064e3b',
       gradientVia: '#059669',
       gradientTo: '#10b981',
@@ -395,7 +396,7 @@ export const getFillLevelTheme = (percent: number) => {
   } else if (percent >= 60) {
     return {
       status: 'safe',
-      statusLabel: 'جيد',
+      statusLabel: 'good',
       gradientFrom: '#1e3a8a',
       gradientVia: '#2563eb',
       gradientTo: '#3b82f6',
@@ -408,7 +409,7 @@ export const getFillLevelTheme = (percent: number) => {
   } else if (percent >= 31) {
     return {
       status: 'warning',
-      statusLabel: 'منخفض',
+      statusLabel: 'low',
       gradientFrom: '#78350f',
       gradientVia: '#d97706',
       gradientTo: '#f59e0b',
@@ -421,7 +422,7 @@ export const getFillLevelTheme = (percent: number) => {
   } else {
     return {
       status: 'critical',
-      statusLabel: 'حرج',
+      statusLabel: 'critical',
       gradientFrom: '#7f1d1d',
       gradientVia: '#dc2626',
       gradientTo: '#ef4444',
