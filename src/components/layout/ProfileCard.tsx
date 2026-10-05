@@ -4,15 +4,22 @@ import { Briefcase, AtSign, ShieldCheck, Settings, X, LayoutGrid, Clock } from '
 import { initials, getSessionStarted, type SessionProfile } from '../../lib/session';
 import { useLanguage } from '../../context/LanguageContext';
 
+type CardProfile = Pick<SessionProfile, 'name' | 'username' | 'role' | 'avatar' | 'color' | 'is_admin'>;
+
 interface Props {
-  profile: SessionProfile | null;
-  /** مكان زر الملف الشخصي: البطاقة تصعد من فوقه */
-  anchor: DOMRect;
+  profile: CardProfile | null;
+  /** مكان الزر: البطاقة تصعد من فوقه. بدونه تظهر وسط الشاشة */
+  anchor?: DOMRect | null;
   /** الشريط مطوي: البطاقة تظهر بجانبه بدل فوقه */
-  beside: boolean;
+  beside?: boolean;
   isRtl: boolean;
-  /** عدد الأقسام المتاحة للمستخدم */
-  sectionsCount: number;
+  /** عدد الأقسام المتاحة للمستخدم (null = كل الأقسام) */
+  sectionsCount: number | null;
+  /** شارة الحالة (الافتراضي: متصل) */
+  status?: { label: string; on: boolean };
+  /** الإحصاء الثالث (الافتراضي: مدة الجلسة الحالية) */
+  lastStat?: { label: string; value: string };
+  actionLabel?: string;
   onOpenProfile: () => void;
   onClose: () => void;
 }
@@ -28,7 +35,7 @@ const sinceText = (started: number, tr: (s: string) => string) => {
 };
 
 /** بطاقة الملف الشخصي: غلاف بمنظر جبلي يتلاشى للأبيض، صورة دائرية، الاسم والدور، إحصاءات، وزر رئيسي */
-export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, isRtl, sectionsCount, onOpenProfile, onClose }) => {
+export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, isRtl, sectionsCount, status, lastStat, actionLabel, onOpenProfile, onClose }) => {
   const { tr } = useLanguage();
   const [open, setOpen] = useState(false);
 
@@ -53,7 +60,11 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, isRtl, s
   const vw = window.innerWidth, vh = window.innerHeight;
   const width = Math.min(WIDTH, vw - 16);
   const style: React.CSSProperties = { width };
-  if (beside) {
+  if (!anchor) {
+    style.top = '50%';
+    style.left = `calc(50% - ${width / 2}px)`;
+    style.marginTop = -200;
+  } else if (beside) {
     style.bottom = Math.max(8, vh - anchor.bottom);
     if (isRtl) style.right = vw - anchor.left + 10; else style.left = anchor.right + 10;
   } else {
@@ -119,9 +130,14 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, isRtl, s
               <div className="text-lg font-black text-slate-900 dark:text-white truncate">{profile?.name || '—'}</div>
               <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{role}</div>
             </div>
-            <span className="shrink-0 mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10.5px] font-black ring-1 ring-emerald-200 dark:ring-emerald-900">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />{tr('متصل')}
-            </span>
+            {(() => {
+              const st = status ?? { label: tr('متصل'), on: true };
+              return (
+                <span className={`shrink-0 mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-black ring-1 ${st.on ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-900' : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 ring-rose-200 dark:ring-rose-900'}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${st.on ? 'bg-emerald-500' : 'bg-rose-500'}`} />{st.label}
+                </span>
+              );
+            })()}
           </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-slate-500 dark:text-slate-400">
@@ -131,7 +147,7 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, isRtl, s
 
           {/* الإحصاءات + الزر */}
           <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
-            <div className="flex items-center divide-x divide-slate-200 dark:divide-slate-700 rtl:divide-x-reverse">
+            <div className="flex-1 min-w-0 flex items-stretch divide-x divide-slate-200 dark:divide-slate-700 rtl:divide-x-reverse">
               <div className="pe-3">
                 <div className="flex items-center gap-1 text-sm font-black text-slate-900 dark:text-white">
                   {profile?.is_admin ? <ShieldCheck className="w-4 h-4 text-emerald-500" /> : null}
@@ -141,15 +157,15 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, isRtl, s
               </div>
               <div className="px-3">
                 <div className="flex items-center gap-1 text-sm font-black text-slate-900 dark:text-white">
-                  <LayoutGrid className="w-3.5 h-3.5 text-slate-400" />{sectionsCount}
+                  <LayoutGrid className="w-3.5 h-3.5 text-slate-400" />{sectionsCount === null ? tr('الكل') : sectionsCount}
                 </div>
                 <div className="text-[10.5px] text-slate-400">{tr('الأقسام')}</div>
               </div>
-              <div className="ps-3">
-                <div className="flex items-center gap-1 text-sm font-black text-slate-900 dark:text-white whitespace-nowrap">
-                  <Clock className="w-3.5 h-3.5 text-slate-400" />{sinceText(getSessionStarted(), tr)}
+              <div className="ps-3 min-w-0 flex-1">
+                <div className="flex items-start gap-1 text-sm font-black text-slate-900 dark:text-white leading-tight">
+                  <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />{lastStat ? lastStat.value : sinceText(getSessionStarted(), tr)}
                 </div>
-                <div className="text-[10.5px] text-slate-400">{tr('الجلسة')}</div>
+                <div className="text-[10.5px] text-slate-400">{lastStat ? lastStat.label : tr('الجلسة')}</div>
               </div>
             </div>
           </div>
@@ -159,7 +175,7 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, isRtl, s
             onClick={() => { onOpenProfile(); close(); }}
             className="mt-4 w-full h-11 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-slate-800 dark:hover:bg-slate-100 active:scale-[0.98] transition-all cursor-pointer"
           >
-            <Settings className="w-4 h-4" />{tr('الملف الشخصي والحساب')}
+            <Settings className="w-4 h-4" />{actionLabel ?? tr('الملف الشخصي والحساب')}
           </button>
         </div>
       </div>
