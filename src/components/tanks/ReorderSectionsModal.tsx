@@ -11,7 +11,7 @@ import {
   Fuel,
   Flame
 } from 'lucide-react';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
 import { TankSectionConfig } from './TanksOverview';
 
 interface ReorderSectionsModalProps {
@@ -42,7 +42,7 @@ export const ReorderSectionsModal: React.FC<ReorderSectionsModalProps> = ({
   onReorder,
   onResetOrder
 }) => {
-  const { tr } = useLanguage();
+  const { t } = useTranslation(['tanks', 'common']);
 
   if (!isOpen) return null;
 
@@ -84,10 +84,10 @@ export const ReorderSectionsModal: React.FC<ReorderSectionsModalProps> = ({
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-black tracking-tight">
-                {tr('تعديل ترتيب الأقسام')}
+                {t('tanks:reorder.title')}
               </h2>
               <p className="text-[11px] sm:text-xs text-blue-100 font-medium mt-0.5">
-                {tr('تحكم في ترتيب ظهور أقسام الخزانات في الواجهة الرئيسية')}
+                {t('tanks:reorder.text')}
               </p>
             </div>
           </div>
@@ -104,7 +104,7 @@ export const ReorderSectionsModal: React.FC<ReorderSectionsModalProps> = ({
         {/* Content Body: Sections List */}
         <div className="p-5 sm:p-6 space-y-3 max-h-[60vh] overflow-y-auto">
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-            {tr('استخدم أزرار الأسهم لتقديم أو تأخير ظهور القسم:')}
+            {t('tanks:reorder.hint')}
           </p>
 
           <div className="space-y-2.5">
@@ -156,7 +156,7 @@ export const ReorderSectionsModal: React.FC<ReorderSectionsModalProps> = ({
                           ? 'opacity-30 cursor-not-allowed bg-slate-200 dark:bg-slate-700 text-slate-400'
                           : 'bg-white dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-blue-900/40 text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-200 dark:border-slate-600 cursor-pointer shadow-2xs hover:scale-105 active:scale-95'
                       }`}
-                      title={tr('تحريك للأعلى')}
+                      title={t('tanks:reorder.up')}
                     >
                       <ArrowUp className="w-4 h-4" />
                     </button>
@@ -170,7 +170,7 @@ export const ReorderSectionsModal: React.FC<ReorderSectionsModalProps> = ({
                           ? 'opacity-30 cursor-not-allowed bg-slate-200 dark:bg-slate-700 text-slate-400'
                           : 'bg-white dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-blue-900/40 text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-200 dark:border-slate-600 cursor-pointer shadow-2xs hover:scale-105 active:scale-95'
                       }`}
-                      title={tr('تحريك للأسفل')}
+                      title={t('tanks:reorder.down')}
                     >
                       <ArrowDown className="w-4 h-4" />
                     </button>
@@ -187,10 +187,10 @@ export const ReorderSectionsModal: React.FC<ReorderSectionsModalProps> = ({
             type="button"
             onClick={onResetOrder}
             className="px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
-            title={tr('استعادة الترتيب الافتراضي للأقسام')}
+            title={t('tanks:reorder.resetHint')}
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>{tr('الترتيب الافتراضي')}</span>
+            <span>{t('tanks:reorder.reset')}</span>
           </button>
 
           <button
@@ -199,7 +199,7 @@ export const ReorderSectionsModal: React.FC<ReorderSectionsModalProps> = ({
             className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-black shadow-md shadow-blue-500/25 flex items-center gap-1.5 transition-all cursor-pointer active:scale-98"
           >
             <Check className="w-4 h-4 stroke-[2.5]" />
-            <span>{tr('تم وحفظ الترتيب')}</span>
+            <span>{t('tanks:reorder.done')}</span>
           </button>
         </div>
 

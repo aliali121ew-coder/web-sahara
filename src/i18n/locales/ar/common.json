@@ -15,7 +15,10 @@
     "confirm": "تأكيد",
     "logout": "تسجيل الخروج",
     "clearFilter": "إلغاء التصفية",
-    "done": "تم"
+    "done": "تم",
+    "delete": "حذف",
+    "saveChanges": "حفظ التعديلات",
+    "edit": "تعديل"
   },
   "status": {
     "online": "متصل",
@@ -31,7 +34,8 @@
     "days_zero": "0 يوم",
     "days_two": "يومان",
     "days_few": "{{count}} أيام",
-    "days_many": "{{count}} يومًا"
+    "days_many": "{{count}} يومًا",
+    "meter": "م"
   },
   "time": {
     "minutesShort": "{{count}} د",

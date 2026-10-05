@@ -10,7 +10,7 @@ import {
   Building2,
   FileText
 } from 'lucide-react';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
 import { TankSectionConfig } from './TanksOverview';
 
 interface AddSectionModalProps {
@@ -82,7 +82,7 @@ export const AddSectionModal: React.FC<AddSectionModalProps> = ({
   onClose,
   onAddSection
 }) => {
-  const { tr } = useLanguage();
+  const { t } = useTranslation(['tanks', 'common']);
 
   const [sectionName, setSectionName] = useState('');
   const [company, setCompany] = useState<'صحاري كربلاء' | 'شركة الاتحاد' | 'شركة صحاري كربلاء'>('صحاري كربلاء');
@@ -97,7 +97,7 @@ export const AddSectionModal: React.FC<AddSectionModalProps> = ({
     e.preventDefault();
 
     if (!sectionName.trim()) {
-      alert(tr('يرجى إدخال اسم القسم'));
+      alert(t('tanks:section.nameRequired'));
       return;
     }
 
@@ -106,7 +106,7 @@ export const AddSectionModal: React.FC<AddSectionModalProps> = ({
       key,
       name: sectionName.trim(),
       company,
-      description: description.trim() || tr('قسم تشغيلي إضافي مخصص لمنظومة الخزانات'),
+      description: description.trim() || t('tanks:section.defaultDescription'),
       icon: activePreset.icon,
       iconName: activePreset.iconName,
       accentColor: activePreset.accentColor,
@@ -141,9 +141,9 @@ export const AddSectionModal: React.FC<AddSectionModalProps> = ({
               <Layers className="w-6 h-6 text-white stroke-[2.5]" />
             </div>
             <div>
-              <h3 className="text-lg sm:text-xl font-black tracking-tight">{tr('إضافة قسم جديد للخزانات')}</h3>
+              <h3 className="text-lg sm:text-xl font-black tracking-tight">{t('tanks:section.addTitle')}</h3>
               <p className="text-xs text-blue-100/90 font-medium mt-0.5">
-                {tr('إنشاء مصفوفة جدول أو وحدة تخزين جديدة')}
+                {t('tanks:section.addText')}
               </p>
             </div>
           </div>
@@ -163,7 +163,7 @@ export const AddSectionModal: React.FC<AddSectionModalProps> = ({
           {/* Section Name */}
           <div className="space-y-1.5">
             <label className="block text-xs font-black text-slate-700 dark:text-slate-200">
-              {tr('اسم القسم / الوحدة الجديدة')} <span className="text-rose-500">*</span>
+              {t('tanks:section.name')} <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
@@ -179,7 +179,7 @@ export const AddSectionModal: React.FC<AddSectionModalProps> = ({
           <div className="space-y-1.5">
             <label className="block text-xs font-black text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
               <Building2 className="w-3.5 h-3.5 text-blue-500" />
-              <span>{tr('الشركة التابعة')}</span>
+              <span>{t('tanks:section.company')}</span>
             </label>
             <select
               value={company}
@@ -196,7 +196,7 @@ export const AddSectionModal: React.FC<AddSectionModalProps> = ({
           <div className="space-y-1.5">
             <label className="block text-xs font-black text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5 text-blue-500" />
-              <span>{tr('وصف القسم والتشغيل')}</span>
+              <span>{t('tanks:section.description')}</span>
             </label>
             <input
               type="text"
@@ -210,7 +210,7 @@ export const AddSectionModal: React.FC<AddSectionModalProps> = ({
           {/* Color Preset Selector */}
           <div className="space-y-2 pt-1">
             <label className="block text-xs font-black text-slate-700 dark:text-slate-200">
-              {tr('السمة اللونية للقسم')}
+              {t('tanks:section.color')}
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {COLOR_PRESETS.map((preset) => {
@@ -244,14 +244,14 @@ export const AddSectionModal: React.FC<AddSectionModalProps> = ({
               onClick={onClose}
               className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors cursor-pointer"
             >
-              {tr('إلغاء')}
+              {t('common:actions.cancel')}
             </button>
             <button
               type="submit"
               className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs sm:text-sm shadow-md shadow-blue-500/25 flex items-center gap-2 transition-all cursor-pointer hover:shadow-lg active:scale-98"
             >
               <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
-              <span>{tr('إضافة القسم')}</span>
+              <span>{t('tanks:section.add')}</span>
             </button>
           </div>
 

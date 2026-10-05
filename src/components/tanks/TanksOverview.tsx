@@ -17,7 +17,7 @@ import {
   X
 } from 'lucide-react';
 import { formatNumber } from '../../lib/utils';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation, Trans } from 'react-i18next';
 import { Tank3DCard } from './Tank3DCard';
 import { TankGlobalSvgDefs } from './TankGlobalSvgDefs';
 import { AddTankModal } from './AddTankModal';
@@ -439,7 +439,7 @@ const EMPTY_KEYS: string[] = [];
 const EMPTY_OVERRIDES: Record<string, { name: string; description: string }> = {};
 
 export const TanksOverview: React.FC = () => {
-  const { tr } = useLanguage();
+  const { t } = useTranslation(['tanks', 'common']);
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [editingTank, setEditingTank] = useState<TankUnitRow | null>(null);
@@ -702,7 +702,7 @@ export const TanksOverview: React.FC = () => {
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                {tr('خزانات شركة الاتحاد وصحاري كربلاء')}
+                {t('tanks:title')}
               </h1>
             </div>
           </div>
@@ -718,17 +718,17 @@ export const TanksOverview: React.FC = () => {
                   ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-500 shadow-md shadow-blue-500/25 ring-2 ring-blue-400/40 animate-pulse'
                   : 'bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/60 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/80 hover:border-blue-300 dark:hover:border-blue-600'
               }`}
-              title={isEditMode ? tr('حفظ وإنهاء وضع التعديل') : tr('تفعيل وضع تعديل الخزانات')}
+              title={isEditMode ? t('tanks:editSaveHint') : t('tanks:editModeHint')}
             >
               {isEditMode ? (
                 <>
                   <Check className="w-4 h-4 text-emerald-300 stroke-[2.5]" />
-                  <span>{tr('حفظ التعديلات')}</span>
+                  <span>{t('common:actions.saveChanges')}</span>
                 </>
               ) : (
                 <>
                   <Edit3 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  <span>{tr('تعديل الخزانات')}</span>
+                  <span>{t('tanks:editTanks')}</span>
                 </>
               )}
             </button>
@@ -737,10 +737,10 @@ export const TanksOverview: React.FC = () => {
             <button
               onClick={() => setIsReorderModalOpen(true)}
               className="px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95 hover:border-blue-300 dark:hover:border-blue-600"
-              title={tr('تعديل ترتيب ظهور الأقسام')}
+              title={t('tanks:reorderHint')}
             >
               <ArrowUpDown className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <span>{tr('ترتيب الأقسام')}</span>
+              <span>{t('tanks:reorderSections')}</span>
             </button>
 
             {/* Add Button with Section Selection Dropdown */}
@@ -748,10 +748,10 @@ export const TanksOverview: React.FC = () => {
               <button
                 onClick={() => setIsSectionDropdownOpen(prev => !prev)}
                 className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white border border-blue-500 font-black text-xs flex items-center gap-2 shadow-xs transition-all cursor-pointer hover:shadow-md active:scale-98"
-                title={tr('إضافة خزان أو قسم جديد')}
+                title={t('tanks:addHint')}
               >
                 <Plus className="w-4 h-4 stroke-[2.5]" />
-                <span>{tr('إضافة')}</span>
+                <span>{t('tanks:add')}</span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isSectionDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
@@ -764,7 +764,7 @@ export const TanksOverview: React.FC = () => {
                   />
                   <div className="absolute left-0 top-full mt-2 w-72 sm:w-80 max-w-[calc(100vw-32px)] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150 space-y-1">
                     <div className="px-3 py-1.5 border-b border-slate-100 dark:border-slate-800 text-[11px] font-black text-slate-400">
-                      {tr('اختر القسم لإضافة خزان إليه:')}
+                      {t('tanks:pickSection')}
                     </div>
 
                     {allOrderedSectionKeys.map((key) => {
@@ -809,7 +809,7 @@ export const TanksOverview: React.FC = () => {
                       >
                         <span className="flex items-center gap-2">
                           <Plus className="w-4 h-4 text-blue-600 dark:text-blue-400 stroke-[2.5]" />
-                          <span>{tr('إضافة قسم آخر')}</span>
+                          <span>{t('tanks:addSection')}</span>
                         </span>
                         <Layers className="w-4 h-4 text-blue-500 opacity-70 group-hover:scale-110 transition-transform" />
                       </button>
@@ -864,7 +864,7 @@ export const TanksOverview: React.FC = () => {
                         </h2>
                       )}
                       <span className={`px-2.5 py-0.5 rounded-lg text-[10.5px] font-bold border ${config.badgeBg} ${config.badgeText} ${config.badgeBorder}`}>
-                        {tanks.length} {tr('خزانات')}
+                        {t('tanks:count', { count: tanks.length })}
                       </span>
                     </div>
                     {renamingSectionKey === config.key ? (
@@ -872,7 +872,7 @@ export const TanksOverview: React.FC = () => {
                         value={draftSectionDesc}
                         onChange={e => setDraftSectionDesc(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') saveRenameSection(); if (e.key === 'Escape') setRenamingSectionKey(null); }}
-                        placeholder={tr('وصف القسم')}
+                        placeholder={t('tanks:section.descriptionShort')}
                         className="mt-1 w-full max-w-md text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500/30"
                       />
                     ) : (
@@ -890,17 +890,17 @@ export const TanksOverview: React.FC = () => {
                       {/* Rename Section */}
                       {renamingSectionKey === config.key ? (
                         <>
-                          <button type="button" onClick={saveRenameSection} title={tr('حفظ اسم القسم')}
+                          <button type="button" onClick={saveRenameSection} title={t('tanks:section.saveName')}
                             className="w-9 h-9 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center cursor-pointer shadow-xs hover:scale-105 active:scale-95 transition-all">
                             <Check className="w-4 h-4" />
                           </button>
-                          <button type="button" onClick={() => setRenamingSectionKey(null)} title={tr('إلغاء')}
+                          <button type="button" onClick={() => setRenamingSectionKey(null)} title={t('common:actions.cancel')}
                             className="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 flex items-center justify-center cursor-pointer shadow-2xs hover:scale-105 active:scale-95 transition-all">
                             <X className="w-4 h-4" />
                           </button>
                         </>
                       ) : (
-                        <button type="button" onClick={() => startRenameSection(config)} title={tr('تعديل اسم القسم')}
+                        <button type="button" onClick={() => startRenameSection(config)} title={t('tanks:section.rename')}
                           className="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/40 text-slate-700 dark:text-slate-200 hover:text-blue-600 flex items-center justify-center cursor-pointer shadow-2xs hover:scale-105 active:scale-95 transition-all">
                           <PencilLine className="w-4 h-4" />
                         </button>
@@ -916,7 +916,7 @@ export const TanksOverview: React.FC = () => {
                             ? 'opacity-30 cursor-not-allowed bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700'
                             : 'bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/40 text-slate-700 dark:text-slate-200 hover:text-blue-600 border-slate-200 dark:border-slate-700 cursor-pointer shadow-2xs hover:scale-105 active:scale-95'
                         }`}
-                        title={tr('تحريك هذا القسم للأعلى')}
+                        title={t('tanks:section.up')}
                       >
                         <ArrowUp className="w-4 h-4" />
                       </button>
@@ -931,7 +931,7 @@ export const TanksOverview: React.FC = () => {
                             ? 'opacity-30 cursor-not-allowed bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700'
                             : 'bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/40 text-slate-700 dark:text-slate-200 hover:text-blue-600 border-slate-200 dark:border-slate-700 cursor-pointer shadow-2xs hover:scale-105 active:scale-95'
                         }`}
-                        title={tr('تحريك هذا القسم للأسفل')}
+                        title={t('tanks:section.down')}
                       >
                         <ArrowDown className="w-4 h-4" />
                       </button>
@@ -940,7 +940,7 @@ export const TanksOverview: React.FC = () => {
                       <button
                         onClick={() => setSectionToDelete(config)}
                         className="w-9 h-9 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/90 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 transition-all cursor-pointer shadow-xs flex items-center justify-center hover:scale-105 active:scale-95"
-                        title={tr('حذف هذا القسم بالكامل')}
+                        title={t('tanks:section.delete')}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -949,9 +949,9 @@ export const TanksOverview: React.FC = () => {
 
                   <div className="flex items-center gap-3 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
                     <div className="text-right">
-                      <span className="text-[10px] font-bold text-slate-400 block">{tr('إجمالي مخزون الجدول')}</span>
+                      <span className="text-[10px] font-bold text-slate-400 block">{t('tanks:section.total')}</span>
                       <span className="text-xs sm:text-sm font-black font-mono text-slate-900 dark:text-white">
-                        {formatNumber(secTotalStored)} <span className="text-[9px] text-slate-400 font-normal">/ {formatNumber(secTotalCapacity)} {tr('لتر')}</span>
+                        {formatNumber(secTotalStored)} <span className="text-[9px] text-slate-400 font-normal">/ {formatNumber(secTotalCapacity)} {t('common:units.liter')}</span>
                       </span>
                     </div>
                     <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/30 flex items-center justify-center font-mono font-black text-xs text-blue-600 dark:text-blue-400">
@@ -1021,10 +1021,10 @@ export const TanksOverview: React.FC = () => {
             {/* Title & Description */}
             <div className="space-y-2">
               <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
-                {tr('تأكيد حذف القسم')}
+                {t('tanks:section.confirmDeleteTitle')}
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
-                {tr('هل أنت متأكد من رغبتك في حذف')} <strong className="text-rose-600 dark:text-rose-400 font-bold">"{sectionToDelete.name}"</strong>؟ {tr('سيتم إزالة هذا القسم مع كافة الخزانات التابعة له فورياً.')}
+                <Trans t={t} i18nKey="tanks:section.confirmDeleteText" values={{ name: sectionToDelete.name }} components={{ 1: <strong className="text-rose-600 dark:text-rose-400 font-bold" /> }} />
               </p>
             </div>
 
@@ -1035,7 +1035,7 @@ export const TanksOverview: React.FC = () => {
                 onClick={() => setSectionToDelete(null)}
                 className="w-full py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-bold text-xs sm:text-sm transition-colors cursor-pointer"
               >
-                {tr('إلغاء')}
+                {t('common:actions.cancel')}
               </button>
               <button
                 type="button"
@@ -1043,7 +1043,7 @@ export const TanksOverview: React.FC = () => {
                 className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-black text-xs sm:text-sm shadow-md shadow-rose-500/25 transition-all cursor-pointer hover:shadow-lg active:scale-98 flex items-center justify-center gap-1.5"
               >
                 <Trash2 className="w-4 h-4" />
-                <span>{tr('حذف')}</span>
+                <span>{t('common:actions.delete')}</span>
               </button>
             </div>
           </div>
@@ -1067,12 +1067,12 @@ export const TanksOverview: React.FC = () => {
             {/* Title & Description */}
             <div className="space-y-2">
               <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
-                {tr('تأكيد حذف الخزان')}
+                {t('tanks:confirmDeleteTankTitle')}
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
-                {tr('هل أنت متأكد من رغبتك في حذف الخزان')} <strong className="text-rose-600 dark:text-rose-400 font-bold">"{tankToDelete.name}"</strong> ({tankToDelete.code})؟
+                <Trans t={t} i18nKey="tanks:confirmDeleteTankCode" values={{ name: tankToDelete.name, code: tankToDelete.code }} components={{ 1: <strong className="text-rose-600 dark:text-rose-400 font-bold" /> }} />
                 <br />
-                <span className="text-slate-500 dark:text-slate-400 text-xs mt-1 block">{tr('لا يمكن التراجع عن هذا الإجراء وسيتم إزالة الخزان من المنظومة فورياً.')}</span>
+                <span className="text-slate-500 dark:text-slate-400 text-xs mt-1 block">{t('tanks:irreversibleTank')}</span>
               </p>
             </div>
 
@@ -1083,7 +1083,7 @@ export const TanksOverview: React.FC = () => {
                 onClick={() => setTankToDelete(null)}
                 className="w-full py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-bold text-xs sm:text-sm transition-colors cursor-pointer"
               >
-                {tr('إلغاء')}
+                {t('common:actions.cancel')}
               </button>
               <button
                 type="button"
@@ -1094,7 +1094,7 @@ export const TanksOverview: React.FC = () => {
                 className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-black text-xs sm:text-sm shadow-md shadow-rose-500/25 transition-all cursor-pointer hover:shadow-lg active:scale-98 flex items-center justify-center gap-1.5"
               >
                 <Trash2 className="w-4 h-4" />
-                <span>{tr('حذف الخزان')}</span>
+                <span>{t('tanks:deleteTank')}</span>
               </button>
             </div>
           </div>

@@ -15,7 +15,10 @@
     "confirm": "Confirm",
     "logout": "Sign out",
     "clearFilter": "Clear filter",
-    "done": "Done"
+    "done": "Done",
+    "delete": "Delete",
+    "saveChanges": "Save changes",
+    "edit": "Edit"
   },
   "status": {
     "online": "Online",
@@ -27,7 +30,8 @@
     "liter": "L",
     "iqd": "IQD",
     "days_one": "{{count}} day",
-    "days_other": "{{count}} days"
+    "days_other": "{{count}} days",
+    "meter": "m"
   },
   "time": {
     "minutesShort": "{{count}} min",

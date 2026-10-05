@@ -10,7 +10,7 @@ import {
   Gauge
 } from 'lucide-react';
 import { formatNumber } from '../../lib/utils';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation, Trans } from 'react-i18next';
 import { TankUnitRow, TankSectionConfig } from './TanksOverview';
 
 interface AddTankModalProps {
@@ -54,7 +54,7 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
   allTanks = [],
   editingTank = null
 }) => {
-  const { tr } = useLanguage();
+  const { t } = useTranslation(['tanks', 'common']);
   const BASE_SECTION_KEYS = ['sahara-gas-8', 'etihad-black-oil', 'gas-petrol-hajj', 'daily-buffer-diesel'];
   const sectionKeys = [
     ...BASE_SECTION_KEYS.filter(k => sections[k]),
@@ -212,7 +212,7 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
     e.preventDefault();
 
     if (!tankName.trim()) {
-      alert(tr('يرجى إدخال اسم أو عنوان الخزان'));
+      alert(t('tanks:tank.nameRequired'));
       return;
     }
 
@@ -297,14 +297,14 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-lg sm:text-xl font-black tracking-tight">
-                  {isEditing ? tr('تعديل بيانات الخزان') : tr('إضافة خزان جديد')}
+                  {isEditing ? t('tanks:tank.editTitle') : t('tanks:tank.addTitle')}
                 </h3>
                 <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-bold backdrop-blur-sm">
-                  {isEditing ? currentSection?.name : tr('منظومة SCADA')}
+                  {isEditing ? currentSection?.name : t('tanks:tank.scada')}
                 </span>
               </div>
               <p className="text-xs text-blue-100/90 font-medium mt-0.5">
-                {isEditing ? tr('تعديل السعة، المخزون، المنسوب، والقسم التابع له') : tr('أدخل بيانات ومواصفات الخزان ليتم إدراجه فورياً في المنظومة')}
+                {isEditing ? t('tanks:tank.editText') : t('tanks:tank.addText')}
               </p>
             </div>
           </div>
@@ -324,7 +324,7 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
           {/* 1. اختيار القسم (Section Selector) */}
           <div className="space-y-1.5">
             <label className="block text-xs font-black text-slate-700 dark:text-slate-200">
-              {tr('القسم / الوحدة التابعة')} <span className="text-rose-500">*</span>
+              {t('tanks:tank.section')} <span className="text-rose-500">*</span>
             </label>
             <div className="relative">
               <select
@@ -347,7 +347,7 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
           {/* 2. عنوان / اسم الخزان */}
           <div className="space-y-1.5">
             <label className="block text-xs font-black text-slate-700 dark:text-slate-200">
-              {tr('عنوان / اسم الخزان')} <span className="text-rose-500">*</span>
+              {t('tanks:tank.name')} <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
@@ -364,7 +364,7 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
             
             <div className="space-y-1.5">
               <label className="block text-xs font-black text-slate-700 dark:text-slate-200">
-                {tr('السعة الكلية (لتر)')} <span className="text-rose-500">*</span>
+                {t('tanks:tank.capacity')} <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
                 <input
@@ -376,14 +376,14 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
                   className="w-full px-3.5 py-2.5 pl-12 rounded-xl bg-slate-50 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-mono font-black text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all text-right"
                 />
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 select-none pointer-events-none">
-                  {tr('لتر')}
+                  {t('common:units.liter')}
                 </span>
               </div>
             </div>
 
             <div className="space-y-1.5">
               <label className="block text-xs font-black text-slate-700 dark:text-slate-200">
-                {tr('الارتفاع الكلي (متر)')}
+                {t('tanks:tank.height')}
               </label>
               <div className="relative">
                 <input
@@ -395,7 +395,7 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
                   className="w-full px-3.5 py-2.5 pl-10 rounded-xl bg-slate-50 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-mono font-black text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all text-right"
                 />
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 select-none pointer-events-none">
-                  {tr('م')}
+                  {t('common:units.meter')}
                 </span>
               </div>
             </div>
@@ -408,10 +408,10 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
             <div className="flex items-center justify-between">
               <span className="text-xs font-black text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
                 <Gauge className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                {tr('القراءات التشغيلية الحالية')}
+                {t('tanks:tank.readings')}
               </span>
               <span className="text-xs font-mono font-black px-2.5 py-0.5 rounded-full bg-blue-600 text-white shadow-2xs">
-                {fillPercent}% {tr('امتلاء')}
+                {t('tanks:tank.fillPercent', { value: fillPercent })}
               </span>
             </div>
 
@@ -419,7 +419,7 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
               
               <div className="space-y-1">
                 <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                  {tr('المخزون الفعلي (لتر)')}
+                  {t('tanks:tank.stored')}
                 </label>
                 <div className="relative">
                   <input
@@ -431,14 +431,14 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
                     className="w-full px-3 py-2 pl-12 rounded-lg bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700 text-slate-900 dark:text-white font-mono font-black text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none text-right"
                   />
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400 select-none pointer-events-none">
-                    {tr('لتر')}
+                    {t('common:units.liter')}
                   </span>
                 </div>
               </div>
 
               <div className="space-y-1">
                 <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                  {tr('المنسوب الحالي (متر)')}
+                  {t('tanks:tank.level')}
                 </label>
                 <div className="relative">
                   <input
@@ -450,7 +450,7 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
                     className="w-full px-3 py-2 pl-10 rounded-lg bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700 text-slate-900 dark:text-white font-mono font-black text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none text-right"
                   />
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400 select-none pointer-events-none">
-                    {tr('م')}
+                    {t('common:units.meter')}
                   </span>
                 </div>
               </div>
@@ -466,8 +466,8 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
                 />
               </div>
               <div className="flex justify-between text-[10px] font-mono text-slate-400">
-                <span>0 {tr('لتر')}</span>
-                <span>{formatNumber(capacityNum)} {tr('لتر')}</span>
+                <span>0 {t('common:units.liter')}</span>
+                <span>{formatNumber(capacityNum)} {t('common:units.liter')}</span>
               </div>
             </div>
 
@@ -482,7 +482,7 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
                 className="px-3.5 py-2.5 rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
               >
                 <Trash2 className="w-4 h-4" />
-                <span>{tr('حذف الخزان')}</span>
+                <span>{t('tanks:deleteTank')}</span>
               </button>
             ) : <div />}
 
@@ -492,14 +492,14 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
                 onClick={onClose}
                 className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors cursor-pointer"
               >
-                {tr('إلغاء')}
+                {t('common:actions.cancel')}
               </button>
               <button
                 type="submit"
                 className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs sm:text-sm shadow-md shadow-blue-500/25 flex items-center gap-2 transition-all cursor-pointer hover:shadow-lg active:scale-98"
               >
                 <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
-                <span>{isEditing ? tr('حفظ التعديلات') : tr('إضافة الخزان وحفظه')}</span>
+                <span>{isEditing ? t('common:actions.saveChanges') : t('tanks:tank.addSave')}</span>
               </button>
             </div>
           </div>
@@ -528,10 +528,10 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
         {/* Title & Description */}
         <div className="space-y-2">
           <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
-            {tr('تأكيد حذف الخزان')}
+            {t('tanks:confirmDeleteTankTitle')}
           </h3>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
-            {tr('هل أنت متأكد من رغبتك في حذف')} <strong className="text-rose-600 dark:text-rose-400 font-bold">"{editingTank?.name}"</strong>؟ {tr('لا يمكن التراجع عن هذا الإجراء وسيتم إزالة كافة سجلات وبيانات الخزان نهائياً.')}
+            <Trans t={t} i18nKey="tanks:confirmDeleteTankRecords" values={{ name: editingTank?.name }} components={{ 1: <strong className="text-rose-600 dark:text-rose-400 font-bold" /> }} />
           </p>
         </div>
 
@@ -542,7 +542,7 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
             onClick={() => setShowDeleteConfirm(false)}
             className="w-full py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-bold text-xs sm:text-sm transition-colors cursor-pointer"
           >
-            {tr('إلغاء')}
+            {t('common:actions.cancel')}
           </button>
           <button
             type="button"
@@ -550,7 +550,7 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
             className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-black text-xs sm:text-sm shadow-md shadow-rose-500/25 transition-all cursor-pointer hover:shadow-lg active:scale-98 flex items-center justify-center gap-1.5"
           >
             <Trash2 className="w-4 h-4" />
-            <span>{tr('حذف')}</span>
+            <span>{t('common:actions.delete')}</span>
           </button>
         </div>
       </div>
