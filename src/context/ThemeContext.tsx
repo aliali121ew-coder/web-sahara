@@ -11,7 +11,7 @@ import { useSessionProfile } from '../lib/session';
 import { levelOf } from '../lib/permCatalog';
 
 /** المظهر الافتراضي: خلفية تلقائية تتبع الوضع الفاتح/الليلي. يُطبَّق على من لا يملك صلاحية ضبط المظهر */
-const DEFAULTS = { sidebarStyle: 'navy' as SidebarStyle, bgGradient: 'none' as BgGradientTheme, bgType: 'gradient' as BgType, gradientIntensity: 'subtle' as GradientIntensity, shadeLevel: 4, glassmorphism: true, uiDensity: 'standard' as UiDensity };
+const DEFAULTS = { sidebarStyle: 'match-bg' as SidebarStyle, bgGradient: 'none' as BgGradientTheme, bgType: 'gradient' as BgType, gradientIntensity: 'subtle' as GradientIntensity, shadeLevel: 4, glassmorphism: true, uiDensity: 'standard' as UiDensity };
 
 interface ThemeContextType {
   themeMode: ThemeMode;
@@ -46,7 +46,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [sidebarStyle, setSidebarStyleState] = useState<SidebarStyle>(() => {
     const saved = localStorage.getItem('sahara_sidebar_style');
-    return (saved as SidebarStyle) || 'navy';
+    return (saved as SidebarStyle) || DEFAULTS.sidebarStyle;
   });
 
   const [bgGradient, setBgGradientState] = useState<BgGradientTheme>(() => {
@@ -190,8 +190,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const resetAllAppearance = () => {
     setThemeModeState('light');
-    setSidebarStyleState('navy');
-    setBgGradientState('none');
+    setSidebarStyleState(DEFAULTS.sidebarStyle);
+    setBgGradientState(DEFAULTS.bgGradient);
     setBgTypeState('gradient');
     setGradientIntensityState('subtle');
     setShadeLevelState(4);
