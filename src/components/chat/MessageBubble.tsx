@@ -7,6 +7,7 @@ import type { Attachment, ChatMessage, ChatUser } from './chatApi';
 import { Avatar } from './Avatar';
 import { AudioFile, FileCard, MediaGrid, VoicePlayer, isAudio, isMedia } from './Attachments';
 import { colorFor, formatClock, REACTIONS } from './chatUtils';
+import { systemText } from './chatUtils';
 
 export type ReadState = 'pending' | 'sent' | 'read' | 'failed';
 
@@ -115,7 +116,7 @@ export const MessageBubble: React.FC<Props> = (p) => {
     return (
       <div className="flex justify-center my-2 cx-fade">
         <span className="text-[11px] px-3 py-1 rounded-full cx-glass cx-muted border cx-border">
-          <b style={{ color: 'var(--text)' }}>{sender?.name || t('chat:member')}</b> {msg.text}
+          <b style={{ color: 'var(--text)' }}>{sender?.name || t('chat:member')}</b> {systemText(msg.text)}
         </span>
       </div>
     );

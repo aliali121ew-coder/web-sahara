@@ -1,3 +1,4 @@
+import { serverText } from '../../i18n/errors';
 import i18n from '../../i18n';
 import type { Perms } from '../../lib/permCatalog';
 import { sessionHeaders } from '../../lib/session';
@@ -143,7 +144,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers: { 'content-type': 'application/json', ...authHeaders(), ...(init.headers || {}) },
   });
   const data = (await res.json().catch(() => ({}))) as T & { error?: string; code?: string; retryAt?: number };
-  if (!res.ok) throw new ChatApiError(data.error || i18n.t('chat:err.connect'), res.status, data.code, data.retryAt);
+  if (!res.ok) throw new ChatApiError(serverText(data, i18n.t('chat:err.connect')), res.status, data.code, data.retryAt);
   return data;
 }
 
@@ -199,7 +200,7 @@ export const uploadFile = (file: Blob, name: string, onProgress?: (p: number) =>
       try {
         const data = JSON.parse(xhr.responseText);
         if (xhr.status >= 200 && xhr.status < 300) resolve(data.item);
-        else reject(new Error(data.error || i18n.t('chat:err.upload')));
+        else reject(new Error(serverText(data, i18n.t('chat:err.upload'))));
       } catch {
         reject(new Error(i18n.t('chat:err.upload')));
       }

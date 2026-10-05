@@ -141,7 +141,8 @@
       "karbalaRefineryShort": "مصفى كربلاء"
     },
     "room": {
-      "general": "غرفة العمليات العامة"
+      "general": "غرفة العمليات العامة",
+      "generalDesc": "القناة الرئيسية لكل فريق الموقع"
     },
     "task": {
       "maintenance": "صيانة",

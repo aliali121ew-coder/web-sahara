@@ -200,6 +200,8 @@ const avatarValue = (v: unknown): string | null => {
   return typeof v === 'string' && v.length <= MAX_AVATAR_CHARS && AVATAR_RE.test(v) ? v : null;
 };
 const passwordError = (p: string) => (p.length < MIN_PASSWORD ? `كلمة المرور يجب أن تكون ${MIN_PASSWORD} أحرف على الأقل` : p.length > 128 ? 'كلمة المرور طويلة جدًا' : '');
+/** رمز خطأ كلمة المرور للواجهة */
+const passwordCode = (p: string) => (p.length < MIN_PASSWORD ? 'password_short' : 'password_long');
 
 type AccountRow = { id: string; username: string; name: string; role: string; avatar: string; color: string; is_admin: number; disabled: number; last_seen: number; updated_at: number; perms: string };
 const ACCOUNT_COLS = 'id, username, name, role, avatar, color, is_admin, disabled, last_seen, updated_at, perms';
@@ -273,17 +275,17 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
 
   // إنشاء حساب المدير الأول — يعمل مرة واحدة فقط ما دام لا يوجد أي حساب
   if (path === '/auth/setup' && method === 'POST') {
-    if ((await accountCount()) > 0) return json({ error: 'تم إعداد النظام مسبقًا' }, 403);
+    if ((await accountCount()) > 0) return json({ error: 'تم إعداد النظام مسبقًا', code: 'already_setup' }, 403);
     // الإعداد الأول يتطلب رمز تفعيل النظام (APP_TOKEN) حتى لا يستولي أحد على حساب المدير
-    if (!appToken || !sameHash(appToken, str(request.headers.get('x-app-token'), 200))) return json({ error: 'رمز تفعيل النظام غير صحيح' }, 401);
+    if (!appToken || !sameHash(appToken, str(request.headers.get('x-app-token'), 200))) return json({ error: 'رمز تفعيل النظام غير صحيح', code: 'bad_app_token' }, 401);
     const b = await readBody<{ username?: string; password?: string; name?: string }>(request);
     const username = normUser(b?.username);
     const password = str(b?.password, 200);
     const name = str(b?.name, 60).trim();
-    if (!USERNAME_RE.test(username)) return json({ error: 'اسم المستخدم: 3–32 حرفًا إنجليزيًا صغيرًا أو أرقامًا أو . _ -' }, 400);
-    if (!name) return json({ error: 'الاسم مطلوب' }, 400);
+    if (!USERNAME_RE.test(username)) return json({ error: 'اسم المستخدم: 3–32 حرفًا إنجليزيًا صغيرًا أو أرقامًا أو . _ -', code: 'invalid_username' }, 400);
+    if (!name) return json({ error: 'الاسم مطلوب', code: 'name_required' }, 400);
     const pErr = passwordError(password);
-    if (pErr) return json({ error: pErr }, 400);
+    if (pErr) return json({ error: pErr, code: passwordCode(password) }, 400);
     const id = uid();
     await db.batch([
       db.prepare("INSERT INTO chat_users (id, name, role, last_seen, updated_at, username, pass_hash, is_admin) VALUES (?1, ?2, 'مدير النظام', ?3, ?3, ?4, ?5, 1)")
@@ -299,7 +301,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     const b = await readBody<{ username?: string; password?: string }>(request);
     const username = normUser(b?.username);
     const password = str(b?.password, 200);
-    if (!username || !password) return json({ error: 'أدخل اسم المستخدم وكلمة المرور' }, 400);
+    if (!username || !password) return json({ error: 'أدخل اسم المستخدم وكلمة المرور', code: 'credentials_required' }, 400);
     const { results } = await db.prepare('SELECT id, pass_hash, disabled, fail_count, lock_until FROM chat_users WHERE username = ?')
       .bind(username).all<{ id: string; pass_hash: string; disabled: number; fail_count: number; lock_until: number }>();
     const u = results[0];
@@ -383,11 +385,11 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     const name = str(b?.name, 60).trim();
     const phone = str(b?.phone, 20).replace(/[^\d+]/g, '');
     const kind = ['account', 'password', 'other'].includes(String(b?.kind)) ? String(b?.kind) : 'other';
-    if (!name) return json({ error: 'اكتب اسمك الكامل' }, 400);
-    if (phone.length < 7) return json({ error: 'اكتب رقم هاتف صحيح للتواصل معك' }, 400);
+    if (!name) return json({ error: 'اكتب اسمك الكامل', code: 'full_name_required' }, 400);
+    if (phone.length < 7) return json({ error: 'اكتب رقم هاتف صحيح للتواصل معك', code: 'invalid_phone' }, 400);
     // حد أعلى للطلبات المفتوحة حتى لا تُغرق الطلبات العشوائية القائمة
     const { results } = await db.prepare("SELECT COUNT(*) AS n FROM support_requests WHERE status = 'open'").all<{ n: number }>();
-    if ((results[0]?.n || 0) >= 300) return json({ error: 'قائمة الطلبات ممتلئة حاليًا، تواصل مع مدير النظام مباشرة' }, 429);
+    if ((results[0]?.n || 0) >= 300) return json({ error: 'قائمة الطلبات ممتلئة حاليًا، تواصل مع مدير النظام مباشرة', code: 'support_full' }, 429);
     await db.prepare('INSERT INTO support_requests (id, name, phone, username, kind, message, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
       .bind(uid(), name, phone, normUser(b?.username), kind, str(b?.message, 500).trim(), now).run();
     return json({ ok: true });
@@ -411,9 +413,9 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     const b = await readBody<{ current?: string; next?: string }>(request);
     const next = str(b?.next, 200);
     const pErr = passwordError(next);
-    if (pErr) return json({ error: pErr }, 400);
+    if (pErr) return json({ error: pErr, code: passwordCode(next) }, 400);
     const { results } = await db.prepare('SELECT pass_hash FROM chat_users WHERE id = ?').bind(authId).all<{ pass_hash: string }>();
-    if (!(await verifyPassword(str(b?.current, 200), results[0]?.pass_hash || ''))) return json({ error: 'كلمة المرور الحالية غير صحيحة' }, 403);
+    if (!(await verifyPassword(str(b?.current, 200), results[0]?.pass_hash || ''))) return json({ error: 'كلمة المرور الحالية غير صحيحة', code: 'wrong_password' }, 403);
     await db.batch([
       db.prepare('UPDATE chat_users SET pass_hash = ? WHERE id = ?').bind(await hashPassword(next), authId),
       db.prepare('DELETE FROM chat_sessions WHERE user_id = ? AND token_hash != ?').bind(authId, session.tokenHash),
@@ -442,16 +444,16 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
   if (path === '/auth/webauthn/register' && method === 'POST') {
     const b = await readBody<{ id?: string; clientDataJSON?: string; publicKey?: string; alg?: number; label?: string }>(request);
     const cd = parseClientData(str(b?.clientDataJSON, 4000));
-    if (!b?.id || !cd || cd.type !== 'webauthn.create' || cd.origin !== expectedOrigin) return json({ error: 'بيانات البصمة غير صالحة' }, 400);
+    if (!b?.id || !cd || cd.type !== 'webauthn.create' || cd.origin !== expectedOrigin) return json({ error: 'بيانات البصمة غير صالحة', code: 'invalid_passkey' }, 400);
     const c = await takeChallenge(cd.challenge, 'create');
-    if (!c || c.user_id !== authId) return json({ error: 'انتهت مهلة التسجيل، حاول مجددًا' }, 400);
+    if (!c || c.user_id !== authId) return json({ error: 'انتهت مهلة التسجيل، حاول مجددًا', code: 'registration_expired' }, 400);
     const alg = Number(b.alg);
     const publicKey = str(b.publicKey, 2000);
-    if (!(await checkPublicKey(publicKey, alg))) return json({ error: 'هذا الجهاز لا يدعم الدخول بالبصمة' }, 400);
+    if (!(await checkPublicKey(publicKey, alg))) return json({ error: 'هذا الجهاز لا يدعم الدخول بالبصمة', code: 'bio_unsupported' }, 400);
     const credId = str(b.id, 512);
     // معرّف بصمة مسجّل لحساب آخر لا يُستبدل (كان يسمح بإلغاء بصمة شخص آخر)
     const { results: existing } = await db.prepare('SELECT user_id FROM webauthn_credentials WHERE id = ?').bind(credId).all<{ user_id: string }>();
-    if (existing[0] && existing[0].user_id !== authId) return json({ error: 'هذه البصمة مسجّلة مسبقًا' }, 409);
+    if (existing[0] && existing[0].user_id !== authId) return json({ error: 'هذه البصمة مسجّلة مسبقًا', code: 'passkey_exists' }, 409);
     await db.prepare('INSERT OR REPLACE INTO webauthn_credentials (id, user_id, public_key, alg, sign_count, label, created_at) VALUES (?, ?, ?, ?, 0, ?, ?)')
       .bind(credId, authId, publicKey, alg, str(b.label, 80), now).run();
     return json({ ok: true });
@@ -482,7 +484,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
 
   // ───── إدارة الحسابات (مدير النظام فقط) ─────
   if (path.startsWith('/admin/')) {
-    if (!session.admin) return json({ error: 'هذه الصلاحية لمدير النظام فقط' }, 403);
+    if (!session.admin) return json({ error: 'هذه الصلاحية لمدير النظام فقط', code: 'admin_only' }, 403);
 
     if (path === '/admin/users' && method === 'GET') {
       const { results } = await db.prepare(`SELECT ${ACCOUNT_COLS} FROM chat_users WHERE pass_hash != '' ORDER BY is_admin DESC, name`).all<AccountRow>();
@@ -490,19 +492,19 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     }
 
     if (path === '/admin/users' && method === 'POST') {
-      if ((await accountCount()) >= MAX_ACCOUNTS) return json({ error: `وصلت إلى الحد الأقصى (${MAX_ACCOUNTS} حساب)` }, 403);
+      if ((await accountCount()) >= MAX_ACCOUNTS) return json({ error: `وصلت إلى الحد الأقصى (${MAX_ACCOUNTS} حساب)`, code: 'max_accounts', max: MAX_ACCOUNTS }, 403);
       const b = await readBody<{ username?: string; password?: string; name?: string; role?: string; is_admin?: boolean; perms?: unknown; avatar?: unknown }>(request);
       const username = normUser(b?.username);
       const password = str(b?.password, 200);
       const name = str(b?.name, 60).trim();
-      if (!USERNAME_RE.test(username)) return json({ error: 'اسم المستخدم: 3–32 حرفًا إنجليزيًا صغيرًا أو أرقامًا أو . _ -' }, 400);
-      if (!name) return json({ error: 'الاسم مطلوب' }, 400);
+      if (!USERNAME_RE.test(username)) return json({ error: 'اسم المستخدم: 3–32 حرفًا إنجليزيًا صغيرًا أو أرقامًا أو . _ -', code: 'invalid_username' }, 400);
+      if (!name) return json({ error: 'الاسم مطلوب', code: 'name_required' }, 400);
       const pErr = passwordError(password);
-      if (pErr) return json({ error: pErr }, 400);
+      if (pErr) return json({ error: pErr, code: passwordCode(password) }, 400);
       const avatar = b?.avatar === undefined ? '' : avatarValue(b.avatar);
-      if (avatar === null) return json({ error: 'الصورة غير صالحة (PNG أو JPEG أو WebP بحجم صغير)' }, 400);
+      if (avatar === null) return json({ error: 'الصورة غير صالحة (PNG أو JPEG أو WebP بحجم صغير)', code: 'invalid_avatar' }, 400);
       const { results: taken } = await db.prepare('SELECT id FROM chat_users WHERE username = ?').bind(username).all();
-      if (taken.length) return json({ error: 'اسم المستخدم مستخدم مسبقًا' }, 409);
+      if (taken.length) return json({ error: 'اسم المستخدم مستخدم مسبقًا', code: 'username_taken' }, 409);
       const id = uid();
       const color = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6'][Math.floor(Math.random() * 8)];
       await db.batch([
@@ -556,27 +558,27 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     if (m && method === 'PATCH') {
       const id = decodeURIComponent(m[1]);
       const b = await readBody<{ name?: string; role?: string; password?: string; is_admin?: boolean; disabled?: boolean; perms?: unknown; avatar?: unknown }>(request);
-      if (!b) return json({ error: 'بيانات غير صالحة' }, 400);
+      if (!b) return json({ error: 'بيانات غير صالحة', code: 'invalid_data' }, 400);
       const { results } = await db.prepare("SELECT id FROM chat_users WHERE id = ? AND pass_hash != ''").bind(id).all();
-      if (!results.length) return json({ error: 'الحساب غير موجود' }, 404);
-      if (id === authId && (b.disabled === true || b.is_admin === false)) return json({ error: 'لا يمكنك إيقاف حسابك أو سحب صلاحية الإدارة منه' }, 400);
+      if (!results.length) return json({ error: 'الحساب غير موجود', code: 'account_not_found' }, 404);
+      if (id === authId && (b.disabled === true || b.is_admin === false)) return json({ error: 'لا يمكنك إيقاف حسابك أو سحب صلاحية الإدارة منه', code: 'self_lockout' }, 400);
       const stmts: D1PreparedStatement[] = [];
       if (b.name !== undefined) {
         const name = str(b.name, 60).trim();
-        if (!name) return json({ error: 'الاسم مطلوب' }, 400);
+        if (!name) return json({ error: 'الاسم مطلوب', code: 'name_required' }, 400);
         stmts.push(db.prepare('UPDATE chat_users SET name = ?, updated_at = ? WHERE id = ?').bind(name, now, id));
       }
       if (b.role !== undefined) stmts.push(db.prepare('UPDATE chat_users SET role = ?, updated_at = ? WHERE id = ?').bind(str(b.role, 60).trim(), now, id));
       if (b.avatar !== undefined) {
         const avatar = avatarValue(b.avatar);
-        if (avatar === null) return json({ error: 'الصورة غير صالحة (PNG أو JPEG أو WebP بحجم صغير)' }, 400);
+        if (avatar === null) return json({ error: 'الصورة غير صالحة (PNG أو JPEG أو WebP بحجم صغير)', code: 'invalid_avatar' }, 400);
         stmts.push(db.prepare('UPDATE chat_users SET avatar = ?, updated_at = ? WHERE id = ?').bind(avatar, now, id));
       }
       if (b.perms !== undefined) stmts.push(db.prepare('UPDATE chat_users SET perms = ?, updated_at = ? WHERE id = ?').bind(JSON.stringify(sanitizePerms(b.perms)), now, id));
       if (b.is_admin !== undefined) stmts.push(db.prepare('UPDATE chat_users SET is_admin = ? WHERE id = ?').bind(b.is_admin ? 1 : 0, id));
       if (b.password !== undefined) {
         const pErr = passwordError(str(b.password, 200));
-        if (pErr) return json({ error: pErr }, 400);
+        if (pErr) return json({ error: pErr, code: passwordCode(str(b.password, 200)) }, 400);
         // إعادة التعيين تفك القفل وتُخرج الحساب من كل الأجهزة
         stmts.push(db.prepare('UPDATE chat_users SET pass_hash = ?, fail_count = 0, lock_until = 0 WHERE id = ?').bind(await hashPassword(str(b.password, 200)), id));
         stmts.push(db.prepare('DELETE FROM chat_sessions WHERE user_id = ?').bind(id));
@@ -597,17 +599,17 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
       }
       return json({ ok: true });
     }
-    return json({ error: 'غير موجود' }, 404);
+    return json({ error: 'غير موجود', code: 'not_found' }, 404);
   }
 
   // ───── الحساب ─────
   // المستخدم يغيّر اسمه وصورته فقط؛ الوظيفة والصلاحيات والحالة بيد مدير النظام
   if (path === '/profile' && method === 'PUT') {
     const b = await body<{ name?: unknown; avatar?: unknown }>(request);
-    if (!b) return json({ error: 'بيانات غير صالحة' }, 400);
+    if (!b) return json({ error: 'بيانات غير صالحة', code: 'invalid_data' }, 400);
     const id = authId;
     const name = str(b.name, 60).trim();
-    if (!name) return json({ error: 'الاسم مطلوب' }, 400);
+    if (!name) return json({ error: 'الاسم مطلوب', code: 'name_required' }, 400);
     const stmts: D1PreparedStatement[] = [
       db.prepare('UPDATE chat_users SET name = ?, last_seen = ?, updated_at = ? WHERE id = ?').bind(name, now, now, id),
     ];
@@ -617,7 +619,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     }
     if (b.avatar !== undefined) {
       const avatar = avatarValue(b.avatar);
-      if (avatar === null) return json({ error: 'الصورة غير صالحة (PNG أو JPEG أو WebP بحجم صغير)' }, 400);
+      if (avatar === null) return json({ error: 'الصورة غير صالحة (PNG أو JPEG أو WebP بحجم صغير)', code: 'invalid_avatar' }, 400);
       stmts.push(db.prepare('UPDATE chat_users SET avatar = ? WHERE id = ?').bind(avatar, id));
     }
     await db.batch(stmts);
@@ -630,7 +632,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
   if (path === '/sync' && method === 'GET') {
     const me = authId;
     const since = Number(url.searchParams.get('since')) || 0;
-    if (!me) return json({ error: 'الحساب غير محدد' }, 400);
+    if (!me) return json({ error: 'الحساب غير محدد', code: 'account_missing' }, 400);
 
     const [, usersRes, presenceRes, memberOf] = await Promise.all([
       db.prepare('UPDATE chat_users SET last_seen = ? WHERE id = ?').bind(now, me).run(),
@@ -664,9 +666,9 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
   // ───── مؤشر الكتابة ─────
   if (path === '/typing' && method === 'POST') {
     const b = await body<{ me?: string; room?: string }>(request);
-    if (!b?.me) return json({ error: 'بيانات غير صالحة' }, 400);
+    if (!b?.me) return json({ error: 'بيانات غير صالحة', code: 'invalid_data' }, 400);
     const room = str(b.room, 64);
-    if (room && !(await isMember(db, room, b.me))) return json({ error: 'غير مسموح' }, 403);
+    if (room && !(await isMember(db, room, b.me))) return json({ error: 'غير مسموح', code: 'not_allowed' }, 403);
     await db.prepare('UPDATE chat_users SET typing_room = ?, typing_at = ?, last_seen = ? WHERE id = ?').bind(room, now, now, b.me).run();
     return json({ ok: true });
   }
@@ -674,8 +676,8 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
   // ───── إيصال القراءة ─────
   if (path === '/read' && method === 'POST') {
     const b = await body<{ me?: string; room?: string; at?: number }>(request);
-    if (!b?.me || !b.room) return json({ error: 'بيانات غير صالحة' }, 400);
-    if (!(await isMember(db, b.room, b.me))) return json({ error: 'غير مسموح' }, 403);
+    if (!b?.me || !b.room) return json({ error: 'بيانات غير صالحة', code: 'invalid_data' }, 400);
+    if (!(await isMember(db, b.room, b.me))) return json({ error: 'غير مسموح', code: 'not_allowed' }, 403);
     const at = Math.min(Number(b.at) || now, now);
     await db.batch([
       // تسجيل وقت المشاهدة للرسائل الجديدة فقط (قبل تقديم last_read)
@@ -692,7 +694,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
   // ───── إعدادات العضوية (كتم / تثبيت) ─────
   if (path === '/prefs' && method === 'POST') {
     const b = await body<{ me?: string; room?: string; muted?: boolean; pinned?: boolean }>(request);
-    if (!b?.me || !b.room) return json({ error: 'بيانات غير صالحة' }, 400);
+    if (!b?.me || !b.room) return json({ error: 'بيانات غير صالحة', code: 'invalid_data' }, 400);
     if (typeof b.muted === 'boolean') await db.prepare('UPDATE chat_members SET muted = ? WHERE room_id = ? AND user_id = ?').bind(b.muted ? 1 : 0, b.room, b.me).run();
     if (typeof b.pinned === 'boolean') await db.prepare('UPDATE chat_members SET pinned = ? WHERE room_id = ? AND user_id = ?').bind(b.pinned ? now : 0, b.room, b.me).run();
     return json({ ok: true });
@@ -701,11 +703,11 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
   // ───── الغرف ─────
   if (path === '/rooms' && method === 'POST') {
     const b = await body<{ me?: string; type?: string; name?: string; description?: string; avatar?: string; members?: string[] }>(request);
-    if (!b?.me) return json({ error: 'بيانات غير صالحة' }, 400);
+    if (!b?.me) return json({ error: 'بيانات غير صالحة', code: 'invalid_data' }, 400);
     const others = Array.from(new Set((b.members || []).filter(m => typeof m === 'string' && m !== b.me))).slice(0, 200);
 
     if (b.type === 'direct') {
-      if (others.length !== 1) return json({ error: 'اختر شخصًا واحدًا' }, 400);
+      if (others.length !== 1) return json({ error: 'اختر شخصًا واحدًا', code: 'pick_person' }, 400);
       const directId = 'dm:' + [b.me, others[0]].sort().join(':');
       await db.batch([
         db.prepare("INSERT OR IGNORE INTO chat_rooms (id, type, created_by, created_at, updated_at) VALUES (?, 'direct', ?, ?, ?)").bind(directId, b.me, now, now),
@@ -716,7 +718,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     }
 
     const name = str(b.name, 80).trim();
-    if (!name) return json({ error: 'اسم المجموعة مطلوب' }, 400);
+    if (!name) return json({ error: 'اسم المجموعة مطلوب', code: 'group_name_required' }, 400);
     const id = uid();
     await db.batch([
       db.prepare("INSERT INTO chat_rooms (id, type, name, description, avatar, created_by, created_at, updated_at) VALUES (?, 'group', ?, ?, ?, ?, ?, ?)")
@@ -732,15 +734,15 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
   if (roomMatch) {
     const room = decodeURIComponent(roomMatch[1]);
     const b = await body<{ me?: string; name?: string; description?: string; avatar?: string; add?: string[]; remove?: string[]; admin?: string }>(request);
-    if (!b?.me || !(await isMember(db, room, b.me))) return json({ error: 'غير مسموح' }, 403);
+    if (!b?.me || !(await isMember(db, room, b.me))) return json({ error: 'غير مسموح', code: 'not_allowed' }, 403);
 
     const { results: myRole } = await db.prepare('SELECT role FROM chat_members WHERE room_id = ? AND user_id = ?').bind(room, b.me).all<{ role: string }>();
     const isAdmin = myRole[0]?.role === 'admin';
 
     if (!roomMatch[2] && method === 'PATCH') {
-      if (!isAdmin) return json({ error: 'تعديل المجموعة للمشرفين فقط' }, 403);
+      if (!isAdmin) return json({ error: 'تعديل المجموعة للمشرفين فقط', code: 'group_admins_only' }, 403);
       const name = str(b.name, 80).trim();
-      if (!name) return json({ error: 'اسم المجموعة مطلوب' }, 400);
+      if (!name) return json({ error: 'اسم المجموعة مطلوب', code: 'group_name_required' }, 400);
       await db.batch([
         db.prepare('UPDATE chat_rooms SET name = ?, description = ?, avatar = ?, updated_at = ? WHERE id = ? AND type = ?')
           .bind(name, str(b.description, 300), str(b.avatar, MAX_AVATAR_CHARS), now, room, 'group'),
@@ -760,12 +762,12 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     }
 
     if (roomMatch[2] === '/members' && method === 'POST') {
-      if (room === GENERAL_ROOM && (b.remove || []).length) return json({ error: 'لا يمكن مغادرة الغرفة العامة' }, 400);
+      if (room === GENERAL_ROOM && (b.remove || []).length) return json({ error: 'لا يمكن مغادرة الغرفة العامة', code: 'leave_general' }, 400);
       const add = (b.add || []).filter(x => typeof x === 'string').slice(0, 200);
       const remove = (b.remove || []).filter(x => typeof x === 'string').slice(0, 200);
       // غير المشرف يستطيع مغادرة المجموعة فقط
       const selfLeave = !add.length && !b.admin && remove.length === 1 && remove[0] === b.me;
-      if (!isAdmin && !selfLeave) return json({ error: 'إدارة الأعضاء للمشرفين فقط' }, 403);
+      if (!isAdmin && !selfLeave) return json({ error: 'إدارة الأعضاء للمشرفين فقط', code: 'members_admins_only' }, 403);
       const statements: D1PreparedStatement[] = [];
       for (const u of add) statements.push(db.prepare("INSERT OR IGNORE INTO chat_members (room_id, user_id, role, joined_at) VALUES (?, ?, 'member', ?)").bind(room, u, now));
       for (const u of remove) statements.push(db.prepare('DELETE FROM chat_members WHERE room_id = ? AND user_id = ?').bind(room, u));
@@ -781,8 +783,8 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
   // ───── الرسائل ─────
   if (path === '/messages' && method === 'POST') {
     const b = await body<{ id?: string; me?: string; room?: string; kind?: string; text?: string; replyTo?: string; attachments?: unknown[]; urgent?: boolean }>(request);
-    if (!b?.me || !b.room) return json({ error: 'بيانات غير صالحة' }, 400);
-    if (!(await isMember(db, b.room, b.me))) return json({ error: 'لست عضوًا في هذه المحادثة' }, 403);
+    if (!b?.me || !b.room) return json({ error: 'بيانات غير صالحة', code: 'invalid_data' }, 400);
+    if (!(await isMember(db, b.room, b.me))) return json({ error: 'لست عضوًا في هذه المحادثة', code: 'not_member' }, 403);
     const kind = ['text', 'file', 'voice'].includes(b.kind || '') ? b.kind! : 'text';
     const text = str(b.text, 8000);
     const list = (Array.isArray(b.attachments) ? b.attachments.slice(0, 20) : []) as { fileId?: unknown }[];
@@ -790,11 +792,11 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     const fileIds = list.map(a => (a && typeof a.fileId === 'string' ? a.fileId : '')).filter(Boolean);
     if (fileIds.length) {
       const { results: own } = await db.prepare(`SELECT id FROM chat_files WHERE owner = ? AND id IN (${fileIds.map(() => '?').join(',')})`).bind(authId, ...fileIds).all<{ id: string }>();
-      if (own.length !== new Set(fileIds).size) return json({ error: 'مرفق غير صالح' }, 400);
+      if (own.length !== new Set(fileIds).size) return json({ error: 'مرفق غير صالح', code: 'invalid_attachment' }, 400);
     }
     const attachments = JSON.stringify(list);
-    if (!text.trim() && attachments === '[]') return json({ error: 'الرسالة فارغة' }, 400);
-    if (attachments.length > 600_000) return json({ error: 'بيانات المرفقات كبيرة جدًا' }, 413);
+    if (!text.trim() && attachments === '[]') return json({ error: 'الرسالة فارغة', code: 'message_empty' }, 400);
+    if (attachments.length > 600_000) return json({ error: 'بيانات المرفقات كبيرة جدًا', code: 'attachments_too_large' }, 413);
     const id = str(b.id, 64) || uid();
     await db.batch([
       db.prepare('INSERT OR IGNORE INTO chat_messages (id, room_id, user_id, kind, text, reply_to, attachments, urgent, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
@@ -812,7 +814,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     const me = authId;
     const id = decodeURIComponent(infoMatch[1]);
     const { results } = await db.prepare('SELECT room_id FROM chat_messages WHERE id = ?').bind(id).all<{ room_id: string }>();
-    if (!results[0] || !(await isMember(db, results[0].room_id, me))) return json({ error: 'الرسالة غير موجودة' }, 404);
+    if (!results[0] || !(await isMember(db, results[0].room_id, me))) return json({ error: 'الرسالة غير موجودة', code: 'message_not_found' }, 404);
     const seen = await db.prepare('SELECT user_id, at FROM chat_seen WHERE message_id = ?').bind(id).all<{ user_id: string; at: number }>();
     return json({ seen: seen.results });
   }
@@ -821,14 +823,14 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
   if (msgMatch) {
     const id = decodeURIComponent(msgMatch[1]);
     const b = await body<{ me?: string; text?: string; emoji?: string }>(request);
-    if (!b?.me) return json({ error: 'بيانات غير صالحة' }, 400);
+    if (!b?.me) return json({ error: 'بيانات غير صالحة', code: 'invalid_data' }, 400);
     const { results } = await db.prepare('SELECT * FROM chat_messages WHERE id = ?').bind(id).all<MessageRow>();
     const msg = results[0];
-    if (!msg || !(await isMember(db, msg.room_id, b.me))) return json({ error: 'الرسالة غير موجودة' }, 404);
+    if (!msg || !(await isMember(db, msg.room_id, b.me))) return json({ error: 'الرسالة غير موجودة', code: 'message_not_found' }, 404);
 
     if (msgMatch[2] && method === 'POST') {
       const emoji = str(b.emoji, 16);
-      if (!emoji) return json({ error: 'بيانات غير صالحة' }, 400);
+      if (!emoji) return json({ error: 'بيانات غير صالحة', code: 'invalid_data' }, 400);
       const reactions: Record<string, string[]> = JSON.parse(msg.reactions || '{}');
       // تفاعل واحد لكل شخص: إزالة القديم ثم تبديل الجديد
       const had = (reactions[emoji] || []).includes(b.me);
@@ -841,17 +843,17 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
       return json({ ok: true });
     }
 
-    if (msg.user_id !== b.me) return json({ error: 'يمكنك تعديل رسائلك فقط' }, 403);
+    if (msg.user_id !== b.me) return json({ error: 'يمكنك تعديل رسائلك فقط', code: 'edit_own_only' }, 403);
 
     if (!msgMatch[2] && method === 'PATCH') {
       const text = str(b.text, 8000);
-      if (!text.trim()) return json({ error: 'الرسالة فارغة' }, 400);
+      if (!text.trim()) return json({ error: 'الرسالة فارغة', code: 'message_empty' }, 400);
       await db.prepare('UPDATE chat_messages SET text = ?, edited = 1, updated_at = ? WHERE id = ?').bind(text, now, id).run();
       return json({ ok: true });
     }
 
     if (!msgMatch[2] && method === 'DELETE') {
-      if (now - msg.created_at > DELETE_WINDOW_MS) return json({ error: 'انتهت مهلة الحذف للجميع (ساعة واحدة)' }, 403);
+      if (now - msg.created_at > DELETE_WINDOW_MS) return json({ error: 'انتهت مهلة الحذف للجميع (ساعة واحدة)', code: 'delete_window_over' }, 403);
       const fileIds = (JSON.parse(msg.attachments || '[]') as { fileId?: string }[]).map(a => a.fileId).filter(Boolean) as string[];
       // تُحذف فقط ملفات المرسل نفسه (المرفقات مقيّدة بمالكها عند الإرسال أيضًا)
       const { results: own } = fileIds.length
@@ -871,9 +873,9 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     const name = str(url.searchParams.get('name'), 200) || 'file';
     const type = (request.headers.get('content-type') || 'application/octet-stream').slice(0, 120);
     const bytes = new Uint8Array(await request.arrayBuffer());
-    if (!bytes.length) return json({ error: 'الملف فارغ' }, 400);
-    if (bytes.length > MAX_FILE_BYTES) return json({ error: 'الحد الأقصى لحجم الملف 50MB' }, 413);
-    if (!files) return json({ error: 'تخزين الملفات غير مهيأ على الخادم' }, 503);
+    if (!bytes.length) return json({ error: 'الملف فارغ', code: 'file_empty' }, 400);
+    if (bytes.length > MAX_FILE_BYTES) return json({ error: 'الحد الأقصى لحجم الملف 50MB', code: 'file_too_large_50' }, 413);
+    if (!files) return json({ error: 'تخزين الملفات غير مهيأ على الخادم', code: 'storage_unconfigured' }, 503);
     const row: FileRow = { id: uid(), name, type, size: bytes.length, created_at: now };
     // المحتوى في R2، والسجل في D1 بعد نجاح الرفع
     const sha256 = await storeFile(files, 'chat', row.id, bytes, type, { name, owner: authId });
@@ -886,10 +888,10 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
   if (fileMatch && method === 'GET') {
     const id = decodeURIComponent(fileMatch[1]);
     const { results: meta } = await db.prepare('SELECT * FROM chat_files WHERE id = ?').bind(id).all<FileRow>();
-    if (!meta.length) return json({ error: 'الملف غير موجود' }, 404);
-    if (!files) return json({ error: 'تخزين الملفات غير مهيأ على الخادم' }, 503);
+    if (!meta.length) return json({ error: 'الملف غير موجود', code: 'file_not_found' }, 404);
+    if (!files) return json({ error: 'تخزين الملفات غير مهيأ على الخادم', code: 'storage_unconfigured' }, 503);
     const body = await loadFile(files, db, 'chat', id);
-    if (!body) return json({ error: 'محتوى الملف غير موجود' }, 404);
+    if (!body) return json({ error: 'محتوى الملف غير موجود', code: 'file_content_missing' }, 404);
     return new Response(body, {
       headers: {
         'content-type': meta[0].type,
@@ -901,5 +903,5 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     });
   }
 
-  return json({ error: 'غير موجود' }, 404);
+  return json({ error: 'غير موجود', code: 'not_found' }, 404);
 }

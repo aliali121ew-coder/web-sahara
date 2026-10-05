@@ -133,7 +133,8 @@
       "karbalaRefineryShort": "Karbala Refinery"
     },
     "room": {
-      "general": "General operations room"
+      "general": "General operations room",
+      "generalDesc": "The main channel for the whole site team"
     },
     "task": {
       "maintenance": "Maintenance",

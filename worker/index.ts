@@ -87,16 +87,16 @@ const handleFiles = async (request: Request, url: URL, db: D1Database, bucket: R
     const recordId = url.searchParams.get('record') || '';
     const name = (url.searchParams.get('name') || '').slice(0, 200);
     const type = request.headers.get('content-type') || '';
-    if (!recordId || !name) return json({ error: 'بيانات الملف ناقصة' }, 400);
-    if (!ALLOWED_FILE_TYPES.has(type)) return json({ error: 'يُسمح بملفات PDF و Excel فقط' }, 400);
+    if (!recordId || !name) return json({ error: 'بيانات الملف ناقصة', code: 'file_data_incomplete' }, 400);
+    if (!ALLOWED_FILE_TYPES.has(type)) return json({ error: 'يُسمح بملفات PDF و Excel فقط', code: 'pdf_excel_only' }, 400);
     const bytes = new Uint8Array(await request.arrayBuffer());
-    if (!bytes.length) return json({ error: 'الملف فارغ' }, 400);
-    if (bytes.length > MAX_FILE_BYTES) return json({ error: 'حجم الملف أكبر من 20MB' }, 413);
+    if (!bytes.length) return json({ error: 'الملف فارغ', code: 'file_empty' }, 400);
+    if (bytes.length > MAX_FILE_BYTES) return json({ error: 'حجم الملف أكبر من 20MB', code: 'file_too_large_20' }, 413);
     // نفس الملف (نفس الاسم والصيغة) لا يُرفع مرتين لنفس اليوم
     // عند تغيير ملف بآخر بنفس الاسم يُستثنى الملف القديم (replace=رقمه)، ويحذفه التطبيق بعد نجاح الرفع
     const { results: dup } = await db.prepare('SELECT id FROM sahara_files WHERE record_id = ? AND lower(name) = lower(?) AND id != ?')
       .bind(recordId, name, url.searchParams.get('replace') || '').all<{ id: string }>();
-    if (dup.length) return json({ error: 'الملف مرفوع مسبقًا لهذا اليوم' }, 409);
+    if (dup.length) return json({ error: 'الملف مرفوع مسبقًا لهذا اليوم', code: 'file_duplicate' }, 409);
 
     const row: FileRow = { id: crypto.randomUUID(), record_id: recordId, name, type, size: bytes.length, created_at: Date.now() };
     // المحتوى أولًا في R2، ثم السجل في D1 (لو فشل السجل يبقى ملف يتيم تنظفه الصيانة الشهرية)
@@ -107,14 +107,14 @@ const handleFiles = async (request: Request, url: URL, db: D1Database, bucket: R
     return json({ ok: true, item: row });
   }
 
-  if (!id) return json({ error: 'غير موجود' }, 404);
+  if (!id) return json({ error: 'غير موجود', code: 'not_found' }, 404);
 
   // تنزيل الملف
   if (request.method === 'GET') {
     const { results: meta } = await db.prepare('SELECT id, record_id, name, type, size, created_at FROM sahara_files WHERE id = ?').bind(id).all<FileRow>();
-    if (!meta.length) return json({ error: 'الملف غير موجود' }, 404);
+    if (!meta.length) return json({ error: 'الملف غير موجود', code: 'file_not_found' }, 404);
     const body = await loadFile(bucket, db, 'sahara', id);
-    if (!body) return json({ error: 'محتوى الملف غير موجود' }, 404);
+    if (!body) return json({ error: 'محتوى الملف غير موجود', code: 'file_content_missing' }, 404);
     return new Response(body, {
       headers: {
         'content-type': meta[0].type,
@@ -136,7 +136,7 @@ const handleFiles = async (request: Request, url: URL, db: D1Database, bucket: R
     return json({ ok: true });
   }
 
-  return json({ error: 'غير موجود' }, 404);
+  return json({ error: 'غير موجود', code: 'not_found' }, 404);
 };
 
 export default {
@@ -144,7 +144,7 @@ export default {
     const url = new URL(request.url);
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
 
-    if (!env.APP_TOKEN) return json({ error: 'لم يُضبط رمز تفعيل النظام على الخادم (APP_TOKEN)' }, 503);
+    if (!env.APP_TOKEN) return json({ error: 'لم يُضبط رمز تفعيل النظام على الخادم (APP_TOKEN)', code: 'app_token_missing' }, 503);
 
     // تسجيل الدخول والإعداد الأول متاحان بدون جلسة (الإعداد يتحقق من APP_TOKEN بنفسه)
     if (url.pathname.startsWith('/api/chat/auth/') && ['/api/chat/auth/status', '/api/chat/auth/login', '/api/chat/auth/setup', '/api/chat/auth/support', '/api/chat/auth/webauthn/login-options', '/api/chat/auth/webauthn/login'].includes(url.pathname)) {
@@ -186,12 +186,12 @@ export default {
     }
 
     if (url.pathname === '/api/state' && request.method === 'PUT') {
-      if (tooLarge(request, MAX_STATE_BODY)) return json({ error: 'حجم البيانات كبير جدًا' }, 413);
+      if (tooLarge(request, MAX_STATE_BODY)) return json({ error: 'حجم البيانات كبير جدًا', code: 'payload_too_large' }, 413);
       let body: { set?: Record<string, string>; remove?: string[]; collections?: Record<string, CollectionOps> };
       try {
         body = await request.json();
       } catch {
-        return json({ error: 'بيانات غير صالحة' }, 400);
+        return json({ error: 'بيانات غير صالحة', code: 'invalid_data' }, 400);
       }
       const now = Date.now();
       const statements: D1PreparedStatement[] = [];
@@ -203,7 +203,7 @@ export default {
         if (!isCollectionKey(key) || !ops || typeof ops !== 'object') continue;
         if (!canWriteKey(session.perms, session.admin, key)) { rejected.push(key); continue; }
         const r = await applyCollectionOps(env.DB, key, ops, session.id, now);
-        if (typeof r === 'string') return json({ error: r }, 400);
+        if (typeof r === 'string') return json({ error: r, code: 'invalid_data' }, 400);
         collectionOps += r;
       }
       for (const [key, value] of Object.entries(body.set || {})) {
@@ -212,7 +212,7 @@ export default {
         // نسخة قديمة من التطبيق أرسلت المجموعة كاملة: تُستبدل بسطورها
         if (isCollectionKey(key)) {
           const r = await replaceCollection(env.DB, key, value, session.id, now);
-          if (typeof r === 'string') return json({ error: r }, 400);
+          if (typeof r === 'string') return json({ error: r, code: 'invalid_data' }, 400);
           collectionOps += r;
           continue;
         }
@@ -252,28 +252,28 @@ export default {
     // قراءة صورة الكشف اليومي للصحاري وتعبئة نافذة الإدخال
     if (url.pathname === '/api/extract-sahara-report' && request.method === 'POST') {
       if (levelOf(session.perms, session.admin, 'sahara.balance') < 2) return forbidden();
-      if (tooLarge(request, MAX_IMAGE_BODY)) return json({ error: 'حجم الصورة كبير جدًا' }, 413);
-      if (!env.ANTHROPIC_API_KEY) return json({ error: 'لم يُضبط مفتاح الذكاء الاصطناعي على الخادم (ANTHROPIC_API_KEY)' }, 503);
+      if (tooLarge(request, MAX_IMAGE_BODY)) return json({ error: 'حجم الصورة كبير جدًا', code: 'image_too_large' }, 413);
+      if (!env.ANTHROPIC_API_KEY) return json({ error: 'لم يُضبط مفتاح الذكاء الاصطناعي على الخادم (ANTHROPIC_API_KEY)', code: 'ai_key_missing' }, 503);
       let body: { image?: string; mediaType?: string; stations?: string[] };
       try {
         body = await request.json();
       } catch {
-        return json({ error: 'بيانات غير صالحة' }, 400);
+        return json({ error: 'بيانات غير صالحة', code: 'invalid_data' }, 400);
       }
       const mediaType = body.mediaType as 'image/jpeg' | 'image/png' | 'image/webp';
       if (!body.image || body.image.length > MAX_IMAGE_BODY || !['image/jpeg', 'image/png', 'image/webp'].includes(mediaType)) {
-        return json({ error: 'الصورة غير صالحة' }, 400);
+        return json({ error: 'الصورة غير صالحة', code: 'invalid_image' }, 400);
       }
       try {
         const result = await extractSaharaReport(env.ANTHROPIC_API_KEY, { data: body.image, mediaType }, (body.stations || []).slice(0, 50));
         return json({ ok: true, result });
       } catch (e) {
         console.error('extract-sahara-report failed', e);
-        return json({ error: e instanceof Error && /[؀-ۿ]/.test(e.message) ? e.message : 'تعذّر تحليل الصورة، حاول مرة أخرى' }, 502);
+        return json({ error: e instanceof Error && /[؀-ۿ]/.test(e.message) ? e.message : 'تعذّر تحليل الصورة، حاول مرة أخرى', code: 'analyze_failed' }, 502);
       }
     }
 
-    return json({ error: 'غير موجود' }, 404);
+    return json({ error: 'غير موجود', code: 'not_found' }, 404);
   },
 
   /** المهمة المجدولة اليومية (wrangler.jsonc → triggers.crons): نسخة يومية، وفي أول الشهر الصيانة الشهرية */

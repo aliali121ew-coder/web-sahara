@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+import { serverText } from '../i18n/errors';
 import type { Perms } from './permCatalog';
 import { useEffect, useState } from 'react';
 
@@ -77,10 +79,10 @@ async function post<T>(path: string, body: unknown, headers: Record<string, stri
       body: JSON.stringify(body),
     });
   } catch {
-    throw new AuthError('لا يوجد اتصال بالخادم. تحقّق من الإنترنت وحاول مجددًا', 'offline');
+    throw new AuthError(i18n.t('auth:errors.offline'), 'offline');
   }
   const data = (await res.json().catch(() => ({}))) as T & { error?: string; code?: string; retryAt?: number };
-  if (!res.ok) throw new AuthError(data.error || 'تعذّر الاتصال بالخادم', data.code || (data.error ? undefined : 'network'), data.retryAt);
+  if (!res.ok) throw new AuthError(serverText(data, i18n.t('server:errors.network')), data.code || (data.error ? undefined : 'network'), data.retryAt);
   return data;
 }
 

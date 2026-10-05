@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+import { serverText } from '../i18n/errors';
 import { useCallback, useEffect, useState } from 'react';
 import { sessionHeaders } from './session';
 
@@ -26,8 +28,8 @@ export const fileKind = (f: Pick<SaharaFile, 'type' | 'name'>): 'pdf' | 'excel' 
   f.type === 'application/pdf' || /\.pdf$/i.test(f.name) ? 'pdf' : 'excel';
 
 const readError = async (res: Response, fallback: string) => {
-  const data = (await res.json().catch(() => ({}))) as { error?: string };
-  return data.error || fallback;
+  const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+  return serverText(data, fallback);
 };
 
 /** replaceId: الملف الذي سيُستبدل (يُسمح بنفس اسمه، ويُحذف بعد نجاح الرفع) */
@@ -38,19 +40,19 @@ export const uploadSaharaFile = async (recordId: string, file: File, replaceId?:
   if (file.size > MAX_FILE_BYTES) throw new Error(`${file.name}: حجم الملف أكبر من 20MB`);
   const qs = new URLSearchParams({ record: recordId, name: file.name, ...(replaceId ? { replace: replaceId } : {}) });
   const res = await fetch(`/api/files?${qs}`, { method: 'POST', headers: { ...headers(), 'content-type': type }, body: file });
-  if (!res.ok) throw new Error(`${file.name}: ${await readError(res, 'تعذّر رفع الملف')}`);
+  if (!res.ok) throw new Error(`${file.name}: ${await readError(res, i18n.t('server:errors.upload_failed'))}`);
 };
 
 /** جلب محتوى الملف (الطلب يحتاج رمز الدخول، فلا يمكن فتحه كرابط مباشر) */
 export const fetchSaharaFileBlob = async (id: string): Promise<Blob> => {
   const res = await fetch(`/api/files/${id}`, { headers: headers(), cache: 'no-store' });
-  if (!res.ok) throw new Error(await readError(res, 'تعذّر فتح الملف'));
+  if (!res.ok) throw new Error(await readError(res, i18n.t('server:errors.open_failed')));
   return res.blob();
 };
 
 export const deleteSaharaFile = async (id: string): Promise<void> => {
   const res = await fetch(`/api/files/${id}`, { method: 'DELETE', headers: headers() });
-  if (!res.ok) throw new Error(await readError(res, 'تعذّر حذف الملف'));
+  if (!res.ok) throw new Error(await readError(res, i18n.t('server:errors.delete_failed')));
 };
 
 /** قائمة المرفقات مجمّعة حسب السجل، مع رفع وحذف يحدّثان القائمة في كل الصفحات */
@@ -62,7 +64,7 @@ export const useSaharaFiles = () => {
   const refresh = useCallback(async () => {
     try {
       const res = await fetch('/api/files', { headers: headers(), cache: 'no-store' });
-      if (!res.ok) throw new Error(await readError(res, 'تعذّر تحميل المرفقات'));
+      if (!res.ok) throw new Error(await readError(res, i18n.t('server:errors.attachments_failed')));
       const data = (await res.json()) as { items: SaharaFile[] };
       setFiles(data.items);
     } catch (e) {

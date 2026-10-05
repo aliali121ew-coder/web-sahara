@@ -3,6 +3,7 @@
  * الملفات القديمة كانت تُحفظ داخل D1 كأجزاء base64؛ تُنقل إلى R2 تلقائيًا عند أول قراءة،
  * أو كلها مرة واحدة من لوحة إدارة النظام (migrateLegacyFiles).
  */
+import { codedError } from '../errors';
 import type { D1Database, R2Bucket } from '../types';
 import { sha256Hex } from '../system/compress';
 
@@ -120,11 +121,11 @@ export const listTrash = async (bucket: R2Bucket): Promise<TrashItem[]> => {
 /** استرجاع مرفق صحاري من السلة: يعود الملف وسطره في sahara_files */
 export const restoreFromTrash = async (bucket: R2Bucket, db: D1Database, key: string) => {
   const m = key.match(/^trash\/sahara\/([^/]+)$/);
-  if (!m) throw new Error('يمكن استرجاع مرفقات رصيد الصحاري فقط (مرفقات المحادثة تُحذف مع رسالتها)');
+  if (!m) throw codedError('يمكن استرجاع مرفقات رصيد الصحاري فقط (مرفقات المحادثة تُحذف مع رسالتها)', 'restore_sahara_only');
   const obj = await bucket.get(key);
-  if (!obj) throw new Error('الملف غير موجود في السلة');
+  if (!obj) throw codedError('الملف غير موجود في السلة', 'trash_not_found');
   const meta = decodeMeta(obj.customMetadata);
-  if (!meta.record) throw new Error('لا يُعرف السجل الذي يتبع له الملف');
+  if (!meta.record) throw codedError('لا يُعرف السجل الذي يتبع له الملف', 'trash_record_unknown');
   const bytes = new Uint8Array(await obj.arrayBuffer());
   const type = obj.httpMetadata?.contentType || meta.type || 'application/octet-stream';
   const sha = await storeFile(bucket, 'sahara', m[1], bytes, type, { name: meta.name || m[1], record: meta.record });
@@ -138,7 +139,7 @@ export const restoreFromTrash = async (bucket: R2Bucket, db: D1Database, key: st
 /** حذف نهائي من السلة: عنصر واحد، أو كل ما مضى عليه أكثر من 30 يومًا */
 export const purgeTrash = async (bucket: R2Bucket, key?: string) => {
   if (key) {
-    if (!key.startsWith(TRASH)) throw new Error('مسار غير صالح');
+    if (!key.startsWith(TRASH)) throw codedError('مسار غير صالح', 'invalid_path');
     await bucket.delete(key);
     return 1;
   }

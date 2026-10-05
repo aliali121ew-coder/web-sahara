@@ -52,7 +52,7 @@ export const i18nReady = i18n.init({
   lng: detectLanguage(),
   fallbackLng: 'ar',
   supportedLngs: [...SUPPORTED_LANGS],
-  ns: ['common', 'nav', 'auth'],
+  ns: ['common', 'nav', 'auth', 'server'],
   defaultNS: 'common',
   interpolation: { escapeValue: false },
   returnNull: false,

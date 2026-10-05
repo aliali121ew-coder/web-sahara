@@ -4,6 +4,7 @@
  * - أول كل شهر: دمج النسخ اليومية للشهر السابق في أرشيف واحد مضغوط (دائم) ثم حذفها،
  *   أرشفة الإشعارات الأقدم من 90 يومًا وسجل العمليات الأقدم من 180 يومًا، وتنظيف البيانات المؤقتة.
  */
+import { codedError } from '../errors';
 import type { Env } from '../types';
 import { createBackup, ensureSystemTables } from './backup';
 import { gunzipText, gzipText, sha256Hex } from './compress';
@@ -93,7 +94,7 @@ export const monthlyJob = (env: Env, by = 'scheduler', month?: string) =>
       await env.BACKUPS.put(key, gz, { httpMetadata: { contentType: 'application/gzip' }, customMetadata: { sha256, month: ym, lines: String(lines.length) } });
       const check = await env.BACKUPS.get(key);
       const back = check ? await gunzipText(await check.arrayBuffer()) : '';
-      if (back.length !== text.length || (await sha256Hex(back)) !== sha256) throw new Error('فشل التحقق من الأرشيف الشهري؛ لم يُحذف شيء');
+      if (back.length !== text.length || (await sha256Hex(back)) !== sha256) throw codedError('فشل التحقق من الأرشيف الشهري؛ لم يُحذف شيء', 'monthly_verify_failed');
 
       await env.DB.prepare('INSERT INTO backups (id, kind, r2_key, size, raw_size, rows, tables, sha256, status, note, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
         .bind(crypto.randomUUID(), 'monthly', key, gz.length, text.length, lines.length, dailies.length, sha256, 'ok',

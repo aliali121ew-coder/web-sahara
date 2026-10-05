@@ -317,5 +317,24 @@
     "hours_many": "آخر ظهور قبل {{count}} ساعة",
     "hours_other": "آخر ظهور قبل {{count}} ساعة",
     "at": "آخر ظهور {{day}} {{time}}"
+  },
+  "sys": {
+    "created": "أنشأ المجموعة",
+    "updated": "حدّث معلومات المجموعة",
+    "pinned": "ثبّت رسالة",
+    "unpinned": "ألغى تثبيت الرسالة",
+    "left": "غادر المجموعة",
+    "added_zero": "لم يضف أحدًا",
+    "added_one": "أضاف عضوًا",
+    "added_two": "أضاف عضوين",
+    "added_few": "أضاف {{count}} أعضاء",
+    "added_many": "أضاف {{count}} عضوًا",
+    "added_other": "أضاف {{count}} عضو",
+    "removed_zero": "لم يُزل أحدًا",
+    "removed_one": "أزال عضوًا",
+    "removed_two": "أزال عضوين",
+    "removed_few": "أزال {{count}} أعضاء",
+    "removed_many": "أزال {{count}} عضوًا",
+    "removed_other": "أزال {{count}} عضو"
   }
 }

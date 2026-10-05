@@ -1,3 +1,4 @@
+import { errorCode } from '../errors';
 /**
  * واجهات لوحة "إدارة النظام" (/api/system/*) — لمدير النظام فقط، وكل عملية تُسجَّل في سجل العمليات.
  */
@@ -83,7 +84,7 @@ export async function handleSystem(request: Request, url: URL, env: Env, session
   const tm = path.match(/^\/tables\/([^/]+)$/);
   if (tm && method === 'GET') {
     const name = decodeURIComponent(tm[1]);
-    if (![...(await userTables(db)), ...(await userViews(db))].includes(name)) return json({ error: 'الجدول غير موجود' }, 404);
+    if (![...(await userTables(db)), ...(await userViews(db))].includes(name)) return json({ error: 'الجدول غير موجود', code: 'table_not_found' }, 404);
     const { results: cols } = await db.prepare(`PRAGMA table_info(${quote(name)})`).all<{ name: string; type: string; pk: number }>();
     const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 50, 1), 200);
     const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0);
@@ -112,11 +113,11 @@ export async function handleSystem(request: Request, url: URL, env: Env, session
     const id = decodeURIComponent(bm[1]);
     const { results } = await db.prepare('SELECT * FROM backups WHERE id = ?').bind(id).all<BackupRow>();
     const row = results[0];
-    if (!row) return json({ error: 'النسخة غير موجودة' }, 404);
+    if (!row) return json({ error: 'النسخة غير موجودة', code: 'backup_not_found' }, 404);
 
     if (bm[2] === '/download' && method === 'GET') {
       const obj = await env.BACKUPS.get(row.r2_key);
-      if (!obj) return json({ error: 'ملف النسخة غير موجود في R2' }, 404);
+      if (!obj) return json({ error: 'ملف النسخة غير موجود في R2', code: 'backup_file_missing' }, 404);
       await audit(db, request, session.id, 'system.download', row.r2_key);
       return new Response(obj.body, {
         headers: {
@@ -130,20 +131,20 @@ export async function handleSystem(request: Request, url: URL, env: Env, session
 
     if (bm[2] === '/restore' && method === 'POST') {
       const b = await request.json().catch(() => null) as { confirm?: string } | null;
-      if (b?.confirm !== 'استرجاع') return json({ error: 'اكتب كلمة «استرجاع» للتأكيد' }, 400);
+      if (b?.confirm !== 'استرجاع') return json({ error: 'اكتب كلمة «استرجاع» للتأكيد', code: 'restore_confirm' }, 400);
       try {
         const r = await restoreBackup(env, id, session.id);
         await audit(db, request, session.id, 'system.restore', `${row.r2_key}: ${r.restoredRows} سطر`);
         return json({ ok: true, ...r });
       } catch (e) {
         await audit(db, request, session.id, 'system.restore_failed', `${row.r2_key}: ${(e as Error).message}`);
-        return json({ error: (e as Error).message }, 500);
+        return json({ error: (e as Error).message, code: errorCode(e) }, 500);
       }
     }
 
     if (!bm[2] && method === 'DELETE') {
       // النسخ اليومية تُدار تلقائيًا، والأرشيف الشهري دائم
-      if (row.kind !== 'manual' && row.kind !== 'pre-restore') return json({ error: 'يمكن حذف النسخ اليدوية ونسخ ما قبل الاسترجاع فقط' }, 400);
+      if (row.kind !== 'manual' && row.kind !== 'pre-restore') return json({ error: 'يمكن حذف النسخ اليدوية ونسخ ما قبل الاسترجاع فقط', code: 'backup_delete_kind' }, 400);
       await env.BACKUPS.delete(row.r2_key);
       await db.prepare('DELETE FROM backups WHERE id = ?').bind(id).run();
       await audit(db, request, session.id, 'system.delete_backup', row.r2_key);
@@ -192,7 +193,7 @@ export async function handleSystem(request: Request, url: URL, env: Env, session
       await audit(db, request, session.id, 'system.files', `استرجاع ${r.name} من سلة المحذوفات`);
       return json({ ok: true, ...r });
     } catch (e) {
-      return json({ error: (e as Error).message }, 400);
+      return json({ error: (e as Error).message, code: errorCode(e) }, 400);
     }
   }
   if (path === '/files/trash' && method === 'DELETE') {
@@ -202,7 +203,7 @@ export async function handleSystem(request: Request, url: URL, env: Env, session
       await audit(db, request, session.id, 'system.files', key ? `حذف نهائي: ${key}` : `تفريغ السلة: ${n} ملف أقدم من 30 يومًا`);
       return json({ ok: true, deleted: n });
     } catch (e) {
-      return json({ error: (e as Error).message }, 400);
+      return json({ error: (e as Error).message, code: errorCode(e) }, 400);
     }
   }
   if (path === '/files/orphans' && method === 'DELETE') {
@@ -233,9 +234,9 @@ export async function handleSystem(request: Request, url: URL, env: Env, session
       await audit(db, request, session.id, 'system.maintenance', `${b.job || 'daily'}${b.month ? ` ${b.month}` : ''}`);
       return json({ ok: true, result: r });
     } catch (e) {
-      return json({ error: (e as Error).message }, 500);
+      return json({ error: (e as Error).message, code: errorCode(e) }, 500);
     }
   }
 
-  return json({ error: 'غير موجود' }, 404);
+  return json({ error: 'غير موجود', code: 'not_found' }, 404);
 }

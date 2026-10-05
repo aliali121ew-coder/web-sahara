@@ -14,3 +14,15 @@ export const errorText = (e: unknown, ns = 'auth'): string => {
   if (i18n.language === 'ar' || !AR.test(msg)) return msg;
   return i18n.t(`${ns}:errors.generic`, { defaultValue: i18n.t('auth:errors.generic') });
 };
+
+/**
+ * رسالة خطأ من الخادم بلغة الواجهة: العربية تعرض نص الخادم كما هو، وغيرها يُترجم حسب الرمز (server:errors.<code>)،
+ * فإن لم يوجد رمز معروف تُعرض رسالة عامة بدل نص عربي.
+ */
+export const serverText = (data: { error?: string; code?: string; max?: number } | null | undefined, fallback: string): string => {
+  const msg = data?.error || '';
+  if (i18n.language === 'ar' && msg) return msg;
+  if (data?.code && i18n.exists(`server:errors.${data.code}`)) return i18n.t(`server:errors.${data.code}`, { max: data.max });
+  if (msg && !AR.test(msg)) return msg;
+  return msg ? i18n.t('server:errors.generic') : fallback;
+};

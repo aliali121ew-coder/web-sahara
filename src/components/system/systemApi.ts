@@ -1,3 +1,4 @@
+import { serverText } from '../../i18n/errors';
 import i18n from '../../i18n';
 import { sessionHeaders } from '../../lib/session';
 
@@ -40,7 +41,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers: { 'content-type': 'application/json', ...sessionHeaders(), ...(init.headers || {}) },
   });
   const data = (await res.json().catch(() => ({}))) as T & { error?: string };
-  if (!res.ok) throw new SystemApiError(data.error || i18n.t('system:err.connect'), res.status);
+  if (!res.ok) throw new SystemApiError(serverText(data, i18n.t('system:err.connect')), res.status);
   return data;
 }
 const post = <T>(path: string, body: unknown = {}) => call<T>(path, { method: 'POST', body: JSON.stringify(body) });

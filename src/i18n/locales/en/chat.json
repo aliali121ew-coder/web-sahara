@@ -293,5 +293,16 @@
     "hours_one": "Last seen {{count}} hour ago",
     "hours_other": "Last seen {{count}} hours ago",
     "at": "Last seen {{day}} {{time}}"
+  },
+  "sys": {
+    "created": "created the group",
+    "updated": "updated the group info",
+    "pinned": "pinned a message",
+    "unpinned": "unpinned the message",
+    "left": "left the group",
+    "added_one": "added {{count}} member",
+    "added_other": "added {{count}} members",
+    "removed_one": "removed {{count}} member",
+    "removed_other": "removed {{count}} members"
   }
 }

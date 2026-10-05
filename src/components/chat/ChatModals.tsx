@@ -1,3 +1,4 @@
+import { enumText } from '../../i18n/enums';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -395,7 +396,7 @@ export const GroupModal: React.FC<{ store: ChatStore; room?: RoomView; onClose: 
           <div className="flex flex-col items-center gap-2 text-center">
             <Avatar id={room!.room.id} name={room!.title} src={room!.avatar} group size={96} />
             <div className="font-black text-lg">{room!.title}</div>
-            {room!.room.description && <p className="text-sm cx-muted">{room!.room.description}</p>}
+            {room!.room.description && <p className="text-sm cx-muted">{enumText(room!.room.description)}</p>}
           </div>
         )}
 

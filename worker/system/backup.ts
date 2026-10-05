@@ -5,6 +5,7 @@
  * - pre-restore/<وقت>.json.gz          تؤخذ تلقائيًا قبل أي استرجاع
  * كل نسخة تحمل بصمة SHA-256 للمحتوى غير المضغوط، ويُتحقق منها قبل الاسترجاع.
  */
+import { codedError } from '../errors';
 import type { D1Database, Env } from '../types';
 import { gunzipText, gzipText, sha256Hex } from './compress';
 
@@ -91,7 +92,7 @@ export const createBackup = async (env: Env, kind: Exclude<BackupKind, 'monthly'
   });
   // التحقق من وصول الملف كاملًا
   const head = await env.BACKUPS.head(key);
-  if (!head || head.size !== gz.length) throw new Error('فشل التحقق من حفظ النسخة في R2');
+  if (!head || head.size !== gz.length) throw codedError('فشل التحقق من حفظ النسخة في R2', 'backup_verify_failed');
   const row: BackupRow = {
     id: crypto.randomUUID(), kind, r2_key: key, size: gz.length, raw_size: text.length, rows, tables: Object.keys(snap.counts).length,
     sha256, status: 'ok', note, created_at: now, created_by: by,
@@ -106,11 +107,11 @@ export const createBackup = async (env: Env, kind: Exclude<BackupKind, 'monthly'
 /** قراءة نسخة والتحقق من بصمتها */
 export const readBackup = async (env: Env, row: Pick<BackupRow, 'r2_key' | 'sha256'>): Promise<Snapshot> => {
   const obj = await env.BACKUPS.get(row.r2_key);
-  if (!obj) throw new Error('ملف النسخة غير موجود في R2');
+  if (!obj) throw codedError('ملف النسخة غير موجود في R2', 'backup_file_missing');
   const text = await gunzipText(await obj.arrayBuffer());
-  if (row.sha256 && (await sha256Hex(text)) !== row.sha256) throw new Error('بصمة النسخة لا تطابق: الملف تالف أو معدّل');
+  if (row.sha256 && (await sha256Hex(text)) !== row.sha256) throw codedError('بصمة النسخة لا تطابق: الملف تالف أو معدّل', 'backup_hash_mismatch');
   const snap = JSON.parse(text) as Snapshot;
-  if (snap.format !== 'etihad-backup') throw new Error('صيغة ملف النسخة غير معروفة');
+  if (snap.format !== 'etihad-backup') throw codedError('صيغة ملف النسخة غير معروفة', 'backup_format');
   return snap;
 };
 
@@ -143,8 +144,8 @@ export const restoreBackup = async (env: Env, backupId: string, by: string) => {
   await ensureSystemTables(env.DB);
   const { results } = await env.DB.prepare('SELECT * FROM backups WHERE id = ?').bind(backupId).all<BackupRow>();
   const target = results[0];
-  if (!target) throw new Error('النسخة غير موجودة');
-  if (target.kind === 'monthly') throw new Error('الأرشيف الشهري يُنزَّل فقط؛ للاسترجاع اختر نسخة يومية أو يدوية');
+  if (!target) throw codedError('النسخة غير موجودة', 'backup_not_found');
+  if (target.kind === 'monthly') throw codedError('الأرشيف الشهري يُنزَّل فقط؛ للاسترجاع اختر نسخة يومية أو يدوية', 'monthly_download_only');
 
   // قراءة النسخة والتحقق منها قبل لمس أي بيانات
   const snap = await readBackup(env, target);
@@ -172,7 +173,7 @@ export const restoreBackup = async (env: Env, backupId: string, by: string) => {
     }
     return { restoredRows, preRestoreId: preRestore.id };
   } catch (e) {
-    throw new Error(`${(e as Error).message}${preRestore ? ` — نسخة ما قبل الاسترجاع محفوظة (${preRestore.r2_key}) ويمكن استرجاعها` : ''}`);
+    throw Object.assign(new Error(`${(e as Error).message}${preRestore ? ` — نسخة ما قبل الاسترجاع محفوظة (${preRestore.r2_key}) ويمكن استرجاعها` : ''}`), { code: (e as { code?: string }).code });
   } finally {
     await setMaintenance(env.DB, null);
   }

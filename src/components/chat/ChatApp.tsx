@@ -16,6 +16,7 @@ import { MessageBubble, type ReadState } from './MessageBubble';
 import { Lightbox } from './Lightbox';
 import { isMedia } from './Attachments';
 import { formatClock, formatDay, formatListTime, isViewable, lastSeenText } from './chatUtils';
+import { systemText } from './chatUtils';
 import { DEFAULT_LOOK, lookStyle, themeById, themeStyle, type RoomLook } from './chatThemes';
 import { AdminModal } from './AdminModal';
 import { AccountModal, ConfirmDelete, ForwardModal, GroupModal, LookModal, MessageInfoModal, NewChatModal, StarredModal, ThemeModal, UserModal } from './ChatModals';
@@ -49,7 +50,7 @@ const preview = (m: ChatMessage | undefined, mine: boolean, sender?: string) => 
   if (!m) return i18n.t('chat:noMessages');
   if (m.deleted) return `🚫 ${i18n.t('chat:deleted')}`;
   const who = m.kind === 'system' ? `${sender || ''} ` : mine ? `${i18n.t('chat:you')}: ` : sender ? `${sender}: ` : '';
-  const body = m.kind === 'voice' ? `🎤 ${i18n.t('chat:voiceNote')}` : m.text || (m.attachments.length ? `📎 ${m.attachments[0].name}` : '');
+  const body = m.kind === 'system' ? systemText(m.text) : m.kind === 'voice' ? `🎤 ${i18n.t('chat:voiceNote')}` : m.text || (m.attachments.length ? `📎 ${m.attachments[0].name}` : '');
   return `${who}${m.urgent ? '🚨 ' : ''}${body}`;
 };
 
@@ -282,7 +283,7 @@ export const ChatApp: React.FC = () => {
         out.push(
           <div key={m.id} id={`m-${m.id}`} className="flex justify-center my-2">
             <span className="cx-soft text-[11px] cx-muted px-3 py-1 rounded-full">
-              {m.user_id === meId ? t('chat:you') : users[m.user_id]?.name || t('chat:member')} {m.text}
+              {m.user_id === meId ? t('chat:you') : users[m.user_id]?.name || t('chat:member')} {systemText(m.text)}
             </span>
           </div>,
         );

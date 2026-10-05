@@ -51,6 +51,19 @@ export const lastSeenText = (ts: number) => {
   return i18n.t('chat:lastSeen.at', { day: formatDay(ts), time: formatClock(ts) });
 };
 
+/** رسائل النظام يخزّنها الخادم بالعربية؛ تُترجم عند العرض (وغير المعروف يبقى كما هو) */
+const SYSTEM_TEXT: Record<string, string> = {
+  'أنشأ المجموعة': 'created', 'حدّث معلومات المجموعة': 'updated', 'ثبّت رسالة': 'pinned',
+  'ألغى تثبيت الرسالة': 'unpinned', 'غادر المجموعة': 'left',
+};
+export const systemText = (text: string) => {
+  const key = SYSTEM_TEXT[text.trim()];
+  if (key) return i18n.t(`chat:sys.${key}`);
+  const m = text.match(/^(أضاف|أزال) (\d+) /);
+  if (m) return i18n.t(m[1] === 'أضاف' ? 'chat:sys.added' : 'chat:sys.removed', { count: Number(m[2]) });
+  return text;
+};
+
 export const formatSize = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
