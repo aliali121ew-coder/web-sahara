@@ -1,6 +1,7 @@
 import React from 'react';
 import { Home, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
 import { useFuelData } from '../../context/FuelDataContext';
 
 export interface BreadcrumbItem {
@@ -23,7 +24,8 @@ interface BreadcrumbProps {
  * الرئيسية  ›  شركة الاتحاد  ›  نفط أسود
  */
 export const Breadcrumb: React.FC<BreadcrumbProps> = ({ items, onHomeClick, className = '' }) => {
-  const { tr, isRTL } = useLanguage();
+  const { isRTL } = useLanguage();
+  const { t } = useTranslation('nav');
   const { setActiveTab } = useFuelData();
   const Separator = isRTL ? ChevronLeft : ChevronRight;
 
@@ -37,17 +39,17 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({ items, onHomeClick, clas
 
   return (
     <nav
-      aria-label={tr('مسار التنقل')}
+      aria-label={t('breadcrumb.label')}
       className={`flex items-center gap-1 flex-wrap text-[11px] sm:text-xs font-bold select-none leading-none ${className}`}
     >
       <button
         type="button"
         onClick={handleHome}
         className="flex items-center gap-1 px-1.5 py-1 rounded-md text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-        title={tr('الرئيسية')}
+        title={t('breadcrumb.home')}
       >
         <Home className="w-3 h-3" />
-        <span className="hidden sm:inline">{tr('الرئيسية')}</span>
+        <span className="hidden sm:inline">{t('breadcrumb.home')}</span>
       </button>
 
       {items.map((item, index) => {
