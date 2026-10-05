@@ -56,14 +56,45 @@ export const enumText = (value: string | undefined | null, variant?: 'short'): s
   return i18n.exists(key) ? i18n.t(key) : value;
 };
 
-/** اسم موقع/محطة بلغة الواجهة؛ الأسماء غير المعروفة تُعرض كما هي */
+/** أجزاء أسماء الخزانات والأقسام الشائعة (بعد التطبيع)؛ تُركّب منها الأسماء مثل «خزان صحاري 1» و«خزانات الكاز - شركة الاتحاد» */
+const TERM: Record<string, string> = {
+  'صحاري': 'term.sahara', 'صحاري كربلاء': 'term.saharaKarbala', 'شركه صحاري كربلاء': 'term.saharaCompany', 'شركه الصحاري': 'term.saharaCompany',
+  'الاتحاد': 'term.etihad', 'شركه الاتحاد': 'term.etihadCompany', 'الكاز': 'term.gasoil', 'كاز': 'term.gasoil',
+  'البنزين': 'term.gasoline', 'بنزين': 'term.gasoline', 'بانزين': 'term.gasoline', 'النفط الاسود': 'term.blackOil',
+  'نفط الاسود': 'term.blackOil', 'نفط اسود': 'term.blackOil', 'الديزل': 'term.diesel', 'ديزل': 'term.diesel',
+  'البفر': 'term.buffer', 'الوقود اليومي': 'term.dailyFuel', 'الربان': 'term.rubban', 'السكر': 'term.sukkar',
+  'الريان': 'term.rayyan', 'الطاقه القديمه': 'term.oldTaqa', 'الطاقه الجديده': 'term.newTaqa', 'بيت الحاج ابو نور': 'term.baitHajj',
+  'بيت الحاج': 'term.baitHajj', 'احتياط': 'term.reserve', 'احتياطي': 'term.reserve', 'الديزل الرئيسي': 'term.mainDiesel',
+  'كاز الطوارئ': 'term.emergencyGasoil', 'الاتحاد الاستراتيجي': 'term.etihadStrategic', 'البنزين الاحتياطي': 'term.reserveGasoline', 'عمليات الاتحاد': 'term.etihadOps',
+  'خزانات التشغيل اليومي': 'term.dailyOps', 'بفر وديزل': 'term.bufferDiesel', 'وحده الكاز والبنزين وخزانات بيت الحاج': 'term.gasPetrolHajj', 'خزانات كاز الاستخلاص والنقل': 'term.istikhlasTransport',
+  'خزانات مواقع الشركه': 'term.companySites', 'قسم تشغيلي اضافي مخصص لمنظومه الخزانات': 'term.extraSection',
+};
+
+const lookup = (n: string): string | undefined => {
+  const slug = STATION[n] ?? TERM[n];
+  return slug && i18n.exists(`common:enum.${slug}`) ? i18n.t(`common:enum.${slug}`) : undefined;
+};
+
+/** يترجم اسمًا مركّبًا: «X - Y»، «خزان X 2»، «خزانات X»، «موقع X»؛ undefined إن وُجد جزء غير معروف */
+const compose = (n: string): string | undefined => {
+  const direct = lookup(n);
+  if (direct) return direct;
+  if (n.includes(' - ')) {
+    const parts = n.split(' - ').map(p => compose(p.trim()));
+    return parts.every(Boolean) ? parts.join(' – ') : undefined;
+  }
+  const m = n.match(/^(خزان|خزانات|موقع) (.+?)(?: ([A-Z]+-?\d+|\d+))?$/);
+  if (!m) return undefined;
+  const inner = compose(m[2]);
+  if (!inner) return undefined;
+  const tpl = m[1] === 'خزان' ? 'tankOf' : m[1] === 'خزانات' ? 'tanksOf' : 'siteOf';
+  const text = i18n.t(`common:enum.${tpl}`, { name: inner });
+  return m[3] ? `${text} ${m[3]}` : text;
+};
+
+/** اسم موقع أو خزان أو قسم بلغة الواجهة. في العربية يُعرض كما كُتب؛ وما لا يُعرف كاملًا يبقى كما هو */
 export const siteName = (value: string | undefined | null): string => {
   if (!value) return '';
   if (i18n.language === 'ar') return value;
-  const n = normStation(value);
-  const slug = STATION[n];
-  if (slug && i18n.exists(`common:enum.${slug}`)) return i18n.t(`common:enum.${slug}`);
-  // «موقع التسمين» → «Al-Tasmeen site»
-  const inner = n.startsWith('موقع ') ? STATION[n.slice(5)] : undefined;
-  return inner ? i18n.t('common:enum.siteOf', { name: i18n.t(`common:enum.${inner}`) }) : value;
+  return compose(normStation(value)) ?? value;
 };
