@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "title": "منظومة وقود صحاري كربلاء",
+    "description": "منظومة إدارة الوقود والخزانات والأرصدة لشركة صحاري كربلاء وشركة الاتحاد"
+  },
+  "brand": {
+    "name": "صحاري كربلاء",
+    "subtitle": "محطة كربلاء المركزية",
+    "company": "صحاري كربلاء"
+  },
+  "actions": {
+    "close": "إغلاق",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "confirm": "تأكيد",
+    "logout": "تسجيل الخروج",
+    "clearFilter": "إلغاء التصفية"
+  },
+  "status": {
+    "online": "متصل",
+    "offline": "غير متصل",
+    "active": "نشط",
+    "disabled": "موقوف"
+  },
+  "units": {
+    "liter": "لتر",
+    "iqd": "د.ع"
+  },
+  "time": {
+    "minutesShort": "{{count}} د",
+    "hoursShort": "{{count}} س",
+    "hoursMinutesShort": "{{h}} س {{m}} د"
+  },
+  "sync": {
+    "saved": "محفوظ",
+    "saving": "جارٍ الحفظ",
+    "offline": "بلا اتصال",
+    "error": "خطأ في الحفظ",
+    "savedHint": "محفوظ على الخادم",
+    "savingHint": "جارٍ الحفظ…",
+    "offlineHint": "بلا اتصال: محفوظ في الجهاز وسيُرفع عند عودة الاتصال",
+    "errorHint": "تعذّر الحفظ على الخادم، ستُعاد المحاولة تلقائيًا"
+  },
+  "language": {
+    "select": "اختر لغة المنظومة",
+    "count_zero": "لا توجد لغات",
+    "count_one": "لغة واحدة",
+    "count_two": "لغتان",
+    "count_few": "{{count}} لغات",
+    "count_many": "{{count}} لغة",
+    "count_other": "{{count}} لغة",
+    "current": "لغة المنظومة: {{code}}"
+  }
+}

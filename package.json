@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "i18n:check": "node scripts/i18n-check.mjs",
+    "build": "node scripts/i18n-check.mjs && tsc && vite build",
     "preview": "npm run build && wrangler dev",
     "deploy": "npm run build && wrangler deploy",
-    "build:staging": "tsc && vite build --mode staging",
+    "build:staging": "node scripts/i18n-check.mjs && tsc && vite build --mode staging",
     "deploy:staging": "npm run build:staging && wrangler deploy"
   },
   "dependencies": {
@@ -16,11 +17,14 @@
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
     "exceljs": "^4.4.0",
+    "i18next": "^26.4.2",
+    "i18next-resources-to-backend": "^1.2.3",
     "jszip": "^3.10.2",
     "lucide-react": "^1.16.0",
     "pdfjs-dist": "^6.3.289",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
+    "react-i18next": "^17.0.15",
     "recharts": "^2.15.1",
     "tailwind-merge": "^3.0.2",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"

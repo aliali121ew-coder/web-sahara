@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { Briefcase, AtSign, ShieldCheck, Settings, X, LayoutGrid, Clock, Camera, PenLine, Check, Loader2, Trash2 } from 'lucide-react';
 import { resizeAvatar } from '../admin/adminUi';
 import { initials, getSessionStarted, type SessionProfile } from '../../lib/session';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useConnection } from '../../lib/useConnection';
 
 type CardProfile = Pick<SessionProfile, 'name' | 'username' | 'role' | 'avatar' | 'color' | 'is_admin'>;
@@ -33,17 +34,17 @@ interface Props {
 const WIDTH = 330;
 const EST_HEIGHT = 410;
 
-const sinceText = (started: number, tr: (s: string) => string) => {
+const sinceText = (started: number, t: TFunction) => {
   if (!started) return '—';
   const min = Math.max(0, Math.floor((Date.now() - started) / 60000));
-  if (min < 60) return `${min} ${tr('د')}`;
+  if (min < 60) return t('common:time.minutesShort', { count: min });
   const h = Math.floor(min / 60);
-  return `${h} ${tr('س')}${min % 60 ? ` ${min % 60} ${tr('د')}` : ''}`;
+  return min % 60 ? t('common:time.hoursMinutesShort', { h, m: min % 60 }) : t('common:time.hoursShort', { count: h });
 };
 
 /** بطاقة الملف الشخصي: غلاف بمنظر جبلي يتلاشى للأبيض، صورة دائرية، الاسم والدور، إحصاءات، وزر رئيسي */
 export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, isRtl, sectionsCount, status, lastStat, actionLabel, onSaveSelf, onOpenProfile, onClose }) => {
-  const { tr } = useLanguage();
+  const { t } = useTranslation(['nav', 'common']);
   const online = useConnection();
   const [open, setOpen] = useState(false);
   // تعديل الاسم والصورة (حسابي فقط)
@@ -61,7 +62,7 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
   };
   const saveSelf = async () => {
     if (!onSaveSelf) return;
-    if (!draftName.trim()) return setEditError(tr('الاسم مطلوب'));
+    if (!draftName.trim()) return setEditError(t('nav:profile.nameRequired'));
     setSaving(true);
     setEditError('');
     try {
@@ -117,7 +118,7 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
     else style.left = Math.max(8, Math.min(anchor.left, vw - width - 8));
   }
 
-  const role = profile?.role || (profile?.is_admin ? tr('مدير النظام') : tr('مستخدم'));
+  const role = profile?.role || (profile?.is_admin ? t('nav:profile.admin') : t('nav:profile.user'));
 
   return createPortal(
     <>
@@ -129,7 +130,7 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
       <div
         dir={isRtl ? 'rtl' : 'ltr'}
         role="dialog"
-        aria-label={profile?.name || tr('الملف الشخصي')}
+        aria-label={profile?.name || t('nav:profile.title')}
         className="fixed z-[71] rounded-[26px] isolate"
         style={{
           ...style,
@@ -171,7 +172,7 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
           <button
             type="button"
             onClick={close}
-            aria-label={tr('إغلاق')}
+            aria-label={t('common:actions.close')}
             className={`absolute top-3 ${isRtl ? 'left-3' : 'right-3'} w-8 h-8 rounded-full bg-white/90 dark:bg-slate-900/80 text-slate-700 dark:text-slate-200 flex items-center justify-center shadow-sm hover:bg-white cursor-pointer`}
           >
             <X className="w-4 h-4" />
@@ -188,7 +189,7 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
             if (!editing) return <div className={cls} style={{ background: profile?.color || '#2563eb' }}>{face}</div>;
             return (
               <div className="flex items-end gap-2">
-                <button type="button" onClick={() => fileRef.current?.click()} aria-label={tr('تغيير الصورة')} className={`${cls} group cursor-pointer`} style={{ background: profile?.color || '#2563eb' }}>
+                <button type="button" onClick={() => fileRef.current?.click()} aria-label={t('nav:profile.changePhoto')} className={`${cls} group cursor-pointer`} style={{ background: profile?.color || '#2563eb' }}>
                   {face}
                   <span className="absolute inset-0 bg-black/45 flex items-center justify-center opacity-90 group-hover:opacity-100 transition">
                     <Camera className="w-6 h-6 text-white" />
@@ -196,7 +197,7 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
                 </button>
                 {draftAvatar && (
                   <button type="button" onClick={() => setDraftAvatar('')} className="mb-1 inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 hover:underline cursor-pointer">
-                    <Trash2 className="w-3.5 h-3.5" />{tr('إزالة الصورة')}
+                    <Trash2 className="w-3.5 h-3.5" />{t('nav:profile.removePhoto')}
                   </button>
                 )}
                 <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => { pickPhoto(e.target.files?.[0]); e.target.value = ''; }} />
@@ -213,7 +214,7 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
                   onKeyDown={e => { if (e.key === 'Enter') saveSelf(); }}
                   maxLength={60}
                   autoFocus
-                  aria-label={tr('الاسم')}
+                  aria-label={t('nav:profile.name')}
                   className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-blue-500 bg-white dark:bg-slate-900 text-base font-black text-slate-900 dark:text-white outline-none"
                 />
               ) : (
@@ -222,7 +223,7 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
               <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{role}</div>
             </div>
             {(() => {
-              const st = status ?? (online ? { label: tr('متصل'), on: true } : { label: tr('غير متصل'), on: false });
+              const st = status ?? (online ? { label: t('common:status.online'), on: true } : { label: t('common:status.offline'), on: false });
               return (
                 <span className={`shrink-0 mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-black ring-1 ${st.on ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-900' : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 ring-rose-200 dark:ring-rose-900'}`}>
                   <span className={`w-1.5 h-1.5 rounded-full ${st.on ? 'bg-emerald-500' : 'bg-rose-500'}`} />{st.label}
@@ -232,7 +233,7 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
           </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-slate-500 dark:text-slate-400">
-            <span className="inline-flex items-center gap-1"><Briefcase className="w-3.5 h-3.5" />{tr('صحاري كربلاء')}</span>
+            <span className="inline-flex items-center gap-1"><Briefcase className="w-3.5 h-3.5" />{t('common:brand.company')}</span>
             <span className="inline-flex items-center gap-1" dir="ltr"><AtSign className="w-3.5 h-3.5" />{profile?.username || 'user'}</span>
           </div>
 
@@ -242,21 +243,21 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
               <div className="pe-3">
                 <div className="flex items-center gap-1 text-sm font-black text-slate-900 dark:text-white">
                   {profile?.is_admin ? <ShieldCheck className="w-4 h-4 text-emerald-500" /> : null}
-                  {profile?.is_admin ? tr('كامل') : tr('محدد')}
+                  {profile?.is_admin ? t('nav:profile.permissionFull') : t('nav:profile.permissionLimited')}
                 </div>
-                <div className="text-[10.5px] text-slate-400">{tr('الصلاحية')}</div>
+                <div className="text-[10.5px] text-slate-400">{t('nav:profile.permission')}</div>
               </div>
               <div className="px-3">
                 <div className="flex items-center gap-1 text-sm font-black text-slate-900 dark:text-white">
-                  <LayoutGrid className="w-3.5 h-3.5 text-slate-400" />{sectionsCount === null ? tr('الكل') : sectionsCount}
+                  <LayoutGrid className="w-3.5 h-3.5 text-slate-400" />{sectionsCount === null ? t('nav:profile.sectionsAll') : sectionsCount}
                 </div>
-                <div className="text-[10.5px] text-slate-400">{tr('الأقسام')}</div>
+                <div className="text-[10.5px] text-slate-400">{t('nav:profile.sections')}</div>
               </div>
               <div className="ps-3 min-w-0 flex-1">
                 <div className="flex items-start gap-1 text-sm font-black text-slate-900 dark:text-white leading-tight">
-                  <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />{lastStat ? lastStat.value : sinceText(getSessionStarted(), tr)}
+                  <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />{lastStat ? lastStat.value : sinceText(getSessionStarted(), t)}
                 </div>
-                <div className="text-[10.5px] text-slate-400">{lastStat ? lastStat.label : tr('الجلسة')}</div>
+                <div className="text-[10.5px] text-slate-400">{lastStat ? lastStat.label : t('nav:profile.session')}</div>
               </div>
             </div>
           </div>
@@ -266,10 +267,10 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
               {editError && <p className="mt-3 text-xs font-bold text-rose-600">{editError}</p>}
               <div className="mt-4 flex items-center gap-2">
                 <button type="button" onClick={() => setEditing(false)} disabled={saving} className="h-11 px-5 rounded-full text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
-                  {tr('إلغاء')}
+                  {t('common:actions.cancel')}
                 </button>
                 <button type="button" onClick={saveSelf} disabled={saving} className="flex-1 h-11 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-slate-800 disabled:opacity-60 cursor-pointer">
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}{tr('حفظ')}
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}{t('common:actions.save')}
                 </button>
               </div>
             </>
@@ -279,7 +280,7 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
             onClick={() => { if (onSaveSelf) { startEdit(); return; } onOpenProfile(); close(); }}
             className="mt-4 w-full h-11 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-slate-800 dark:hover:bg-slate-100 active:scale-[0.98] transition-all cursor-pointer"
           >
-            {onSaveSelf ? <PenLine className="w-4 h-4" /> : <Settings className="w-4 h-4" />}{onSaveSelf ? tr('تحديث المعلومات') : actionLabel ?? tr('الملف الشخصي والحساب')}
+            {onSaveSelf ? <PenLine className="w-4 h-4" /> : <Settings className="w-4 h-4" />}{onSaveSelf ? t('nav:profile.updateInfo') : actionLabel ?? t('nav:profile.accountSettings')}
           </button>
           )}
         </div>

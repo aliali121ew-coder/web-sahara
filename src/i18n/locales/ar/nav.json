@@ -1,0 +1,62 @@
+{
+  "groups": {
+    "operations": "العمليات والمخزون",
+    "management": "الإدارة والمالية",
+    "analytics": "التحليلات والمتابعة"
+  },
+  "items": {
+    "dashboard": "لوحة القيادة الرئيسية",
+    "tanks": "منظومة الخزانات",
+    "prices": "الأسعار",
+    "finance": "رصيد الشركة",
+    "financeEtihad": "شركة الاتحاد",
+    "financeSahara": "شركة الصحاري",
+    "chat": "المحادثات والعمليات",
+    "settings": "إعدادات المنظومة"
+  },
+  "sidebar": {
+    "label": "التنقل الرئيسي",
+    "expand": "توسيع القائمة",
+    "collapse": "طي القائمة",
+    "open": "فتح القائمة الجانبية",
+    "toggle": "فتح أو طي القائمة الجانبية",
+    "search": "بحث في القائمة…",
+    "clearSearch": "مسح البحث",
+    "noResults": "لا توجد نتائج مطابقة",
+    "selected": "محدد"
+  },
+  "header": {
+    "search": "ابحث أو نفّذ أمرًا سريعًا…",
+    "darkMode": "التبديل إلى الوضع الليلي",
+    "lightMode": "التبديل إلى الوضع النهاري"
+  },
+  "notifications": {
+    "title": "التنبيهات والإشعارات",
+    "new_zero": "لا جديد",
+    "new_one": "إشعار جديد",
+    "new_two": "إشعاران جديدان",
+    "new_few": "{{count}} إشعارات جديدة",
+    "new_many": "{{count}} إشعارًا جديدًا",
+    "new_other": "{{count}} إشعار جديد",
+    "markAllRead": "تحديد الكل كمقروء",
+    "empty": "لا توجد إشعارات حاليًا"
+  },
+  "profile": {
+    "title": "الملف الشخصي",
+    "fullAccess": "صلاحيات إدارية كاملة",
+    "admin": "مدير النظام",
+    "user": "مستخدم",
+    "updateInfo": "تحديث المعلومات",
+    "accountSettings": "الملف الشخصي والحساب",
+    "nameRequired": "الاسم مطلوب",
+    "name": "الاسم",
+    "changePhoto": "تغيير الصورة",
+    "removePhoto": "إزالة الصورة",
+    "permission": "الصلاحية",
+    "permissionFull": "كامل",
+    "permissionLimited": "محدد",
+    "sections": "الأقسام",
+    "sectionsAll": "الكل",
+    "session": "الجلسة"
+  }
+}

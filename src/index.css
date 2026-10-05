@@ -534,3 +534,18 @@ body[data-glassmorphism="true"] .shadow-soft-card {
 /* عمودان (كروت قصيرة): خط أكبر يتكيف مع عرض الكارت، بلا قطع للنص */
 .kpi-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .kpi-grid-2 .kpi-num { font-size: clamp(0.8rem, 4.2cqw, 1.05rem); }
+
+/* ===== الخطوط حسب اللغة =====
+   الإنجليزية: Inter، مع الرجوع لخط عربي للبيانات العربية التي يدخلها المستخدمون (أسماء المحطات وغيرها).
+   العربية: بلا تباعد بين الحروف، لأنه يكسر اتصالها. */
+:root {
+  --font-ar: 'Noto Kufi Arabic', 'Cairo', system-ui, sans-serif;
+  --font-en: 'Inter', 'Noto Kufi Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+html[lang="en"] body,
+html[lang="en"] body * {
+  font-family: var(--font-en);
+}
+html[lang="ar"] [class*="tracking-"] {
+  letter-spacing: normal;
+}

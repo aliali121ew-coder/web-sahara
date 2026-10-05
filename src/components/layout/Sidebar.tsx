@@ -23,6 +23,7 @@ import { initials, logout, refreshProfile, useSessionProfile } from '../../lib/s
 import { useTheme } from '../../context/ThemeContext';
 import { useFuelData } from '../../context/FuelDataContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
 import { NavTabId } from '../../types';
 import { getAmbientBgColor, getAmbientGradientStyle } from '../../lib/themeGradients';
 import { ProfileCard } from './ProfileCard';
@@ -209,7 +210,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     shadeLevel,
   } = useTheme();
   const { activeTab, setActiveTab } = useFuelData();
-  const { t, tr, direction } = useLanguage();
+  const { direction } = useLanguage();
+  const { t } = useTranslation(['nav', 'common']);
   const isRtl = direction === 'rtl';
 
   // Internal collapsed state if not managed externally (collapsed by default)
@@ -272,32 +274,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Master Navigation Groups with Enterprise Submenus
   const allGroups: NavGroup[] = useMemo(() => [
     {
-      groupTitle: t('groupOperations') || 'العمليات والمخزون',
+      groupTitle: t('nav:groups.operations'),
       items: [
-        { id: 'dashboard', label: t('navDashboard') || 'لوحة التحكم', icon: LayoutDashboard },
-        { id: 'tanks', label: t('navTanks') || 'الخزانات والمستودعات', icon: Database },
-        { id: 'prices', label: t('navPrices') || 'أسعار الوقود', icon: Tags },
+        { id: 'dashboard', label: t('nav:items.dashboard'), icon: LayoutDashboard },
+        { id: 'tanks', label: t('nav:items.tanks'), icon: Database },
+        { id: 'prices', label: t('nav:items.prices'), icon: Tags },
       ]
     },
     {
-      groupTitle: t('groupManagement') || 'الإدارة والمالية',
+      groupTitle: t('nav:groups.management'),
       items: [
         {
           id: 'finance',
-          label: t('navFinance') || 'الإدارة المالية',
+          label: t('nav:items.finance'),
           icon: Building2,
           children: [
-            { id: 'finance-etihad', label: t('navFinanceEtihad') || 'مالية شركة الاتحاد' },
-            { id: 'finance-sahara', label: t('navFinanceSahara') || 'مالية شركة صحاري' },
+            { id: 'finance-etihad', label: t('nav:items.financeEtihad') },
+            { id: 'finance-sahara', label: t('nav:items.financeSahara') },
           ]
         },
       ]
     },
     {
-      groupTitle: t('groupAnalytics') || 'التحليلات والمتابعة',
+      groupTitle: t('nav:groups.analytics'),
       items: [
-        { id: 'chat', label: t('navChat') || 'المساعد الذكي', icon: MessageSquare },
-        { id: 'settings', label: t('navSettings') || 'إعدادات المنظومة', icon: Settings },
+        { id: 'chat', label: t('nav:items.chat'), icon: MessageSquare },
+        { id: 'settings', label: t('nav:items.settings'), icon: Settings },
       ]
     }
   ], [t]);
@@ -466,7 +468,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         id="main-sidebar"
         dir={direction}
         style={{ ...(softPanel ? { boxShadow: softShadow } : null), ...getSidebarInlineStyle(), contain: 'layout style', willChange: 'width, transform' }}
-        aria-label={t('brandTitle')}
+        aria-label={t('common:brand.name')}
         aria-modal={!isDesktop && isOpen ? true : undefined}
         className={`fixed top-0 bottom-0 z-50 flex flex-col shrink-0 select-none whitespace-nowrap transition-[width,transform] duration-200 ease-out motion-reduce:transition-none ${
           isRtl ? 'right-0 border-l' : 'left-0 border-r'
@@ -484,8 +486,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button
           type="button"
           onClick={handleToggleCollapse}
-          title={isCollapsed ? (isRtl ? 'توسيع القائمة' : 'Expand sidebar') : (isRtl ? 'طي القائمة' : 'Collapse sidebar')}
-          aria-label={isCollapsed ? (isRtl ? 'توسيع القائمة' : 'Expand sidebar') : (isRtl ? 'طي القائمة' : 'Collapse sidebar')}
+          title={isCollapsed ? t('nav:sidebar.expand') : t('nav:sidebar.collapse')}
+          aria-label={isCollapsed ? t('nav:sidebar.expand') : t('nav:sidebar.collapse')}
           aria-expanded={!isCollapsed}
           aria-controls="main-sidebar"
           className={`no-print hidden md:flex absolute top-[18px] z-40 w-[22px] h-[22px] rounded-full items-center justify-center transition-all duration-200 shadow-md border cursor-pointer active:scale-90 ${
@@ -518,8 +520,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               onClick={handleToggleCollapse}
-              title={isRtl ? 'فتح القائمة الجانبية' : 'Open sidebar'}
-              aria-label={isRtl ? 'فتح القائمة الجانبية' : 'Open sidebar'}
+              title={t('nav:sidebar.open')}
+              aria-label={t('nav:sidebar.open')}
               aria-expanded={false}
               className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 cursor-pointer active:scale-90 ${
                 tokens.isLightMode
@@ -539,13 +541,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleItemClick('dashboard'); } }}
-                  title={t('brandTitle')}
+                  title={t('common:brand.name')}
                   className="relative w-[34px] h-[34px] rounded-xl bg-gradient-to-tr from-blue-700 via-blue-600 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-600/30 ring-2 ring-blue-500/20 shrink-0 cursor-pointer transform transition-transform hover:scale-105 active:scale-95"
                 >
                   <Flame className="w-4 h-4 text-amber-300" />
                   <span
                     className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-[1.5px] ring-white dark:ring-slate-900"
-                    title={t('online')}
+                    title={t('common:status.online')}
                   />
                 </div>
 
@@ -557,7 +559,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         tokens.isLightMode ? 'text-slate-900' : 'text-white'
                       }`}
                     >
-                      {t('brandTitle') || 'صحاري كربلاء'}
+                      {t('common:brand.name')}
                     </h1>
                     <span
                       className={`text-[8.5px] px-1 py-px rounded font-mono font-extrabold border ${
@@ -571,7 +573,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </div>
                   <div className="flex items-center gap-1 mt-0.5 text-[10px] text-slate-400 font-medium truncate">
                     <Radio className="w-2.5 h-2.5 text-emerald-500 animate-pulse shrink-0" />
-                    <span className="truncate">{t('brandSubtitle') || 'محطة كربلاء المركزية'}</span>
+                    <span className="truncate">{t('common:brand.subtitle')}</span>
                   </div>
                 </div>
               </div>
@@ -581,8 +583,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   onClick={handleToggleCollapse}
-                  title={isRtl ? 'طي القائمة' : 'Collapse sidebar'}
-                  aria-label={isRtl ? 'طي القائمة' : 'Collapse sidebar'}
+                  title={t('nav:sidebar.collapse')}
+                  aria-label={t('nav:sidebar.collapse')}
                   aria-expanded={true}
                   className={`p-1.5 rounded-lg transition-colors ${
                     tokens.isLightMode
@@ -596,8 +598,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {/* Close Drawer Button for Mobile */}
                 <button
                   onClick={onClose}
-                  title={`${t('close')} (Esc)`}
-                  aria-label={t('close')}
+                  title={`${t('common:actions.close')} (Esc)`}
+                  aria-label={t('common:actions.close')}
                   className={`p-1.5 rounded-lg transition-colors md:hidden ${
                     tokens.isLightMode
                       ? 'text-slate-400 hover:text-slate-800 hover:bg-slate-200/60'
@@ -623,8 +625,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={tr('بحث في القائمة...')}
-                aria-label={tr('بحث في القائمة...')}
+                placeholder={t('nav:sidebar.search')}
+                aria-label={t('nav:sidebar.search')}
                 className={`w-full h-[34px] text-xs rounded-xl font-medium transition-all duration-150 border outline-none ${
                   isRtl ? 'pr-8 pl-7' : 'pl-8 pr-7'
                 } ${tokens.searchBg} ${tokens.searchBorder} ${tokens.searchFocusRing}`}
@@ -632,8 +634,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  title={tr('مسح البحث')}
-                  aria-label={tr('مسح البحث')}
+                  title={t('nav:sidebar.clearSearch')}
+                  aria-label={t('nav:sidebar.clearSearch')}
                   type="button"
                   className={`absolute ${isRtl ? 'left-2.5' : 'right-2.5'} p-0.5 rounded text-slate-400 hover:text-slate-200`}
                 >
@@ -652,8 +654,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 handleToggleCollapse();
                 setTimeout(() => searchInputRef.current?.focus(), 150);
               }}
-              title={tr('بحث في القائمة...')}
-              aria-label={tr('بحث في القائمة...')}
+              title={t('nav:sidebar.search')}
+              aria-label={t('nav:sidebar.search')}
               className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${
                 tokens.isLightMode ? 'text-slate-500 hover:bg-slate-100 hover:text-blue-600' : 'text-slate-400 hover:bg-white/10 hover:text-white'
               }`}
@@ -667,7 +669,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             NAVIGATION GROUPS & ITEMS
            ========================================================================== */}
         <nav
-          aria-label={isRtl ? 'التنقل الرئيسي' : 'Main navigation'}
+          aria-label={t('nav:sidebar.label')}
           className="flex-1 px-2.5 py-2.5 space-y-4 overflow-y-auto overflow-x-hidden select-none"
           style={{
             scrollbarWidth: 'thin',
@@ -676,12 +678,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         >
           {filteredNavGroups.length === 0 ? (
             <div className="py-8 px-4 text-center">
-              <p className="text-xs text-slate-400 font-medium">{tr('لا توجد نتائج مطابقة')}</p>
+              <p className="text-xs text-slate-400 font-medium">{t('nav:sidebar.noResults')}</p>
               <button
                 onClick={() => setSearchQuery('')}
                 className="mt-2 text-[11px] text-blue-500 hover:underline font-bold"
               >
-                {tr('إلغاء التصفية')}
+                {t('common:actions.clearFilter')}
               </button>
             </div>
           ) : (
@@ -780,7 +782,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                                   {isSubActive && (
                                     <span className="text-[10px] px-1.5 py-px rounded bg-white/20 text-white font-extrabold">
-                                      {isRtl ? 'محدد' : 'Active'}
+                                      {t('nav:sidebar.selected')}
                                     </span>
                                   )}
                                 </button>
@@ -886,7 +888,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             aria-haspopup="dialog"
             aria-expanded={showProfileMenu}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProfileCard(); } }}
-            title={profile?.name || t('profile')}
+            title={profile?.name || t('nav:profile.title')}
             className={`flex items-center gap-2.5 ${isCollapsed ? 'p-0.5' : 'p-1'} rounded-xl cursor-pointer transition-colors group ${
               isCollapsed ? 'justify-center' : 'justify-between hover:bg-black/5 dark:hover:bg-white/5'
             }`}
@@ -894,7 +896,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="flex items-center gap-2.5 min-w-0">
               <div
                 className={`relative rounded-2xl text-white font-black text-sm flex items-center justify-center shadow-xs overflow-hidden shrink-0 ring-[1.5px] ring-offset-2 ring-offset-white dark:ring-offset-slate-900 transition-shadow ${online ? 'ring-emerald-500' : 'ring-rose-500'}`}
-                title={online ? 'متصل' : 'غير متصل'}
+                title={online ? t('common:status.online') : t('common:status.offline')}
                 style={{
                   background: profile?.color || '#2563eb',
                   width: isCollapsed ? '38px' : '40px',
@@ -920,7 +922,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {!isCollapsed && (
                 <div className={`flex-1 min-w-0 ${isRtl ? 'text-right' : 'text-left'}`}>
                   <div className={`text-[13px] font-bold truncate leading-tight ${tokens.isLightMode ? 'text-slate-900' : 'text-white'}`}>
-                    {profile?.name || t('generalManager')}
+                    {profile?.name || '—'}
                   </div>
                   <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1 truncate font-mono">
                     {!!profile?.is_admin && <ShieldCheck className="w-3 h-3 text-emerald-500 shrink-0" />}
@@ -963,7 +965,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     className="h-8 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold flex items-center justify-center gap-1 transition-colors disabled:opacity-60"
                   >
                     {leaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <LogOut className="w-3 h-3" />}
-                    <span>{tr('تأكيد')}</span>
+                    <span>{t('common:actions.confirm')}</span>
                   </button>
                   <button
                     onClick={() => setConfirmLogout(false)}
@@ -974,7 +976,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         : 'bg-white/10 hover:bg-white/15 text-slate-200'
                     }`}
                   >
-                    {tr('إلغاء')}
+                    {t('common:actions.cancel')}
                   </button>
                 </div>
               ) : (
@@ -987,7 +989,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   }`}
                 >
                   <LogOut className={`w-3.5 h-3.5 ${isRtl ? 'rotate-180' : ''}`} />
-                  <span>{tr('تسجيل الخروج')}</span>
+                  <span>{t('common:actions.logout')}</span>
                 </button>
               )}
             </div>

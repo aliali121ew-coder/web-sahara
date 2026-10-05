@@ -1,0 +1,50 @@
+{
+  "meta": {
+    "title": "Sahara Karbala Fuel System",
+    "description": "Fuel, tank and balance management for Sahara Karbala and Etihad Company"
+  },
+  "brand": {
+    "name": "Sahara Karbala",
+    "subtitle": "Karbala Central Terminal",
+    "company": "Sahara Karbala"
+  },
+  "actions": {
+    "close": "Close",
+    "cancel": "Cancel",
+    "save": "Save",
+    "confirm": "Confirm",
+    "logout": "Sign out",
+    "clearFilter": "Clear filter"
+  },
+  "status": {
+    "online": "Online",
+    "offline": "Offline",
+    "active": "Active",
+    "disabled": "Suspended"
+  },
+  "units": {
+    "liter": "L",
+    "iqd": "IQD"
+  },
+  "time": {
+    "minutesShort": "{{count}} min",
+    "hoursShort": "{{count}} h",
+    "hoursMinutesShort": "{{h}} h {{m}} min"
+  },
+  "sync": {
+    "saved": "Saved",
+    "saving": "Saving",
+    "offline": "Offline",
+    "error": "Save failed",
+    "savedHint": "Saved to the server",
+    "savingHint": "Saving…",
+    "offlineHint": "Offline: saved on this device and will upload when you're back online",
+    "errorHint": "Couldn't save to the server. Retrying automatically"
+  },
+  "language": {
+    "select": "Choose system language",
+    "count_one": "{{count}} language",
+    "count_other": "{{count}} languages",
+    "current": "System language: {{code}}"
+  }
+}

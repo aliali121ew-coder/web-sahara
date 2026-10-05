@@ -1,0 +1,58 @@
+{
+  "groups": {
+    "operations": "Operations & inventory",
+    "management": "Management & finance",
+    "analytics": "Analytics & tracking"
+  },
+  "items": {
+    "dashboard": "Dashboard",
+    "tanks": "Tanks",
+    "prices": "Prices",
+    "finance": "Company balance",
+    "financeEtihad": "Etihad Company",
+    "financeSahara": "Sahara Company",
+    "chat": "Chat & operations",
+    "settings": "Settings"
+  },
+  "sidebar": {
+    "label": "Main navigation",
+    "expand": "Expand menu",
+    "collapse": "Collapse menu",
+    "open": "Open side menu",
+    "toggle": "Open or collapse the side menu",
+    "search": "Search menu…",
+    "clearSearch": "Clear search",
+    "noResults": "No matching results",
+    "selected": "Current"
+  },
+  "header": {
+    "search": "Search or run a command…",
+    "darkMode": "Switch to dark mode",
+    "lightMode": "Switch to light mode"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "new_one": "{{count}} new",
+    "new_other": "{{count}} new",
+    "markAllRead": "Mark all as read",
+    "empty": "No notifications right now"
+  },
+  "profile": {
+    "title": "Profile",
+    "fullAccess": "Full admin access",
+    "admin": "System administrator",
+    "user": "User",
+    "updateInfo": "Update info",
+    "accountSettings": "Profile & account",
+    "nameRequired": "Name is required",
+    "name": "Name",
+    "changePhoto": "Change photo",
+    "removePhoto": "Remove photo",
+    "permission": "Access",
+    "permissionFull": "Full",
+    "permissionLimited": "Limited",
+    "sections": "Sections",
+    "sectionsAll": "All",
+    "session": "Session"
+  }
+}
