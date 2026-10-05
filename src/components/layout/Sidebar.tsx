@@ -440,6 +440,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const desktopExpanded = isDesktop && !collapsedPref;
   // اللوحة التلقائية المفتوحة: بلا حد، بحواف داخلية ناعمة وظل يتلاشى بدل الخط
   const softPanel = !isCollapsed && ((sidebarStyle === 'match-bg' && bgGradient === 'none') || sidebarStyle === 'unified');
+  const softShadow = themeMode === 'dark'
+    ? `${isRtl ? '-10px' : '10px'} 0 48px -12px rgba(0,0,0,0.55), ${isRtl ? '-30px' : '30px'} 0 120px -40px rgba(0,0,0,0.45)`
+    : `${isRtl ? '-10px' : '10px'} 0 48px -12px rgba(15,23,42,0.10), ${isRtl ? '-30px' : '30px'} 0 120px -40px rgba(15,23,42,0.14)`;
 
   return (
     <>
@@ -460,7 +463,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         inert={!isDesktop && !isOpen}
         id="main-sidebar"
         dir={direction}
-        style={{ ...getSidebarInlineStyle(), ...(softPanel ? { backgroundColor: 'transparent', backgroundImage: 'none', boxShadow: 'none' } : null), contain: 'layout style', willChange: 'width, transform' }}
+        style={{ ...(softPanel ? { boxShadow: softShadow } : null), ...getSidebarInlineStyle(), contain: 'layout style', willChange: 'width, transform' }}
         aria-label={t('brandTitle')}
         aria-modal={!isDesktop && isOpen ? true : undefined}
         className={`fixed top-0 bottom-0 z-50 flex flex-col shrink-0 select-none whitespace-nowrap transition-[width,transform] duration-200 ease-out motion-reduce:transition-none ${
@@ -475,29 +478,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           isCollapsed ? 'w-[54px]' : 'w-[260px] max-w-[85vw] md:w-[238px]'
         } ${tokens.bgClass}`}
       >
-        {/* اللوحة المفتوحة: خلفية تتلاشى نحو الصفحة بتخفيف الشفافية، مع تغبيش تدريجي لما خلفها */}
-        {softPanel && (() => {
-          const dark = themeMode === 'dark';
-          const dir = isRtl ? 'to left' : 'to right';
-          // معتمة تمامًا حتى 62% من العرض ثم تخفّ تدريجيًا حتى الحافة الداخلية؛ التغبيش يبقى أقوى ليحفظ وضوح القائمة
-          const fade = `linear-gradient(${dir}, #000 0%, #000 62%, rgba(0,0,0,0.7) 82%, rgba(0,0,0,0.3) 100%)`;
-          const blurFade = `linear-gradient(${dir}, #000 0%, #000 70%, rgba(0,0,0,0.6) 100%)`;
-          const corner = isRtl ? '100% 0%' : '0% 0%';
-          return (
-            <>
-              <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 rounded-[inherit]"
-                style={{ backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)', maskImage: blurFade, WebkitMaskImage: blurFade }} />
-              <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 rounded-[inherit]"
-                style={{
-                  background: dark
-                    ? `radial-gradient(130% 45% at ${corner}, rgba(59,130,246,0.16), transparent 62%), linear-gradient(180deg, rgba(15,23,42,0.97) 0%, rgba(11,18,32,0.97) 100%)`
-                    : `radial-gradient(130% 45% at ${corner}, rgba(37,99,235,0.07), transparent 62%), linear-gradient(180deg, rgba(255,255,255,0.97) 0%, rgba(251,252,254,0.97) 100%)`,
-                  maskImage: fade, WebkitMaskImage: fade,
-                }} />
-            </>
-          );
-        })()}
-
         {/* 🌟 Desktop Collapse/Expand Pin Button on Outer Border (Storeify-Style) */}
         <button
           type="button"
