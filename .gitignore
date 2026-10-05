@@ -4,6 +4,8 @@ dist/
 .dev.vars
 .dev.vars.*
 .env*
+# إعداد اختيار بيئة التجربة فقط (لا يحوي أسرارًا)
+!.env.staging
 dev-credentials.local.txt
 scratch.txt
 # نسخة قديمة مكررة من المشروع

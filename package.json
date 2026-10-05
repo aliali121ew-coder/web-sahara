@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "npm run build && wrangler dev",
-    "deploy": "npm run build && wrangler deploy"
+    "deploy": "npm run build && wrangler deploy",
+    "build:staging": "tsc && vite build --mode staging",
+    "deploy:staging": "npm run build:staging && wrangler deploy"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",
