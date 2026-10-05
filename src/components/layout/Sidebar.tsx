@@ -853,7 +853,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* ==========================================================================
             FLOATING ENTERPRISE USER PROFILE & LOGOUT
            ========================================================================== */}
-        <div className={`transition-all duration-200 ${isCollapsed ? 'p-0.5 m-0.5' : 'p-2 m-2'} rounded-2xl border ${tokens.cardBg} ${tokens.cardBorder}`}>
+        <div className={`transition-all duration-200 ${isCollapsed ? 'p-0.5 m-0.5' : 'p-3 m-2.5'} rounded-2xl border ${tokens.cardBg} ${tokens.cardBorder}`}>
           {/* User Profile Card */}
           <div
             ref={profileMenuRef}
@@ -864,21 +864,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
             aria-expanded={showProfileMenu}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowProfileMenu(prev => !prev); } }}
             title={profile?.name || t('profile')}
-            className={`flex items-center gap-2.5 ${isCollapsed ? 'p-0.5' : 'p-1'} rounded-xl cursor-pointer transition-colors group ${
+            className={`flex items-center gap-3 ${isCollapsed ? 'p-0.5' : 'p-1.5'} rounded-xl cursor-pointer transition-colors group ${
               isCollapsed ? 'justify-center' : 'justify-between hover:bg-black/5 dark:hover:bg-white/5'
             }`}
           >
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-3 min-w-0">
               <div
-                className="relative rounded-xl text-white font-black text-xs flex items-center justify-center shadow-xs overflow-hidden shrink-0 ring-1 ring-white/20"
+                className="relative rounded-2xl text-white font-black text-base flex items-center justify-center shadow-xs overflow-hidden shrink-0 ring-1 ring-white/20"
                 style={{
                   background: profile?.color || '#2563eb',
-                  width: isCollapsed ? '38px' : '46px',
-                  height: isCollapsed ? '38px' : '46px',
-                  minWidth: isCollapsed ? '38px' : '46px',
-                  minHeight: isCollapsed ? '38px' : '46px',
-                  maxWidth: isCollapsed ? '38px' : '46px',
-                  maxHeight: isCollapsed ? '38px' : '46px',
+                  width: isCollapsed ? '38px' : '60px',
+                  height: isCollapsed ? '38px' : '60px',
+                  minWidth: isCollapsed ? '38px' : '60px',
+                  minHeight: isCollapsed ? '38px' : '60px',
+                  maxWidth: isCollapsed ? '38px' : '60px',
+                  maxHeight: isCollapsed ? '38px' : '60px',
                 }}
               >
                 {profile?.avatar ? (
@@ -896,10 +896,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
               {!isCollapsed && (
                 <div className={`flex-1 min-w-0 ${isRtl ? 'text-right' : 'text-left'}`}>
-                  <div className={`text-xs font-bold truncate leading-tight ${tokens.isLightMode ? 'text-slate-900' : 'text-white'}`}>
+                  <div className={`text-[15px] font-black truncate leading-tight ${tokens.isLightMode ? 'text-slate-900' : 'text-white'}`}>
                     {profile?.name || t('generalManager')}
                   </div>
-                  <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1 truncate font-mono">
+                  <div className="text-xs text-slate-400 mt-1 flex items-center gap-1 truncate font-mono">
                     {!!profile?.is_admin && <ShieldCheck className="w-3 h-3 text-emerald-500 shrink-0" />}
                     <span dir="ltr" className="truncate">@{profile?.username || 'user'}</span>
                   </div>
