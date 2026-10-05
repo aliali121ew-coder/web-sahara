@@ -761,7 +761,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                   type="button"
                                   aria-current={isSubActive ? 'page' : undefined}
                                   onClick={() => handleItemClick(child.id)}
-                                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg font-bold text-xs transition-all duration-180 group relative ${
+                                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg font-bold text-sm transition-all duration-180 group relative ${
                                     isSubActive
                                       ? `${tokens.itemActiveGradient} ${tokens.itemActiveShadow} ${tokens.itemActiveBorder}`
                                       : `${tokens.itemInactiveText} ${tokens.itemInactiveHoverBg}`
