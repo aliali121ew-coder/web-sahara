@@ -313,20 +313,6 @@ export const PetrolStationsSection: React.FC = () => {
               {/* Smart HUD Badges */}
               <div className="flex items-center justify-between text-xs gap-2 pt-0.5">
                 
-                {/* Badge 1: الخزانات المركزية */}
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-[#1d576a]/10 dark:bg-[#1d576a]/30 border border-[#1d576a]/30 dark:border-[#1d576a]/50 min-w-0 shadow-2xs">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#1d576a] dark:bg-teal-400 shadow-xs shrink-0" />
-                  <span className="font-bold text-[9.5px] sm:text-[10.5px] text-slate-700 dark:text-slate-200 truncate">
-                    {tr('الخزانات المركزية')}
-                  </span>
-                  <span className="font-mono font-black text-[11px] sm:text-xs text-[#1d576a] dark:text-teal-300">
-                    {fillLabel}
-                  </span>
-                  <span className="text-[9px] font-mono text-slate-400 hidden sm:inline">
-                    ({formatNumber(totalBalance)} {tr('لتر')})
-                  </span>
-                </div>
-
                 {/* Badge 2: السعة المتبقية */}
                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-[#1d576a]/10 dark:bg-[#1d576a]/30 border border-[#2ea0be]/30 dark:border-[#2ea0be]/50 min-w-0 shadow-2xs">
                   <span className="relative flex h-1.5 w-1.5 shrink-0">

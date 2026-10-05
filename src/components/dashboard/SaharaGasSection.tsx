@@ -167,12 +167,10 @@ export const SaharaGasSection: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                {tr('كاز - صحاري كربلاء 2026')}
+                {tr('كاز - صحاري كربلاء ')}
               </h2>
 
-              <span className="px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[10px] font-bold border border-blue-200/80 dark:border-blue-800/60">
-                {tr('المخزون والتشغيل')}
-              </span>
+              
             </div>
           </div>
         </div>
@@ -191,10 +189,10 @@ export const SaharaGasSection: React.FC = () => {
                 <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950/60 flex items-center justify-center text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/40">
                   <Droplets className="w-3.5 h-3.5" />
                 </div>
-                <span>{tr('رصيد الصحاري الفعلي المعتمد')}</span>
+                <span>{tr('رصيد كاز الصحاري  ')}</span>
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold border border-emerald-200/60 dark:border-emerald-800/40">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  {tr('تشغيلي نشط')}
+                  {tr('الفعلي ')}
                 </span>
               </div>
               <div className="flex items-baseline gap-2 mt-1.5">
@@ -259,7 +257,7 @@ export const SaharaGasSection: React.FC = () => {
                 </div>
                 <div>
                   <h4 className="text-xs sm:text-[13px] font-extrabold text-slate-800 dark:text-slate-100 leading-tight">
-                    {tr('توزيع السعة الاستيعابية للمخزون')}
+                    {tr(' السعة الاستيعابية للمخزون')}
                   </h4>
                 </div>
               </div>
@@ -291,7 +289,7 @@ export const SaharaGasSection: React.FC = () => {
                   <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/20 to-transparent opacity-60 pointer-events-none" />
                   <span className="relative z-10 text-[9px] sm:text-[10px] font-bold text-white px-2 truncate drop-shadow-sm flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-blue-300"></span>
-                    <span>{tr('الخزانات المركزية')}</span>
+                    <span>{tr('السعة  الحالية ')}</span>
                     <strong className="font-mono font-black text-blue-100">{fillLabel}</strong>
                   </span>
                 </div>
@@ -321,20 +319,6 @@ export const SaharaGasSection: React.FC = () => {
               {/* Smart HUD Badges */}
               <div className="flex items-center justify-between text-xs gap-2 pt-0.5">
                 
-                {/* Badge 1: الخزانات المركزية */}
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-blue-50/80 dark:bg-blue-950/50 border border-blue-200/60 dark:border-blue-800/40 min-w-0 shadow-2xs">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400 shadow-xs shrink-0" />
-                  <span className="font-bold text-[9.5px] sm:text-[10.5px] text-slate-700 dark:text-slate-200 truncate">
-                    {tr('الخزانات المركزية')}
-                  </span>
-                  <span className="font-mono font-black text-[11px] sm:text-xs text-blue-700 dark:text-blue-300">
-                    {fillLabel}
-                  </span>
-                  <span className="text-[9px] font-mono text-slate-400 hidden sm:inline">
-                    ({formatNumber(actualBalance)} {tr('لتر')})
-                  </span>
-                </div>
-
                 {/* Badge 2: السعة المتبقية */}
                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-cyan-50/80 dark:bg-cyan-950/50 border border-cyan-200/60 dark:border-cyan-800/40 min-w-0 shadow-2xs">
                   <span className="relative flex h-1.5 w-1.5 shrink-0">

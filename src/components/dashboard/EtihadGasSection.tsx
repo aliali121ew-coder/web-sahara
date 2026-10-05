@@ -64,7 +64,7 @@ const recordSales = (r?: EtihadBalanceRecord) =>
 
 export const EtihadGasSection: React.FC = () => {
   const { tr } = useLanguage();
-  // آخر يوم مسجّل في رصيد شركة الاتحاد واليوم الذي قبله
+  // آخر يوم مسجّل في  رصيد شركة الاتحاد واليوم الذي قبله
   const [records] = React.useState(loadEtihadRecords);
   const latest = records[0];
   const prev = records[1];
@@ -158,7 +158,7 @@ export const EtihadGasSection: React.FC = () => {
                   <Boxes className="w-3.5 h-3.5" />
                 </div>
                 <span>
-                  {tr('إجمالي رصيد شركة الاتحاد (المخزون الاستراتيجي)')}
+                  {tr('إجمالي رصيد كاز شركة الاتحاد')}
                 </span>
               </div>
               <div className="flex items-baseline gap-2 mt-1.5">
@@ -249,12 +249,12 @@ export const EtihadGasSection: React.FC = () => {
                 <div
                   className="group relative h-full rounded-lg bg-gradient-to-r from-teal-700 via-teal-600 to-teal-500 transition-all duration-500 hover:brightness-110 shadow-[0_0_12px_rgba(13,148,136,0.35)] flex items-center justify-center overflow-hidden cursor-pointer"
                   style={{ width: fillLabel }}
-                  title={`${tr('الخزانات المركزية')}: ${fillLabel} (${formatNumber(etihadTotalBalance)} ${tr('لتر')})`}
+                  title={`${tr('خزانات  ')}: ${fillLabel} (${formatNumber(etihadTotalBalance)} ${tr('لتر')})`}
                 >
                   <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/20 to-transparent opacity-60 pointer-events-none" />
                   <span className="relative z-10 text-[9px] sm:text-[10px] font-bold text-white px-2 truncate drop-shadow-sm flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-teal-300"></span>
-                    <span>{tr('الخزانات المركزية')}</span>
+                    <span>{tr('السعة الحالية  ')}</span>
                     <strong className="font-mono font-black text-teal-100">{fillLabel}</strong>
                   </span>
                 </div>
@@ -284,20 +284,6 @@ export const EtihadGasSection: React.FC = () => {
               {/* Smart HUD Badges */}
               <div className="flex items-center justify-between text-xs gap-2 pt-0.5">
                 
-                {/* Badge 1: الخزانات المركزية */}
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-teal-50/80 dark:bg-teal-950/50 border border-teal-200/60 dark:border-teal-800/40 min-w-0 shadow-2xs">
-                  <span className="w-1.5 h-1.5 rounded-full bg-teal-600 dark:bg-teal-400 shadow-xs shrink-0" />
-                  <span className="font-bold text-[9.5px] sm:text-[10.5px] text-slate-700 dark:text-slate-200 truncate">
-                    {tr('الخزانات المركزية')}
-                  </span>
-                  <span className="font-mono font-black text-[11px] sm:text-xs text-teal-700 dark:text-teal-300">
-                    {fillLabel}
-                  </span>
-                  <span className="text-[9px] font-mono text-slate-400 hidden sm:inline">
-                    ({formatNumber(etihadTotalBalance)} {tr('لتر')})
-                  </span>
-                </div>
-
                 {/* Badge 2: السعة المتبقية */}
                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-200/60 dark:border-emerald-800/40 min-w-0 shadow-2xs">
                   <span className="relative flex h-1.5 w-1.5 shrink-0">
