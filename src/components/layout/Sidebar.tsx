@@ -357,18 +357,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       if (isCollapsed) return { backgroundColor: dark ? '#0d1526' : '#ffffff', backgroundImage: 'none' };
       const corner = isRtl ? '100% 0%' : '0% 0%';
       const far = isRtl ? '0% 100%' : '100% 100%';
-      const edge = isRtl ? '-1px' : '1px';
-      const spread = isRtl ? '-18px' : '18px';
+      const spread = isRtl ? '-10px' : '10px';
+      const spread2 = isRtl ? '-30px' : '30px';
       return dark
         ? {
             backgroundColor: '#0b1220',
             backgroundImage: `radial-gradient(130% 45% at ${corner}, rgba(59,130,246,0.16), transparent 62%), radial-gradient(110% 35% at ${far}, rgba(99,102,241,0.10), transparent 70%), linear-gradient(180deg, #0f172a 0%, #0b1220 100%)`,
-            boxShadow: `${edge} 0 0 rgba(148,163,184,0.10), ${spread} 0 40px -20px rgba(0,0,0,0.55)`,
+            boxShadow: `${spread} 0 48px -12px rgba(0,0,0,0.55), ${spread2} 0 120px -40px rgba(0,0,0,0.45)`,
           }
         : {
             backgroundColor: '#ffffff',
             backgroundImage: `radial-gradient(130% 45% at ${corner}, rgba(37,99,235,0.075), transparent 62%), radial-gradient(110% 35% at ${far}, rgba(99,102,241,0.055), transparent 70%), linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%)`,
-            boxShadow: `${edge} 0 0 rgba(15,23,42,0.06), ${spread} 0 40px -20px rgba(15,23,42,0.14)`,
+            boxShadow: `${spread} 0 48px -12px rgba(15,23,42,0.10), ${spread2} 0 120px -40px rgba(15,23,42,0.14)`,
           };
     }
     if (sidebarStyle === 'match-bg') {
@@ -438,6 +438,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const desktopExpanded = isDesktop && !collapsedPref;
+  // اللوحة التلقائية المفتوحة: بلا حد، بحواف داخلية ناعمة وظل يتلاشى بدل الخط
+  const softPanel = !isCollapsed && ((sidebarStyle === 'match-bg' && bgGradient === 'none') || sidebarStyle === 'unified');
+  const softShadow = themeMode === 'dark'
+    ? `${isRtl ? '-10px' : '10px'} 0 48px -12px rgba(0,0,0,0.55), ${isRtl ? '-30px' : '30px'} 0 120px -40px rgba(0,0,0,0.45)`
+    : `${isRtl ? '-10px' : '10px'} 0 48px -12px rgba(15,23,42,0.10), ${isRtl ? '-30px' : '30px'} 0 120px -40px rgba(15,23,42,0.14)`;
 
   return (
     <>
@@ -458,12 +463,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         inert={!isDesktop && !isOpen}
         id="main-sidebar"
         dir={direction}
-        style={{ ...getSidebarInlineStyle(), contain: 'layout style', willChange: 'width, transform' }}
+        style={{ ...(softPanel ? { boxShadow: softShadow } : null), ...getSidebarInlineStyle(), contain: 'layout style', willChange: 'width, transform' }}
         aria-label={t('brandTitle')}
         aria-modal={!isDesktop && isOpen ? true : undefined}
         className={`fixed top-0 bottom-0 z-50 flex flex-col shrink-0 select-none whitespace-nowrap transition-[width,transform] duration-200 ease-out motion-reduce:transition-none ${
           isRtl ? 'right-0 border-l' : 'left-0 border-r'
-        } ${
+        } ${softPanel ? `!border-transparent ${isRtl ? 'rounded-l-[28px]' : 'rounded-r-[28px]'}` : ''} ${
           isOpen
             ? 'translate-x-0'
             : isRtl
