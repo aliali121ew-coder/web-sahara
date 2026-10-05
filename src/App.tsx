@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, Suspense, Activity } from 'react';
-import { Menu } from 'lucide-react';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { FuelDataProvider, useFuelData } from './context/FuelDataContext';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
@@ -45,7 +44,7 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (!canOpenTab(activeTab) && firstAllowed) setActiveTab(firstAllowed);
   }, [activeTab, firstAllowed]); // eslint-disable-line react-hooks/exhaustive-deps
-  const { tr, direction } = useLanguage();
+  const { direction } = useLanguage();
 
   // جلب باقي الصفحات في الخلفية وقت الخمول (صفحة المستخدم الحالية أولاً) فيصبح التنقل فورياً
   useEffect(() => {
@@ -201,20 +200,6 @@ const AppContent: React.FC = () => {
       {/* Main Workspace Container - Expansive Full Width beside sidebar */}
       <div className="flex-1 flex flex-col min-w-0 w-full transition-all duration-300 print:p-0 print:m-0">
         
-        {/* Mobile Header Bar & Hamburger */}
-        <div className="no-print md:hidden p-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between sticky top-0 z-40">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            <Menu className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-          </button>
-          <span className="font-extrabold text-sm text-slate-900 dark:text-white">
-            {tr('منظومة وقود صحاري كربلاء 2026')}
-          </span>
-          <div className="w-6" />
-        </div>
-
         {/* Global Enterprise Header */}
         <div className="no-print">
           <Header
