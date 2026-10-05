@@ -522,7 +522,7 @@ body[data-glassmorphism="true"] .shadow-soft-card {
 .kpi-sub { white-space: nowrap; font-size: 0.8125rem; }
 .kpi-label { line-height: 1.25; overflow-wrap: anywhere; }
 /* ثلاثة أعمدة متى اتسع الكارت، والخط يكبر ويصغر بسلاسة مع عرضه */
-@container (min-width: 30rem) {
+@container (min-width: 26rem) {
   .kpi-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .kpi-num { font-size: clamp(0.8rem, 2.7cqw, 1.05rem); }
   .kpi-sub { font-size: clamp(0.62rem, 2.1cqw, 0.78rem); }
