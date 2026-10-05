@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useTranslation, Trans } from 'react-i18next';
 import { errorText } from '../../i18n/errors';
+import { LangToggle } from './LangToggle';
 import {
   authStatus, loginAccount, setupSystem, AuthError, LAST_USER_KEY, LAST_NAME_KEY,
   biometricAvailable, biometricUser, enableBiometric, loginWithBiometric,
@@ -374,7 +375,10 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
                   <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('systemName')}</div>
                 </div>
               </div>
-              <ThemeButton dark={dark} onToggle={() => setDark(d => !d)} />
+              <div className="flex items-center gap-1">
+                <LangToggle />
+                <ThemeButton dark={dark} onToggle={() => setDark(d => !d)} />
+              </div>
             </header>
 
             <main className="flex-1 flex flex-col justify-center w-full max-w-[400px] mx-auto py-10">
@@ -598,11 +602,13 @@ const STATIONS = [
   { x: 104, y: 262, key: 'ainTamr' },
   { x: 300, y: 36, key: 'jadwal' },
 ];
-const DEPOT = { x: 290, y: 160 };
+const DEPOT_1 = { x: 200, y: 160 };
+const DEPOT_2 = { x: 380, y: 160 };
 const route = (s: { x: number; y: number }, k: number) => {
-  const cx = (DEPOT.x + s.x) / 2 + (k % 2 ? 40 : -40);
-  const cy = (DEPOT.y + s.y) / 2 + (k % 2 ? -30 : 30);
-  return `M${DEPOT.x},${DEPOT.y} Q${cx},${cy} ${s.x},${s.y}`;
+  const target = k % 2 === 0 ? DEPOT_1 : DEPOT_2;
+  const cx = (target.x + s.x) / 2 + (k % 2 ? 40 : -40);
+  const cy = (target.y + s.y) / 2 + (k % 2 ? -30 : 30);
+  return `M${target.x},${target.y} Q${cx},${cy} ${s.x},${s.y}`;
 };
 const KPIS = [
   { icon: Truck, value: 42, label: 'showcase.kpiVehicles' },
@@ -675,10 +681,14 @@ const FleetShowcase: React.FC = () => {
             {STATIONS.map((s, k) => (
               <path key={k} id={`auth-r${k}`} d={route(s, k)} fill="none" stroke="rgba(94,234,212,.45)" strokeWidth="1.6" className="auth-route" />
             ))}
-            {/* المستودع */}
-            <circle cx={DEPOT.x} cy={DEPOT.y} r="34" fill="url(#auth-depot)" />
-            <circle cx={DEPOT.x} cy={DEPOT.y} r="9" fill="#14b8a6" stroke="#ccfbf1" strokeWidth="2.5" />
-            <text x={DEPOT.x} y={DEPOT.y + 28} textAnchor="middle" fill="#fff" fontSize="12" fontWeight="700">{t('showcase.depot')}</text>
+            {/* الشركة الأولى */}
+            <circle cx={DEPOT_1.x} cy={DEPOT_1.y} r="34" fill="url(#auth-depot)" />
+            <circle cx={DEPOT_1.x} cy={DEPOT_1.y} r="9" fill="#14b8a6" stroke="#ccfbf1" strokeWidth="2.5" />
+            <text x={DEPOT_1.x} y={DEPOT_1.y + 28} textAnchor="middle" fill="#fff" fontSize="12" fontWeight="700">{t('showcase.depot')}</text>
+            {/* الشركة الثانية */}
+            <circle cx={DEPOT_2.x} cy={DEPOT_2.y} r="34" fill="url(#auth-depot)" />
+            <circle cx={DEPOT_2.x} cy={DEPOT_2.y} r="9" fill="#14b8a6" stroke="#ccfbf1" strokeWidth="2.5" />
+            <text x={DEPOT_2.x} y={DEPOT_2.y + 28} textAnchor="middle" fill="#fff" fontSize="12" fontWeight="700">{t('showcase.depot2')}</text>
             {/* المحطات */}
             {STATIONS.map((s, k) => (
               <g key={s.key}>
@@ -691,10 +701,10 @@ const FleetShowcase: React.FC = () => {
             {STATIONS.map((_, k) => (
               <g key={`t${k}`}>
                 <circle r="9" fill="rgba(252,211,77,.22)">
-                  {motion && <animateMotion dur={`${7 + k * 1.3}s`} repeatCount="indefinite" keyPoints="0;1;0" keyTimes="0;0.5;1" calcMode="linear" begin={`${-k * 1.1}s`}><mpath href={`#auth-r${k}`} /></animateMotion>}
+                  {motion && <animateMotion dur={`${7 + k * 1.3}s`} repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear" begin={`${-k * 1.1}s`}><mpath href={`#auth-r${k}`} /></animateMotion>}
                 </circle>
                 <circle r="4" fill="#fcd34d" stroke="#fff7d6" strokeWidth="1.2">
-                  {motion && <animateMotion dur={`${7 + k * 1.3}s`} repeatCount="indefinite" keyPoints="0;1;0" keyTimes="0;0.5;1" calcMode="linear" begin={`${-k * 1.1}s`}><mpath href={`#auth-r${k}`} /></animateMotion>}
+                  {motion && <animateMotion dur={`${7 + k * 1.3}s`} repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear" begin={`${-k * 1.1}s`}><mpath href={`#auth-r${k}`} /></animateMotion>}
                 </circle>
               </g>
             ))}

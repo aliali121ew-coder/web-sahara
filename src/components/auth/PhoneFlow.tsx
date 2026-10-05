@@ -5,6 +5,7 @@ import { errorText } from '../../i18n/errors';
 import { ArrowRight, ArrowLeft, Fuel, Loader2, User, Phone, MessageSquareText, Send, CheckCircle2, UserPlus, KeyRound, HelpCircle, AlertCircle, Sun, Moon } from 'lucide-react';
 import { sendSupportRequest } from '../../lib/session';
 import { Onboarding } from './Onboarding';
+import { LangToggle } from './LangToggle';
 
 export type PhoneStep = 'intro' | 'welcome' | 'login' | 'support';
 export type SupportKind = 'account' | 'password' | 'other';
@@ -99,7 +100,7 @@ const Shell: React.FC<{
             <Back className="w-5 h-5" />
           </button>
         ) : <span className="w-11" />}
-        <ToggleDark dark={dark} onToggle={onToggleDark} />
+        <div className="flex items-center gap-1.5"><LangToggle onColor /><ToggleDark dark={dark} onToggle={onToggleDark} /></div>
       </div>
       <p className="auth-headline relative mt-6 text-[26px] font-black leading-[1.45]">{headline}</p>
     </div>
@@ -143,7 +144,7 @@ const Welcome: React.FC<{ dark: boolean; onToggleDark: () => void; onStart: () =
         <span className="inline-flex items-center gap-2 h-9 px-3.5 rounded-full bg-white/10 ring-1 ring-white/15 backdrop-blur text-[12px] font-bold">
           <span className="auth-live-dot w-2 h-2 rounded-full bg-emerald-300 text-emerald-300" /> {t('phone.systemBadge')}
         </span>
-        <ToggleDark dark={dark} onToggle={onToggleDark} />
+        <div className="flex items-center gap-1.5"><LangToggle onColor /><ToggleDark dark={dark} onToggle={onToggleDark} /></div>
       </div>
       <div className="relative flex-1 flex items-center justify-center pt-2">
         <WelcomeScene />

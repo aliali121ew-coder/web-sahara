@@ -9,7 +9,9 @@ import {
   CheckCircle2,
   Users,
   ChevronLeft,
+  ChevronRight,
   ArrowRight,
+  ArrowLeft,
   ShieldCheck,
   HardDrive,
   Server,
@@ -19,6 +21,7 @@ import {
   SlidersHorizontal,
   Maximize2,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import { useFuelData } from '../../context/FuelDataContext';
 import {
@@ -32,20 +35,19 @@ import { usePermissions } from '../../lib/usePermission';
 
 type SectionId = 'users' | 'system' | 'appearance' | 'data';
 
+// العنوان والوصف في settings:sections.<id>.title / desc
 interface SectionDef {
   id: SectionId;
-  title: string;
-  desc: string;
   icon: React.ComponentType<{ className?: string }>;
   gradient: string;
   adminOnly?: boolean;
 }
 
 const SECTIONS: SectionDef[] = [
-  { id: 'users', title: 'إدارة المستخدمين', desc: 'الحسابات والصلاحيات، طلبات الموظفين، وسجل العمليات', icon: Users, gradient: 'from-violet-600 to-indigo-600', adminOnly: true },
-  { id: 'system', title: 'إدارة النظام', desc: 'قاعدة البيانات والملفات، النسخ الاحتياطية والاسترجاع، والصيانة', icon: Server, gradient: 'from-slate-700 to-slate-900', adminOnly: true },
-  { id: 'appearance', title: 'المظهر والإضاءة وشريط التنقل', desc: 'الوضع الفاتح أو الليلي وتخصيص نمط وألوان القائمة الجانبية', icon: Palette, gradient: 'from-amber-500 via-rose-500 to-indigo-600' },
-  { id: 'data', title: 'إدارة البيانات', desc: 'إعادة ضبط البيانات والذاكرة المؤقتة', icon: HardDrive, gradient: 'from-rose-500 to-red-600', adminOnly: true },
+  { id: 'users', icon: Users, gradient: 'from-violet-600 to-indigo-600', adminOnly: true },
+  { id: 'system', icon: Server, gradient: 'from-slate-700 to-slate-900', adminOnly: true },
+  { id: 'appearance', icon: Palette, gradient: 'from-amber-500 via-rose-500 to-indigo-600' },
+  { id: 'data', icon: HardDrive, gradient: 'from-rose-500 to-red-600', adminOnly: true },
 ];
 
 const SECTION_KEY = 'sahara_settings_section';
@@ -60,6 +62,10 @@ const readSection = (): SectionId | null => {
 const cardCls = 'rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-soft-card';
 
 export const SettingsView: React.FC = () => {
+  const { t, i18n } = useTranslation('settings');
+  const rtl = i18n.dir() === 'rtl';
+  const Back = rtl ? ArrowRight : ArrowLeft;
+  const Crumb = rtl ? ChevronLeft : ChevronRight;
   const { isAdmin } = usePermissions();
   const [section, setSectionState] = useState<SectionId | null>(readSection);
   const setSection = (s: SectionId | null) => {
@@ -78,26 +84,26 @@ export const SettingsView: React.FC = () => {
       {/* الترويسة: عنوان الإعدادات أو مسار القسم المفتوح */}
       {current ? (
         <div className="flex items-center gap-3">
-          <button onClick={() => setSection(null)} aria-label="رجوع للإعدادات"
+          <button onClick={() => setSection(null)} aria-label={t('back')}
             className="w-10 h-10 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm">
-            <ArrowRight className="w-5 h-5" />
+            <Back className="w-5 h-5" />
           </button>
           <div className="min-w-0">
             <div className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
-              <button onClick={() => setSection(null)} className="hover:text-blue-600">الإعدادات</button>
-              <ChevronLeft className="w-3 h-3" />
-              <span className="text-slate-500">{current.title}</span>
+              <button onClick={() => setSection(null)} className="hover:text-blue-600">{t('title')}</button>
+              <Crumb className="w-3 h-3" />
+              <span className="text-slate-500">{t(`sections.${current.id}.title`)}</span>
             </div>
-            <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white truncate">{current.title}</h2>
+            <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white truncate">{t(`sections.${current.id}.title`)}</h2>
           </div>
         </div>
       ) : (
         <div>
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
             <Settings className="w-6 h-6 text-blue-600" />
-            <span>الإعدادات</span>
+            <span>{t('title')}</span>
           </h2>
-          <p className="text-xs text-slate-500 mt-1">اختر القسم الذي تريد إدارته</p>
+          <p className="text-xs text-slate-500 mt-1">{t('subtitle')}</p>
         </div>
       )}
 
@@ -107,20 +113,20 @@ export const SettingsView: React.FC = () => {
             const Icon = s.icon;
             return (
               <button key={s.id} onClick={() => setSection(s.id)}
-                className="group relative overflow-hidden text-right rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-soft-card hover:shadow-xl hover:-translate-y-0.5 hover:border-blue-200 dark:hover:border-blue-900 transition-all duration-200">
-                <div aria-hidden className={`absolute -left-10 -top-10 w-32 h-32 rounded-full bg-gradient-to-br ${s.gradient} opacity-[0.08] group-hover:opacity-[0.16] transition-opacity`} />
+                className="group relative overflow-hidden text-start rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-soft-card hover:shadow-xl hover:-translate-y-0.5 hover:border-blue-200 dark:hover:border-blue-900 transition-all duration-200">
+                <div aria-hidden className={`absolute -end-10 -top-10 w-32 h-32 rounded-full bg-gradient-to-br ${s.gradient} opacity-[0.08] group-hover:opacity-[0.16] transition-opacity`} />
                 <div className="relative flex items-start gap-3">
                   <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${s.gradient} text-white flex items-center justify-center shadow-lg shrink-0`}>
                     <Icon className="w-6 h-6" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white">{s.title}</span>
-                      {s.adminOnly && <ShieldCheck className="w-3.5 h-3.5 text-amber-500" aria-label="لمدير النظام فقط" />}
+                      <span className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white">{t(`sections.${s.id}.title`)}</span>
+                      {s.adminOnly && <ShieldCheck className="w-3.5 h-3.5 text-amber-500" aria-label={t('adminOnly')} />}
                     </div>
-                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">{s.desc}</p>
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">{t(`sections.${s.id}.desc`)}</p>
                   </div>
-                  <ChevronLeft className="w-5 h-5 text-slate-300 group-hover:text-blue-500 group-hover:-translate-x-0.5 transition-all self-center" />
+                  <Crumb className="w-5 h-5 text-slate-300 group-hover:text-blue-500 rtl:group-hover:-translate-x-0.5 ltr:group-hover:translate-x-0.5 transition-all self-center" />
                 </div>
               </button>
             );
@@ -138,6 +144,7 @@ export const SettingsView: React.FC = () => {
 
 // ───── المظهر والإضاءة وشريط التنقل (مدمج في صفحة واحدة احترافية) ─────
 const AppearanceAndNavigationSection: React.FC = () => {
+  const { t } = useTranslation('settings');
   const {
     themeMode,
     setThemeMode,
@@ -164,21 +171,21 @@ const AppearanceAndNavigationSection: React.FC = () => {
   const themeOptions = [
     {
       id: 'light' as const,
-      title: 'الوضع الفاتح (Soft Light)',
-      desc: 'خلفيات ناصعة وألوان مريحة للعين نهاراً ووضوح عالي للقراءة الهندسية',
+      title: t('theme.light.title'),
+      desc: t('theme.light.desc'),
       icon: Sun,
       iconCls: 'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400',
       activeBorder: 'border-amber-500 ring-2 ring-amber-500/25 bg-amber-50/50 dark:bg-amber-950/30',
-      tag: 'نهاري مشرق',
+      tag: t('theme.light.tag'),
     },
     {
       id: 'dark' as const,
-      title: 'الوضع الليلي (Dark Navy)',
-      desc: 'خلفيات كحلية داكنة موفرة للطاقة ومريحة للرؤية الليلية في غرف السيطرة',
+      title: t('theme.dark.title'),
+      desc: t('theme.dark.desc'),
       icon: Moon,
       iconCls: 'bg-slate-800 text-blue-400 dark:bg-blue-950 dark:text-blue-300',
       activeBorder: 'border-blue-600 ring-2 ring-blue-500/25 bg-blue-50/50 dark:bg-blue-950/35',
-      tag: 'ليلي موفر للطاقة',
+      tag: t('theme.dark.tag'),
     },
   ];
 
@@ -193,67 +200,67 @@ const AppearanceAndNavigationSection: React.FC = () => {
   }[] = [
     {
       id: 'none',
-      title: 'تلقائي (Auto)',
-      desc: 'الافتراضي: خلفية هادئة تتبع الوضع الفاتح أو الليلي تلقائياً',
+      title: t('gradients.none.title'),
+      desc: t('gradients.none.desc'),
       previewGradient: 'bg-gradient-to-r from-slate-100 to-slate-300 dark:from-slate-800 dark:to-slate-950',
       colors: ['#f8fafc', '#94a3b8', '#090e17'],
-      tag: 'افتراضي تلقائي',
+      tag: t('gradients.none.tag'),
     },
     {
       id: 'titanium-slate',
-      title: 'رصاصي التيتانيوم الهادئ (Titanium Slate)',
-      desc: 'تدرج رمادي ورصاصي فائق الهدوء والراحة للعين، متطابق مع الواجهات الهندسية',
+      title: t('gradients.titanium-slate.title'),
+      desc: t('gradients.titanium-slate.desc'),
       previewGradient: 'bg-gradient-to-r from-slate-400 via-slate-500 to-slate-300',
       colors: ['#94a3b8', '#64748b', '#cbd5e1'],
-      tag: 'رصاصي هندسي مهدئ',
+      tag: t('gradients.titanium-slate.tag'),
     },
     {
       id: 'petrol-blue',
-      title: 'أزرق النفط الملكي (Royal Petroleum)',
-      desc: 'تدرج ملكي هادئ يمزج الأزرق الملكي، الكحلي العميق والنيلي لقطاع الطاقة',
+      title: t('gradients.petrol-blue.title'),
+      desc: t('gradients.petrol-blue.desc'),
       previewGradient: 'bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500',
       colors: ['#2563eb', '#4f46e5', '#0ea5e9'],
-      tag: 'معتمد لقطاع الطاقة',
+      tag: t('gradients.petrol-blue.tag'),
     },
     {
       id: 'frost-snow',
-      title: 'الأبيض الثلجي الهادئ (Arctic Frost)',
-      desc: 'تدرج ثلجي ناصع وفائق النقاء والهدوء مستوحى من بلورات الجليد يريح العين تماماً',
+      title: t('gradients.frost-snow.title'),
+      desc: t('gradients.frost-snow.desc'),
       previewGradient: 'bg-gradient-to-r from-slate-100 via-sky-50 to-blue-100 dark:from-slate-800 dark:via-slate-850 dark:to-sky-950',
       colors: ['#ffffff', '#e0f2fe', '#bae6fd'],
-      tag: 'ثلجي بلوري نقي',
+      tag: t('gradients.frost-snow.tag'),
     },
     {
       id: 'emerald-flow',
-      title: 'زمرد الطاقة النظيفة (Industrial Emerald)',
-      desc: 'تدرج زمردي وتيل حديث يعكس الكفاءة العالية والاستدامة التشغيلية',
+      title: t('gradients.emerald-flow.title'),
+      desc: t('gradients.emerald-flow.desc'),
       previewGradient: 'bg-gradient-to-r from-emerald-500 via-teal-600 to-cyan-500',
       colors: ['#10b981', '#0d9488', '#06b6d4'],
-      tag: 'حداثة واستدامة',
+      tag: t('gradients.emerald-flow.tag'),
     },
     {
       id: 'glacier-blue',
-      title: 'الأزرق الجليدي الهادئ (Glacier Ice Blue)',
-      desc: 'تدرج ثلجي بارد وناعم مهدئ للأعصاب يقلل الإجهاد البصري أثناء العمل الطويل',
+      title: t('gradients.glacier-blue.title'),
+      desc: t('gradients.glacier-blue.desc'),
       previewGradient: 'bg-gradient-to-r from-sky-400 via-blue-400 to-cyan-300',
       colors: ['#38bdf8', '#0ea5e9', '#7dd3fc'],
-      tag: 'ثلجي بارد نقي',
+      tag: t('gradients.glacier-blue.tag'),
     },
     {
       id: 'ocean-cyan',
-      title: 'أمواج السيان الهندسية (Cyan Electric)',
-      desc: 'تدرج سماوي وسياني مشرق ومنعش يمنح واجهة التطبيق صفاءً مبهراً',
+      title: t('gradients.ocean-cyan.title'),
+      desc: t('gradients.ocean-cyan.desc'),
       previewGradient: 'bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-500',
       colors: ['#06b6d4', '#0284c7', '#3b82f6'],
-      tag: 'أمواج مشرقة',
+      tag: t('gradients.ocean-cyan.tag'),
     },
     {
       id: 'royal-violet',
-      title: 'الشفق الأرجواني (Twilight Aurora)',
-      desc: 'تدرج ليلي ساحر يدمج البنفسجي المخملي والنيلي براحة بصرية فائقة',
+      title: t('gradients.royal-violet.title'),
+      desc: t('gradients.royal-violet.desc'),
       previewGradient: 'bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-700',
       colors: ['#7c3aed', '#9333ea', '#4338ca'],
-      tag: 'شفق مخملي',
+      tag: t('gradients.royal-violet.tag'),
     },
   ];
 
@@ -279,38 +286,38 @@ const AppearanceAndNavigationSection: React.FC = () => {
   }[] = [
     {
       id: 'match-bg',
-      title: 'المتطابق التلقائي مع تدرج الخلفية (Match Background)',
-      desc: 'يأخذ شريط التنقل تلقائياً نفس لون وتدرج الخلفية والطبقة التي تختارها لانسيابية مطلقة',
+      title: t('sidebar.styles.match-bg.title'),
+      desc: t('sidebar.styles.match-bg.desc'),
       bg: currentGradient.previewGradient,
-      previewBadge: `تطابق حي (${currentGradient.title.split(' ')[0]})`,
+      previewBadge: t('sidebar.liveMatch', { name: t(`gradients.${currentGradient.id}.short`) }),
     },
     {
       id: 'unified',
-      title: 'المتطابق التلقائي (Unified Auto)',
-      desc: 'يتطابق لون القائمة تلقائياً مع وضع الصفحة (فاتح نهاراً وكحلي ليلاً)',
+      title: t('sidebar.styles.unified.title'),
+      desc: t('sidebar.styles.unified.desc'),
       bg: 'bg-gradient-to-r from-slate-100 via-slate-500 to-slate-900 text-white',
-      previewBadge: 'تلقائي ذكي',
+      previewBadge: t('sidebar.styles.unified.badge'),
     },
     {
       id: 'navy',
-      title: 'الكحلي الفاخر (Dark Navy)',
-      desc: 'النمط المعتمد لغرف التحكم وقطاع الطاقة بتباين فائق وأناقة كلاسيكية',
+      title: t('sidebar.styles.navy.title'),
+      desc: t('sidebar.styles.navy.desc'),
       bg: 'bg-[#0B132B] text-white',
-      previewBadge: 'الافتراضي',
+      previewBadge: t('sidebar.styles.navy.badge'),
     },
     {
       id: 'light',
-      title: 'الأبيض الهادئ (Clean Light)',
-      desc: 'قائمة بيضاء نقية مستقلة لتصميم بسيط ومشرق وهادئ',
+      title: t('sidebar.styles.light.title'),
+      desc: t('sidebar.styles.light.desc'),
       bg: 'bg-white text-slate-800 border border-slate-200 dark:border-slate-700',
-      previewBadge: 'أبيض كلاسيكي',
+      previewBadge: t('sidebar.styles.light.badge'),
     },
     {
       id: 'gradient',
-      title: 'التدرج الملكي (Royal Gradient)',
-      desc: 'تدرج ملكي جذاب من الكحلي العميق إلى النيلي الحديث',
+      title: t('sidebar.styles.gradient.title'),
+      desc: t('sidebar.styles.gradient.desc'),
       bg: 'bg-gradient-to-br from-[#09152e] via-[#0b1b3d] to-[#081024] text-white',
-      previewBadge: 'تدرج عميق',
+      previewBadge: t('sidebar.styles.gradient.badge'),
     },
   ];
 
@@ -365,14 +372,14 @@ const AppearanceAndNavigationSection: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-black tracking-tight">معمل المعاينة الحية الفورية</h3>
+                <h3 className="text-base sm:text-lg font-black tracking-tight">{t('preview.title')}</h3>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                  مباشر
+                  {t('preview.live')}
                 </span>
               </div>
               <p className="text-xs text-slate-300 mt-0.5">
-                شاهد كيف تنعكس الإضاءة، وتدرج الخلفية، وشريط التنقل مباشرة على بيئة عملك
+                {t('preview.text')}
               </p>
             </div>
           </div>
@@ -382,18 +389,18 @@ const AppearanceAndNavigationSection: React.FC = () => {
             <button
               onClick={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold transition-all border border-white/15"
-              title="تبديل الإضاءة سريعاً"
+              title={t('preview.toggleTheme')}
             >
               {themeMode === 'dark' ? <Sun className="w-3.5 h-3.5 text-amber-300" /> : <Moon className="w-3.5 h-3.5 text-blue-300" />}
-              <span>{themeMode === 'dark' ? 'وضع نهاري' : 'وضع ليلي'}</span>
+              <span>{themeMode === 'dark' ? t('preview.toLight') : t('preview.toDark')}</span>
             </button>
             <button
               onClick={resetAllAppearance}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-xs font-bold transition-all border border-rose-500/30"
-              title="إعادة تعيين كافة السمات للافتراضي"
+              title={t('preview.resetHint')}
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>استعادة الافتراضي</span>
+              <span>{t('preview.reset')}</span>
             </button>
           </div>
         </div>
@@ -405,12 +412,12 @@ const AppearanceAndNavigationSection: React.FC = () => {
               <span className="w-2.5 h-2.5 rounded-full bg-rose-500/80 inline-block" />
               <span className="w-2.5 h-2.5 rounded-full bg-amber-500/80 inline-block" />
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80 inline-block" />
-              <span className="font-semibold text-slate-300 mr-2">منظومة صحاري كربلاء 2026</span>
+              <span className="font-semibold text-slate-300 ms-2">{t('preview.appName')}</span>
             </div>
             <div className="flex items-center gap-3 font-mono text-[10px]">
-              <span>الوضع: <b className="text-white">{themeMode === 'dark' ? 'ليلي' : 'نهاري'}</b></span>
-              <span>الخلفية: <b className="text-white">{gradientOptions.find(g => g.id === bgGradient)?.title.split(' ')[0]}</b></span>
-              <span>الطبقة: <b className="text-amber-400">{shadeLevel}/5 ({currentShade?.sublabel})</b></span>
+              <span>{t('preview.mode')} <b className="text-white">{themeMode === 'dark' ? t('preview.modeDark') : t('preview.modeLight')}</b></span>
+              <span>{t('preview.background')} <b className="text-white">{t(`gradients.${currentGradient.id}.short`)}</b></span>
+              <span>{t('preview.layer')} <b className="text-amber-400">{shadeLevel}/5 ({t(`shades.${currentShade?.level ?? 3}`)})</b></span>
             </div>
           </div>
 
@@ -418,11 +425,11 @@ const AppearanceAndNavigationSection: React.FC = () => {
           <div className={`rounded-xl border border-white/10 overflow-hidden flex h-36 bg-gradient-to-br ${getPreviewMockupBg()} transition-all duration-500 relative`}>
             {/* شريط التنقل المصغر */}
             <div
-              className={`w-28 sm:w-36 p-2.5 border-l border-white/10 flex flex-col justify-between shrink-0 transition-all ${
+              className={`w-28 sm:w-36 p-2.5 border-e border-white/10 flex flex-col justify-between shrink-0 transition-all ${
                 sidebarStyle === 'match-bg'
                   ? themeMode === 'light'
-                    ? 'bg-white/80 text-slate-900 border-l border-slate-300'
-                    : 'bg-slate-900/80 text-white border-l border-slate-800'
+                    ? 'bg-white/80 text-slate-900 border-e border-slate-300'
+                    : 'bg-slate-900/80 text-white border-e border-slate-800'
                   : sidebarStyle === 'light'
                   ? 'bg-white text-slate-900'
                   : sidebarStyle === 'unified'
@@ -435,7 +442,7 @@ const AppearanceAndNavigationSection: React.FC = () => {
               <div className="space-y-1.5">
                 <div className="h-4 w-3/4 rounded bg-current opacity-30 mb-2" />
                 <div className="h-3 w-full rounded bg-blue-500 text-white text-[8px] font-bold flex items-center px-1">
-                  الرئيسية
+                  {t('preview.home')}
                 </div>
                 <div className="h-3 w-5/6 rounded bg-current opacity-20" />
                 <div className="h-3 w-4/6 rounded bg-current opacity-20" />
@@ -448,26 +455,26 @@ const AppearanceAndNavigationSection: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
                   <Activity className="w-3.5 h-3.5 text-blue-500 animate-pulse" />
-                  <span>لوحة السيطرة والمراقبة الحية</span>
+                  <span>{t('preview.dashboard')}</span>
                 </div>
                 <span className="text-[9px] px-2 py-0.5 rounded-full bg-blue-600 text-white font-bold">
-                  94.2% مخزون
+                  {t('preview.stock', { value: '94.2%' })}
                 </span>
               </div>
 
               {/* بطاقات مصغرة */}
               <div className="grid grid-cols-2 gap-2 mt-1">
                 <div className="p-2 rounded-lg bg-white/70 dark:bg-slate-800/70 border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-xs">
-                  <div className="text-[9px] text-slate-500">خزان صحاري 1</div>
+                  <div className="text-[9px] text-slate-500">{t('preview.tank')}</div>
                   <div className="text-xs font-black text-slate-900 dark:text-white">4,380,000 L</div>
                   <div className="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-full mt-1 overflow-hidden">
                     <div className="h-full bg-amber-500 w-[94%]" />
                   </div>
                 </div>
                 <div className="p-2 rounded-lg bg-white/70 dark:bg-slate-800/70 border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-xs">
-                  <div className="text-[9px] text-slate-500">معدل التدفق اللحظي</div>
+                  <div className="text-[9px] text-slate-500">{t('preview.flow')}</div>
                   <div className="text-xs font-black text-emerald-600 dark:text-emerald-400">1,420 L/min</div>
-                  <div className="text-[8px] text-slate-400">مضخات التفريغ نشطة</div>
+                  <div className="text-[8px] text-slate-400">{t('preview.pumps')}</div>
                 </div>
               </div>
             </div>
@@ -482,8 +489,8 @@ const AppearanceAndNavigationSection: React.FC = () => {
             <Sun className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-extrabold text-slate-900 dark:text-white">إضاءة النظام والمظهر العام</h3>
-            <p className="text-xs text-slate-500">اختر السمة الضوئية المريحة لعينيك خلال ساعات العمل</p>
+            <h3 className="text-base font-extrabold text-slate-900 dark:text-white">{t('theme.title')}</h3>
+            <p className="text-xs text-slate-500">{t('theme.text')}</p>
           </div>
         </div>
 
@@ -495,7 +502,7 @@ const AppearanceAndNavigationSection: React.FC = () => {
               <button
                 key={o.id}
                 onClick={() => setThemeMode(o.id)}
-                className={`p-4 rounded-2xl border-2 flex items-center gap-4 transition-all text-right group ${
+                className={`p-4 rounded-2xl border-2 flex items-center gap-4 transition-all text-start group ${
                   on ? o.activeBorder : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                 }`}
               >
@@ -532,14 +539,14 @@ const AppearanceAndNavigationSection: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
-                  خلفيات النظام والتدرجات اللونية المتعددة
+                  {t('backgrounds.title')}
                 </h3>
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-indigo-600 text-white">
-                  ميزة احترافية
+                  {t('backgrounds.pro')}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                تدرجات لونية ناعمة متعددة الألوان تمنح واجهة العمل فخامة وعمقاً مريحاً للعين، مع تحكم كامل بدرجة الإضاءة (6 طبقات)
+                {t('backgrounds.text')}
               </p>
             </div>
           </div>
@@ -550,7 +557,7 @@ const AppearanceAndNavigationSection: React.FC = () => {
             <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-700">
               <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
               <div className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1 whitespace-nowrap">
-                <span>الطبقة:</span>
+                <span>{t('backgrounds.layer')}</span>
                 <span className="px-1.5 py-0.2 rounded bg-indigo-600 text-white font-mono text-[10px]">{shadeLevel}</span>
               </div>
               <input
@@ -561,7 +568,7 @@ const AppearanceAndNavigationSection: React.FC = () => {
                 value={shadeLevel}
                 onChange={(e) => setShadeLevel(Number(e.target.value))}
                 className="w-20 sm:w-28 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-                title="زر الانزلاق السريع بين درجات الألوان العشر"
+                title={t('backgrounds.sliderHint')}
               />
             </div>
 
@@ -575,7 +582,7 @@ const AppearanceAndNavigationSection: React.FC = () => {
                     : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                تدرج ناعم وهادئ
+                {t('backgrounds.subtle')}
               </button>
               <button
                 onClick={() => setGradientIntensity('vibrant')}
@@ -585,7 +592,7 @@ const AppearanceAndNavigationSection: React.FC = () => {
                     : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                تدرج حيوي ملهم
+                {t('backgrounds.vibrant')}
               </button>
             </div>
           </div>
@@ -600,15 +607,15 @@ const AppearanceAndNavigationSection: React.FC = () => {
               </div>
               <div>
                 <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>الطبقات التدريجية الست (من الفاتح إلى الأغمق قليلاً)</span>
+                  <span>{t('backgrounds.layersTitle')}</span>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold">
-                    {gradientOptions.find((g) => g.id === bgGradient)?.title.split(' ')[0]}
+                    {t(`gradients.${currentGradient.id}.short`)}
                   </span>
                 </h4>
                 <p className="text-[11px] text-slate-500">
-                  اختر الطبقة المريحة لعينيك — الدرجة الحالية:{' '}
+                  {t('backgrounds.layersCurrent')}{' '}
                   <b className="text-indigo-600 dark:text-indigo-400">
-                    الطبقة {shadeLevel} من 5 ({currentShade?.sublabel})
+                    {t('backgrounds.layerOf', { n: shadeLevel, name: t(`shades.${currentShade?.level ?? 3}`) })}
                   </b>
                 </p>
               </div>
@@ -625,7 +632,7 @@ const AppearanceAndNavigationSection: React.FC = () => {
                     : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-indigo-300'
                 }`}
               >
-                فاتح هادئ (0-1)
+                {t('backgrounds.quickLight')}
               </button>
               <button
                 type="button"
@@ -636,7 +643,7 @@ const AppearanceAndNavigationSection: React.FC = () => {
                     : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-indigo-300'
                 }`}
               >
-                متوازن مريح (2-3)
+                {t('backgrounds.quickBalanced')}
               </button>
               <button
                 type="button"
@@ -647,7 +654,7 @@ const AppearanceAndNavigationSection: React.FC = () => {
                     : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-indigo-300'
                 }`}
               >
-                أغمق قليلاً (4-5)
+                {t('backgrounds.quickDeep')}
               </button>
             </div>
           </div>
@@ -657,13 +664,13 @@ const AppearanceAndNavigationSection: React.FC = () => {
             <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
               <span className="flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600" />
-                الطبقة 0: فائق الفاتح والهدوء
+                {t('backgrounds.min')}
               </span>
               <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/80 px-2.5 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800">
-                المستوى المختار: {shadeLevel} / 5 ({currentShade?.sublabel})
+                {t('backgrounds.selected', { n: shadeLevel, name: t(`shades.${currentShade?.level ?? 3}`) })}
               </span>
               <span className="flex items-center gap-1">
-                الطبقة 5: أغمق قليلاً وأكثر عمقاً
+                {t('backgrounds.max')}
                 <span className="w-2 h-2 rounded-full bg-indigo-600" />
               </span>
             </div>
@@ -702,7 +709,7 @@ const AppearanceAndNavigationSection: React.FC = () => {
                   key={item.level}
                   type="button"
                   onClick={() => setShadeLevel(item.level)}
-                  title={`${item.label}: ${item.sublabel} (${item.bgHex})`}
+                  title={`${t('shades.label', { n: item.level })}: ${t(`shades.${item.level}`)} (${item.bgHex})`}
                   style={{ backgroundColor: item.bgHex }}
                   className={`h-16 sm:h-20 rounded-xl p-1.5 flex flex-col justify-between items-center transition-all duration-200 relative group shadow-sm border-2 ${
                     active
@@ -729,7 +736,7 @@ const AppearanceAndNavigationSection: React.FC = () => {
                       item.textLight ? 'text-white/90' : 'text-slate-700'
                     }`}
                   >
-                    {item.sublabel}
+                    {t(`shades.${item.level}`)}
                   </span>
                 </button>
               );
@@ -745,7 +752,7 @@ const AppearanceAndNavigationSection: React.FC = () => {
               <button
                 key={`grad-${grad.id}`}
                 onClick={() => setBgGradient(grad.id)}
-                className={`p-4 rounded-2xl border-2 flex flex-col justify-between text-right transition-all group ${
+                className={`p-4 rounded-2xl border-2 flex flex-col justify-between text-start transition-all group ${
                   on
                     ? 'border-indigo-600 ring-2 ring-indigo-500/20 bg-indigo-50/20 dark:bg-indigo-950/20'
                     : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
@@ -765,7 +772,7 @@ const AppearanceAndNavigationSection: React.FC = () => {
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">{grad.title}</span>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">{grad.tag}</span>
-                      {on && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-indigo-600 text-white shrink-0">مفعّل</span>}
+                      {on && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-indigo-600 text-white shrink-0">{t('backgrounds.active')}</span>}
                     </div>
                     <div className="text-[11px] text-slate-500 mt-1 leading-relaxed">{grad.desc}</div>
                   </div>
@@ -784,8 +791,8 @@ const AppearanceAndNavigationSection: React.FC = () => {
             <Layout className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-extrabold text-slate-900 dark:text-white">شريط التنقل والقائمة الجانبية</h3>
-            <p className="text-xs text-slate-500">اختر نمط ولون خلفية القائمة الجانبية لتتناسب مع ذوقك</p>
+            <h3 className="text-base font-extrabold text-slate-900 dark:text-white">{t('sidebar.title')}</h3>
+            <p className="text-xs text-slate-500">{t('sidebar.text')}</p>
           </div>
         </div>
 
@@ -796,7 +803,7 @@ const AppearanceAndNavigationSection: React.FC = () => {
               <button
                 key={style.id}
                 onClick={() => setSidebarStyle(style.id)}
-                className={`p-4 rounded-2xl border-2 flex flex-col justify-between text-right transition-all group ${
+                className={`p-4 rounded-2xl border-2 flex flex-col justify-between text-start transition-all group ${
                   on
                     ? 'border-blue-600 ring-2 ring-blue-500/20 bg-blue-50/20 dark:bg-blue-950/20'
                     : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
@@ -808,7 +815,7 @@ const AppearanceAndNavigationSection: React.FC = () => {
                 >
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>شريط التنقل</span>
+                    <span>{t('sidebar.bar')}</span>
                   </div>
                   <span className="text-[10px] px-2 py-0.5 rounded-md bg-black/20 backdrop-blur-xs font-normal">
                     {style.previewBadge}
@@ -823,7 +830,7 @@ const AppearanceAndNavigationSection: React.FC = () => {
                       </span>
                       {on && (
                         <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-blue-600 text-white shrink-0">
-                          مفعّل
+                          {t('backgrounds.active')}
                         </span>
                       )}
                     </div>
@@ -849,9 +856,9 @@ const AppearanceAndNavigationSection: React.FC = () => {
           </div>
           <div>
             <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
-              مميزات وتخصيصات إضافية متقدمة
+              {t('extras.title')}
             </h3>
-            <p className="text-xs text-slate-500">خصائص لتعزيز جمالية العرض وكثافة البيانات</p>
+            <p className="text-xs text-slate-500">{t('extras.text')}</p>
           </div>
         </div>
 
@@ -864,22 +871,25 @@ const AppearanceAndNavigationSection: React.FC = () => {
               </div>
               <div>
                 <div className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">
-                  تأثير الزجاج البلوري (Glassmorphism)
+                  {t('extras.glass')}
                 </div>
                 <div className="text-[11px] text-slate-500 mt-0.5">
-                  تمويه خفيف لخلفية البطاقات لتعزيز تناغم التدرجات
+                  {t('extras.glassText')}
                 </div>
               </div>
             </div>
             <button
               onClick={() => setGlassmorphism(!glassmorphism)}
+              role="switch"
+              aria-checked={glassmorphism}
+              aria-label={t('extras.glass')}
               className={`w-12 h-6.5 rounded-full p-1 transition-colors duration-200 ease-in-out shrink-0 ${
                 glassmorphism ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-700'
               }`}
             >
               <div
                 className={`w-4.5 h-4.5 rounded-full bg-white shadow-md transform transition-transform duration-200 ease-in-out ${
-                  glassmorphism ? 'translate-x-5.5' : 'translate-x-0'
+                  glassmorphism ? 'ltr:translate-x-5.5 rtl:-translate-x-5.5' : 'translate-x-0'
                 }`}
               />
             </button>
@@ -893,10 +903,10 @@ const AppearanceAndNavigationSection: React.FC = () => {
               </div>
               <div>
                 <div className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">
-                  كثافة مساحات العرض (Density)
+                  {t('extras.density')}
                 </div>
                 <div className="text-[11px] text-slate-500 mt-0.5">
-                  التبديل بين العرض المريح والعرض المكثف
+                  {t('extras.densityText')}
                 </div>
               </div>
             </div>
@@ -909,7 +919,7 @@ const AppearanceAndNavigationSection: React.FC = () => {
                     : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                قياسي
+                {t('extras.standard')}
               </button>
               <button
                 onClick={() => setUiDensity('compact')}
@@ -919,7 +929,7 @@ const AppearanceAndNavigationSection: React.FC = () => {
                     : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                مكثف
+                {t('extras.compact')}
               </button>
             </div>
           </div>
@@ -931,10 +941,11 @@ const AppearanceAndNavigationSection: React.FC = () => {
 
 // ───── إدارة البيانات (لمدير النظام فقط) ─────
 const DataSection: React.FC = () => {
+  const { t } = useTranslation('settings');
   const { setThemeMode, setSidebarStyle } = useTheme();
   const { refreshAllData } = useFuelData();
   const handleResetDefaults = () => {
-    if (window.confirm('هل تريد إعادة تعيين كافة البيانات النموذجية والسمات إلى الحالة الأصلية؟')) {
+    if (window.confirm(t('data.confirm'))) {
       localStorage.clear();
       setThemeMode('light');
       setSidebarStyle('navy');
@@ -945,13 +956,13 @@ const DataSection: React.FC = () => {
   return (
     <div className={`${cardCls} flex flex-col sm:flex-row sm:items-center gap-4 justify-between`}>
       <div>
-        <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">إعادة ضبط المصنع للبيانات</h4>
-        <p className="text-xs text-slate-500 mt-0.5">استعادة البيانات الافتراضية الأولية ومسح الذاكرة المؤقتة</p>
+        <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">{t('data.title')}</h4>
+        <p className="text-xs text-slate-500 mt-0.5">{t('data.text')}</p>
       </div>
       <button onClick={handleResetDefaults}
         className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 text-xs font-bold transition-colors">
         <RotateCcw className="w-3.5 h-3.5" />
-        <span>إعادة ضبط البيانات</span>
+        <span>{t('data.reset')}</span>
       </button>
     </div>
   );
