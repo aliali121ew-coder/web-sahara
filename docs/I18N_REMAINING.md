@@ -13,12 +13,10 @@
 - رصيد الصحاري (`finance`): النصوص المشتركة بين سجلات الأيام في `finance:ledger.*`، والأرشيفات في `finance:archive.*`. ترويسة الطباعة الرسمية `print/OfficialReportHeader.tsx` وعناصر الطباعة المشتركة (التوقيعات، تاريخ الطباعة، الاتجاه) في `common.print`، وترقيم الصفحات في `common.pagination`.
 - رصيد الاتحاد (`finance`): البوابة والتبويبات (`finance:hub.*`)، الحركات والأرشيف والطباعة (`tx`, `etihadArchive`, `etihadPrint`)، جرد الخزانات (`tanksReport`, `tanksView`)، الاحتياطي (`reservesView`). بيانات المواقع التجريبية الثابتة في `EtihadMultiSiteReservesView` (أسماء ومواقع ومسؤولون) تُركت بيانات كما هي.
 - الوارد والنافذة السريعة (`deliveries`): الصفحة وكشف الطباعة ونافذة التسجيل/الاستيراد. القيم المخزّنة (الشركات، المجهز الافتراضي، ألوان المنتج، حالات الشحنة، «الكل» في الفلاتر) تبقى بالعربية في البيانات وتُعرض عبر `enumText`. قائمة رموز المحافظات `IRAQ_PROVINCE_CODES` غير مستخدمة حاليًا.
+- المحادثات (`chat`): كل المكوّنات، و`chatUtils` (`lastSeenText`, `formatDay`, `formatClock` عبر `format.ts`)، وأسماء الثيمات والفقاعات والأحجام ومجموعات الرموز بمفاتيح (`chat:theme.<id>` ...). رمز الإشارة `@الكل` بروتوكول مخزّن في نص الرسائل فبقي كما هو. الأصناف الفيزيائية (`pr/pl/right/left`) حُوّلت إلى منطقية في ملفات المحادثات.
 
 ## ما بقي
 الرقم = عدد الأسطر التي فيها عربي (يشمل بيانات ومقارنات تبقى كما هي).
-
-### 6. المحادثات (`chat`)
-`ChatModals.tsx` (76)، `ChatApp.tsx` (51)، `AdminModal.tsx` (35)، `MessageBubble.tsx` (30)، `Composer.tsx` (18)، `Attachments.tsx` (8)، `DispatchChat.tsx` (6)، `Lightbox.tsx` (5)، و`chatUtils.ts` (`lastSeenText`, `formatDay` → استخدم `fmtRelative`/`fmtDayLabel`).
 
 ### 7. إدارة النظام (`system`)
 `SystemConsole.tsx` (68)، `systemUi.tsx` (36)، `BackupsPanel.tsx` (27)، `DbBrowser.tsx` (13)

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Send, AlertTriangle, Radio } from 'lucide-react';
 import { useFuelData } from '../../context/FuelDataContext';
 
 export const DispatchChat: React.FC = () => {
+  const { t } = useTranslation(['chat', 'common']);
   const { messages, addMessage } = useFuelData();
   const [inputText, setInputText] = useState('');
   const [isEmergency, setIsEmergency] = useState(false);
@@ -22,16 +24,16 @@ export const DispatchChat: React.FC = () => {
         <div>
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
             <Radio className="w-6 h-6 text-blue-600 animate-pulse" />
-            <span>غرفة العمليات والتواصل الميداني السريع</span>
+            <span>{t('chat:dispatch.title')}</span>
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            قناة الاتصال اللاسلكي المباشر بين إدارة الموقع ومسؤولي الخزانات وسائقي الصهاريج
+            {t('chat:dispatch.subtitle')}
           </p>
         </div>
 
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-bold border border-emerald-300 dark:border-emerald-800">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-          <span>القناة مشفرة ونشطة</span>
+          <span>{t('chat:dispatch.secure')}</span>
         </div>
       </div>
 
@@ -44,10 +46,10 @@ export const DispatchChat: React.FC = () => {
               key={msg.id}
               className={`p-4 rounded-2xl max-w-lg transition-all ${
                 msg.isEmergency
-                  ? 'bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 mr-auto'
+                  ? 'bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 ms-auto'
                   : msg.sender.includes('ali')
-                  ? 'bg-blue-600 text-white mr-auto shadow-md shadow-blue-500/20'
-                  : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 ml-auto'
+                  ? 'bg-blue-600 text-white ms-auto shadow-md shadow-blue-500/20'
+                  : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 me-auto'
               }`}
             >
               <div className="flex items-center justify-between gap-3 text-xs mb-1.5">
@@ -89,14 +91,14 @@ export const DispatchChat: React.FC = () => {
               }`}
             >
               <AlertTriangle className="w-3 h-3" />
-              <span>تنبيه طوارئ / بلاغ عاجل</span>
+              <span>{t('chat:dispatch.urgent')}</span>
             </button>
           </div>
 
           <div className="flex items-center gap-2">
             <input
               type="text"
-              placeholder="اكتب رسالة أو توجيهاً ميدانياً للموقع..."
+              placeholder={t('chat:dispatch.placeholder')}
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               className="flex-1 px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 text-xs sm:text-sm border border-transparent focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 outline-none"
@@ -106,7 +108,7 @@ export const DispatchChat: React.FC = () => {
               className="p-2.5 sm:px-4 sm:py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-md shadow-blue-500/20 active:scale-95 transition-all"
             >
               <Send className="w-4 h-4" />
-              <span className="hidden sm:inline">إرسال</span>
+              <span className="hidden sm:inline">{t('chat:send')}</span>
             </button>
           </div>
         </form>

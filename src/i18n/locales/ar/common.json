@@ -138,6 +138,9 @@
     "supplier": {
       "karbalaRefinery": "مصفى كربلاء الدولي",
       "karbalaRefineryShort": "مصفى كربلاء"
+    },
+    "room": {
+      "general": "غرفة العمليات العامة"
     }
   },
   "calendar": {

@@ -1,3 +1,4 @@
+import i18n from '../../i18n';
 import type { Perms } from '../../lib/permCatalog';
 import { sessionHeaders } from '../../lib/session';
 
@@ -142,7 +143,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers: { 'content-type': 'application/json', ...authHeaders(), ...(init.headers || {}) },
   });
   const data = (await res.json().catch(() => ({}))) as T & { error?: string; code?: string; retryAt?: number };
-  if (!res.ok) throw new ChatApiError(data.error || 'تعذّر الاتصال بالخادم', res.status, data.code, data.retryAt);
+  if (!res.ok) throw new ChatApiError(data.error || i18n.t('chat:err.connect'), res.status, data.code, data.retryAt);
   return data;
 }
 
@@ -198,12 +199,12 @@ export const uploadFile = (file: Blob, name: string, onProgress?: (p: number) =>
       try {
         const data = JSON.parse(xhr.responseText);
         if (xhr.status >= 200 && xhr.status < 300) resolve(data.item);
-        else reject(new Error(data.error || 'فشل رفع الملف'));
+        else reject(new Error(data.error || i18n.t('chat:err.upload')));
       } catch {
-        reject(new Error('فشل رفع الملف'));
+        reject(new Error(i18n.t('chat:err.upload')));
       }
     };
-    xhr.onerror = () => reject(new Error('انقطع الاتصال أثناء الرفع'));
+    xhr.onerror = () => reject(new Error(i18n.t('chat:err.uploadLost')));
     xhr.send(file);
   });
 
@@ -214,7 +215,7 @@ export const fileUrl = (fileId: string, type: string) => {
   if (!p) {
     p = fetch(`/api/chat/files/${encodeURIComponent(fileId)}`, { headers: authHeaders() })
       .then(r => {
-        if (!r.ok) throw new Error('الملف غير متاح');
+        if (!r.ok) throw new Error(i18n.t('chat:err.unavailable'));
         return r.blob();
       })
       .then(b => URL.createObjectURL(new Blob([b], { type: type || b.type })));

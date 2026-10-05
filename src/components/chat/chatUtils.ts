@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+import { fmtDate, fmtDayLabel, fmtTime } from '../../i18n/format';
 import {
   FileText, FileSpreadsheet, FileArchive, FileAudio, FileVideo, FileImage, FileCode, File as FileIcon, Presentation,
 } from 'lucide-react';
@@ -11,13 +13,12 @@ export const colorFor = (id: string) => {
 };
 
 export const initials = (name: string) =>
-  name.trim().split(/\s+/).slice(0, 2).map(w => w.charAt(0)).join('') || '؟';
+  name.trim().split(/\s+/).slice(0, 2).map(w => w.charAt(0)).join('') || (i18n.language === 'ar' ? '؟' : '?');
 
 export const ONLINE_MS = 25_000;
 export const TYPING_MS = 5_000;
 
-export const formatClock = (ts: number) =>
-  new Date(ts).toLocaleTimeString('ar-IQ-u-nu-latn', { hour: 'numeric', minute: '2-digit' });
+export const formatClock = (ts: number) => fmtTime(ts, { hour: 'numeric', minute: '2-digit' });
 
 const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
 
@@ -25,9 +26,8 @@ export const formatDay = (ts: number) => {
   const d = new Date(ts);
   const today = new Date();
   const yesterday = new Date(Date.now() - 86_400_000);
-  if (sameDay(d, today)) return 'اليوم';
-  if (sameDay(d, yesterday)) return 'أمس';
-  return d.toLocaleDateString('ar-IQ-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long', year: d.getFullYear() === today.getFullYear() ? undefined : 'numeric' });
+  if (sameDay(d, today) || sameDay(d, yesterday)) return fmtDayLabel(d);
+  return fmtDate(d, { weekday: 'long', day: 'numeric', month: 'long', year: d.getFullYear() === today.getFullYear() ? undefined : 'numeric' });
 };
 
 export const formatListTime = (ts: number) => {
@@ -35,20 +35,20 @@ export const formatListTime = (ts: number) => {
   const d = new Date(ts);
   const now = new Date();
   if (sameDay(d, now)) return formatClock(ts);
-  if (now.getTime() - ts < 6 * 86_400_000) return d.toLocaleDateString('ar-IQ-u-nu-latn', { weekday: 'short' });
-  return d.toLocaleDateString('ar-IQ-u-nu-latn', { day: 'numeric', month: 'numeric' });
+  if (now.getTime() - ts < 6 * 86_400_000) return fmtDate(d, { weekday: 'short' });
+  return fmtDate(d, { day: 'numeric', month: 'numeric' });
 };
 
 export const lastSeenText = (ts: number) => {
-  if (!ts) return 'لم يتصل بعد';
+  if (!ts) return i18n.t('chat:lastSeen.never');
   const diff = Date.now() - ts;
-  if (diff < ONLINE_MS) return 'متصل الآن';
+  if (diff < ONLINE_MS) return i18n.t('chat:lastSeen.online');
   const min = Math.floor(diff / 60_000);
-  if (min < 1) return 'آخر ظهور قبل لحظات';
-  if (min < 60) return `آخر ظهور قبل ${min} دقيقة`;
+  if (min < 1) return i18n.t('chat:lastSeen.moments');
+  if (min < 60) return i18n.t('chat:lastSeen.minutes', { count: min });
   const h = Math.floor(min / 60);
-  if (h < 24) return `آخر ظهور قبل ${h} ساعة`;
-  return `آخر ظهور ${formatDay(ts)} ${formatClock(ts)}`;
+  if (h < 24) return i18n.t('chat:lastSeen.hours', { count: h });
+  return i18n.t('chat:lastSeen.at', { day: formatDay(ts), time: formatClock(ts) });
 };
 
 export const formatSize = (bytes: number) => {
@@ -160,10 +160,11 @@ export const audioPeaks = async (file: Blob, bars = 48) => {
 
 export const REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏', '🔥', '✅'];
 
-export const EMOJI_GROUPS: { label: string; list: string[] }[] = [
-  { label: 'وجوه', list: ['😀', '😁', '😂', '🤣', '😊', '😍', '🥰', '😘', '😎', '🤩', '🤔', '🤨', '😐', '🙄', '😏', '😴', '😮', '😢', '😭', '😡', '🤯', '🥳', '😇', '🤝', '🙏', '👏', '💪', '👍', '👎', '👌', '✌️', '🫡'] },
-  { label: 'رموز', list: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '💯', '🔥', '⭐', '✨', '⚡', '✅', '❌', '⚠️', '🚨', '📌', '📍', '🔔', '💡', '🎯', '🏆', '🎉', '🚀'] },
-  { label: 'عمل', list: ['⛽', '🛢️', '🚚', '🚛', '🏭', '📦', '📊', '📈', '📉', '🧾', '💰', '💵', '📅', '⏰', '📞', '📝', '📎', '🔧', '🛠️', '🧯', '🦺', '🗺️', '🏗️', '🔒'] },
+/** عنوان المجموعة: chat:emoji.<id> */
+export const EMOJI_GROUPS: { id: string; list: string[] }[] = [
+  { id: 'faces', list: ['😀', '😁', '😂', '🤣', '😊', '😍', '🥰', '😘', '😎', '🤩', '🤔', '🤨', '😐', '🙄', '😏', '😴', '😮', '😢', '😭', '😡', '🤯', '🥳', '😇', '🤝', '🙏', '👏', '💪', '👍', '👎', '👌', '✌️', '🫡'] },
+  { id: 'symbols', list: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '💯', '🔥', '⭐', '✨', '⚡', '✅', '❌', '⚠️', '🚨', '📌', '📍', '🔔', '💡', '🎯', '🏆', '🎉', '🚀'] },
+  { id: 'work', list: ['⛽', '🛢️', '🚚', '🚛', '🏭', '📦', '📊', '📈', '📉', '🧾', '💰', '💵', '📅', '⏰', '📞', '📝', '📎', '🔧', '🛠️', '🧯', '🦺', '🗺️', '🏗️', '🔒'] },
 ];
 
 export const uid = () =>

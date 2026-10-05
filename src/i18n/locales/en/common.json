@@ -130,6 +130,9 @@
     "supplier": {
       "karbalaRefinery": "Karbala International Refinery",
       "karbalaRefineryShort": "Karbala Refinery"
+    },
+    "room": {
+      "general": "General operations room"
     }
   },
   "calendar": {

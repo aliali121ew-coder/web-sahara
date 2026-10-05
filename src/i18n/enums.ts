@@ -9,6 +9,8 @@ const SLUG: Record<string, string> = {
   'السبت': 'weekday.sat', 'الأحد': 'weekday.sun', 'الإثنين': 'weekday.mon', 'الاثنين': 'weekday.mon',
   'الثلاثاء': 'weekday.tue', 'الأربعاء': 'weekday.wed', 'الخميس': 'weekday.thu', 'الجمعة': 'weekday.fri',
   'اليوم': 'relative.today',
+  // غرفة المحادثة العامة التي ينشئها الخادم
+  'غرفة العمليات العامة': 'room.general',
   SAT: 'weekday.sat', SUN: 'weekday.sun', MON: 'weekday.mon', TUE: 'weekday.tue', WED: 'weekday.wed', THU: 'weekday.thu', FRI: 'weekday.fri',
   // الشركات والمواقع الثابتة
   'صحاري كربلاء': 'company.sahara', 'شركة الاتحاد': 'company.etihad', 'شركة صحاري كربلاء': 'company.saharaCompany', 'المستودع الرئيسي': 'company.mainDepot',

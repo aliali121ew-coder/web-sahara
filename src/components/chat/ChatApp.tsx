@@ -1,4 +1,7 @@
+import i18n from '../../i18n';
+import { fmtList } from '../../i18n/format';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Search, Plus, Palette, ArrowRight, ArrowDown, Info, Pin, BellOff, Wifi, WifiOff, Loader2, X, ChevronUp, ChevronDown,
   MessagesSquare, Upload, Mic, Paperclip, CheckCheck, Star, Type, CalendarDays, AtSign,
@@ -43,14 +46,15 @@ type ModalState =
 type Filter = 'all' | 'unread' | 'groups' | 'direct';
 
 const preview = (m: ChatMessage | undefined, mine: boolean, sender?: string) => {
-  if (!m) return 'لا توجد رسائل بعد';
-  if (m.deleted) return '🚫 تم حذف الرسالة';
-  const who = m.kind === 'system' ? `${sender || ''} ` : mine ? 'أنت: ' : sender ? `${sender}: ` : '';
-  const body = m.kind === 'voice' ? '🎤 بصمة صوتية' : m.text || (m.attachments.length ? `📎 ${m.attachments[0].name}` : '');
+  if (!m) return i18n.t('chat:noMessages');
+  if (m.deleted) return `🚫 ${i18n.t('chat:deleted')}`;
+  const who = m.kind === 'system' ? `${sender || ''} ` : mine ? `${i18n.t('chat:you')}: ` : sender ? `${sender}: ` : '';
+  const body = m.kind === 'voice' ? `🎤 ${i18n.t('chat:voiceNote')}` : m.text || (m.attachments.length ? `📎 ${m.attachments[0].name}` : '');
   return `${who}${m.urgent ? '🚨 ' : ''}${body}`;
 };
 
 export const ChatApp: React.FC = () => {
+  const { t } = useTranslation(['chat', 'common']);
   const store = useChat();
   const { meId, users, roomViews } = store;
 
@@ -240,10 +244,10 @@ export const ChatApp: React.FC = () => {
     : [];
 
   const subtitle = (r: RoomView) => {
-    if (r.typing.length) return r.room.type === 'group' ? `${r.typing.map(u => u.name.split(' ')[0]).join('، ')} يكتب...` : 'يكتب الآن...';
+    if (r.typing.length) return r.room.type === 'group' ? t('chat:typingNames', { names: fmtList(r.typing.map(u => u.name.split(' ')[0])), count: r.typing.length }) : t('chat:typingNow');
     if (r.room.type === 'direct') return r.peer ? lastSeenText(r.peer.last_seen) : '';
     const online = r.members.filter(m => m.user_id !== meId && Date.now() - (users[m.user_id]?.last_seen || 0) < 25_000).length;
-    return `${r.members.length} عضو${online ? ` · ${online} متصل` : ''}`;
+    return online ? `${t('chat:members', { count: r.members.length })} · ${t('chat:onlineCount', { count: online })}` : t('chat:members', { count: r.members.length });
   };
 
   const openInfo = () => {
@@ -270,7 +274,7 @@ export const ChatApp: React.FC = () => {
       if (m === firstUnread) {
         out.push(
           <div key="unread" className="flex items-center gap-3 my-3 text-[11px] font-bold cx-accent">
-            <span className="flex-1 h-px" style={{ background: 'var(--accent)' }} /> رسائل غير مقروءة <span className="flex-1 h-px" style={{ background: 'var(--accent)' }} />
+            <span className="flex-1 h-px" style={{ background: 'var(--accent)' }} /> {t('chat:unreadDivider')} <span className="flex-1 h-px" style={{ background: 'var(--accent)' }} />
           </div>,
         );
       }
@@ -278,7 +282,7 @@ export const ChatApp: React.FC = () => {
         out.push(
           <div key={m.id} id={`m-${m.id}`} className="flex justify-center my-2">
             <span className="cx-soft text-[11px] cx-muted px-3 py-1 rounded-full">
-              {m.user_id === meId ? 'أنت' : users[m.user_id]?.name || 'عضو'} {m.text}
+              {m.user_id === meId ? t('chat:you') : users[m.user_id]?.name || t('chat:member')} {m.text}
             </span>
           </div>,
         );
@@ -332,9 +336,9 @@ export const ChatApp: React.FC = () => {
     // فقاعة "يكتب..." كما في واتساب
     active?.typing.forEach(u => {
       out.push(
-        <div key={`typing-${u.id}`} className="flex items-end gap-2 mb-2 cx-pop" dir="rtl">
+        <div key={`typing-${u.id}`} className="flex items-end gap-2 mb-2 cx-pop" dir={i18n.dir()}>
           <Avatar id={u.id} name={u.name} src={u.avatar} color={u.color} size={30} />
-          <div className="cx-in rounded-[20px] rounded-br-md px-4 py-3 flex items-center gap-2">
+          <div className="cx-in rounded-[20px] rounded-bs-md px-4 py-3 flex items-center gap-2">
             {active.room.type === 'group' && <span className="text-[11px] font-bold" style={{ color: u.color || 'var(--accent)' }}>{u.name.split(' ')[0]}</span>}
             <span className="cx-dots" style={{ color: 'var(--muted)' }}><span /><span /><span /></span>
           </div>
@@ -345,9 +349,9 @@ export const ChatApp: React.FC = () => {
   };
 
   const connBadge =
-    store.conn === 'online' ? { icon: <Wifi className="w-3.5 h-3.5" />, text: 'متصل', color: '#22c55e' }
-    : store.conn === 'offline' ? { icon: <WifiOff className="w-3.5 h-3.5" />, text: 'غير متصل — إعادة المحاولة...', color: '#f43f5e' }
-    : { icon: <Loader2 className="w-3.5 h-3.5 animate-spin" />, text: 'جارٍ الاتصال...', color: '#f59e0b' };
+    store.conn === 'online' ? { icon: <Wifi className="w-3.5 h-3.5" />, text: t('chat:online'), color: '#22c55e' }
+    : store.conn === 'offline' ? { icon: <WifiOff className="w-3.5 h-3.5" />, text: t('chat:offlineRetry'), color: '#f43f5e' }
+    : { icon: <Loader2 className="w-3.5 h-3.5 animate-spin" />, text: t('chat:connecting'), color: '#f59e0b' };
 
   const sky = (
     <div className="cx-sky">
@@ -359,32 +363,32 @@ export const ChatApp: React.FC = () => {
   );
 
   return (
-    <div className="cx-root h-[calc(100dvh-8rem)] min-h-[540px] flex" style={themeStyle(theme)} dir="rtl">
+    <div className="cx-root h-[calc(100dvh-8rem)] min-h-[540px] flex" style={themeStyle(theme)} dir={i18n.dir()}>
       {sky}
 
       {/* ═════ قائمة المحادثات ═════ */}
-      <aside className={`${active ? 'hidden md:flex' : 'flex'} w-full md:w-[340px] lg:w-[370px] shrink-0 flex-col border-l cx-border cx-glass`}>
+      <aside className={`${active ? 'hidden md:flex' : 'flex'} w-full md:w-[340px] lg:w-[370px] shrink-0 flex-col border-e cx-border cx-glass`}>
         <div className="flex items-center gap-3 px-4 pt-4 pb-3">
-          <button onClick={() => setModal({ kind: 'account' })} title="حسابي">
+          <button onClick={() => setModal({ kind: 'account' })} title={t('chat:myAccount')}>
             <Avatar id={meId} name={store.me?.name || ''} src={store.me?.avatar} color={store.me?.color} size={42} ring />
           </button>
           <div className="flex-1 min-w-0">
-            <div className="font-black text-lg leading-tight">المحادثات</div>
+            <div className="font-black text-lg leading-tight">{t('chat:title')}</div>
             <div className="text-[11px] font-bold flex items-center gap-1" style={{ color: connBadge.color }}>{connBadge.icon} {connBadge.text}</div>
           </div>
-          <button onClick={() => setModal({ kind: 'starred' })} className="w-10 h-10 rounded-full flex items-center justify-center cx-hover" title="الرسائل المميّزة"><Star className="w-5 h-5" /></button>
-          <button onClick={() => setModal({ kind: 'theme' })} className="w-10 h-10 rounded-full flex items-center justify-center cx-hover" title="مظهر الصفحة"><Palette className="w-5 h-5" /></button>
-          <button onClick={() => setModal({ kind: 'new' })} className="w-10 h-10 rounded-full flex items-center justify-center cx-accent-bg shadow-lg" title="محادثة جديدة"><Plus className="w-5 h-5" /></button>
+          <button onClick={() => setModal({ kind: 'starred' })} className="w-10 h-10 rounded-full flex items-center justify-center cx-hover" title={t('chat:starred')}><Star className="w-5 h-5" /></button>
+          <button onClick={() => setModal({ kind: 'theme' })} className="w-10 h-10 rounded-full flex items-center justify-center cx-hover" title={t('chat:pageTheme')}><Palette className="w-5 h-5" /></button>
+          <button onClick={() => setModal({ kind: 'new' })} className="w-10 h-10 rounded-full flex items-center justify-center cx-accent-bg shadow-lg" title={t('chat:newChat')}><Plus className="w-5 h-5" /></button>
         </div>
 
         <div className="px-4 space-y-2 pb-2">
           <div className="relative">
-            <Search className="w-4 h-4 absolute top-1/2 -translate-y-1/2 right-3 cx-muted" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="بحث في المحادثات والأشخاص" className="cx-input w-full h-10 rounded-2xl pr-9 pl-8 text-sm" />
-            {search && <button onClick={() => setSearch('')} className="absolute top-1/2 -translate-y-1/2 left-2 cx-muted"><X className="w-4 h-4" /></button>}
+            <Search className="w-4 h-4 absolute top-1/2 -translate-y-1/2 start-3 cx-muted" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('chat:searchAll')} className="cx-input w-full h-10 rounded-2xl ps-9 pe-8 text-sm" />
+            {search && <button onClick={() => setSearch('')} className="absolute top-1/2 -translate-y-1/2 end-2 cx-muted"><X className="w-4 h-4" /></button>}
           </div>
           <div className="flex gap-1.5 overflow-x-auto cx-scroll pb-1">
-            {([['all', 'الكل'], ['unread', 'غير مقروءة'], ['groups', 'مجموعات'], ['direct', 'خاصة']] as [Filter, string][]).map(([k, label]) => (
+            {([['all', t('chat:filter.all')], ['unread', t('chat:filter.unread')], ['groups', t('chat:filter.groups')], ['direct', t('chat:filter.direct')]] as [Filter, string][]).map(([k, label]) => (
               <button key={k} onClick={() => setFilter(k)} className={`shrink-0 px-3 h-8 rounded-full text-xs font-bold transition ${filter === k ? 'cx-accent-bg' : 'cx-soft cx-hover'}`}>{label}</button>
             ))}
           </div>
@@ -397,16 +401,16 @@ export const ChatApp: React.FC = () => {
             </div>
           )}
           {store.loaded && !shown.length && !people.length && (
-            <p className="text-center text-sm cx-muted py-10">{search ? 'لا نتائج' : 'لا توجد محادثات'}</p>
+            <p className="text-center text-sm cx-muted py-10">{search ? t('chat:noResults') : t('chat:noChats')}</p>
           )}
           {shown.map(r => {
             const selected = r.room.id === activeId;
-            const lastSender = r.last ? (r.last.user_id === meId ? 'أنت' : users[r.last.user_id]?.name.split(' ')[0]) : '';
+            const lastSender = r.last ? (r.last.user_id === meId ? t('chat:you') : users[r.last.user_id]?.name.split(' ')[0]) : '';
             return (
               <button
                 key={r.room.id}
                 onClick={() => openRoom(r.room.id)}
-                className={`w-full flex items-center gap-3 px-2.5 py-2.5 rounded-2xl text-right transition ${selected ? 'cx-soft' : 'cx-hover'}`}
+                className={`w-full flex items-center gap-3 px-2.5 py-2.5 rounded-2xl text-start transition ${selected ? 'cx-soft' : 'cx-hover'}`}
                 style={selected ? { boxShadow: 'inset -3px 0 0 var(--accent)' } : undefined}
               >
                 <Avatar id={r.room.id} name={r.title} src={r.avatar} color={r.color} group={r.room.type === 'group'} size={50} online={r.room.type === 'direct' ? r.online : undefined} />
@@ -424,7 +428,7 @@ export const ChatApp: React.FC = () => {
                     {r.last?.user_id === meId && !r.typing.length && r.last.kind !== 'system' && readStateOf(r.last) === 'read' && r.room.id === activeId && <CheckCheck className="w-3.5 h-3.5 cx-accent shrink-0" />}
                     {r.myMember?.muted ? <BellOff className="w-3.5 h-3.5 cx-muted shrink-0" /> : null}
                     {r.myMember?.pinned ? <Pin className="w-3.5 h-3.5 cx-muted shrink-0" /> : null}
-                    {r.mentioned && <span className="w-5 h-5 rounded-full cx-accent-bg flex items-center justify-center shrink-0" title="أُشير إليك"><AtSign className="w-3 h-3" /></span>}
+                    {r.mentioned && <span className="w-5 h-5 rounded-full cx-accent-bg flex items-center justify-center shrink-0" title={t('chat:mentioned')}><AtSign className="w-3 h-3" /></span>}
                     {r.unread > 0 && (
                       <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-black flex items-center justify-center shrink-0 ${r.myMember?.muted ? 'cx-soft cx-muted' : 'cx-accent-bg'}`}>
                         {r.unread > 99 ? '99+' : r.unread}
@@ -437,13 +441,13 @@ export const ChatApp: React.FC = () => {
           })}
           {people.length > 0 && (
             <>
-              <div className="text-[11px] font-bold cx-muted px-3 pt-3 pb-1">أشخاص</div>
+              <div className="text-[11px] font-bold cx-muted px-3 pt-3 pb-1">{t('chat:people')}</div>
               {people.map(u => (
-                <button key={u.id} onClick={async () => openRoom(await store.openDirect(u.id))} className="w-full flex items-center gap-3 px-2.5 py-2 rounded-2xl cx-hover text-right">
+                <button key={u.id} onClick={async () => openRoom(await store.openDirect(u.id))} className="w-full flex items-center gap-3 px-2.5 py-2 rounded-2xl cx-hover text-start">
                   <Avatar id={u.id} name={u.name} src={u.avatar} color={u.color} size={42} />
                   <div className="min-w-0">
                     <div className="font-bold text-sm truncate">{u.name}</div>
-                    <div className="text-xs cx-muted truncate">{u.role || 'ابدأ محادثة'}</div>
+                    <div className="text-xs cx-muted truncate">{u.role || t('chat:startChat')}</div>
                   </div>
                 </button>
               ))}
@@ -459,19 +463,19 @@ export const ChatApp: React.FC = () => {
             <div className="w-24 h-24 rounded-[2rem] cx-accent-bg flex items-center justify-center shadow-2xl cx-pop">
               <MessagesSquare className="w-12 h-12" />
             </div>
-            <div className="font-black text-2xl">غرفة العمليات والتواصل</div>
-            <p className="cx-muted text-sm max-w-sm">اختر محادثة من القائمة أو ابدأ محادثة جديدة. يمكنك إرسال الصور والملفات والبصمات الصوتية والرسائل العاجلة.</p>
+            <div className="font-black text-2xl">{t('chat:opsRoom')}</div>
+            <p className="cx-muted text-sm max-w-sm">{t('chat:emptyHint')}</p>
             <div className="flex gap-4 cx-muted text-xs">
-              <span className="flex items-center gap-1"><Paperclip className="w-4 h-4" /> ملفات</span>
-              <span className="flex items-center gap-1"><Mic className="w-4 h-4" /> بصمات</span>
-              <span className="flex items-center gap-1"><Upload className="w-4 h-4" /> سحب وإفلات</span>
+              <span className="flex items-center gap-1"><Paperclip className="w-4 h-4" /> {t('chat:files')}</span>
+              <span className="flex items-center gap-1"><Mic className="w-4 h-4" /> {t('chat:voiceNotes')}</span>
+              <span className="flex items-center gap-1"><Upload className="w-4 h-4" /> {t('chat:dragDrop')}</span>
             </div>
           </div>
         ) : (
           <>
             <header className="cx-glass border-b cx-border flex items-center gap-2 px-3 py-2.5 z-20">
-              <button onClick={() => setActiveId('')} className="md:hidden w-10 h-10 rounded-full flex items-center justify-center cx-hover" aria-label="رجوع"><ArrowRight className="w-5 h-5" /></button>
-              <button onClick={openInfo} className="flex-1 min-w-0 flex items-center gap-3 text-right">
+              <button onClick={() => setActiveId('')} className="md:hidden w-10 h-10 rounded-full flex items-center justify-center cx-hover" aria-label={t('chat:back')}><ArrowRight className="w-5 h-5 ltr:rotate-180" /></button>
+              <button onClick={openInfo} className="flex-1 min-w-0 flex items-center gap-3 text-start">
                 <Avatar id={active.room.id} name={active.title} src={active.avatar} color={active.color} group={active.room.type === 'group'} size={42} online={active.room.type === 'direct' ? active.online : undefined} />
                 <div className="min-w-0">
                   <div className="font-black text-sm truncate">{active.title}</div>
@@ -480,44 +484,44 @@ export const ChatApp: React.FC = () => {
                   </div>
                 </div>
               </button>
-              <button onClick={() => (findOpen ? closeFind() : setFindOpen(true))} className={`w-10 h-10 rounded-full flex items-center justify-center ${findOpen ? 'cx-soft cx-accent' : 'cx-hover'}`} title="بحث في المحادثة"><Search className="w-5 h-5" /></button>
-              <button onClick={() => setModal({ kind: 'look' })} className="w-10 h-10 rounded-full flex items-center justify-center cx-hover" title="مظهر النص والفقاعات"><Type className="w-5 h-5" /></button>
-              <button onClick={openInfo} className="w-10 h-10 rounded-full flex items-center justify-center cx-hover" title="معلومات"><Info className="w-5 h-5" /></button>
+              <button onClick={() => (findOpen ? closeFind() : setFindOpen(true))} className={`w-10 h-10 rounded-full flex items-center justify-center ${findOpen ? 'cx-soft cx-accent' : 'cx-hover'}`} title={t('chat:searchChat')}><Search className="w-5 h-5" /></button>
+              <button onClick={() => setModal({ kind: 'look' })} className="w-10 h-10 rounded-full flex items-center justify-center cx-hover" title={t('chat:lookHint')}><Type className="w-5 h-5" /></button>
+              <button onClick={openInfo} className="w-10 h-10 rounded-full flex items-center justify-center cx-hover" title={t('chat:info')}><Info className="w-5 h-5" /></button>
             </header>
 
             {findOpen && (
               <div className="relative z-30 cx-fade">
                 <div className="cx-glass border-b cx-border flex items-center gap-2 px-3 py-2 flex-wrap">
                   <div className="relative flex-1 min-w-[160px]">
-                    <Search className="w-4 h-4 absolute top-1/2 -translate-y-1/2 right-3 cx-muted" />
-                    <input autoFocus value={findQ} onChange={e => { setFindQ(e.target.value); setShowResults(true); }} onFocus={() => setShowResults(true)} placeholder="ابحث في هذه المحادثة..." className="cx-input w-full h-9 rounded-xl pr-9 pl-3 text-sm"
+                    <Search className="w-4 h-4 absolute top-1/2 -translate-y-1/2 start-3 cx-muted" />
+                    <input autoFocus value={findQ} onChange={e => { setFindQ(e.target.value); setShowResults(true); }} onFocus={() => setShowResults(true)} placeholder={t('chat:searchThis')} className="cx-input w-full h-9 rounded-xl ps-9 pe-3 text-sm"
                       onKeyDown={e => { if (e.key === 'Enter' && matches.length) { setShowResults(false); setFindIdx(i => (i - 1 + matches.length) % matches.length); } if (e.key === 'Escape') closeFind(); }} />
                   </div>
-                  <label className={`h-9 px-2.5 rounded-xl flex items-center gap-1.5 text-xs font-bold cursor-pointer border cx-border ${findDate ? 'cx-accent-bg border-transparent' : 'cx-hover'}`} title="بحث بالتاريخ">
+                  <label className={`h-9 px-2.5 rounded-xl flex items-center gap-1.5 text-xs font-bold cursor-pointer border cx-border ${findDate ? 'cx-accent-bg border-transparent' : 'cx-hover'}`} title={t('chat:searchDate')}>
                     <CalendarDays className="w-4 h-4" />
-                    {findDate ? formatDay(new Date(findDate + 'T12:00').getTime()) : 'التاريخ'}
+                    {findDate ? formatDay(new Date(findDate + 'T12:00').getTime()) : t('chat:date')}
                     <input type="date" value={findDate} max={new Date().toLocaleDateString('en-CA')} onChange={e => { setFindDate(e.target.value); setShowResults(true); }} className="w-0 h-0 opacity-0 absolute" onClick={e => (e.currentTarget as HTMLInputElement).showPicker?.()} />
                   </label>
-                  {findDate && <button onClick={() => setFindDate('')} className="w-7 h-7 rounded-full flex items-center justify-center cx-hover" title="مسح التاريخ"><X className="w-3.5 h-3.5" /></button>}
+                  {findDate && <button onClick={() => setFindDate('')} className="w-7 h-7 rounded-full flex items-center justify-center cx-hover" title={t('chat:clearDate')}><X className="w-3.5 h-3.5" /></button>}
                   <span className="text-xs cx-muted min-w-[3rem] text-center">{findQ || findDate ? `${matches.length ? findIdx + 1 : 0}/${matches.length}` : ''}</span>
-                  <button disabled={!matches.length} onClick={() => { setShowResults(false); setFindIdx(i => (i - 1 + matches.length) % matches.length); }} className="w-8 h-8 rounded-full flex items-center justify-center cx-hover disabled:opacity-40" title="الأقدم"><ChevronUp className="w-4 h-4" /></button>
-                  <button disabled={!matches.length} onClick={() => { setShowResults(false); setFindIdx(i => (i + 1) % matches.length); }} className="w-8 h-8 rounded-full flex items-center justify-center cx-hover disabled:opacity-40" title="الأحدث"><ChevronDown className="w-4 h-4" /></button>
+                  <button disabled={!matches.length} onClick={() => { setShowResults(false); setFindIdx(i => (i - 1 + matches.length) % matches.length); }} className="w-8 h-8 rounded-full flex items-center justify-center cx-hover disabled:opacity-40" title={t('chat:older')}><ChevronUp className="w-4 h-4" /></button>
+                  <button disabled={!matches.length} onClick={() => { setShowResults(false); setFindIdx(i => (i + 1) % matches.length); }} className="w-8 h-8 rounded-full flex items-center justify-center cx-hover disabled:opacity-40" title={t('chat:newer')}><ChevronDown className="w-4 h-4" /></button>
                   <button onClick={closeFind} className="w-8 h-8 rounded-full flex items-center justify-center cx-hover"><X className="w-4 h-4" /></button>
                 </div>
                 {showResults && (findQ.trim() || findDate) && (
                   <div className="absolute inset-x-3 top-full mt-1 max-h-80 overflow-y-auto cx-scroll rounded-2xl border cx-border shadow-2xl p-1.5" style={{ background: 'var(--panel-solid)' }}>
-                    {!results.length && <p className="text-center text-sm cx-muted py-6">لا نتائج</p>}
+                    {!results.length && <p className="text-center text-sm cx-muted py-6">{t('chat:noResults')}</p>}
                     {results.slice().reverse().slice(0, 100).map(m => {
                       const u = users[m.user_id];
                       return (
-                        <button key={m.id} onClick={() => { setShowResults(false); setFindIdx(matches.indexOf(m.id)); jump(m.id); }} className="w-full flex items-start gap-2.5 px-2 py-2 rounded-xl cx-hover text-right">
-                          <Avatar id={m.user_id} name={u?.name || '؟'} src={u?.avatar} color={u?.color} size={32} />
+                        <button key={m.id} onClick={() => { setShowResults(false); setFindIdx(matches.indexOf(m.id)); jump(m.id); }} className="w-full flex items-start gap-2.5 px-2 py-2 rounded-xl cx-hover text-start">
+                          <Avatar id={m.user_id} name={u?.name || t('chat:unknownInitial')} src={u?.avatar} color={u?.color} size={32} />
                           <span className="flex-1 min-w-0">
                             <span className="flex items-center gap-2 text-[11px]">
-                              <b className="truncate">{m.user_id === meId ? 'أنت' : u?.name || 'عضو'}</b>
-                              <span className="mr-auto shrink-0 flex items-center gap-1 cx-muted"><CalendarDays className="w-3 h-3" /> {formatDay(m.created_at)} · {formatClock(m.created_at)}</span>
+                              <b className="truncate">{m.user_id === meId ? t('chat:you') : u?.name || t('chat:member')}</b>
+                              <span className="ms-auto shrink-0 flex items-center gap-1 cx-muted"><CalendarDays className="w-3 h-3" /> {formatDay(m.created_at)} · {formatClock(m.created_at)}</span>
                             </span>
-                            <span className="block text-[12.5px] cx-muted truncate">{m.text || (m.kind === 'voice' ? '🎤 بصمة صوتية' : `📎 ${m.attachments[0]?.name || 'مرفق'}`)}</span>
+                            <span className="block text-[12.5px] cx-muted truncate">{m.text || (m.kind === 'voice' ? t('chat:voiceNoteIcon') : `📎 ${m.attachments[0]?.name || t('chat:attachment')}`)}</span>
                           </span>
                         </button>
                       );
@@ -530,27 +534,27 @@ export const ChatApp: React.FC = () => {
             {pinnedMsg && !pinnedMsg.deleted && (
               <div className="cx-glass border-b cx-border flex items-center gap-2 px-3 py-1.5 z-20 cx-fade">
                 <Pin className="w-4 h-4 cx-accent shrink-0" />
-                <button onClick={() => jump(pinnedMsg.id)} className="flex-1 min-w-0 text-right">
-                  <span className="block text-[11px] font-bold cx-accent">رسالة مثبّتة · {pinnedMsg.user_id === meId ? 'أنت' : users[pinnedMsg.user_id]?.name}</span>
-                  <span className="block text-xs truncate">{pinnedMsg.text || `📎 ${pinnedMsg.attachments[0]?.name || 'مرفق'}`}</span>
+                <button onClick={() => jump(pinnedMsg.id)} className="flex-1 min-w-0 text-start">
+                  <span className="block text-[11px] font-bold cx-accent">{t('chat:pinned')} · {pinnedMsg.user_id === meId ? t('chat:you') : users[pinnedMsg.user_id]?.name}</span>
+                  <span className="block text-xs truncate">{pinnedMsg.text || `📎 ${pinnedMsg.attachments[0]?.name || t('chat:attachment')}`}</span>
                 </button>
-                <button onClick={() => store.pinMessage(activeId, '').catch(() => {})} className="w-7 h-7 rounded-full flex items-center justify-center cx-hover" title="إلغاء التثبيت"><X className="w-3.5 h-3.5" /></button>
+                <button onClick={() => store.pinMessage(activeId, '').catch(() => {})} className="w-7 h-7 rounded-full flex items-center justify-center cx-hover" title={t('chat:unpin')}><X className="w-3.5 h-3.5" /></button>
               </div>
             )}
 
             <div ref={scroller} onScroll={onScroll} className="flex-1 overflow-y-auto cx-scroll px-3 sm:px-6 py-3">
               {list.length === 0 && (
                 <div className="h-full flex flex-col items-center justify-center gap-2 cx-muted text-sm">
-                  <span className="text-4xl">👋</span> ابدأ المحادثة بإرسال أول رسالة
+                  <span className="text-4xl">👋</span> {t('chat:startHint')}
                 </div>
               )}
               {renderMessages()}
             </div>
 
             {!atBottom && (
-              <button onClick={() => scrollToBottom(true)} className="absolute left-5 bottom-24 z-30 w-11 h-11 rounded-full cx-glass border cx-border shadow-xl flex items-center justify-center cx-pop">
+              <button onClick={() => scrollToBottom(true)} className="absolute end-5 bottom-24 z-30 w-11 h-11 rounded-full cx-glass border cx-border shadow-xl flex items-center justify-center cx-pop">
                 <ArrowDown className="w-5 h-5" />
-                {active.unread > 0 && <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full cx-accent-bg text-[11px] font-black flex items-center justify-center">{active.unread}</span>}
+                {active.unread > 0 && <span className="absolute -top-1.5 -start-1.5 min-w-[20px] h-5 px-1 rounded-full cx-accent-bg text-[11px] font-black flex items-center justify-center">{active.unread}</span>}
               </button>
             )}
 
@@ -573,7 +577,7 @@ export const ChatApp: React.FC = () => {
             {dragOver && (
               <div className="cx-drop pointer-events-none">
                 <Upload className="w-12 h-12 cx-accent" />
-                <div className="font-black">أفلت الملفات للإرسال إلى {active.title}</div>
+                <div className="font-black">{t('chat:dropTo', { name: active.title })}</div>
               </div>
             )}
           </>

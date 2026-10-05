@@ -1,4 +1,6 @@
+import { fmtList } from '../../i18n/format';
 import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Check, CheckCheck, Clock, AlertTriangle, Reply, Smile, MoreVertical, Copy, Pencil, Trash2, Forward, RotateCcw, X, Ban, Siren, Info, Star, StarOff, Pin, PinOff, EyeOff } from 'lucide-react';
 import { DELETE_WINDOW_MS } from './useChat';
 import type { Attachment, ChatMessage, ChatUser } from './chatApi';
@@ -79,6 +81,7 @@ const renderText = (text: string, highlight?: string, mentionRe?: RegExp, myName
   });
 
 export const MessageBubble: React.FC<Props> = (p) => {
+  const { t, i18n } = useTranslation(['chat', 'common']);
   const { msg, mine, sender, isGroup, firstInRun, lastInRun, reply, replyUser, readState, users, meId } = p;
   const [menu, setMenu] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -112,7 +115,7 @@ export const MessageBubble: React.FC<Props> = (p) => {
     return (
       <div className="flex justify-center my-2 cx-fade">
         <span className="text-[11px] px-3 py-1 rounded-full cx-glass cx-muted border cx-border">
-          <b style={{ color: 'var(--text)' }}>{sender?.name || 'عضو'}</b> {msg.text}
+          <b style={{ color: 'var(--text)' }}>{sender?.name || t('chat:member')}</b> {msg.text}
         </span>
       </div>
     );
@@ -149,15 +152,15 @@ export const MessageBubble: React.FC<Props> = (p) => {
 
   // رسائلي على اليسار ورسائل الآخرين على اليمين (اتجاه عربي)
   const corner = mine
-    ? `${firstInRun ? 'rounded-tl-[22px]' : 'rounded-tl-md'} rounded-bl-md rounded-tr-[22px] rounded-br-[22px]`
-    : `${firstInRun ? 'rounded-tr-[22px]' : 'rounded-tr-md'} rounded-br-md rounded-tl-[22px] rounded-bl-[22px]`;
+    ? `${firstInRun ? 'rounded-te-[22px]' : 'rounded-te-md'} rounded-be-md rounded-ts-[22px] rounded-bs-[22px]`
+    : `${firstInRun ? 'rounded-ts-[22px]' : 'rounded-ts-md'} rounded-bs-md rounded-te-[22px] rounded-be-[22px]`;
 
   const meta = (
     <span className={`inline-flex items-center gap-1 text-[10px] font-mono select-none whitespace-nowrap ${onlyMedia ? 'bg-black/45 text-white px-1.5 py-0.5 rounded-full backdrop-blur' : ''}`}
       style={onlyMedia ? undefined : { color: mine ? 'var(--out-muted)' : 'var(--muted)' }}>
       {p.pinned ? <Pin className="w-3 h-3" /> : null}
       {p.starred ? <Star className="w-3 h-3 fill-current" /> : null}
-      {msg.edited ? <span className="font-sans">معدّلة</span> : null}
+      {msg.edited ? <span className="font-sans">{t('chat:edited')}</span> : null}
       {formatClock(msg.created_at)}
       {mine && (readState === 'pending' ? <Clock className="w-3 h-3" /> :
         readState === 'failed' ? <AlertTriangle className="w-3 h-3 text-rose-300" /> :
@@ -171,7 +174,7 @@ export const MessageBubble: React.FC<Props> = (p) => {
       id={`msg-${msg.id}`}
       ref={rowRef}
       className={`group relative flex items-end justify-start gap-2 ${lastInRun ? 'mb-2.5' : 'mb-0.5'} cx-pop`}
-      dir="rtl"
+      dir={i18n.dir()}
       // عند فتح القائمة نرفع الصف فوق الرسائل التالية (كل صف له سياق تكديس بسبب الحركة)
       style={{ flexDirection: mine ? 'row-reverse' : 'row', zIndex: menu ? 40 : undefined }}
     >
@@ -180,7 +183,7 @@ export const MessageBubble: React.FC<Props> = (p) => {
         <div className="w-8 shrink-0 self-end">
           {lastInRun && (
             <button onClick={() => p.onOpenUser(msg.user_id)}>
-              <Avatar id={msg.user_id} name={sender?.name || '؟'} src={sender?.avatar} color={sender?.color} size={32} />
+              <Avatar id={msg.user_id} name={sender?.name || t('chat:unknownInitial')} src={sender?.avatar} color={sender?.color} size={32} />
             </button>
           )}
         </div>
@@ -196,30 +199,30 @@ export const MessageBubble: React.FC<Props> = (p) => {
         >
           {msg.urgent ? (
             <div className="flex items-center gap-1.5 text-[10.5px] font-black mb-1 px-2 py-0.5 rounded-full w-fit bg-rose-500 text-white">
-              <Siren className="w-3 h-3" /> بلاغ عاجل
+              <Siren className="w-3 h-3" /> {t('chat:urgent')}
             </div>
           ) : null}
 
           {!mine && isGroup && firstInRun && !emojiOnly && (
             <button onClick={() => p.onOpenUser(msg.user_id)} className={`text-[12px] font-extrabold mb-0.5 block ${onlyMedia ? 'px-2 pt-1' : ''}`} style={{ color: nameColor, filter: 'brightness(1.25)' }}>
-              {sender?.name || 'عضو'}
-              {sender?.role && <span className="font-medium cx-muted mr-1.5 text-[10px]">· {sender.role}</span>}
+              {sender?.name || t('chat:member')}
+              {sender?.role && <span className="font-medium cx-muted ms-1.5 text-[10px]">· {sender.role}</span>}
             </button>
           )}
 
           {msg.deleted ? (
-            <p className="flex items-center gap-1.5 text-[13px] italic opacity-70"><Ban className="w-3.5 h-3.5" /> تم حذف هذه الرسالة</p>
+            <p className="flex items-center gap-1.5 text-[13px] italic opacity-70"><Ban className="w-3.5 h-3.5" /> {t('chat:deletedThis')}</p>
           ) : (
             <>
               {reply && (
                 <button
                   onClick={() => p.onJump(reply.id)}
-                  className="block w-full text-right rounded-xl px-2.5 py-1.5 mb-1.5 border-r-[3px] text-[12px] overflow-hidden"
+                  className="block w-full text-start rounded-xl px-2.5 py-1.5 mb-1.5 border-s-[3px] text-[12px] overflow-hidden"
                   style={{ background: mine ? 'rgba(0,0,0,.16)' : 'var(--panel2)', borderColor: replyUser?.color || 'var(--accent)' }}
                 >
-                  <span className="font-bold block" style={{ color: mine ? '#fff' : replyUser?.color || 'var(--accent)' }}>{reply.user_id === meId ? 'أنت' : replyUser?.name || 'عضو'}</span>
+                  <span className="font-bold block" style={{ color: mine ? '#fff' : replyUser?.color || 'var(--accent)' }}>{reply.user_id === meId ? t('chat:you') : replyUser?.name || t('chat:member')}</span>
                   <span className="block truncate opacity-80">
-                    {reply.deleted ? 'رسالة محذوفة' : reply.text || (reply.kind === 'voice' ? '🎤 بصمة صوتية' : `📎 ${reply.attachments[0]?.name || 'مرفق'}`)}
+                    {reply.deleted ? t('chat:deletedMsg') : reply.text || (reply.kind === 'voice' ? t('chat:voiceNoteIcon') : `📎 ${reply.attachments[0]?.name || t('chat:attachment')}`)}
                   </span>
                 </button>
               )}
@@ -247,7 +250,7 @@ export const MessageBubble: React.FC<Props> = (p) => {
                   </p>
                   {long && (
                     <button onClick={() => setExpanded(e => !e)} className="text-[12.5px] font-extrabold mt-0.5" style={{ color: mine ? 'var(--out-text)' : 'var(--accent)' }}>
-                      {collapsed ? 'قراءة المزيد' : 'عرض أقل'}
+                      {collapsed ? t('chat:readMore') : t('chat:showLess')}
                     </button>
                   )}
                 </>
@@ -255,19 +258,19 @@ export const MessageBubble: React.FC<Props> = (p) => {
             </>
           )}
 
-          <div className={`flex justify-end ${onlyMedia ? 'absolute bottom-2.5 left-2.5' : emojiOnly ? '' : 'mt-0.5 -mb-0.5'}`}>{meta}</div>
+          <div className={`flex justify-end ${onlyMedia ? 'absolute bottom-2.5 end-2.5' : emojiOnly ? '' : 'mt-0.5 -mb-0.5'}`}>{meta}</div>
 
-          {copied && <span className="absolute -top-7 left-1/2 -translate-x-1/2 text-[11px] px-2 py-0.5 rounded-full bg-black/80 text-white cx-fade">تم النسخ</span>}
+          {copied && <span className="absolute -top-7 left-1/2 -translate-x-1/2 text-[11px] px-2 py-0.5 rounded-full bg-black/80 text-white cx-fade">{t('chat:copied')}</span>}
         </div>
 
         {/* التفاعلات */}
         {reactions.length > 0 && (
-          <div className={`flex flex-wrap gap-1 -mt-1.5 z-[1] ${mine ? 'pl-2' : 'pr-2'}`}>
+          <div className={`flex flex-wrap gap-1 -mt-1.5 z-[1] ${mine ? 'pe-2' : 'ps-2'}`}>
             {reactions.map(([emoji, who]) => (
               <button
                 key={emoji}
                 onClick={() => p.onReact(emoji)}
-                title={who.map(id => (id === meId ? 'أنت' : users[id]?.name || '؟')).join('، ')}
+                title={fmtList(who.map(id => (id === meId ? t('chat:you') : users[id]?.name || '?')))}
                 className={`flex items-center gap-1 text-[12px] px-2 py-0.5 rounded-full border cx-glass cx-border shadow-sm transition-transform hover:scale-110 ${who.includes(meId) ? 'ring-1' : ''}`}
                 style={{ ['--tw-ring-color' as string]: 'var(--accent)' }}
               >
@@ -280,29 +283,29 @@ export const MessageBubble: React.FC<Props> = (p) => {
 
         {msg.failed && (
           <div className="flex items-center gap-2 mt-1 text-[11px] text-rose-400 font-bold">
-            <AlertTriangle className="w-3.5 h-3.5" /> لم تُرسل
-            <button onClick={p.onRetry} className="flex items-center gap-1 underline"><RotateCcw className="w-3 h-3" /> إعادة</button>
-            <button onClick={p.onDiscard} className="flex items-center gap-1 underline"><X className="w-3 h-3" /> حذف</button>
+            <AlertTriangle className="w-3.5 h-3.5" /> {t('chat:notSent')}
+            <button onClick={p.onRetry} className="flex items-center gap-1 underline"><RotateCcw className="w-3 h-3" /> {t('chat:retry')}</button>
+            <button onClick={p.onDiscard} className="flex items-center gap-1 underline"><X className="w-3 h-3" /> {t('common:actions.delete')}</button>
           </div>
         )}
 
         {/* القائمة السياقية */}
         {menu && !msg.deleted && (
-          <div ref={menuRef} className={`absolute z-30 ${menuUp ? 'bottom-full mb-1' : 'top-full mt-1'} ${mine ? 'left-0' : 'right-0'} w-56 rounded-2xl cx-glass border cx-border shadow-2xl p-1.5 cx-pop`} style={{ background: 'var(--panel-solid)' }}>
+          <div ref={menuRef} className={`absolute z-30 ${menuUp ? 'bottom-full mb-1' : 'top-full mt-1'} ${mine ? 'end-0' : 'start-0'} w-56 rounded-2xl cx-glass border cx-border shadow-2xl p-1.5 cx-pop`} style={{ background: 'var(--panel-solid)' }}>
             <div className="flex justify-between px-1 pb-1.5 mb-1 border-b cx-border">
               {REACTIONS.slice(0, 6).map(e => (
                 <button key={e} onClick={() => { p.onReact(e); setMenu(false); }} className="text-xl w-8 h-8 rounded-full hover:scale-125 transition-transform">{e}</button>
               ))}
             </div>
-            <MenuItem icon={Reply} label="رد" onClick={() => { p.onReply(); setMenu(false); }} />
-            <MenuItem icon={Forward} label="إعادة توجيه" onClick={() => { p.onForward(); setMenu(false); }} />
-            {msg.text && <MenuItem icon={Copy} label="نسخ النص" onClick={copy} />}
-            {mine && msg.text && !msg.pending && <MenuItem icon={Pencil} label="تعديل" onClick={() => { p.onEdit(); setMenu(false); }} />}
-            {!msg.pending && <MenuItem icon={p.starred ? StarOff : Star} label={p.starred ? 'إلغاء التمييز' : 'تمييز بنجمة'} onClick={() => { p.onStar(); setMenu(false); }} />}
-            {!msg.pending && <MenuItem icon={p.pinned ? PinOff : Pin} label={p.pinned ? 'إلغاء التثبيت' : 'تثبيت في المحادثة'} onClick={() => { p.onPin(); setMenu(false); }} />}
-            {mine && !msg.pending && <MenuItem icon={Info} label="معلومات الرسالة" onClick={() => { p.onInfo(); setMenu(false); }} />}
-            {!msg.pending && <MenuItem icon={EyeOff} label="حذف لدي" onClick={() => { p.onHide(); setMenu(false); }} />}
-            {mine && !msg.pending && Date.now() - msg.created_at < DELETE_WINDOW_MS && <MenuItem icon={Trash2} label="حذف للجميع" danger onClick={() => { p.onDelete(); setMenu(false); }} />}
+            <MenuItem icon={Reply} label={t('chat:reply')} onClick={() => { p.onReply(); setMenu(false); }} />
+            <MenuItem icon={Forward} label={t('chat:forward')} onClick={() => { p.onForward(); setMenu(false); }} />
+            {msg.text && <MenuItem icon={Copy} label={t('chat:copyText')} onClick={copy} />}
+            {mine && msg.text && !msg.pending && <MenuItem icon={Pencil} label={t('common:actions.edit')} onClick={() => { p.onEdit(); setMenu(false); }} />}
+            {!msg.pending && <MenuItem icon={p.starred ? StarOff : Star} label={p.starred ? t('chat:unstar') : t('chat:star')} onClick={() => { p.onStar(); setMenu(false); }} />}
+            {!msg.pending && <MenuItem icon={p.pinned ? PinOff : Pin} label={p.pinned ? t('chat:unpin') : t('chat:pin')} onClick={() => { p.onPin(); setMenu(false); }} />}
+            {mine && !msg.pending && <MenuItem icon={Info} label={t('chat:msgInfo')} onClick={() => { p.onInfo(); setMenu(false); }} />}
+            {!msg.pending && <MenuItem icon={EyeOff} label={t('chat:deleteForMe')} onClick={() => { p.onHide(); setMenu(false); }} />}
+            {mine && !msg.pending && Date.now() - msg.created_at < DELETE_WINDOW_MS && <MenuItem icon={Trash2} label={t('chat:deleteForAll')} danger onClick={() => { p.onDelete(); setMenu(false); }} />}
           </div>
         )}
       </div>
@@ -310,9 +313,9 @@ export const MessageBubble: React.FC<Props> = (p) => {
       {/* أزرار سريعة عند التمرير (للحاسوب) */}
       {!msg.deleted && !msg.pending && (
         <div className="hidden md:flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity self-center">
-          <HoverBtn title="تفاعل" onClick={openMenu}><Smile className="w-4 h-4" /></HoverBtn>
-          <HoverBtn title="رد" onClick={p.onReply}><Reply className="w-4 h-4" /></HoverBtn>
-          <HoverBtn title="المزيد" onClick={openMenu}><MoreVertical className="w-4 h-4" /></HoverBtn>
+          <HoverBtn title={t('chat:react')} onClick={openMenu}><Smile className="w-4 h-4" /></HoverBtn>
+          <HoverBtn title={t('chat:reply')} onClick={p.onReply}><Reply className="w-4 h-4" /></HoverBtn>
+          <HoverBtn title={t('chat:more')} onClick={openMenu}><MoreVertical className="w-4 h-4" /></HoverBtn>
         </div>
       )}
     </div>
