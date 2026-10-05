@@ -12,7 +12,6 @@ import {
   ShieldCheck,
   LogOut,
   Globe,
-  ChevronDown,
   Check
 } from 'lucide-react';
 import { initials, logout, useSessionProfile } from '../../lib/session';
@@ -106,14 +105,16 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={() => setShowLangMenu(!showLangMenu)}
               title={`${t('selectLanguage')} / Change Language`}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100/90 dark:bg-slate-800/90 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 border border-slate-200/80 dark:border-slate-700/80 transition-all active:scale-95 shadow-2xs"
+              aria-label={`${t('selectLanguage')}: ${currentLanguage.toUpperCase()}`}
+              aria-haspopup="menu"
+              aria-expanded={showLangMenu}
+              dir="ltr"
+              className="inline-flex items-center justify-center gap-1.5 h-9 min-w-[3.25rem] px-2.5 rounded-xl text-slate-700 dark:text-slate-200 bg-slate-100/90 dark:bg-slate-800/90 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 border border-slate-200/80 dark:border-slate-700/80 transition-all active:scale-95 whitespace-nowrap"
             >
-              <Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-              <span className="text-sm">{currentLangInfo.flag}</span>
-              <span className="font-bold font-mono uppercase tracking-wider text-[11px]">
-                {currentLanguage === 'ar' ? 'AR / EN' : currentLanguage.toUpperCase()}
+              <Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" aria-hidden="true" />
+              <span className="font-black font-mono uppercase tracking-wide text-[12px] leading-none">
+                {currentLanguage}
               </span>
-              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${showLangMenu ? 'rotate-180 text-blue-600' : ''}`} />
             </button>
 
             {/* Language Selection Dropdown Menu */}
