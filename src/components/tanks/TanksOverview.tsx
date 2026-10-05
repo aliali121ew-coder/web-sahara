@@ -26,6 +26,8 @@ import { ReorderSectionsModal } from './ReorderSectionsModal';
 import { useCentralTanks } from '../../lib/centralTanks';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { usePetrolLedger } from '../../lib/petrolLedger';
+import { enumText, siteName } from '../../i18n/enums';
+import i18n from '../../i18n';
 
 // Model for Detailed Tank Unit
 export interface TankUnitRow {
@@ -66,6 +68,23 @@ export const getSectionIcon = (config?: TankSectionConfig | null): React.Element
   if (config.iconName === 'Activity') return Activity;
   if (config.iconName === 'Layers') return Layers;
   return Droplets;
+};
+
+/** أسماء وأوصاف الأقسام الافتراضية تُترجم ما لم يعدّلها المستخدم؛ أسماء المواقع المعروفة عبر siteName، وغيرها كما كُتبت */
+const SECTION_DEFAULT_KEYS: Record<string, string> = {
+  'خزانات التشغيل اليومي - بفر وديزل': 'dailyBuffer',
+  'خزانات التغذية والضخ المستمر والتشغيل اليومي للديزل ووحدات البفر': 'dailyBufferDesc',
+  'وحدة الكاز والبنزين وخزانات بيت الحاج': 'gasPetrolHajj',
+  'منظومة إمداد الكاز والبنزين وخزانات موقع بيت الحاج أبو نور': 'gasPetrolHajjDesc',
+  'عمليات الاتحاد - النفط الأسود': 'etihadBlackOil',
+  'خزانات النفط الأسود ومحطات الطاقة والربان التابعة لعمليات الاتحاد': 'etihadBlackOilDesc',
+  'النفط الأسود - شركة صحاري كربلاء': 'saharaBlackOil',
+  'مصفوفة الخزانات الرئيسية - النفط الأسود لشركة صحاري كربلاء': 'saharaBlackOilDesc',
+};
+const sectionText = (value: string | undefined): string => {
+  if (!value) return '';
+  const key = SECTION_DEFAULT_KEYS[value.trim()];
+  return key && i18n.language !== 'ar' ? i18n.t(`tanks:sectionDefaults.${key}`) : siteName(value);
 };
 
 const SECTION_CONFIGS: Record<string, TankSectionConfig> = {
@@ -788,10 +807,10 @@ export const TanksOverview: React.FC = () => {
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="text-xs font-black text-slate-800 dark:text-slate-100 truncate">
-                              {sec.name}
+                              {sectionText(sec.name)}
                             </div>
                             <div className="text-[10px] text-slate-400 truncate">
-                              {sec.company}
+                              {enumText(sec.company)}
                             </div>
                           </div>
                           <Plus className="w-4 h-4 text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -861,7 +880,7 @@ export const TanksOverview: React.FC = () => {
                         />
                       ) : (
                         <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                          {config.name}
+                          {sectionText(config.name)}
                         </h2>
                       )}
                       <span className={`px-2.5 py-0.5 rounded-lg text-[10.5px] font-bold border ${config.badgeBg} ${config.badgeText} ${config.badgeBorder}`}>
@@ -878,7 +897,7 @@ export const TanksOverview: React.FC = () => {
                       />
                     ) : (
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
-                        {config.description}
+                        {sectionText(config.description)}
                       </p>
                     )}
                   </div>

@@ -104,5 +104,15 @@
     "sediment": "Sediment",
     "draw": "Draw {{amount}} L",
     "fill": "Fill {{amount}} L"
+  },
+  "sectionDefaults": {
+    "dailyBuffer": "Daily operation tanks – buffer & diesel",
+    "dailyBufferDesc": "Feed, continuous pumping and daily operation tanks for diesel and buffer units",
+    "gasPetrolHajj": "Gasoil & gasoline unit and Bait Al-Hajj tanks",
+    "gasPetrolHajjDesc": "Gasoil and gasoline supply system and the Bait Al-Hajj Abu Noor site tanks",
+    "etihadBlackOil": "Etihad operations – black oil",
+    "etihadBlackOilDesc": "Black oil tanks and the Al-Taqa and Al-Rubban stations of Etihad operations",
+    "saharaBlackOil": "Black oil – Sahara Karbala Company",
+    "saharaBlackOilDesc": "Main tank array – black oil for Sahara Karbala Company"
   }
 }

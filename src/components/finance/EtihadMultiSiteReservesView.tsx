@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { formatNumber } from '../../lib/utils';
 import { useTranslation, Trans } from 'react-i18next';
+import { siteName } from '../../i18n/enums';
 
 export interface ReserveSite {
   id: string;
@@ -224,7 +225,7 @@ export const EtihadMultiSiteReservesView: React.FC = () => {
                   </div>
                   <div>
                     <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
-                      {site.name}
+                      {siteName(site.name)}
                     </h4>
                     <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                       <span>{site.location}</span>

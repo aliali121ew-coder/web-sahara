@@ -38,11 +38,32 @@ const SLUG: Record<string, string> = {
   'لا حركة': 'flowTag.none', 'فائض': 'flowTag.surplus', 'سحب من الرصيد': 'flowTag.draw', 'متوازن': 'flowTag.balanced',
 };
 
+/** أسماء المواقع والمحطات الثابتة؛ المفتاح بعد التطبيع (الهمزات والتاء المربوطة) لأن الملفات المستوردة تكتبها بأشكال مختلفة.
+ * في العربية يُعرض الاسم كما كُتب في البيانات */
+const STATION: Record<string, string> = {
+  'الطاقه': 'station.taqa', 'التسمين': 'station.tasmeen', 'البياض': 'station.bayadh', 'البوادي': 'station.bawadi',
+  'امهات البياض': 'station.umahatBayadh', 'امهات': 'station.umahat', 'الاجداد': 'station.ajdad', 'الاسفلت': 'station.asfalt',
+  'مدينه الحجاج': 'station.hujjaj', 'مدينه الاحجاج': 'station.hujjaj', 'الطار': 'station.tar', 'الاستخلاص': 'station.istikhlas',
+};
+const normStation = (v: string) => v.trim().replace(/\s+/g, ' ').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه');
+
 /** القيمة بلغة الواجهة؛ variant='short' لأسماء الأيام المختصرة في محاور الرسوم */
 export const enumText = (value: string | undefined | null, variant?: 'short'): string => {
   if (!value) return '';
   const slug = SLUG[value.trim()];
-  if (!slug) return value;
+  if (!slug) return siteName(value);
   const key = `common:enum.${slug}${variant === 'short' && slug.startsWith('weekday.') ? 'Short' : ''}`;
   return i18n.exists(key) ? i18n.t(key) : value;
+};
+
+/** اسم موقع/محطة بلغة الواجهة؛ الأسماء غير المعروفة تُعرض كما هي */
+export const siteName = (value: string | undefined | null): string => {
+  if (!value) return '';
+  if (i18n.language === 'ar') return value;
+  const n = normStation(value);
+  const slug = STATION[n];
+  if (slug && i18n.exists(`common:enum.${slug}`)) return i18n.t(`common:enum.${slug}`);
+  // «موقع التسمين» → «Al-Tasmeen site»
+  const inner = n.startsWith('موقع ') ? STATION[n.slice(5)] : undefined;
+  return inner ? i18n.t('common:enum.siteOf', { name: i18n.t(`common:enum.${inner}`) }) : value;
 };

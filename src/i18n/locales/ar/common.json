@@ -166,7 +166,21 @@
       "high": "مرتفع",
       "low": "منخفض",
       "critical": "حرج"
-    }
+    },
+    "station": {
+      "taqa": "الطاقة",
+      "tasmeen": "التسمين",
+      "bayadh": "البياض",
+      "bawadi": "البوادي",
+      "umahatBayadh": "امهات البياض",
+      "umahat": "أمهات",
+      "ajdad": "الأجداد",
+      "asfalt": "الأسفلت",
+      "hujjaj": "مدينة الحجاج",
+      "tar": "الطار",
+      "istikhlas": "الاستخلاص"
+    },
+    "siteOf": "موقع {{name}}"
   },
   "calendar": {
     "lastDays_zero": "اليوم فقط",

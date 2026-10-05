@@ -30,6 +30,7 @@ import {
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatNumber, getBusinessDate } from '../../lib/utils';
 import { useTranslation, Trans } from 'react-i18next';
+import { siteName } from '../../i18n/enums';
 import { fmtList } from '../../i18n/format';
 import { usePetrolLedger, petrolPriceStats, PetrolLedgerRecord, PETROL_STATIONS } from '../../lib/petrolLedger';
 import { readPetrolReportFile } from '../../lib/petrolReportFile';
@@ -579,7 +580,7 @@ export const SaharaPetrolView: React.FC = () => {
                                 <div className="flex items-center justify-between gap-1.5">
                                   <span className="flex items-center gap-1.5 min-w-0">
                                     <span className="w-2 h-2 rounded-full shrink-0" style={{ background: used ? heat(p) : '#cbd5e1' }} />
-                                    <span className="text-[11.5px] font-extrabold text-slate-700 dark:text-slate-200 truncate">{st.name}</span>
+                                    <span className="text-[11.5px] font-extrabold text-slate-700 dark:text-slate-200 truncate">{siteName(st.name)}</span>
                                   </span>
                                   <span className="text-[9.5px] font-black font-mono px-1 rounded" style={used ? { color: heat(p, 32), background: heat(p, 94) } : { color: '#94a3b8' }}>{pctText(p)}</span>
                                 </div>
@@ -644,7 +645,7 @@ export const SaharaPetrolView: React.FC = () => {
                                     <span className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${empty ? 'bg-slate-100 text-slate-400 dark:bg-slate-800' : 'bg-slate-50 text-[#1d576a] ring-1 ring-slate-200 dark:bg-slate-800 dark:text-sky-300 dark:ring-slate-700'}`}>
                                       <MapPin className="w-3.5 h-3.5" />
                                     </span>
-                                    <span className="text-[12px] font-extrabold text-slate-800 dark:text-slate-100 truncate">{st.name}</span>
+                                    <span className="text-[12px] font-extrabold text-slate-800 dark:text-slate-100 truncate">{siteName(st.name)}</span>
                                   </div>
                                   <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black font-mono ${empty ? 'bg-slate-100 text-slate-400 dark:bg-slate-800' : 'bg-slate-50 dark:bg-slate-800 ' + tone.text}`}>{pctText(p)}</span>
                                 </div>
@@ -969,7 +970,7 @@ export const SaharaPetrolView: React.FC = () => {
                       const over = st.capacity > 0 && num(form.balances[st.id] || '') > st.capacity;
                       return (
                         <label key={st.id} className="space-y-1">
-                          <div className="h-5 flex items-center"><span className={`${fieldLabel} truncate`}>{st.name}</span></div>
+                          <div className="h-5 flex items-center"><span className={`${fieldLabel} truncate`}>{siteName(st.name)}</span></div>
                           <input
                             inputMode="numeric"
                             dir="ltr"
@@ -986,7 +987,7 @@ export const SaharaPetrolView: React.FC = () => {
                 )}
                 {overCapacity.length > 0 && (
                   <p className="mt-2 text-xs font-bold text-red-600">
-                    {t('finance:ledger.form.overCapacityList', { list: fmtList(overCapacity.map(s => `${s.name} (${formatNumber(s.capacity)})`)) })}
+                    {t('finance:ledger.form.overCapacityList', { list: fmtList(overCapacity.map(s => `${siteName(s.name)} (${formatNumber(s.capacity)})`)) })}
                   </p>
                 )}
               </div>

@@ -39,6 +39,7 @@ import { computeDailyBuys, ownSaharaDeliveries } from '../../lib/inboundPrice';
 import { isSpreadsheetOrPdf, readSaharaReportFile, matchStation } from '../../lib/saharaReportFile';
 import { formatNumber, getBusinessDate } from '../../lib/utils';
 import { useTranslation, Trans } from 'react-i18next';
+import { siteName } from '../../i18n/enums';
 import { fmtList } from '../../i18n/format';
 import {
   useSaharaLedger,
@@ -865,7 +866,7 @@ onValue={v => setForm({ ...form!, [key]: v })}
                       className={`${tileCard} justify-between gap-1.5 !p-2.5`}
                     >
                       <div className="flex items-center justify-between gap-1">
-                        <span className="text-[11px] font-extrabold text-[#1d576a] dark:text-sky-300 truncate">{st.name}</span>
+                        <span className="text-[11px] font-extrabold text-[#1d576a] dark:text-sky-300 truncate">{siteName(st.name)}</span>
                         <span className={`text-[10px] font-black font-mono ${tone.text}`}>{pctLabel(p)}</span>
                       </div>
                       <div className="font-mono font-black text-sm sm:text-[15px] text-slate-900 dark:text-white tabular-nums">{formatNumber(st.balance)}</div>
@@ -1185,7 +1186,7 @@ onValue={v => setForm({ ...form, previous: v })}
                       const over = num(form.stations[st.id] || '') > st.capacity;
                       return (
                         <label key={st.id} className="space-y-1">
-                          <div className="h-5 flex items-center"><span className={`${fieldLabel} truncate`}>{st.name}</span></div>
+                          <div className="h-5 flex items-center"><span className={`${fieldLabel} truncate`}>{siteName(st.name)}</span></div>
                           <NumberInput
 
                             className={`${field} ${over ? '!border-red-500 !ring-red-500' : ''}`}
@@ -1201,7 +1202,7 @@ onValue={v => setForm({ ...form, stations: { ...form.stations, [st.id]: v } })}
                 )}
                 {overCapacity.length > 0 && (
                   <p className="mt-2 text-xs font-bold text-red-600">
-                    {t('finance:ledger.form.overCapacityList', { list: fmtList(overCapacity.map(s => `${s.name} (${formatNumber(s.capacity)})`)) })}
+                    {t('finance:ledger.form.overCapacityList', { list: fmtList(overCapacity.map(s => `${siteName(s.name)} (${formatNumber(s.capacity)})`)) })}
                   </p>
                 )}
               </div>

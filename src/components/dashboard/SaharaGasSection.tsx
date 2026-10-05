@@ -29,7 +29,7 @@ import {
 } from 'recharts';
 import { formatNumber } from '../../lib/utils';
 import { useTranslation } from 'react-i18next';
-import { enumText } from '../../i18n/enums';
+import { enumText, siteName } from '../../i18n/enums';
 import { useCentralTanks, resolveSaharaGasoilSectionKey, tankLiters } from '../../lib/centralTanks';
 import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
 import { useSaharaLedger } from '../../lib/saharaLedger';
@@ -504,12 +504,12 @@ export const SaharaGasSection: React.FC = () => {
               {gridStations.map((station, idx) => (
                 <div
                   key={station.id ?? idx}
-                  title={`${station.name}: ${formatNumber(station.balance)} ${t('common:units.liter')}`}
+                  title={`${siteName(station.name)}: ${formatNumber(station.balance)} ${t('common:units.liter')}`}
                   className="relative p-2 pt-2.5 pb-1.5 rounded-xl border border-slate-300/80 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 hover:border-blue-500 dark:hover:border-blue-400 transition-all duration-200 shadow-2xs group flex flex-col items-center justify-center text-center"
                 >
                   {/* Floating Label in Medium Inky Emerald (حبري زمردي متوسط ومتزن) */}
                   <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 bg-white dark:bg-slate-900 text-[9.5px] sm:text-[10px] font-extrabold text-[#1d576a] dark:text-sky-300 transition-colors z-10 whitespace-nowrap leading-none">
-                    {station.name}
+                    {siteName(station.name)}
                   </span>
 
                   {/* Centered Fuel Balance in Softened Balanced Gray (أفتح بنسبة 10%) */}
@@ -565,7 +565,7 @@ export const SaharaGasSection: React.FC = () => {
                   return (
                     <div key={st.id} className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 px-3.5 py-2.5">
                       <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm font-extrabold text-slate-800 dark:text-slate-100">{st.name}</span>
+                        <span className="text-sm font-extrabold text-slate-800 dark:text-slate-100">{siteName(st.name)}</span>
                         <span className="font-mono font-black text-sm text-slate-900 dark:text-white">
                           {formatNumber(st.balance)} <span className="text-[10px] font-bold text-slate-400">{t('common:units.liter')}</span>
                         </span>

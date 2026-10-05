@@ -7,6 +7,7 @@ import { OfficialReportHeaderRow } from '../print/OfficialReportHeader';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
 import { formatNumber, getBusinessDate } from '../../lib/utils';
 import { useTranslation, Trans } from 'react-i18next';
+import { siteName } from '../../i18n/enums';
 import { usePetrolLedger, PETROL_STATIONS, type ComputedPetrolRecord } from '../../lib/petrolLedger';
 import { useCentralTanks, resolveSaharaPetrolSectionKey } from '../../lib/centralTanks';
 import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
@@ -141,7 +142,7 @@ export const SaharaPetrolArchive: React.FC = () => {
 
   const rangeLabel = range === 'all' ? t('common:print.rangeAll') : range === 'month' ? t('common:print.rangeMonth') : range === 'week' ? t('common:print.rangeWeek') : t('common:print.rangeFromTo', { from: fromDate || '—', to: toDate || '—' });
 
-  const HEADERS = ['#', t('finance:archive.col.date'), t('finance:ledger.previousBalance'), ...stations.map(s => s.name), t('finance:archive.col.totalConsumption'), t('finance:ledger.inbound'), t('finance:ledger.currentBalance')];
+  const HEADERS = ['#', t('finance:archive.col.date'), t('finance:ledger.previousBalance'), ...stations.map(s => siteName(s.name)), t('finance:archive.col.totalConsumption'), t('finance:ledger.inbound'), t('finance:ledger.currentBalance')];
 
   // نسخة الطباعة الرسمية (كل الأيام حسب الفلتر)
   const sheet = (

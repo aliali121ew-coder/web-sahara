@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { TankItem } from '../../types';
-import { enumText } from '../../i18n/enums';
+import { enumText, siteName } from '../../i18n/enums';
 import { formatNumber } from '../../lib/utils';
 import { useFuelData } from '../../context/FuelDataContext';
 
@@ -82,7 +82,7 @@ export const TankVisualGauge: React.FC<TankVisualGaugeProps> = ({ tank }) => {
               </span>
             </div>
             <h4 className="font-black text-sm sm:text-base text-slate-900 dark:text-white mt-1">
-              {tank.name}
+              {siteName(tank.name)}
             </h4>
           </div>
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Lock, Edit3, Trash2, Eye, EyeOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { siteName } from '../../i18n/enums';
 import { formatNumber } from '../../lib/utils';
 import { TankUnitRow } from './TanksOverview';
 
@@ -83,7 +84,7 @@ export const Tank3DCard: React.FC<Tank3DCardProps> = React.memo(({ tank, onLevel
             )}
 
             <h3 className="font-black text-sm text-slate-900 dark:text-white truncate">
-              {tank.name}
+              {siteName(tank.name)}
             </h3>
           </div>
         </div>
@@ -228,7 +229,7 @@ export const Tank3DCard: React.FC<Tank3DCardProps> = React.memo(({ tank, onLevel
                   isEditable ? 'cursor-pointer' : 'cursor-default pointer-events-none'
                 }`}
                 title={isEditable ? t('tanks:card.dragLevel') : t('tanks:card.levelLocked')}
-                aria-label={t('tanks:card.levelSliderAria', { name: tank.name })}
+                aria-label={t('tanks:card.levelSliderAria', { name: siteName(tank.name) })}
               />
             </div>
           </div>
@@ -377,7 +378,7 @@ export const Tank3DCard: React.FC<Tank3DCardProps> = React.memo(({ tank, onLevel
                     ? 'text-blue-700 dark:text-blue-300 font-extrabold cursor-text' 
                     : 'text-slate-700 dark:text-slate-300 cursor-default select-none'
                 }`}
-                aria-label={t('tanks:card.levelInputAria', { name: tank.name })}
+                aria-label={t('tanks:card.levelInputAria', { name: siteName(tank.name) })}
               />
               <span className={`text-[10px] font-bold ms-1 ${isEditable ? 'text-blue-600 dark:text-blue-400 font-extrabold' : 'text-slate-400'}`}>{t('common:units.meter')}</span>
             </div>

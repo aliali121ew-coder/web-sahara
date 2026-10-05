@@ -158,7 +158,21 @@
       "high": "High",
       "low": "Low",
       "critical": "Critical"
-    }
+    },
+    "station": {
+      "taqa": "Al-Taqa",
+      "tasmeen": "Al-Tasmeen",
+      "bayadh": "Al-Bayadh",
+      "bawadi": "Al-Bawadi",
+      "umahatBayadh": "Umahat Al-Bayadh",
+      "umahat": "Umahat",
+      "ajdad": "Al-Ajdad",
+      "asfalt": "Al-Asfalt",
+      "hujjaj": "Madinat Al-Hujjaj",
+      "tar": "Al-Tar",
+      "istikhlas": "Al-Istikhlas"
+    },
+    "siteOf": "{{name}} site"
   },
   "calendar": {
     "lastDays_one": "Last day",
