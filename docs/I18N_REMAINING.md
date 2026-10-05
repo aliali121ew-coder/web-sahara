@@ -1,0 +1,75 @@
+# ترجمة المنظومة (i18n): ما بقي وكيف يُكمَل
+
+آخر تحديث: 2026-10-05 — الفرع `develop`
+
+## ما اكتمل
+- الأساس: `src/i18n/` (i18next + ملفات JSON + `format.ts` + `errors.ts` + `enums.ts` + `glossary.json`) وفحص البناء `scripts/i18n-check.mjs`.
+- الهيكل العام: القائمة الجانبية، الهيدر، بطاقة الملف الشخصي، مؤشر الحفظ، لوحة الأوامر، شريط المسار.
+- تسجيل الدخول (الحاسوب والهاتف والدعم والشرائح) + زر اللغة.
+- الإعدادات، وإدارة المستخدمين كاملة.
+- لوحة القيادة.
+- الخزانات (الجزء الأول): `TanksOverview` (عدا `statusLabel`)، `AddTankModal`، `AddSectionModal` (جزئيًا)، `ReorderSectionsModal`.
+
+## ما بقي
+الرقم = عدد الأسطر التي فيها عربي (يشمل بيانات ومقارنات تبقى كما هي).
+
+### 1. إكمال الخزانات (namespace: `tanks`)
+- `src/components/tanks/Tank3DCard.tsx` (21) — تظهر في لوحة القيادة أيضًا.
+- `src/components/tanks/TanksOverview.tsx` — `statusLabel` (ممتاز/جيد/منخفض/حرج) فقط؛ أسماء الأقسام والخزانات الافتراضية بيانات.
+- `src/components/tanks/AddSectionModal.tsx` (12) — أسماء ألوان الأقسام، placeholder، aria-label.
+- `src/components/tanks/TankVisualGauge.tsx` (13).
+
+### 2. الأسعار (`prices`)
+`prices/PurchasesChart.tsx` (65)، `prices/PricesView.tsx` (28)، `prices/RangeNavigator.tsx` (2)، `ui/DateRangeCalendar.tsx` (12)
+
+### 3. رصيد الصحاري (`finance`)
+`SaharaBalanceView.tsx` (120)، `SaharaPetrolView.tsx` (112)، `BlackOilDailyLedger.tsx` (95)، `SaharaPetrolArchive.tsx` (45)، `SaharaBalanceArchive.tsx` (43)، `SaharaFilePreview.tsx` (30)، `SaharaReportsCenter.tsx` (7)، `SaharaSiteFarmsView.tsx` (2)
+
+### 4. رصيد الاتحاد (`finance`)
+`EtihadTanksReport.tsx` (77)، `EtihadTransactionModal.tsx` (56)، `EtihadArchiveView.tsx` (52)، `EtihadTanksView.tsx` (51)، `EtihadMultiSiteReservesView.tsx` (47)، `EtihadPrintReport.tsx` (47)، `FinanceBalance.tsx` (39)، `EtihadPortalHub.tsx` (38)، `EtihadBalanceCards.tsx` (31)، `EtihadPrintModal.tsx` (31)، `EtihadQuickActions.tsx` (27)، `EtihadBalanceTable.tsx` (27)، `EtihadBalanceHubTabs.tsx` (18)، `EtihadBlackOilView.tsx` (14)، `EtihadReportsCenter.tsx` (6)
+
+### 5. الوارد والنافذة السريعة (`deliveries`)
+`deliveries/InboundDeliveries.tsx` (199)، `deliveries/InboundPrintReport.tsx` (59)، `layout/QuickActionModal.tsx` (115)
+
+### 6. المحادثات (`chat`)
+`ChatModals.tsx` (76)، `ChatApp.tsx` (51)، `AdminModal.tsx` (35)، `MessageBubble.tsx` (30)، `Composer.tsx` (18)، `Attachments.tsx` (8)، `DispatchChat.tsx` (6)، `Lightbox.tsx` (5)، و`chatUtils.ts` (`lastSeenText`, `formatDay` → استخدم `fmtRelative`/`fmtDayLabel`).
+
+### 7. إدارة النظام (`system`)
+`SystemConsole.tsx` (68)، `systemUi.tsx` (36)، `BackupsPanel.tsx` (27)، `DbBrowser.tsx` (13)
+
+### 8. صفحات مخفية من القائمة (اختياري الآن)
+`reports/ReportsAnalytics.tsx` (30)، `tasks/TasksLogistics.tsx` (8)، `managers/SiteManagers.tsx` (4)
+
+### 9. رسائل الخادم
+`worker/chat.ts` (177 سطرًا عربيًا): أضف `code` لكل خطأ يُعاد للواجهة، وترجم في الواجهة عبر `errorText(e, ns)` (ابحث في `src/i18n/locales/*/auth.json` → `errors` كمثال). تفاصيل سجل العمليات (`audit detail`) تُخزَّن نصًا عربيًا؛ إن أردت ترجمتها فخزّن رموزًا منظمة بدل النص.
+
+### 10. ضمان الجودة
+- `eslint-plugin-i18next` لمنع النصوص المكتوبة مباشرة في JSX.
+- اختبارات Vitest/Playwright لتبديل اللغة والاتجاه.
+- cspell للإنجليزية.
+- بعد اكتمال كل ما سبق: احذف النظام القديم (`src/lib/translations.ts`، `translateDomTree`، و`tr`/`t` القديمة في `src/context/LanguageContext.tsx`) وأبقِ `direction`/`setLanguage` مبنية على i18next.
+
+## قواعد إلزامية
+1. ملفات الترجمة: `src/i18n/locales/{ar,en}/<namespace>.json`، مفاتيح وصفية (مثل `balance.totalInbound`) وليست نصوصًا.
+2. في المكوّن: `const { t } = useTranslation(['<ns>', 'common'])` ثم `t('<ns>:key')`. احذف `tr` من `useLanguage()` عندما لا يعود مستخدمًا.
+3. المشترك من `common`: `units.liter|iqd|meter|days`، `actions.save|cancel|delete|close|done|edit|saveChanges|confirm`، `status.*`، `time.*`.
+4. الجمع: العربية 6 صيغ (`_zero _one _two _few _many _other`)، الإنجليزية (`_one _other`). مثال صحيح: «3 أيام»، «15 يومًا»، «100 يوم».
+5. جملة يتوسطها اسم أو رقم → جملة كاملة بـ `<Trans t={t} i18nKey="..." values={{ name }} components={{ 1: <strong /> }} />`، لا تركيب أجزاء.
+6. القيم الثابتة المخزّنة بالعربية في البيانات (أيام، شركات، أصناف، تصنيفات، حالات) → `enumText(value)` من `src/i18n/enums.ts` (أضف القيمة إلى `SLUG` ومفتاحها في `common.enum`). ما يدخله المستخدم (أسماء محطات/موردين/خزانات/ملاحظات) يُعرض كما هو. لا تغيّر قيم البيانات ولا المقارنات (`=== 'حكومي'`).
+7. الأرقام والتواريخ: `src/i18n/format.ts` (`fmtNumber`, `fmtDate`, `fmtTime`, `fmtRelative`, `fmtDayLabel`)، أرقام غربية دائمًا. `formatNumber/formatIQD/formatLiters` في `src/lib/utils.ts` تتبع اللغة.
+8. الاتجاه: `start/end`, `ms/me`, `ps/pe`, `text-start/end`, `border-s/e` بدل left/right. الأسهم حسب `i18n.dir()`. الحقول `dir="ltr"` تحسب الجهات من اتجاه الصفحة. لا تستخدم أسماء أصناف Tailwind مركّبة ديناميكيًا (`pl-${x}`).
+9. العربية: فصحى سليمة (الهمزات، التنوين «يومًا»، «تحديث» لا «تحديت»). الإنجليزية: Sentence case، طبيعية لا حرفية، طبقًا لـ `src/i18n/glossary.json`.
+10. ترجم أيضًا: `placeholder`, `title`, `aria-label`, `alt`, رسائل `alert/confirm`, رؤوس CSV وأسماء الملفات المصدَّرة.
+11. عند البحث الآلي عن `tr(` قيّده بكلمة مستقلة `(?<![\w.])tr\(` حتى لا يلتقط `setCapacityStr(`.
+12. نصوص كتبها المستخدم يدويًا (مثل مسافات زائدة أو صياغة خاصة) احترمها: نظّف المسافات فقط وأبقِ الصياغة، وأضف مقابلها الإنجليزي.
+
+## التحقق بعد كل مرحلة
+```
+npm run i18n:check
+npm run build
+```
+ثم في المتصفح على `http://localhost:3715`: بدّل اللغة إلى English، وافتح الصفحة، وتأكد ألا يبقى نص عربي إلا البيانات. فحص سريع من Console:
+```js
+[...document.querySelectorAll('main *')].filter(e=>!e.children.length&&/[؀-ۿ]/.test(e.textContent)&&e.getClientRects().length).map(e=>e.textContent.trim()).slice(0,50)
+```
+بعد كل مرحلة: commit منفصل ثم `git push origin develop` (لا دمج إلى main).
