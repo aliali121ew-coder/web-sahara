@@ -66,16 +66,16 @@ export const Header: React.FC<HeaderProps> = ({
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <header className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 transition-colors duration-200 px-4 lg:px-8 py-2">
+    <header className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 transition-colors duration-200 px-3 sm:px-4 py-2">
       <div className="flex items-center justify-between gap-3">
         
         {/* Toggle Sidebar Button & Search Bar */}
-        <div className="flex items-center gap-2 flex-1 max-w-md">
+        <div className="flex items-center gap-2 flex-1 max-w-[13rem]">
           {onToggleSidebar && (
             <button
               onClick={onToggleSidebar}
               title={tr('فتح / طي القائمة الجانبية')}
-              className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 transition-colors shrink-0 md:hidden"
+              className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 transition-colors shrink-0"
             >
               <Menu className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </button>
@@ -86,19 +86,16 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onOpenCommandPalette}
-              className="w-full pl-3 pr-10 py-2 text-sm bg-slate-100/80 dark:bg-slate-800/80 hover:bg-slate-200/70 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-xl border border-transparent hover:border-blue-500/40 outline-none transition-all flex items-center justify-between group text-right cursor-pointer"
+              className="w-full pl-2.5 pr-9 h-9 text-sm bg-slate-100/80 dark:bg-slate-800/80 hover:bg-slate-200/70 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-xl border border-transparent hover:border-blue-500/40 outline-none transition-all flex items-center justify-between group text-right cursor-pointer"
             >
               <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-blue-500 transition-colors" />
-              <span className="truncate text-xs sm:text-sm">{t('searchPlaceholder')}</span>
-              <kbd className="hidden sm:inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 text-[10.5px] font-mono font-bold shadow-2xs">
-                {t('ctrlK')}
-              </kbd>
+              <span className="truncate text-xs">{t('searchPlaceholder')}</span>
             </button>
           </div>
         </div>
 
         {/* Center/Left Info & Actions */}
-        <div className="flex items-center gap-2 sm:gap-2.5">
+        <div className="flex items-center gap-2">
           
           {/* 🌐 Multi-Language Switcher (EN/AR & Other Languages) */}
           <div className="relative" ref={langRef}>
@@ -261,18 +258,10 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="relative" ref={profileRef}>
             <button
               onClick={() => setShowProfileMenu(!showProfileMenu)}
-              className="flex items-center gap-2.5 p-1 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-800 transition-all"
+              className="flex items-center p-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-800 transition-all"
             >
               <div className="w-7 h-7 rounded-lg text-white font-black text-[11px] flex items-center justify-center shadow-xs overflow-hidden" style={{ background: profile?.color || '#4f46e5' }}>
                 {profile?.avatar ? <img src={profile.avatar} alt="" className="w-full h-full object-cover" /> : initials(profile?.name)}
-              </div>
-              <div className="hidden lg:block text-right">
-                <div className="text-xs font-bold text-slate-900 dark:text-white leading-none">
-                  {profile?.name || '...'}
-                </div>
-                <div className="text-[10px] text-slate-500 dark:text-slate-400 leading-none mt-1">
-                  {profile?.role || (profile?.is_admin ? tr('مدير النظام') : '')}
-                </div>
               </div>
             </button>
 
