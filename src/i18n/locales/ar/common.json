@@ -14,7 +14,8 @@
     "save": "حفظ",
     "confirm": "تأكيد",
     "logout": "تسجيل الخروج",
-    "clearFilter": "إلغاء التصفية"
+    "clearFilter": "إلغاء التصفية",
+    "done": "تم"
   },
   "status": {
     "online": "متصل",
@@ -24,7 +25,13 @@
   },
   "units": {
     "liter": "لتر",
-    "iqd": "د.ع"
+    "iqd": "د.ع",
+    "days_one": "يوم واحد",
+    "days_other": "{{count}} يوم",
+    "days_zero": "0 يوم",
+    "days_two": "يومان",
+    "days_few": "{{count}} أيام",
+    "days_many": "{{count}} يومًا"
   },
   "time": {
     "minutesShort": "{{count}} د",
@@ -51,5 +58,52 @@
     "count_many": "{{count}} لغة",
     "count_other": "{{count}} لغة",
     "current": "لغة المنظومة: {{code}}"
+  },
+  "enum": {
+    "weekday": {
+      "sat": "السبت",
+      "satShort": "السبت",
+      "sun": "الأحد",
+      "sunShort": "الأحد",
+      "mon": "الإثنين",
+      "monShort": "الإثنين",
+      "tue": "الثلاثاء",
+      "tueShort": "الثلاثاء",
+      "wed": "الأربعاء",
+      "wedShort": "الأربعاء",
+      "thu": "الخميس",
+      "thuShort": "الخميس",
+      "fri": "الجمعة",
+      "friShort": "الجمعة"
+    },
+    "company": {
+      "sahara": "صحاري كربلاء",
+      "etihad": "شركة الاتحاد",
+      "mainDepot": "المستودع الرئيسي"
+    },
+    "product": {
+      "saharaGasoline": "بنزين الصحاري",
+      "saharaGasoil": "كاز الصحاري",
+      "stationGasoil": "كاز محطات",
+      "etihadGasoil": "كاز الاتحاد",
+      "blackOil": "نفط الأسود"
+    },
+    "category": {
+      "all": "الكل",
+      "commercial": "تجاري",
+      "official": "رسمي",
+      "government": "حكومي"
+    },
+    "availability": {
+      "available": "متوفر",
+      "limited": "محدود",
+      "unavailable": "غير متوفر"
+    },
+    "flowTag": {
+      "none": "لا حركة",
+      "surplus": "فائض",
+      "draw": "سحب من الرصيد",
+      "balanced": "متوازن"
+    }
   }
 }

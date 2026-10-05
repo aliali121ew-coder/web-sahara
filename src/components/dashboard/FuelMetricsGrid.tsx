@@ -12,7 +12,8 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useFuelData } from '../../context/FuelDataContext';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
+import { enumText } from '../../i18n/enums';
 import { formatNumber } from '../../lib/utils';
 import { FuelProductMetric, InboundDelivery } from '../../types';
 import { usePetrolLedger } from '../../lib/petrolLedger';
@@ -53,7 +54,7 @@ const MANUAL_ONLY_ID = 'fuel-muhassan';
 export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout = 'row' }) => {
   const isSide = layout === 'side';
   const { fuelMetrics, supplierPrices, saharaDeliveries, etihadDeliveries } = useFuelData();
-  const { tr } = useLanguage();
+  const { t } = useTranslation(['dashboard', 'common']);
   const { publishedComputed: petrolDays } = usePetrolLedger();
   const { computed: saharaBlackOilDays } = useBlackOilLedger('sahara');
   const { computed: etihadBlackOilDays } = useBlackOilLedger('etihad');
@@ -266,10 +267,10 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                {tr('مشتريات الوقود والمشتقات')}
+                {t('dashboard:purchases.title')}
               </h2>
               <span className="px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-bold border border-slate-200/80 dark:border-slate-700/80">
-                {fuelMetrics.length} {tr('أصناف رئيسية')}
+                {t('dashboard:purchases.categories', { count: fuelMetrics.length })}
               </span>
             </div>
           </div>
@@ -296,7 +297,7 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
               onPointerLeave={cancelPress}
               onPointerCancel={cancelPress}
               onContextMenu={e => e.preventDefault()}
-              title={tr('اضغط مطوّلًا لعرض السعر وتعديله')}
+              title={t('dashboard:purchases.longPress')}
               data-pressing={pressing === item.id || undefined}
               // صفحة الأسعار (side): أبيض ثلجي بحد رمادي خفيف · الشاشة الرئيسية: التدرّج الملوّن الأصلي
               className={`@container ${isSide ? 'rounded-[18px] p-2.5 2xl:p-3' : 'rounded-[24px] 2xl:rounded-[28px] p-3.5 sm:p-4 2xl:p-5'} ${isSide ? 'bg-[#fcfdff] dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700' : `${config.cardBg} border ${config.border} ${config.hoverBorder} ${config.glowShadow}`} shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden select-none touch-manipulation cursor-pointer ${pressing === item.id ? 'scale-[0.97] !translate-y-0 ring-2 ring-teal-500/30' : ''} ${openCard?.id === item.id ? 'opacity-0' : ''}`}
@@ -307,8 +308,8 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
               )}
               {/* شارة السعر اليدوي */}
               {source === 'manual' && (
-                <span className="absolute top-2 left-2 z-10 px-1.5 py-px rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 text-[9px] font-black ring-1 ring-amber-200 dark:ring-amber-900" title={tr('سعر يدوي حتى أول وارد جديد')}>
-                  {tr('يدوي')}
+                <span className="absolute top-2 left-2 z-10 px-1.5 py-px rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 text-[9px] font-black ring-1 ring-amber-200 dark:ring-amber-900" title={t('dashboard:purchases.manualHint')}>
+                  {t('dashboard:purchases.manual')}
                 </span>
               )}
               <div>
@@ -346,14 +347,14 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
                       }}
                       title={item.name}
                     >
-                      {tr(item.name)}
+                      {enumText(item.name)}
                     </h3>
                     <span 
                       className={`inline-block font-bold px-2 py-0.5 rounded-full mt-1 ${config.companyBadge} whitespace-nowrap`}
                       style={{ fontSize: 'clamp(9px, 5cqw, 11px)' }}
                       title={item.company}
                     >
-                      {tr(item.company)}
+                      {enumText(item.company)}
                     </span>
                   </div>
 
@@ -369,7 +370,7 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
                       className="font-bold text-slate-400 block mb-0.5 whitespace-nowrap"
                       style={{ fontSize: 'clamp(9px, 4.6cqw, 10.5px)' }}
                     >
-                      {tr('سعر اللتر المعتمد')}
+                      {t('dashboard:purchases.approvedPrice')}
                     </span>
                     )}
                     <div className="flex items-baseline gap-1">
@@ -383,7 +384,7 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
                         className="font-bold text-slate-400 whitespace-nowrap"
                         style={{ fontSize: 'clamp(10px, 5.2cqw, 11.5px)' }}
                       >
-                        {tr('د.ع')}
+                        {t('common:units.iqd')}
                       </span>
                     </div>
 
@@ -392,17 +393,17 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
                       className="flex items-center gap-1 mt-0.5 text-slate-400 dark:text-slate-500 font-semibold whitespace-nowrap"
                       style={{ fontSize: 'clamp(8.5px, 4.2cqw, 10px)' }}
                     >
-                      <span>{tr('السابق:')}</span>
+                      <span>{t('dashboard:purchases.previous')}</span>
                       <span className="font-mono font-bold text-slate-500 dark:text-slate-400">
                         {previousPrice > 0 ? previousPrice : displayPrice}
                       </span>
-                      <span className="text-[8px] font-normal">{tr('د.ع')}</span>
+                      <span className="text-[8px] font-normal">{t('common:units.iqd')}</span>
                     </div>
                   </div>
 
                   {/* Floating Ultra-3D Tactile Circular Badge - Fluid Scaling */}
                   <div 
-                    title={isPriceDown ? `${tr('انخفاض بالسعر')} (${trendPercent}%)` : trendPercent > 0 ? `${tr('ارتفاع بالسعر')} (+${trendPercent}%)` : `${tr('استقرار بالسعر')} 0.0%`}
+                    title={isPriceDown ? `${t('dashboard:purchases.down')} (${trendPercent}%)` : trendPercent > 0 ? `${t('dashboard:purchases.up')} (+${trendPercent}%)` : `${t('dashboard:purchases.stable')} 0.0%`}
                     className={`relative rounded-full bg-gradient-to-b from-white via-slate-50 to-slate-100/90 dark:from-slate-700 dark:via-slate-800 dark:to-slate-900 ring-1 ring-white/90 dark:ring-white/10 border ${config.circleBadge} flex flex-col items-center justify-center shrink-0 p-0.5 transition-all duration-300 group-hover:scale-108 group-hover:-translate-y-0.5 ${
                       isPriceDown
                         ? 'shadow-[0_4px_14px_rgba(16,185,129,0.22),inset_0_1.5px_2px_rgba(255,255,255,1),inset_0_-1.5px_2px_rgba(16,185,129,0.15)]'
@@ -478,9 +479,9 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
                   className="flex items-center justify-between"
                   style={{ fontSize: 'clamp(10px, 5.2cqw, 11.5px)' }}
                 >
-                  <span className="font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">{tr(source === 'standalone' ? 'الكمية' : 'مجموع الشراء')}</span>
+                  <span className="font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">{t(source === 'standalone' ? 'dashboard:popover.quantity' : 'dashboard:purchases.total')}</span>
                   <span className="font-mono font-black text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                    {formatNumber(volume)} <span className="text-[9px] font-normal text-slate-400">{tr('لتر')}</span>
+                    {formatNumber(volume)} <span className="text-[9px] font-normal text-slate-400">{t('common:units.liter')}</span>
                   </span>
                 </div>
 
@@ -498,7 +499,7 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
                   style={{ fontSize: 'clamp(9.5px, 4.8cqw, 10.5px)' }}
                 >
                   <span className={`font-bold ${config.statusColor} whitespace-nowrap`}>
-                    ● {tr(source === 'standalone' ? 'آخر تحديث' : 'آخر تحديث للسعر')}
+                    ● {t(source === 'standalone' ? 'dashboard:popover.lastUpdate' : 'dashboard:purchases.lastPriceUpdate')}
                   </span>
                   {/* تاريخ آخر تحديث للسعر في مكان الوقت */}
                   <div className="flex items-center gap-1 font-mono whitespace-nowrap">

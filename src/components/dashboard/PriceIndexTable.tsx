@@ -6,11 +6,14 @@ import {
 } from 'lucide-react';
 import { useFuelData } from '../../context/FuelDataContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
+import { enumText } from '../../i18n/enums';
 import { formatIQD } from '../../lib/utils';
 
 export const PriceIndexTable: React.FC = () => {
   const { supplierPrices, searchQuery } = useFuelData();
-  const { tr, isRTL } = useLanguage();
+  const { isRTL } = useLanguage();
+  const { t } = useTranslation(['dashboard', 'common']);
   const [selectedCategory, setSelectedCategory] = useState<string>('الكل');
 
   const categories = ['الكل', 'تجاري', 'رسمي', 'حكومي'];
@@ -32,13 +35,13 @@ export const PriceIndexTable: React.FC = () => {
           <div className="w-2 h-5 bg-blue-600 rounded-full" />
           <div>
             <h3 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white flex items-center gap-2">
-              <span>{tr('مؤشرات أسعار الشركات والموردين')}</span>
+              <span>{t('dashboard:priceIndex.title')}</span>
               <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-600 font-bold border border-blue-200 dark:border-blue-800">
-                {tr('محدث يومياً')}
+                {t('dashboard:priceIndex.daily')}
               </span>
             </h3>
             <p className="text-xs text-slate-500">
-              {tr('تتبع فروقات الأسعار وحركة السوق بين القطاعين الحكومي والتجاري')}
+              {t('dashboard:priceIndex.text')}
             </p>
           </div>
         </div>
@@ -55,7 +58,7 @@ export const PriceIndexTable: React.FC = () => {
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              {tr(cat)}
+              {enumText(cat)}
             </button>
           ))}
         </div>
@@ -66,20 +69,20 @@ export const PriceIndexTable: React.FC = () => {
         <table className={`w-full ${isRTL ? 'text-right' : 'text-left'} text-xs sm:text-sm`}>
           <thead>
             <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 text-[11px] font-bold uppercase">
-              <th className="pb-3 pr-2">{tr('المورد / الشركة')}</th>
-              <th className="pb-3 px-3">{tr('نوع المنتج والمشتق')}</th>
-              <th className="pb-3 px-3">{tr('التصنيف')}</th>
-              <th className="pb-3 px-3">{tr('السعر الحالي')}</th>
-              <th className="pb-3 px-3">{tr('السعر السابق')}</th>
-              <th className="pb-3 px-3">{tr('نسبة التغير (24h)')}</th>
-              <th className="pb-3 pl-2">{tr('حالة التوفر')}</th>
+              <th className="pb-3 pr-2">{t('dashboard:priceIndex.supplier')}</th>
+              <th className="pb-3 px-3">{t('dashboard:priceIndex.product')}</th>
+              <th className="pb-3 px-3">{t('dashboard:priceIndex.category')}</th>
+              <th className="pb-3 px-3">{t('dashboard:priceIndex.current')}</th>
+              <th className="pb-3 px-3">{t('dashboard:priceIndex.previous')}</th>
+              <th className="pb-3 px-3">{t('dashboard:priceIndex.change')}</th>
+              <th className="pb-3 pl-2">{t('dashboard:priceIndex.availability')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
             {filteredPrices.length === 0 ? (
               <tr>
                 <td colSpan={7} className="py-8 text-center text-slate-400">
-                  {tr('لا توجد نتائج مطابقة لخيارات الفلترة الحالية')}
+                  {t('dashboard:priceIndex.empty')}
                 </td>
               </tr>
             ) : (
@@ -99,14 +102,14 @@ export const PriceIndexTable: React.FC = () => {
                           <Building className="w-3.5 h-3.5" />
                         </div>
                         <span className="font-bold text-slate-900 dark:text-white">
-                          {tr(row.supplierName)}
+                          {row.supplierName}
                         </span>
                       </div>
                     </td>
 
                     {/* Product */}
                     <td className="py-3.5 px-3 text-slate-700 dark:text-slate-300">
-                      {tr(row.product)}
+                      {row.product}
                     </td>
 
                     {/* Category */}
@@ -120,18 +123,18 @@ export const PriceIndexTable: React.FC = () => {
                             : 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
                         }`}
                       >
-                        {tr(row.category)}
+                        {enumText(row.category)}
                       </span>
                     </td>
 
                     {/* Current Price */}
                     <td className="py-3.5 px-3 font-mono font-bold text-slate-900 dark:text-white">
-                      {formatIQD(row.priceIqd)} {tr('د.ع')}
+                      {formatIQD(row.priceIqd)} {t('common:units.iqd')}
                     </td>
 
                     {/* Previous Price */}
                     <td className="py-3.5 px-3 font-mono text-slate-400">
-                      {formatIQD(row.previousPriceIqd)} {tr('د.ع')}
+                      {formatIQD(row.previousPriceIqd)} {t('common:units.iqd')}
                     </td>
 
                     {/* Change % */}
@@ -166,7 +169,7 @@ export const PriceIndexTable: React.FC = () => {
                           }`}
                         />
                         <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                          {tr(row.availability)}
+                          {enumText(row.availability)}
                         </span>
                       </div>
                     </td>

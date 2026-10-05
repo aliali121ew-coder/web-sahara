@@ -1,0 +1,213 @@
+{
+  "capacity": {
+    "remaining": "السعة المتبقية",
+    "fill": "نسبة الامتلاء",
+    "title": "توزيع السعة الاستيعابية للمخزون",
+    "titleShort": "السعة الاستيعابية للمخزون",
+    "remainingShort": "المتبقي",
+    "centralTanks": "الخزانات المركزية",
+    "totalColon": "السعة الكلية:",
+    "grandTotalColon": "السعة الإجمالية:",
+    "remainingOfCapacity": "المتبقي من السعة",
+    "label": "السعة",
+    "current": "السعة الحالية"
+  },
+  "flow": {
+    "inboundColon": "الوارد:",
+    "consumptionColon": "الاستهلاك:",
+    "totalInbound": "إجمالي الوارد",
+    "received": "توريدات مستلمة",
+    "consumption": "استهلاك",
+    "inbound": "وارد",
+    "sales": "مبيعات",
+    "actualDiff": "فرق الاستهلاك الفعلي",
+    "actual": "الاستهلاك الفعلي",
+    "directOutflow": "صرف مباشر",
+    "totalInboundAll": "الوارد الكلي",
+    "totalConsumption": "الاستهلاك الكلي",
+    "daily": "الاستهلاك اليومي"
+  },
+  "compare": {
+    "prevDay": "مقارنة باليوم السابق",
+    "noPrevDay": "لا يوجد يوم سابق للمقارنة",
+    "sevenDays": "مقارنة 7 أيام"
+  },
+  "coverage": {
+    "until": "يؤمّن لغاية",
+    "covers": "يؤمّن",
+    "secured": "مؤمّن",
+    "dueDate": "تاريخ الاستحقاق المتوقع:",
+    "runOutDate": "تاريخ النفاد المتوقع:",
+    "smartTitle": "تنبؤ التغطية الذكية",
+    "predictive": "ذكاء تنبؤي"
+  },
+  "price": {
+    "change": "نسبة التغير",
+    "average": "متوسط السعر",
+    "approved": "معتمد",
+    "lastInboundAvg": "معدل سعر آخر وارد",
+    "buyAvg": "معدل سعر الشراء",
+    "todayBuy": "شراء اليوم",
+    "twoDayAvg": "معدل اليومين",
+    "vsPrevBuy": "مقارنة بسعر شراء اليوم السابق"
+  },
+  "balance": {
+    "actualCurrent": "الرصيد الفعلي الحالي",
+    "actual": "الرصيد الفعلي",
+    "total": "الرصيد الكلي"
+  },
+  "section": {
+    "stockOps": "المخزون والتشغيل"
+  },
+  "day": {
+    "yesterday": "أمس",
+    "today": "اليوم"
+  },
+  "stations": {
+    "title": "المحطات والمواقع",
+    "showAll": "عرض كل المواقع",
+    "viewAll": "عرض الكل",
+    "fromTanks": "من منظومة الخزانات",
+    "total": "المجموع",
+    "secured_zero": "لا مواقع مؤمّنة",
+    "secured_one": "موقع واحد مؤمّن",
+    "secured_two": "موقعان مؤمّنان",
+    "secured_few": "{{count}} مواقع مؤمّنة",
+    "secured_many": "{{count}} موقعًا مؤمّنًا",
+    "secured_other": "{{count}} موقع مؤمّن",
+    "sites_zero": "لا مواقع",
+    "sites_one": "موقع واحد",
+    "sites_two": "موقعان",
+    "sites_few": "{{count}} مواقع",
+    "sites_many": "{{count}} موقعًا",
+    "sites_other": "{{count}} موقع"
+  },
+  "blackOil": {
+    "details": "تفاصيل النفط الأسود",
+    "unified": "مخزون استراتيجي موحّد",
+    "sahara": "نفط أسود - صحاري كربلاء",
+    "etihad": "نفط أسود - شركة الاتحاد",
+    "both": "صحاري كربلاء + الاتحاد",
+    "combinedBalance": "إجمالي الرصيد الفعلي المشترك"
+  },
+  "companyTanks": {
+    "details": "تفاصيل خزانات الشركة",
+    "sections_zero": "لا أقسام",
+    "sections_one": "قسم واحد",
+    "sections_two": "قسمان",
+    "sections_few": "{{count}} أقسام",
+    "sections_many": "{{count}} قسمًا",
+    "sections_other": "{{count}} قسم",
+    "groups": {
+      "etihad": "شركة الاتحاد",
+      "sahara": "شركة الصحاري",
+      "petrol": "البنزين"
+    },
+    "names": {
+      "etihadGas": "كاز الاتحاد",
+      "saharaGas": "كاز الصحاري",
+      "blackOil": "النفط الأسود",
+      "petrol": "البنزين"
+    }
+  },
+  "etihad": {
+    "title": "كاز - شركة الاتحاد",
+    "totalBalance": "إجمالي رصيد كاز شركة الاتحاد",
+    "tanks": "خزانات",
+    "weeklyInbound": "مقارنة الوارد الأسبوعي",
+    "weeklyConsumption": "مقارنة الاستهلاك الأسبوعي",
+    "coverageTitle": "تنبؤ التغطية الاستراتيجية لشركة الاتحاد",
+    "surplus": "فائض استراتيجي",
+    "operationalGas": "الكاز التشغيلي",
+    "cleanGas": "كاز نظيف"
+  },
+  "purchases": {
+    "title": "مشتريات الوقود والمشتقات",
+    "longPress": "اضغط مطوّلًا لعرض السعر",
+    "manualHint": "سعر يدوي حتى أول وارد جديد",
+    "previous": "السابق:",
+    "down": "انخفاض في السعر",
+    "up": "ارتفاع في السعر",
+    "stable": "استقرار في السعر",
+    "manual": "يدوي",
+    "approvedPrice": "سعر اللتر المعتمد",
+    "total": "مجموع الشراء",
+    "lastPriceUpdate": "آخر تحديث للسعر",
+    "categories_zero": "لا أصناف",
+    "categories_one": "صنف رئيسي واحد",
+    "categories_two": "صنفان رئيسيان",
+    "categories_few": "{{count}} أصناف رئيسية",
+    "categories_many": "{{count}} صنفًا رئيسيًا",
+    "categories_other": "{{count}} صنف رئيسي"
+  },
+  "petrol": {
+    "surplusColon": "الفائض:",
+    "title": "بنزين - صحاري كربلاء 2026",
+    "balance": "رصيد البنزين الفعلي المعتمد",
+    "active": "تشغيلي نشط",
+    "readiness": "جاهزية التغطية التشغيلية",
+    "actualColon": "الفعلي:",
+    "targetColon": "المستهدف:",
+    "required": "الكمية المطلوب توفيرها",
+    "boost": "تعزيز استراتيجي مستهدف",
+    "coverageFull": "يؤمّن لغاية (الشامل)",
+    "balanceColon": "الرصيد:",
+    "analysis": "تحليل الوارد والاستهلاك والتدفق",
+    "neon": "أمواج نيون",
+    "bars": "أعمدة ثلاثية الأبعاد",
+    "toggleInbound": "انقر لإظهار الوارد أو إخفائه",
+    "inboundLegend": "الوارد",
+    "toggleConsumption": "انقر لإظهار الاستهلاك أو إخفائه",
+    "consumptionLegend": "الاستهلاك"
+  },
+  "range": {
+    "d7": "7 أيام",
+    "d14": "14 يومًا",
+    "monthly": "شهري"
+  },
+  "popover": {
+    "quantity": "الكمية",
+    "literPrice": "سعر اللتر",
+    "lastUpdateDate": "تاريخ آخر تحديث",
+    "standaloneNote": "هذه البطاقة غير مرتبطة بأي وارد أو سجل: القيم تُدخل يدويًا وتُعرض كما هي.",
+    "manualEntry": "إدخال يدوي",
+    "autoFromInbound": "تلقائي من الوارد",
+    "fromSuppliers": "من جدول الموردين",
+    "editPrice": "تعديل السعر",
+    "inboundPrice": "السعر من الوارد",
+    "lastUpdate": "آخر تحديث",
+    "manualNote": "السعر اليدوي يبقى حتى أول عملية وارد جديدة، ثم يعود تلقائيًا من الوارد.",
+    "autoNote": "يُحدَّث تلقائيًا مع كل عملية وارد جديدة (متوسط موزون لآخر يوم وارد).",
+    "lastInbound": "آخر وارد",
+    "recentDays": "آخر أيام الوارد",
+    "noInbound": "لا يوجد وارد مسعّر لهذا المنتج بعد",
+    "backToAuto": "الرجوع إلى السعر التلقائي"
+  },
+  "priceIndex": {
+    "title": "مؤشرات أسعار الشركات والموردين",
+    "daily": "محدَّث يوميًا",
+    "text": "تتبّع فروقات الأسعار وحركة السوق بين القطاعين الحكومي والتجاري",
+    "supplier": "المورد / الشركة",
+    "product": "نوع المنتج والمشتق",
+    "category": "التصنيف",
+    "current": "السعر الحالي",
+    "previous": "السعر السابق",
+    "change": "نسبة التغير (24 ساعة)",
+    "availability": "حالة التوفر",
+    "empty": "لا توجد نتائج مطابقة لخيارات التصفية الحالية"
+  },
+  "sahara": {
+    "sectors": {
+      "vehicles": "الآليات",
+      "generators": "مولدات",
+      "farms": "المزارع"
+    },
+    "title": "كاز - صحاري كربلاء",
+    "balance": "رصيد كاز الصحاري",
+    "actual": "الفعلي",
+    "consumptionSplit": "توزيع نسب الاستهلاك",
+    "totalPercent": "100% الإجمالي",
+    "weekData": "بيانات الأسبوع",
+    "consumedQty": "الكمية المستهلكة:"
+  }
+}

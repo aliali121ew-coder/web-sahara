@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Waves, Building2, Fuel } from 'lucide-react';
 import { formatNumber } from '../../lib/utils';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
 import { TankGlobalSvgDefs } from '../tanks/TankGlobalSvgDefs';
 import { Tank3DCard, type CalculatedTankUnit } from '../tanks/Tank3DCard';
 import { OFFICIAL_TABLE_TANK_UNITS, getFillLevelTheme, type TankUnitRow } from '../tanks/TanksOverview';
@@ -26,7 +26,7 @@ const VIRTUAL_HEIGHT = 10;
  * مجمّعة في كروت أم: الاتحاد (كاز + نفط أسود)، الصحاري (كاز + نفط أسود)، والبنزين وحده.
  */
 export const CompanyTanksSection: React.FC = () => {
-  const { tr } = useLanguage();
+  const { t } = useTranslation(['dashboard', 'common']);
   const [centralTanks] = useCentralTanks(OFFICIAL_TABLE_TANK_UNITS);
   // نفس مصادر الكروت العلوية في الشاشة الرئيسية
   const { publishedComputed: saharaDays } = useSaharaLedger();
@@ -68,33 +68,33 @@ export const CompanyTanksSection: React.FC = () => {
     return [
       {
         key: 'etihad',
-        title: 'شركة الاتحاد',
+        title: t('dashboard:companyTanks.groups.etihad'),
         icon: Building2,
         accent: 'from-emerald-500 to-teal-600',
         tanks: keep([
-          aggregate('agg-etihad-gas', 'كاز الاتحاد', 'ET-KZ', 'شركة الاتحاد', resolveGasoilSectionKey(centralTanks)),
-          aggregate('agg-etihad-black', 'النفط الأسود', 'ET-BO', 'شركة الاتحاد', BLACK_OIL_SECTION_KEYS.etihad, { stored: etihadBlackOil.latest ? etihadBlackOil.balance : null })
+          aggregate('agg-etihad-gas', t('dashboard:companyTanks.names.etihadGas'), 'ET-KZ', 'شركة الاتحاد', resolveGasoilSectionKey(centralTanks)),
+          aggregate('agg-etihad-black', t('dashboard:companyTanks.names.blackOil'), 'ET-BO', 'شركة الاتحاد', BLACK_OIL_SECTION_KEYS.etihad, { stored: etihadBlackOil.latest ? etihadBlackOil.balance : null })
         ])
       },
       {
         key: 'sahara',
-        title: 'شركة الصحاري',
+        title: t('dashboard:companyTanks.groups.sahara'),
         icon: Building2,
         accent: 'from-blue-600 to-indigo-600',
         tanks: keep([
-          aggregate('agg-sahara-gas', 'كاز الصحاري', 'SH-KZ', 'صحاري كربلاء', resolveSaharaGasoilSectionKey(centralTanks), { stored: saharaDays[saharaDays.length - 1]?.current ?? null }),
-          aggregate('agg-sahara-black', 'النفط الأسود', 'SH-BO', 'صحاري كربلاء', BLACK_OIL_SECTION_KEYS.sahara, { stored: saharaBlackOil.latest ? saharaBlackOil.balance : null })
+          aggregate('agg-sahara-gas', t('dashboard:companyTanks.names.saharaGas'), 'SH-KZ', 'صحاري كربلاء', resolveSaharaGasoilSectionKey(centralTanks), { stored: saharaDays[saharaDays.length - 1]?.current ?? null }),
+          aggregate('agg-sahara-black', t('dashboard:companyTanks.names.blackOil'), 'SH-BO', 'صحاري كربلاء', BLACK_OIL_SECTION_KEYS.sahara, { stored: saharaBlackOil.latest ? saharaBlackOil.balance : null })
         ])
       },
       {
         key: 'petrol',
-        title: 'البنزين',
+        title: t('dashboard:companyTanks.groups.petrol'),
         icon: Fuel,
         accent: 'from-amber-400 to-orange-500',
-        tanks: keep([aggregate('agg-sahara-petrol', 'البنزين', 'SH-BN', 'صحاري كربلاء', resolveSaharaPetrolSectionKey(centralTanks), { stored: petrolDays[petrolDays.length - 1]?.current ?? null, capacity: PETROL_TOTAL_CAPACITY })])
+        tanks: keep([aggregate('agg-sahara-petrol', t('dashboard:companyTanks.names.petrol'), 'SH-BN', 'صحاري كربلاء', resolveSaharaPetrolSectionKey(centralTanks), { stored: petrolDays[petrolDays.length - 1]?.current ?? null, capacity: PETROL_TOTAL_CAPACITY })])
       }
     ].filter(g => g.tanks.length);
-  }, [centralTanks, saharaDays, petrolDays, saharaBlackOil.latest, saharaBlackOil.balance, etihadBlackOil.latest, etihadBlackOil.balance]);
+  }, [centralTanks, saharaDays, petrolDays, saharaBlackOil.latest, saharaBlackOil.balance, etihadBlackOil.latest, etihadBlackOil.balance, t]);
 
   // الخزانات المجمّعة للعرض فقط (تعديل المنسوب من منظومة الخزانات)
   const noop = () => {};
@@ -109,7 +109,7 @@ export const CompanyTanksSection: React.FC = () => {
           <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-700 via-indigo-600 to-teal-600 text-white shadow-md shadow-blue-500/20">
             <Waves className="w-4 h-4 text-teal-200 animate-pulse" />
           </div>
-          <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">{tr('تفاصيل خزانات الشركة')}</h2>
+          <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">{t('dashboard:companyTanks.details')}</h2>
         </div>
       </div>
 
@@ -130,9 +130,9 @@ export const CompanyTanksSection: React.FC = () => {
                     <Icon className="w-4.5 h-4.5" />
                   </div>
                   <div className="min-w-0">
-                    <div className="font-black text-slate-900 dark:text-white truncate">{tr(g.title)}</div>
+                    <div className="font-black text-slate-900 dark:text-white truncate">{g.title}</div>
                     <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                      {g.tanks.length} {tr(g.tanks.length === 1 ? 'قسم' : 'أقسام')} · {tr('السعة')} <span className="font-mono">{formatNumber(cap)}</span> {tr('لتر')}
+                      {t('dashboard:companyTanks.sections', { count: g.tanks.length })} · {t('dashboard:capacity.label')} <span className="font-mono">{formatNumber(cap)}</span> {t('common:units.liter')}
                     </div>
                   </div>
                 </div>

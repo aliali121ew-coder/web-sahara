@@ -14,7 +14,8 @@
     "save": "Save",
     "confirm": "Confirm",
     "logout": "Sign out",
-    "clearFilter": "Clear filter"
+    "clearFilter": "Clear filter",
+    "done": "Done"
   },
   "status": {
     "online": "Online",
@@ -24,7 +25,9 @@
   },
   "units": {
     "liter": "L",
-    "iqd": "IQD"
+    "iqd": "IQD",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days"
   },
   "time": {
     "minutesShort": "{{count}} min",
@@ -47,5 +50,52 @@
     "count_one": "{{count}} language",
     "count_other": "{{count}} languages",
     "current": "System language: {{code}}"
+  },
+  "enum": {
+    "weekday": {
+      "sat": "Saturday",
+      "satShort": "Sat",
+      "sun": "Sunday",
+      "sunShort": "Sun",
+      "mon": "Monday",
+      "monShort": "Mon",
+      "tue": "Tuesday",
+      "tueShort": "Tue",
+      "wed": "Wednesday",
+      "wedShort": "Wed",
+      "thu": "Thursday",
+      "thuShort": "Thu",
+      "fri": "Friday",
+      "friShort": "Fri"
+    },
+    "company": {
+      "sahara": "Sahara Karbala",
+      "etihad": "Etihad Company",
+      "mainDepot": "Main depot"
+    },
+    "product": {
+      "saharaGasoline": "Sahara gasoline",
+      "saharaGasoil": "Sahara gasoil",
+      "stationGasoil": "Station gasoil",
+      "etihadGasoil": "Etihad gasoil",
+      "blackOil": "Black oil"
+    },
+    "category": {
+      "all": "All",
+      "commercial": "Commercial",
+      "official": "Official",
+      "government": "Government"
+    },
+    "availability": {
+      "available": "Available",
+      "limited": "Limited",
+      "unavailable": "Unavailable"
+    },
+    "flowTag": {
+      "none": "No movement",
+      "surplus": "Surplus",
+      "draw": "Drawn from balance",
+      "balanced": "Balanced"
+    }
   }
 }

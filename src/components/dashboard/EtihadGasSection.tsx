@@ -16,7 +16,8 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { formatNumber } from '../../lib/utils';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
+import { enumText } from '../../i18n/enums';
 import { EtihadBalanceRecord } from '../../types/finance';
 import { useFuelData } from '../../context/FuelDataContext';
 import { InboundDelivery } from '../../types';
@@ -63,7 +64,7 @@ const recordSales = (r?: EtihadBalanceRecord) =>
   r ? (r.saharaSales || 0) + (r.cablesSales || 0) + (r.specialSales || 0) + (r.otherSales || 0) : 0;
 
 export const EtihadGasSection: React.FC = () => {
-  const { tr } = useLanguage();
+  const { t } = useTranslation(['dashboard', 'common']);
   // آخر يوم مسجّل في  رصيد شركة الاتحاد واليوم الذي قبله
   const [records] = React.useState(loadEtihadRecords);
   const latest = records[0];
@@ -134,10 +135,10 @@ export const EtihadGasSection: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                {tr('كاز - شركة الاتحاد')}
+                {t('dashboard:etihad.title')}
               </h2>
               <span className="px-2.5 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 text-[10px] font-bold border border-teal-200/80 dark:border-teal-800/60">
-                {tr('المخزون والتشغيل')}
+                {t('dashboard:section.stockOps')}
               </span>
             </div>
           </div>
@@ -158,14 +159,14 @@ export const EtihadGasSection: React.FC = () => {
                   <Boxes className="w-3.5 h-3.5" />
                 </div>
                 <span>
-                  {tr('إجمالي رصيد كاز شركة الاتحاد')}
+                  {t('dashboard:etihad.totalBalance')}
                 </span>
               </div>
               <div className="flex items-baseline gap-2 mt-1.5">
                 <span className="text-3xl sm:text-4xl lg:text-5xl font-black font-mono tracking-tight text-slate-900 dark:text-white">
                   {formatNumber(etihadTotalBalance)}
                 </span>
-                <span className="text-base sm:text-lg font-bold text-teal-600 dark:text-teal-400">{tr('لتر')}</span>
+                <span className="text-base sm:text-lg font-bold text-teal-600 dark:text-teal-400">{t('common:units.liter')}</span>
               </div>
             </div>
 
@@ -173,12 +174,12 @@ export const EtihadGasSection: React.FC = () => {
             {/* كارت السعر (نفس تصميم الصحاري): الرقم في المنتصف، وشريط سفلي ملوّن لنسبة التغير بعد آخر وارد */}
             <div className="min-w-[128px] rounded-2xl overflow-hidden bg-gradient-to-br from-white to-teal-50/40 dark:from-slate-800/90 dark:to-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 shrink-0 shadow-xs">
               <div className="px-3 pt-2.5 pb-2 text-center">
-                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-400 block">{tr('متوسط السعر')}</span>
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-400 block">{t('dashboard:price.average')}</span>
                 <div className="mt-0.5 flex items-baseline justify-center gap-1">
                   <span className="text-lg sm:text-2xl font-black text-teal-700 dark:text-teal-300 font-mono tracking-tight leading-none tabular-nums">
                     {avgPrice > 0 ? avgPrice.toFixed(1) : '—'}
                   </span>
-                  <span className="text-[10px] font-bold text-slate-400">{tr('د.ع')}</span>
+                  <span className="text-[10px] font-bold text-slate-400">{t('common:units.iqd')}</span>
                 </div>
               </div>
               {priceChange ? (() => {
@@ -192,20 +193,20 @@ export const EtihadGasSection: React.FC = () => {
                 return (
                   <div
                     className={`px-3 py-1.5 border-t flex items-center justify-center gap-1.5 ${tone}`}
-                    title={`${tr('معدل سعر آخر وارد')}: ${priceChange.lastPrice.toFixed(1)} ${tr('د.ع')} · ${priceChange.lastDay}`}
+                    title={`${t('dashboard:price.lastInboundAvg')}: ${priceChange.lastPrice.toFixed(1)} ${t('common:units.iqd')} · ${priceChange.lastDay}`}
                   >
                     {down && <TrendingDown className="w-3.5 h-3.5 shrink-0" />}
                     {up && <TrendingUp className="w-3.5 h-3.5 shrink-0" />}
                     <span dir="ltr" className="text-[11px] font-black font-mono tabular-nums leading-none">
                       {up ? '+' : down ? '−' : ''}{Math.abs(priceChange.pct).toFixed(2)}%
                     </span>
-                    <span className="text-[9px] font-bold opacity-70 whitespace-nowrap">{tr('نسبة التغير')}</span>
+                    <span className="text-[9px] font-bold opacity-70 whitespace-nowrap">{t('dashboard:price.change')}</span>
                   </div>
                 );
               })() : (
                 <div className="px-3 py-1.5 border-t border-slate-200/80 dark:border-slate-700/60 flex items-center justify-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                  <span className="text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400">{tr('معتمد')}</span>
+                  <span className="text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400">{t('dashboard:price.approved')}</span>
                 </div>
               )}
             </div>
@@ -222,7 +223,7 @@ export const EtihadGasSection: React.FC = () => {
                 </div>
                 <div>
                   <h4 className="text-xs sm:text-[13px] font-bold text-slate-800 dark:text-slate-100 leading-tight">
-                    {tr('توزيع السعة الاستيعابية للمخزون')}
+                    {t('dashboard:capacity.title')}
                   </h4>
                 </div>
               </div>
@@ -235,7 +236,7 @@ export const EtihadGasSection: React.FC = () => {
                 <span className="font-mono font-extrabold text-teal-700 dark:text-teal-300 text-xs sm:text-[12.5px] tracking-tight">
                   {fillLabel}
                 </span>
-                <span className="text-[9.5px] font-bold text-slate-500 dark:text-slate-400">{tr('نسبة الامتلاء')}</span>
+                <span className="text-[9.5px] font-bold text-slate-500 dark:text-slate-400">{t('dashboard:capacity.fill')}</span>
               </div>
             </div>
 
@@ -249,12 +250,12 @@ export const EtihadGasSection: React.FC = () => {
                 <div
                   className="group relative h-full rounded-lg bg-gradient-to-r from-teal-700 via-teal-600 to-teal-500 transition-all duration-500 hover:brightness-110 shadow-[0_0_12px_rgba(13,148,136,0.35)] flex items-center justify-center overflow-hidden cursor-pointer"
                   style={{ width: fillLabel }}
-                  title={`${tr('خزانات  ')}: ${fillLabel} (${formatNumber(etihadTotalBalance)} ${tr('لتر')})`}
+                  title={`${t('dashboard:etihad.tanks')}: ${fillLabel} (${formatNumber(etihadTotalBalance)} ${t('common:units.liter')})`}
                 >
                   <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/20 to-transparent opacity-60 pointer-events-none" />
                   <span className="relative z-10 text-[9px] sm:text-[10px] font-bold text-white px-2 truncate drop-shadow-sm flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-teal-300"></span>
-                    <span>{tr('السعة الحالية  ')}</span>
+                    <span>{t('dashboard:capacity.current')}</span>
                     <strong className="font-mono font-black text-teal-100">{fillLabel}</strong>
                   </span>
                 </div>
@@ -263,7 +264,7 @@ export const EtihadGasSection: React.FC = () => {
                 <div
                   className="group relative h-full rounded-lg bg-gradient-to-r from-teal-600 via-emerald-500 to-teal-300 transition-all duration-500 hover:brightness-110 shadow-[0_0_14px_rgba(16,185,129,0.45)] flex items-center justify-center overflow-hidden cursor-pointer"
                   style={{ width: remainLabel }}
-                  title={`${tr('السعة المتبقية')}: ${remainLabel} (${formatNumber(remainingCapacity)} ${tr('لتر')})`}
+                  title={`${t('dashboard:capacity.remaining')}: ${remainLabel} (${formatNumber(remainingCapacity)} ${t('common:units.liter')})`}
                 >
                   {/* Live Animated Holographic Flow Stream */}
                   <div className="absolute inset-0 animate-stream-flow opacity-60 pointer-events-none" />
@@ -274,7 +275,7 @@ export const EtihadGasSection: React.FC = () => {
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
                     </span>
-                    <span>{tr('المتبقي')}</span>
+                    <span>{t('dashboard:capacity.remainingShort')}</span>
                     <strong className="font-mono font-black text-teal-950">{remainLabel}</strong>
                   </span>
                 </div>
@@ -291,13 +292,13 @@ export const EtihadGasSection: React.FC = () => {
                     <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
                   </span>
                   <span className="font-bold text-[9.5px] sm:text-[10.5px] text-slate-700 dark:text-slate-200 truncate">
-                    {tr('السعة المتبقية')}
+                    {t('dashboard:capacity.remaining')}
                   </span>
                   <span className="font-mono font-black text-[11px] sm:text-xs text-emerald-700 dark:text-emerald-300">
                     {remainLabel}
                   </span>
                   <span className="text-[9px] font-mono text-slate-400 hidden sm:inline">
-                    ({formatNumber(remainingCapacity)} {tr('لتر')})
+                    ({formatNumber(remainingCapacity)} {t('common:units.liter')})
                   </span>
                 </div>
 
@@ -313,13 +314,13 @@ export const EtihadGasSection: React.FC = () => {
             {/* 1. الوارد */}
             <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors min-w-0">
               <div className="flex items-center justify-between gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
-                <span className="kpi-label">{tr('إجمالي الوارد')}</span>
+                <span className="kpi-label">{t('dashboard:flow.totalInbound')}</span>
                 <div className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/40 shrink-0">
                   <ArrowDownLeft className="w-3.5 h-3.5" />
                 </div>
               </div>
               <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
-                {formatNumber(totalInbound)} <span className="text-[10px] font-normal text-slate-400">{tr('لتر')}</span>
+                {formatNumber(totalInbound)} <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </div>
               {buys.today ? (() => {
                 // شراء اليوم ونسبة التغير (معدل اليومين مقارنة بسعر اليوم السابق) — نفس كارت الصحاري
@@ -327,17 +328,17 @@ export const EtihadGasSection: React.FC = () => {
                 const tone = pct === null || pct === 0 ? 'text-slate-500' : pct > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400';
                 return (
                   <div className="mt-1.5 grid grid-cols-2 gap-1.5">
-                    <div className="rounded-lg ring-1 min-w-0 bg-white dark:bg-slate-900/70 ring-slate-200 dark:ring-slate-700 px-1.5 py-1 text-center" title={`${tr('معدل سعر الشراء')} · ${buys.today.day}`}>
-                      <div className="text-[9px] font-bold leading-tight text-slate-400">{tr('شراء اليوم')}</div>
+                    <div className="rounded-lg ring-1 min-w-0 bg-white dark:bg-slate-900/70 ring-slate-200 dark:ring-slate-700 px-1.5 py-1 text-center" title={`${t('dashboard:price.buyAvg')} · ${buys.today.day}`}>
+                      <div className="text-[9px] font-bold leading-tight text-slate-400">{t('dashboard:price.todayBuy')}</div>
                       <div className="mt-0.5 font-mono font-black kpi-sub tabular-nums text-slate-700 dark:text-slate-200">
-                        {buys.today.price.toFixed(1)}<span className="text-[8.5px] font-bold text-slate-400"> {tr('د.ع')}</span>
+                        {buys.today.price.toFixed(1)}<span className="text-[8.5px] font-bold text-slate-400"> {t('common:units.iqd')}</span>
                       </div>
                     </div>
                     <div
                       className="rounded-lg ring-1 min-w-0 bg-white dark:bg-slate-900/70 ring-slate-200 dark:ring-slate-700 px-1.5 py-1 text-center"
-                      title={buys.twoDayAvg !== null ? `${tr('معدل اليومين')}: ${buys.twoDayAvg.toFixed(1)} ${tr('د.ع')}` : tr('لا يوجد يوم سابق للمقارنة')}
+                      title={buys.twoDayAvg !== null ? `${t('dashboard:price.twoDayAvg')}: ${buys.twoDayAvg.toFixed(1)} ${t('common:units.iqd')}` : t('dashboard:compare.noPrevDay')}
                     >
-                      <div className="text-[9px] font-bold leading-tight text-slate-400">{tr('نسبة التغير')}</div>
+                      <div className="text-[9px] font-bold leading-tight text-slate-400">{t('dashboard:price.change')}</div>
                       <div className={`mt-0.5 flex items-center justify-center gap-0.5 ${tone}`}>
                         {pct !== null && pct < 0 && <TrendingDown className="w-3 h-3 shrink-0" />}
                         {pct !== null && pct > 0 && <TrendingUp className="w-3 h-3 shrink-0" />}
@@ -349,31 +350,31 @@ export const EtihadGasSection: React.FC = () => {
                   </div>
                 );
               })() : (
-                <span className="text-[10px] text-slate-400 mt-1 block">{tr('توريدات مستلمة')}</span>
+                <span className="text-[10px] text-slate-400 mt-1 block">{t('dashboard:flow.received')}</span>
               )}
             </div>
 
             {/* 2. الاستهلاك + المبيعات */}
             <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-blue-300 dark:hover:border-blue-700 transition-colors min-w-0">
               <div className="flex items-center justify-between gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
-                <span className="kpi-label">{tr('الاستهلاك الفعلي  ')}</span>
+                <span className="kpi-label">{t('dashboard:flow.actual')}</span>
                 <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-200/60 dark:border-blue-800/40 shrink-0">
                   <Activity className="w-3.5 h-3.5" />
                 </div>
               </div>
               <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
-                {formatNumber(totalOutflow)} <span className="text-[10px] font-normal text-slate-400">{tr('لتر')}</span>
+                {formatNumber(totalOutflow)} <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </div>
               <div className="mt-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[10px] text-slate-400 min-w-0">
-                <span className="whitespace-nowrap">{tr('استهلاك')}: <strong className="font-mono text-slate-600 dark:text-slate-300">{formatNumber(totalConsumption)}</strong></span>
-                <span className="whitespace-nowrap">{tr('مبيعات')}: <strong className="font-mono text-slate-600 dark:text-slate-300">{formatNumber(totalSales)}</strong></span>
+                <span className="whitespace-nowrap">{t('dashboard:flow.consumption')}: <strong className="font-mono text-slate-600 dark:text-slate-300">{formatNumber(totalConsumption)}</strong></span>
+                <span className="whitespace-nowrap">{t('dashboard:flow.sales')}: <strong className="font-mono text-slate-600 dark:text-slate-300">{formatNumber(totalSales)}</strong></span>
               </div>
             </div>
 
             {/* 3. فرق الاستهلاك الفعلي بين أمس واليوم (الاستهلاك + المبيعات) */}
             <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-teal-300 dark:hover:border-teal-700 transition-colors min-w-0">
               <div className="flex items-center justify-between gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
-                <span className="kpi-label">{tr('فرق الاستهلاك الفعلي')}</span>
+                <span className="kpi-label">{t('dashboard:flow.actualDiff')}</span>
                 <div className="w-6 h-6 rounded-lg bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400 flex items-center justify-center border border-teal-200/60 dark:border-teal-800/40 shrink-0">
                   <TrendingUp className="w-3.5 h-3.5" />
                 </div>
@@ -381,21 +382,21 @@ export const EtihadGasSection: React.FC = () => {
               {outflowDiff === null ? (
                 <>
                   <div className="kpi-num font-black text-slate-400 font-mono">—</div>
-                  <span className="text-[10px] text-slate-400 mt-1 block">{tr('لا يوجد يوم سابق للمقارنة')}</span>
+                  <span className="text-[10px] text-slate-400 mt-1 block">{t('dashboard:compare.noPrevDay')}</span>
                 </>
               ) : (
                 <>
                   <div className={`kpi-num font-black font-mono ${outflowDiff > 0 ? 'text-rose-600 dark:text-rose-400' : outflowDiff < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
                     <span dir="ltr">{outflowDiff > 0 ? '▲ +' : outflowDiff < 0 ? '▼ −' : ''}{formatNumber(Math.abs(outflowDiff))}</span>{' '}
-                    <span className="text-[10px] font-normal text-slate-400">{tr('لتر')}</span>
+                    <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
                   </div>
                   <div className="mt-1.5 grid grid-cols-2 gap-1.5">
                     <div className="rounded-lg bg-white dark:bg-slate-900/70 ring-1 ring-slate-200 dark:ring-slate-700 px-1.5 py-1 text-center min-w-0">
-                      <div className="text-[9px] font-bold text-slate-400 leading-none">{tr('أمس')}</div>
+                      <div className="text-[9px] font-bold text-slate-400 leading-none">{t('dashboard:day.yesterday')}</div>
                       <div className="mt-0.5 font-mono font-black kpi-sub text-slate-600 dark:text-slate-300 tabular-nums">{formatNumber(prevOutflow!)}</div>
                     </div>
                     <div className="rounded-lg bg-teal-50 dark:bg-teal-950/50 ring-1 ring-teal-200 dark:ring-teal-800 px-1.5 py-1 text-center min-w-0">
-                      <div className="text-[9px] font-bold text-teal-600 dark:text-teal-400 leading-none">{tr('اليوم')}</div>
+                      <div className="text-[9px] font-bold text-teal-600 dark:text-teal-400 leading-none">{t('dashboard:day.today')}</div>
                       <div className="mt-0.5 font-mono font-black kpi-sub text-teal-900 dark:text-teal-100 tabular-nums">{formatNumber(totalOutflow)}</div>
                     </div>
                   </div>
@@ -413,7 +414,7 @@ export const EtihadGasSection: React.FC = () => {
           {/* Card 1: Inbound Weekly Chart (مقارنة الوارد الأسبوعي) */}
           <div className="p-4 rounded-[26px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-soft-card hover:shadow-soft-hover transition-all flex flex-col justify-between space-y-2 overflow-hidden">
             <div className="flex items-center justify-between text-slate-400 text-xs font-bold">
-              <span className="truncate">{tr('مقارنة الوارد الأسبوعي')}</span>
+              <span className="truncate">{t('dashboard:etihad.weeklyInbound')}</span>
               <div className="w-5 h-5 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                 <TrendingUp className="w-3.5 h-3.5" />
               </div>
@@ -421,10 +422,10 @@ export const EtihadGasSection: React.FC = () => {
             
             <div className="flex items-baseline justify-between gap-2">
               <div className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono">
-                {formatNumber(totalInbound)} <span className="text-[10px] font-normal text-slate-400">{tr('لتر')}</span>
+                {formatNumber(totalInbound)} <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </div>
               <span className="text-[9px] text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/40">
-                {tr('مقارنة 7 أيام')}
+                {t('dashboard:compare.sevenDays')}
               </span>
             </div>
 
@@ -444,7 +445,7 @@ export const EtihadGasSection: React.FC = () => {
                     tickLine={false}
                     tick={{ fill: '#94a3b8', fontSize: 8, fontWeight: 700 }}
                     interval={0}
-                    tickFormatter={(val) => tr(val)}
+                    tickFormatter={(val) => enumText(val, 'short')}
                   />
                   <Tooltip
                     content={({ active, payload }) => {
@@ -452,8 +453,8 @@ export const EtihadGasSection: React.FC = () => {
                         const data = payload[0].payload;
                         return (
                           <div className="bg-slate-900/95 text-white px-2.5 py-1 rounded-xl text-[10px] shadow-lg border border-slate-700/60 backdrop-blur-md">
-                            <span className="font-bold text-slate-300">{tr(data.day)} <span className="font-mono text-slate-400">{data.date}</span>:</span>
-                            <span className="font-mono font-black text-emerald-400">{formatNumber(data.val)} {tr('لتر')}</span>
+                            <span className="font-bold text-slate-300">{enumText(data.day)} <span className="font-mono text-slate-400">{data.date}</span>:</span>
+                            <span className="font-mono font-black text-emerald-400">{formatNumber(data.val)} {t('common:units.liter')}</span>
                           </div>
                         );
                       }
@@ -478,7 +479,7 @@ export const EtihadGasSection: React.FC = () => {
           {/* Card 2: Consumption Weekly Chart (مقارنة الاستهلاك الأسبوعي) */}
           <div className="p-4 rounded-[26px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-soft-card hover:shadow-soft-hover transition-all flex flex-col justify-between space-y-2 overflow-hidden">
             <div className="flex items-center justify-between text-slate-400 text-xs font-bold">
-              <span className="truncate">{tr('مقارنة الاستهلاك الأسبوعي')}</span>
+              <span className="truncate">{t('dashboard:etihad.weeklyConsumption')}</span>
               <div className="w-5 h-5 rounded-md bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center">
                 <TrendingDown className="w-3.5 h-3.5" />
               </div>
@@ -486,10 +487,10 @@ export const EtihadGasSection: React.FC = () => {
             
             <div className="flex items-baseline justify-between gap-2">
               <div className="text-base sm:text-lg font-black text-blue-600 dark:text-blue-400 font-mono">
-                {formatNumber(totalOutflow)} <span className="text-[10px] font-normal text-slate-400">{tr('لتر')}</span>
+                {formatNumber(totalOutflow)} <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </div>
               <span className="text-[9px] text-blue-700 dark:text-blue-300 font-bold bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-md border border-blue-200/60 dark:border-blue-800/40">
-                {tr('مقارنة 7 أيام')}
+                {t('dashboard:compare.sevenDays')}
               </span>
             </div>
 
@@ -509,7 +510,7 @@ export const EtihadGasSection: React.FC = () => {
                     tickLine={false}
                     tick={{ fill: '#94a3b8', fontSize: 8, fontWeight: 700 }}
                     interval={0}
-                    tickFormatter={(val) => tr(val)}
+                    tickFormatter={(val) => enumText(val, 'short')}
                   />
                   <Tooltip
                     content={({ active, payload }) => {
@@ -517,8 +518,8 @@ export const EtihadGasSection: React.FC = () => {
                         const data = payload[0].payload;
                         return (
                           <div className="bg-slate-900/95 text-white px-2.5 py-1 rounded-xl text-[10px] shadow-lg border border-slate-700/60 backdrop-blur-md">
-                            <span className="font-bold text-slate-300">{tr(data.day)} <span className="font-mono text-slate-400">{data.date}</span>:</span>
-                            <span className="font-mono font-black text-blue-400">{formatNumber(data.val)} {tr('لتر')}</span>
+                            <span className="font-bold text-slate-300">{enumText(data.day)} <span className="font-mono text-slate-400">{data.date}</span>:</span>
+                            <span className="font-mono font-black text-blue-400">{formatNumber(data.val)} {t('common:units.liter')}</span>
                           </div>
                         );
                       }
@@ -546,40 +547,40 @@ export const EtihadGasSection: React.FC = () => {
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 font-bold text-xs">
                 <Calendar className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
-                <span className="truncate">{tr('تنبؤ التغطية الاستراتيجية لشركة الاتحاد')}</span>
+                <span className="truncate">{t('dashboard:etihad.coverageTitle')}</span>
               </div>
               <span className="px-2.5 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 text-[10px] font-bold border border-teal-200 dark:border-teal-800/60 shadow-2xs shrink-0">
-                {tr('فائض استراتيجي')}
+                {t('dashboard:etihad.surplus')}
               </span>
             </div>
 
             <div>
               <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-                {tr('يؤمن لغاية')} <span className="text-teal-600 dark:text-teal-400 font-mono">{coverageDays === null ? '—' : `${formatNumber(coverageDays)} ${tr('يوماً')}`}</span>
+                {t('dashboard:coverage.until')} <span className="text-teal-600 dark:text-teal-400 font-mono">{coverageDays === null ? '—' : `${t('common:units.days', { count: coverageDays })}`}</span>
               </div>
               <p className="text-xs text-slate-400 mt-1">
-                {tr('تاريخ الاستحقاق المتوقع:')} <strong className="font-mono text-slate-700 dark:text-slate-300">{coverageDate}</strong>
+                {t('dashboard:coverage.dueDate')} <strong className="font-mono text-slate-700 dark:text-slate-300">{coverageDate}</strong>
               </p>
             </div>
 
             {/* 3 Metrics Chips: كاز التشغيلي - كاز نظيف - الرصيد الكلي */}
             <div className="kpi-wrap pt-3 border-t border-slate-100 dark:border-slate-800 text-center"><div className="kpi-grid kpi-grid-chips gap-2 sm:gap-2.5">
               <div className="p-2 sm:p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between overflow-hidden min-w-0">
-                <span className="kpi-label font-bold text-slate-500 dark:text-slate-400 block mb-1">{tr('كاز التشغيلي')}</span>
+                <span className="kpi-label font-bold text-slate-500 dark:text-slate-400 block mb-1">{t('dashboard:etihad.operationalGas')}</span>
                 <div className="kpi-num font-mono font-black text-slate-900 dark:text-white tracking-tight">
-                  {formatNumber(latest?.operationalGas ?? 0)} <span className="text-[9px] sm:text-[10px] font-normal text-slate-400">{tr('لتر')}</span>
+                  {formatNumber(latest?.operationalGas ?? 0)} <span className="text-[9px] sm:text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
                 </div>
               </div>
               <div className="p-2 sm:p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between overflow-hidden min-w-0">
-                <span className="kpi-label font-bold text-slate-500 dark:text-slate-400 block mb-1">{tr('كاز نظيف')}</span>
+                <span className="kpi-label font-bold text-slate-500 dark:text-slate-400 block mb-1">{t('dashboard:etihad.cleanGas')}</span>
                 <div className="kpi-num font-mono font-black text-slate-900 dark:text-white tracking-tight">
-                  {formatNumber(latest?.cleanGas ?? 0)} <span className="text-[9px] sm:text-[10px] font-normal text-slate-400">{tr('لتر')}</span>
+                  {formatNumber(latest?.cleanGas ?? 0)} <span className="text-[9px] sm:text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
                 </div>
               </div>
               <div className="p-2 sm:p-2.5 rounded-2xl bg-teal-50/90 dark:bg-teal-950/50 border border-teal-200/90 dark:border-teal-800/70 flex flex-col justify-between shadow-2xs overflow-hidden min-w-0">
-                <span className="kpi-label font-bold text-teal-700 dark:text-teal-300 block mb-1">{tr('الرصيد الكلي')}</span>
+                <span className="kpi-label font-bold text-teal-700 dark:text-teal-300 block mb-1">{t('dashboard:balance.total')}</span>
                 <div className="kpi-num font-mono font-black text-teal-900 dark:text-teal-100 tracking-tight">
-                  {formatNumber(etihadTotalBalance)} <span className="text-[9px] sm:text-[10px] font-normal text-teal-600 dark:text-teal-400">{tr('لتر')}</span>
+                  {formatNumber(etihadTotalBalance)} <span className="text-[9px] sm:text-[10px] font-normal text-teal-600 dark:text-teal-400">{t('common:units.liter')}</span>
                 </div>
               </div>
             </div></div>
