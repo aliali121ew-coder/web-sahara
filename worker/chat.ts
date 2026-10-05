@@ -78,6 +78,7 @@ const ensureTables = async (db: ChatDB) => {
   await db.exec("CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, user_id TEXT NOT NULL DEFAULT '', username TEXT NOT NULL DEFAULT '', action TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '', ip TEXT NOT NULL DEFAULT '')");
   await db.exec('CREATE INDEX IF NOT EXISTS audit_log_at ON audit_log (at)');
   await db.exec('CREATE INDEX IF NOT EXISTS audit_log_user ON audit_log (user_id, at)');
+  await db.exec('CREATE INDEX IF NOT EXISTS audit_log_ip ON audit_log (ip, at)');
   const now = Date.now();
   await db.prepare("INSERT OR IGNORE INTO chat_rooms (id, type, name, description, avatar, created_by, created_at, updated_at) VALUES (?1, 'group', ?2, ?3, '', '', ?4, ?4)")
     .bind(GENERAL_ROOM, 'غرفة العمليات العامة', 'القناة الرئيسية لكل فريق الموقع', now).run();
@@ -120,6 +121,20 @@ export const audit = async (db: ChatDB, request: Request, userId: string, action
     /* السجل لا يجب أن يُفشل العملية الأصلية */
   }
 };
+
+// ───── حد محاولات الدخول لكل جهاز (عنوان IP) ─────
+// يكمّل القفل الحالي لكل حساب: يمنع تجربة كلمات مرور على حسابات كثيرة من نفس الجهاز
+const IP_WINDOW_MS = 15 * 60_000;
+const IP_MAX_FAILS = 20;
+const ipBlocked = async (db: ChatDB, request: Request) => {
+  const ip = (request.headers.get('cf-connecting-ip') || '').slice(0, 64);
+  if (!ip) return false;
+  const { results } = await db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE ip = ? AND action IN ('auth.failed', 'auth.locked') AND at > ?")
+    .bind(ip, Date.now() - IP_WINDOW_MS).all<{ n: number }>();
+  return (results[0]?.n || 0) >= IP_MAX_FAILS;
+};
+const ipBlockedResponse = () =>
+  json({ error: 'محاولات دخول خاطئة كثيرة من هذا الجهاز. حاول مجددًا بعد 15 دقيقة', code: 'ip_locked', retryAt: Date.now() + IP_WINDOW_MS }, 429);
 
 const isMember = async (db: ChatDB, room: string, user: string) => {
   const { results } = await db.prepare('SELECT user_id FROM chat_members WHERE room_id = ? AND user_id = ?').bind(room, user).all();
@@ -280,6 +295,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
 
   // تسجيل الدخول: اسم المستخدم + كلمة المرور، مع قفل مؤقت بعد محاولات فاشلة متتالية
   if (path === '/auth/login' && method === 'POST') {
+    if (await ipBlocked(db, request)) return ipBlockedResponse();
     const b = await readBody<{ username?: string; password?: string }>(request);
     const username = normUser(b?.username);
     const password = str(b?.password, 200);
@@ -300,6 +316,9 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
           .bind(locked ? 0 : fails, locked ? now + LOCK_MS : 0, u.id).run();
         await audit(db, request, u.id, locked ? 'auth.locked' : 'auth.failed', locked ? 'قفل مؤقت 5 دقائق' : `محاولة ${fails}`, { username });
         if (locked) return json({ error: 'محاولات خاطئة كثيرة. تم إيقاف الدخول لهذا الحساب 5 دقائق', code: 'locked', retryAt: now + LOCK_MS }, 429);
+      } else {
+        // اسم مستخدم غير موجود: يُسجَّل أيضًا حتى يُحتسب ضمن حد الجهاز
+        await audit(db, request, '', 'auth.failed', 'اسم مستخدم غير موجود', { username });
       }
       return json({ error: 'بيانات الدخول غير صحيحة، يرجى التحقق من اسم المستخدم وكلمة المرور', code: 'bad_credentials' }, 401);
     }
@@ -330,8 +349,12 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
   }
 
   if (path === '/auth/webauthn/login' && method === 'POST') {
+    if (await ipBlocked(db, request)) return ipBlockedResponse();
     const b = await readBody<{ id?: string; clientDataJSON?: string; authenticatorData?: string; signature?: string }>(request);
-    const fail = (error: string) => json({ error, code: 'bio_failed' }, 401);
+    const fail = async (error: string) => {
+      await audit(db, request, '', 'auth.failed', `بصمة: ${error}`);
+      return json({ error, code: 'bio_failed' }, 401);
+    };
     const cd = parseClientData(str(b?.clientDataJSON, 4000));
     if (!b?.id || !cd || cd.type !== 'webauthn.get' || cd.origin !== expectedOrigin) return fail('بيانات البصمة غير صالحة');
     if (!(await takeChallenge(cd.challenge, 'get'))) return fail('انتهت مهلة التحقق، حاول مجددًا');
