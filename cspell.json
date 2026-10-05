@@ -1,0 +1,34 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "files": [
+    "src/i18n/locales/en/*.json"
+  ],
+  "ignorePaths": [],
+  "words": [
+    "Babil",
+    "bawadi",
+    "etihad",
+    "Gasoil",
+    "hurr",
+    "husseiniya",
+    "jadwal",
+    "Karbalai",
+    "maint",
+    "Notif",
+    "Qasr",
+    "Rabban",
+    "rayyan",
+    "Salah",
+    "sama",
+    "sukkar",
+    "Tamr",
+    "Taqa",
+    "tuwairij",
+    "unconfigured",
+    "unmute",
+    "unstar",
+    "webauthn"
+  ],
+  "//": "أسماء الأماكن والعلامات ومفاتيح JSON؛ أضف الكلمة هنا فقط إن كانت صحيحة ولا تُترجم"
+}

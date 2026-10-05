@@ -45,7 +45,8 @@
     "stored": "المخزون الفعلي (لتر)",
     "level": "المنسوب الحالي (متر)",
     "addSave": "إضافة الخزان وحفظه",
-    "fillPercent": "{{value}}% امتلاء"
+    "fillPercent": "{{value}}% امتلاء",
+    "namePlaceholder": "مثال: خزان الديزل الإضافي 2"
   },
   "reorder": {
     "title": "تعديل ترتيب الأقسام",

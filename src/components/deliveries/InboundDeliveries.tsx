@@ -1013,11 +1013,13 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
               ) : (
                 paginatedDeliveries.map((item, index) => {
                   // اسم المجهز والشركة المجهزة (السجلات القديمة: قيمة واحدة في الحقلين)
+                  // eslint-disable-next-line i18next/no-literal-string -- قيمة افتراضية مخزّنة تُعرض عبر enumText
                   const supplierCompanyName = item.supplierCompany || item.supplierName || 'مصفى كربلاء الدولي';
                   const supplierPersonName = supplierPersonOf(item);
                   const voucherNum = item.voucherNumber || item.receiptNumber || `VCH-${item.id}`;
                   const qty = item.receivedQuantity ?? item.volumeLiters ?? 0;
                   const density = item.productDensity || '0.840';
+                  // eslint-disable-next-line i18next/no-literal-string -- قيمة افتراضية مخزّنة تُعرض عبر enumText
                   const color = item.productColor || 'أصفر مخضر';
                   const price = item.productPrice ?? item.pricePerLiter ?? 0;
                   const cost = item.productCost ?? item.totalCostIqd ?? (qty * price);
@@ -1529,6 +1531,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                     onChange={(e) => setEditingDelivery({ ...editingDelivery, stationName: e.target.value })}
                     className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-bold"
                   >
+                    {/* eslint-disable-next-line i18next/no-literal-string -- أسماء محطات مخزّنة */}
                     {['الطاقة', 'التسمين', 'الطار', 'البياض', 'أمهات', 'الأجداد'].map((st) => (
                       <option key={st} value={st}>
                         {t('deliveries:stationName', { name: st })}

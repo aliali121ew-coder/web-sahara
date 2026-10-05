@@ -312,7 +312,7 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
           <button
             onClick={onClose}
             className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/25 text-white flex items-center justify-center transition-colors relative z-10 cursor-pointer"
-            aria-label="إغلاق"
+            aria-label={t('common:actions.close')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -352,7 +352,7 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
             <input
               type="text"
               required
-              placeholder="مثال: خزان الديزل الإضافي 2"
+              placeholder={t('tanks:tank.namePlaceholder')}
               value={tankName}
               onChange={(e) => setTankName(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs sm:text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400 placeholder:font-normal"

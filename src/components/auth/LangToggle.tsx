@@ -20,6 +20,7 @@ export const LangToggle: React.FC<{ onColor?: boolean }> = ({ onColor }) => {
       }`}
     >
       <Globe className="w-4 h-4" aria-hidden />
+      {/* eslint-disable-next-line i18next/no-literal-string -- اسم اللغة بلغتها الأصلية */}
       {next === 'en' ? 'English' : 'العربية'}
     </button>
   );

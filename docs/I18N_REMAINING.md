@@ -18,14 +18,14 @@
 - الصفحات المخفية (`pages`): التقارير التحليلية والمهام والمدراء؛ القيم التجريبية (تصنيفات المهام، الأولوية، حالة المناوبة، مستوى الخزان) عبر `enumText`.
 - رسائل الخادم: كل خطأ يعيده الخادم يحمل `code` (و`codedError` في `worker/errors.ts` للأخطاء المرمية)، والواجهة تعرضه عبر `serverText(data, fallback)` من `src/i18n/errors.ts` بمفاتيح `server:errors.<code>` (العربية تعرض نص الخادم كما هو). رسائل النظام في المحادثات تُترجم عند العرض عبر `systemText`. تفاصيل سجل العمليات (`audit detail`) ما زالت نصًا عربيًا مخزّنًا.
 - حُذف النظام القديم: `src/lib/translations.ts` و`translateDomTree` و`t`/`tr` من `LanguageContext` (يبقى `direction`/`isRTL`/`setLanguage` مبنية على i18next). الإشعارات الجديدة تُخزّن `key` و`params` وتُترجم عند العرض؛ القديمة تُعرض بنصها.
+- رسائل أخطاء وملاحظات قراءة الملفات في `src/lib/*ReportFile.ts` و`inboundImport.ts` و`saharaFiles.ts` في `common.fileImport` (أنماط مطابقة العناوين العربية تبقى لأنها تطابق نصوص الملفات).
+- ضمان الجودة:
+  - `npm run lint:i18n` (ESLint + `eslint-plugin-i18next`): يمنع النص العربي المكتوب مباشرة في JSX وفي `title/placeholder/alt/aria-label`. يعمل ضمن `npm run build`. القيمة المخزّنة المقصودة تُستثنى بتعليق `eslint-disable-next-line i18next/no-literal-string -- السبب`.
+  - `npm test` (Vitest): تبديل اللغة والاتجاه، الجمع العربي، الأرقام الغربية، `enumText`، `serverText`، ووجود كل مفتاح `t('ns:key')` مستخدم في الشيفرة باللغتين.
+  - `npm run spell` (cspell): تدقيق إملاء ملفات الإنجليزية؛ الأسماء الخاصة في `cspell.json`.
 
 ## ما بقي
-الرقم = عدد الأسطر التي فيها عربي (يشمل بيانات ومقارنات تبقى كما هي).
-
-### 10. ضمان الجودة
-- `eslint-plugin-i18next` لمنع النصوص المكتوبة مباشرة في JSX.
-- اختبارات Vitest/Playwright لتبديل اللغة والاتجاه.
-- cspell للإنجليزية.
+لا شيء من الخطة الأصلية. مكوّنان غير مستخدمين (`dashboard/ConsumptionChart.tsx`، `supply/SupplyOrders.tsx`) ونسخ `*backup.tsx` القديمة غير مترجمة ومستثناة من الفحص.
 
 ## قواعد إلزامية
 1. ملفات الترجمة: `src/i18n/locales/{ar,en}/<namespace>.json`، مفاتيح وصفية (مثل `balance.totalInbound`) وليست نصوصًا.

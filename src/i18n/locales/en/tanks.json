@@ -45,7 +45,8 @@
     "stored": "Actual stock (L)",
     "level": "Current level (m)",
     "addSave": "Add and save tank",
-    "fillPercent": "{{value}}% full"
+    "fillPercent": "{{value}}% full",
+    "namePlaceholder": "e.g. Additional diesel tank 2"
   },
   "reorder": {
     "title": "Reorder sections",
