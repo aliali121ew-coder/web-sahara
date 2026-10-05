@@ -116,6 +116,9 @@
       "rayyan": "موقع الريان",
       "sukkar": "موقع السكر",
       "sahara": "موقع الصحاري"
+    },
+    "relative": {
+      "today": "اليوم"
     }
   },
   "calendar": {

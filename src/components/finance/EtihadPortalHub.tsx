@@ -14,7 +14,7 @@ import {
   Fuel,
   DatabaseBackup
 } from 'lucide-react';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
 import { useFuelData } from '../../context/FuelDataContext';
 import { EtihadSubtabKey } from './EtihadBalanceHubTabs';
 
@@ -33,15 +33,15 @@ export const EtihadPortalHub: React.FC<EtihadPortalHubProps> = ({
   company = 'etihad',
 }) => {
   const isSahara = company === 'sahara';
-  const { tr } = useLanguage();
+  const { t, i18n } = useTranslation(['finance', 'common']);
   const { setActiveTab } = useFuelData();
 
   const baseModules = [
     {
       id: 'balance' as const,
-      title: tr(isSahara ? 'رصيد الكاز' : 'رصيد الشركة'),
-      description: tr('سجل الواردات والمبيعات اليومية، الاستهلاك، وحركات الأرصدة مع المعالج الحي.'),
-      hintText: tr('كشف الحساب والقيود'),
+      title: isSahara ? t('finance:hub.gasoilBalance') : t('finance:hub.companyBalance'),
+      description: t('finance:hub.balanceDesc'),
+      hintText: t('finance:hub.balanceHint'),
       icon: Wallet,
       iconBoxBg: 'bg-gradient-to-br from-teal-600 to-emerald-600',
       iconShadow: 'shadow-emerald-600/25',
@@ -49,9 +49,9 @@ export const EtihadPortalHub: React.FC<EtihadPortalHubProps> = ({
     },
     {
       id: 'inbound' as const,
-      title: tr('الوارد'),
-      description: tr('سجل الوارد الميداني، أرقام الفوجرات، الشاحنات والسائقين، وفحص الكثافة والتفريغ.'),
-      hintText: tr('توثيق شحنات الوقود'),
+      title: t('finance:hub.inbound'),
+      description: t('finance:hub.inboundDesc'),
+      hintText: t('finance:hub.inboundHint'),
       icon: Truck,
       iconBoxBg: 'bg-gradient-to-br from-sky-500 via-cyan-600 to-blue-600',
       iconShadow: 'shadow-sky-500/25',
@@ -59,9 +59,9 @@ export const EtihadPortalHub: React.FC<EtihadPortalHubProps> = ({
     },
     {
       id: 'tanks' as const,
-      title: tr(isSahara ? 'خزانات الصحاري' : 'خزانات الاتحاد'),
-      description: tr('متابعة سعات الخزانات الاستراتيجية، مقاييس السوائل البصرية، وحساسات الحرارة والضغط.'),
-      hintText: tr('مراقبة السعات والمستويات'),
+      title: isSahara ? t('finance:hub.saharaTanks') : t('finance:hub.etihadTanks'),
+      description: t('finance:hub.tanksDesc'),
+      hintText: t('finance:hub.tanksHint'),
       icon: Database,
       iconBoxBg: 'bg-gradient-to-br from-blue-700 via-indigo-800 to-slate-900',
       iconShadow: 'shadow-indigo-700/25',
@@ -69,9 +69,9 @@ export const EtihadPortalHub: React.FC<EtihadPortalHubProps> = ({
     },
     {
       id: 'black-oil' as const,
-      title: tr('نفط أسود'),
-      description: tr('المخزون الاستراتيجي المعتمد للنفط الأسود وتجهيز خطوط الإنتاج وأفران المعامل.'),
-      hintText: tr('وقود الأفران الاستراتيجي'),
+      title: t('finance:hub.blackOil'),
+      description: t('finance:hub.blackOilDesc'),
+      hintText: t('finance:hub.blackOilHint'),
       icon: Droplets,
       iconBoxBg: 'bg-gradient-to-br from-zinc-700 via-slate-800 to-neutral-900',
       iconShadow: 'shadow-neutral-900/30',
@@ -80,9 +80,9 @@ export const EtihadPortalHub: React.FC<EtihadPortalHubProps> = ({
     {
       id: 'reserves' as const,
       // عند الصحاري تصبح هذه البطاقة "مزارع الموقع"
-      title: tr(isSahara ? 'مزارع الموقع' : 'رصيد الاحتياطي'),
-      description: tr(isSahara ? 'متابعة مزارع الموقع التابعة لشركة الصحاري.' : 'تأمين الاحتياطي الإستراتيجي الموزع على المواقع التشغيلية مع حدود الأمان الإلزامية.'),
-      hintText: tr(isSahara ? 'مزارع الموقع' : 'أرصدة طوارئ المواقع'),
+      title: isSahara ? t('finance:siteFarms.title') : t('finance:hub.reserves'),
+      description: isSahara ? t('finance:hub.farmsDesc') : t('finance:hub.reservesDesc'),
+      hintText: isSahara ? t('finance:siteFarms.title') : t('finance:hub.reservesHint'),
       icon: isSahara ? Sprout : ShieldCheck,
       iconBoxBg: 'bg-gradient-to-br from-amber-500 to-orange-600',
       iconShadow: 'shadow-amber-500/25',
@@ -91,9 +91,9 @@ export const EtihadPortalHub: React.FC<EtihadPortalHubProps> = ({
     },
     {
       id: 'reports' as const,
-      title: tr(isSahara ? 'تقارير الصحاري' : 'تقارير الاتحاد'),
-      description: tr('كشوفات الحسابات الدورية، المطابقة والتدقيق المالي، مؤشرات الاستهلاك، وطباعة السجلات.'),
-      hintText: tr('كشوفات الجرد الرسمية'),
+      title: isSahara ? t('finance:hub.saharaReports') : t('finance:hub.etihadReports'),
+      description: t('finance:hub.reportsHubDesc'),
+      hintText: t('finance:hub.reportsHint'),
       icon: BarChart3,
       iconBoxBg: 'bg-gradient-to-br from-red-600 via-rose-600 to-red-700',
       iconShadow: 'shadow-red-600/25',
@@ -104,9 +104,9 @@ export const EtihadPortalHub: React.FC<EtihadPortalHubProps> = ({
   const saharaExtraModules = [
     {
       id: 'petrol' as const,
-      title: tr('بنزين'),
-      description: tr('رصيد البنزين اليومي، الوارد والمصروف، وحركة أرصدة المحطات.'),
-      hintText: tr('رصيد البنزين'),
+      title: t('finance:hub.gasoline'),
+      description: t('finance:hub.gasolineDesc'),
+      hintText: t('finance:hub.gasolineHint'),
       icon: Fuel,
       iconBoxBg: 'bg-gradient-to-br from-orange-400 via-orange-500 to-rose-500',
       iconShadow: 'shadow-orange-500/25',
@@ -114,9 +114,9 @@ export const EtihadPortalHub: React.FC<EtihadPortalHubProps> = ({
     },
     {
       id: 'backup' as const,
-      title: tr('النسخ الاحتياطي'),
-      description: tr('حفظ نسخة كاملة من بيانات الشركة واستعادتها عند الحاجة.'),
-      hintText: tr('حماية البيانات'),
+      title: t('finance:hub.backup'),
+      description: t('finance:hub.backupDesc'),
+      hintText: t('finance:hub.backupHint'),
       icon: DatabaseBackup,
       iconBoxBg: 'bg-gradient-to-br from-violet-500 via-purple-600 to-indigo-700',
       iconShadow: 'shadow-violet-600/25',
@@ -180,13 +180,13 @@ export const EtihadPortalHub: React.FC<EtihadPortalHubProps> = ({
             <div>
               <div className="flex flex-wrap items-center gap-3">
                 <h2 className="text-2xl sm:text-[26px] font-black text-slate-900 dark:text-white tracking-tight">
-                  {tr(isSahara ? 'رصيد شركة الصحاري' : 'رصيد شركة الاتحاد')}
+                  {isSahara ? t('finance:hub.saharaBalance') : t('finance:hub.etihadBalance')}
                 </h2>
               </div>
               <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">
-                {tr(isSahara
-                  ? 'لوحة متابعة شاملة لأرصدة شركة الصحاري، الخزانات، النفط الأسود، ورصيد الاحتياطي المتعدد'
-                  : 'لوحة متابعة شاملة لأرصدة شركة الاتحاد، الخزانات، النفط الأسود، ورصيد الاحتياطي المتعدد')}
+                {isSahara
+                  ? t('finance:hub.saharaOverview')
+                  : t('finance:hub.etihadOverview')}
               </p>
             </div>
           </div>
@@ -219,7 +219,7 @@ export const EtihadPortalHub: React.FC<EtihadPortalHubProps> = ({
                   {locked ? (
                     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-950/40 border border-amber-200/70 dark:border-amber-800/60 shrink-0 select-none">
                       <Lock className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                      <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400">{tr('قيد البرمجة')}</span>
+                      <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400">{t('finance:hub.inDevelopment')}</span>
                     </div>
                   ) : (
                   <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 dark:bg-slate-800/60 shrink-0 transition-all select-none group-hover:bg-slate-100/90 dark:group-hover:bg-slate-800">
@@ -228,7 +228,7 @@ export const EtihadPortalHub: React.FC<EtihadPortalHubProps> = ({
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
                     </span>
                     <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                      {tr('نشط الآن')}
+                      {t('finance:hub.activeNow')}
                     </span>
                   </div>
                   )}
@@ -261,7 +261,7 @@ export const EtihadPortalHub: React.FC<EtihadPortalHubProps> = ({
                       e.stopPropagation();
                       handleCardClick(module.id);
                     }}
-                    aria-label={tr('دخول')}
+                    aria-label={t('finance:hub.enter')}
                     className="w-10.5 h-10.5 rounded-full bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200/70 dark:border-slate-700/60 group-hover:bg-slate-100 dark:group-hover:bg-slate-700/80 group-hover:text-slate-900 dark:group-hover:text-white shadow-xs active:scale-95 transition-all duration-200 cursor-pointer shrink-0 flex items-center justify-center"
                   >
                     {locked ? (
@@ -281,17 +281,17 @@ export const EtihadPortalHub: React.FC<EtihadPortalHubProps> = ({
 
       {/* تنبيه: القسم قيد البرمجة */}
       {lockedNotice && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[120] animate-in fade-in slide-in-from-bottom-2 duration-200" dir="rtl">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[120] animate-in fade-in slide-in-from-bottom-2 duration-200" dir={i18n.dir()}>
           <div className="flex items-center gap-3 pl-3 pr-4 py-3 rounded-2xl bg-slate-900 dark:bg-slate-800 text-white shadow-2xl border border-slate-700">
             <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center shrink-0">
               <Hammer className="w-4.5 h-4.5" />
             </div>
             <div>
               <div className="text-sm font-black">{lockedNotice}</div>
-              <div className="text-xs text-slate-300">{tr('هذا القسم قيد البرمجة وسيتوفر قريبًا')}</div>
+              <div className="text-xs text-slate-300">{t('finance:hub.comingSoon')}</div>
             </div>
             <button type="button" onClick={() => setLockedNotice(null)} className="mr-2 text-slate-400 hover:text-white text-xs font-bold cursor-pointer">
-              {tr('حسنًا')}
+              {t('finance:hub.ok')}
             </button>
           </div>
         </div>
@@ -300,11 +300,11 @@ export const EtihadPortalHub: React.FC<EtihadPortalHubProps> = ({
       {/* 🌟 سطر الاعتماد والتوثيق خارج كارت الأم بحجم صغير ومتناسق 🌟 */}
       <div className="relative z-10 flex items-center justify-center pt-2.5 pb-0.5 text-center select-none shrink-0">
         <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 tracking-wide flex flex-wrap items-center justify-center gap-2">
-          <span>{tr(isSahara ? 'نظام الصحاري المعتمد' : 'نظام الاتحاد المعتمد')}</span>
+          <span>{isSahara ? t('finance:hub.saharaSystem') : t('finance:hub.etihadSystem')}</span>
           <span className="text-slate-300 dark:text-slate-700">•</span>
-          <span className="font-mono">{tr('إصدار Enterprise v2.6')}</span>
+          <span className="font-mono">{t('finance:hub.version')}</span>
           <span className="text-slate-300 dark:text-slate-700">•</span>
-          <span>{tr('تدقيق مالي مؤتمت')}</span>
+          <span>{t('finance:hub.autoAudit')}</span>
         </p>
       </div>
 

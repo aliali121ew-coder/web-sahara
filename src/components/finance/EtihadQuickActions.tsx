@@ -8,7 +8,7 @@ import {
   UploadCloud
 } from 'lucide-react';
 import { EtihadBalanceRecord } from '../../types/finance';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
 
 interface EtihadQuickActionsProps {
   onAddNew: () => void;
@@ -29,27 +29,27 @@ export const EtihadQuickActions: React.FC<EtihadQuickActionsProps> = ({
   setIsEditMode,
   onOpenPrintModal
 }) => {
-  const { tr } = useLanguage();
+  const { t } = useTranslation(['finance', 'common']);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Export to CSV / Excel-ready file
   const handleExportCSV = () => {
     if (records.length === 0) {
-      alert('لا توجد بيانات متاحة للتصدير');
+      alert(t('finance:quick.noData'));
       return;
     }
 
     const headers = [
-      'التاريخ',
-      'الرصيد السابق',
-      'المشتريات',
-      'مصروف الاتحاد',
-      'مبيعات صحاري',
-      'مبيعات كبلات',
-      'مبيعات اخرى',
-      'الرصيد الحالي الصافي',
-      'السعر الحالي',
-      'ملاحظات'
+      t('finance:blackOil.col.date'),
+      t('finance:ledger.previousBalance'),
+      t('finance:tx.purchases'),
+      t('finance:tx.etihadExpense'),
+      t('finance:tx.saharaSales'),
+      t('finance:tx.cableSales'),
+      t('finance:tx.otherSales'),
+      t('finance:quick.netCurrent'),
+      t('finance:quick.currentPrice'),
+      t('finance:quick.notes')
     ];
 
     const rows = records.map(r => [
@@ -74,7 +74,7 @@ export const EtihadQuickActions: React.FC<EtihadQuickActionsProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `كشف_رصيد_شركة_الاتحاد_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `${t('finance:quick.csvFile')}_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -93,7 +93,7 @@ export const EtihadQuickActions: React.FC<EtihadQuickActionsProps> = ({
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backupData, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `نسخة_احتياطية_رصيد_الاتحاد_${new Date().toISOString().slice(0, 10)}.json`);
+    downloadAnchor.setAttribute('download', `${t('finance:quick.backupFile')}_${new Date().toISOString().slice(0, 10)}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -111,15 +111,15 @@ export const EtihadQuickActions: React.FC<EtihadQuickActionsProps> = ({
         const parsed = JSON.parse(content);
         if (parsed && Array.isArray(parsed.records)) {
           onImportBackup(parsed.records);
-          alert(`تمت استعادة ${parsed.records.length} سجل بنجاح!`);
+          alert(t('finance:quick.restored', { count: parsed.records.length }));
         } else if (Array.isArray(parsed)) {
           onImportBackup(parsed);
-          alert(`تمت استعادة ${parsed.length} سجل بنجاح!`);
+          alert(t('finance:quick.restored', { count: parsed.length }));
         } else {
-          alert('ملف النسخ الاحتياطي غير صالح');
+          alert(t('finance:quick.invalidBackup'));
         }
       } catch (err) {
-        alert('حدث خطأ أثناء قراءة ملف النسخ الاحتياطي');
+        alert(t('finance:quick.readError'));
       }
     };
     reader.readAsText(file);
@@ -139,10 +139,10 @@ export const EtihadQuickActions: React.FC<EtihadQuickActionsProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 mb-3 sm:mb-3.5">
         <h4 className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-          <span>{tr('إجراءات سريعة')}</span>
+          <span>{t('finance:quick.title')}</span>
         </h4>
         <span className="text-[11px] text-slate-400">
-          {tr('تحكم كامل في إضافة السجلات، التصدير، وحفظ النسخ الاحتياطية')}
+          {t('finance:quick.subtitle')}
         </span>
       </div>
 
@@ -155,7 +155,7 @@ export const EtihadQuickActions: React.FC<EtihadQuickActionsProps> = ({
           className="flex items-center justify-center gap-2 px-3 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold text-xs sm:text-sm shadow-md shadow-emerald-600/20 active:scale-95 transition-all cursor-pointer"
         >
           <PlusCircle className="w-4 h-4" />
-          <span>{tr('إضافة بيانات جديدة')}</span>
+          <span>{t('finance:quick.add')}</span>
         </button>
 
         {/* 2. تعديل */}
@@ -169,7 +169,7 @@ export const EtihadQuickActions: React.FC<EtihadQuickActionsProps> = ({
           }`}
         >
           <Edit className="w-4 h-4" />
-          <span>{isEditMode ? tr('إلغاء التعديل') : tr('تعديل السجل')}</span>
+          <span>{isEditMode ? t('finance:quick.cancelEdit') : t('finance:quick.edit')}</span>
         </button>
 
         {/* 3. تصدير */}
@@ -179,7 +179,7 @@ export const EtihadQuickActions: React.FC<EtihadQuickActionsProps> = ({
           className="flex items-center justify-center gap-2 px-3 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-extrabold text-xs sm:text-sm shadow-md shadow-amber-500/20 active:scale-95 transition-all cursor-pointer"
         >
           <Download className="w-4 h-4" />
-          <span>{tr('تصدير إكسل / CSV')}</span>
+          <span>{t('finance:quick.csv')}</span>
         </button>
 
         {/* 4. طباعة الكشف وتصدير PDF */}
@@ -189,7 +189,7 @@ export const EtihadQuickActions: React.FC<EtihadQuickActionsProps> = ({
           className="flex items-center justify-center gap-2 px-3 py-3.5 rounded-2xl bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 text-white font-extrabold text-xs sm:text-sm shadow-md shadow-slate-700/20 active:scale-95 transition-all cursor-pointer"
         >
           <Printer className="w-4 h-4" />
-          <span>{tr('طباعة / تصدير PDF')}</span>
+          <span>{t('finance:quick.pdf')}</span>
         </button>
 
         {/* 5. نسخ احتياطي */}
@@ -197,17 +197,17 @@ export const EtihadQuickActions: React.FC<EtihadQuickActionsProps> = ({
           <button
             type="button"
             onClick={handleExportBackup}
-            title={tr('تصدير نسخة احتياطية')}
+            title={t('finance:quick.exportBackup')}
             className="flex-1 flex items-center justify-center gap-1.5 px-2 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white font-extrabold text-xs sm:text-sm shadow-md shadow-purple-600/20 active:scale-95 transition-all cursor-pointer"
           >
             <DatabaseBackup className="w-4 h-4" />
-            <span>{tr('نسخ احتياطي')}</span>
+            <span>{t('finance:quick.backup')}</span>
           </button>
 
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            title={tr('استيراد نسخة احتياطية')}
+            title={t('finance:quick.importBackup')}
             className="p-3 rounded-2xl bg-purple-100 dark:bg-purple-950/60 hover:bg-purple-200 text-purple-700 dark:text-purple-300 font-bold border border-purple-200 dark:border-purple-800 transition-colors cursor-pointer shrink-0"
           >
             <UploadCloud className="w-4 h-4" />

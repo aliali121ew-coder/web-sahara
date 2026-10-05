@@ -11,12 +11,10 @@
 - الخزانات كاملة.
 - الأسعار (`prices`) والتقويم المشترك `ui/DateRangeCalendar.tsx` (مفاتيحه في `common.calendar`).
 - رصيد الصحاري (`finance`): النصوص المشتركة بين سجلات الأيام في `finance:ledger.*`، والأرشيفات في `finance:archive.*`. ترويسة الطباعة الرسمية `print/OfficialReportHeader.tsx` وعناصر الطباعة المشتركة (التوقيعات، تاريخ الطباعة، الاتجاه) في `common.print`، وترقيم الصفحات في `common.pagination`.
+- رصيد الاتحاد (`finance`): البوابة والتبويبات (`finance:hub.*`)، الحركات والأرشيف والطباعة (`tx`, `etihadArchive`, `etihadPrint`)، جرد الخزانات (`tanksReport`, `tanksView`)، الاحتياطي (`reservesView`). بيانات المواقع التجريبية الثابتة في `EtihadMultiSiteReservesView` (أسماء ومواقع ومسؤولون) تُركت بيانات كما هي.
 
 ## ما بقي
 الرقم = عدد الأسطر التي فيها عربي (يشمل بيانات ومقارنات تبقى كما هي).
-
-### 4. رصيد الاتحاد (`finance`)
-`EtihadTanksReport.tsx` (77)، `EtihadTransactionModal.tsx` (56)، `EtihadArchiveView.tsx` (52)، `EtihadTanksView.tsx` (51)، `EtihadMultiSiteReservesView.tsx` (47)، `EtihadPrintReport.tsx` (47)، `FinanceBalance.tsx` (39)، `EtihadPortalHub.tsx` (38)، `EtihadBalanceCards.tsx` (31)، `EtihadPrintModal.tsx` (31)، `EtihadQuickActions.tsx` (27)، `EtihadBalanceTable.tsx` (27)، `EtihadBalanceHubTabs.tsx` (18)، `EtihadBlackOilView.tsx` (14)، `EtihadReportsCenter.tsx` (6)
 
 ### 5. الوارد والنافذة السريعة (`deliveries`)
 `deliveries/InboundDeliveries.tsx` (199)، `deliveries/InboundPrintReport.tsx` (59)، `layout/QuickActionModal.tsx` (115)

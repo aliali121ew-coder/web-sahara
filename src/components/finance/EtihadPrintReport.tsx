@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
 import { EtihadBalanceRecord } from '../../types/finance';
 import { formatNumber } from '../../lib/utils';
+import { useTranslation } from 'react-i18next';
+import { fmtDate } from '../../i18n/format';
 
 export type PrintPaperSize = 'auto' | 'a4' | 'a3' | 'a2' | 'letter' | 'legal';
 export type PrintOrientation = 'auto' | 'portrait' | 'landscape';
@@ -8,28 +10,29 @@ export type PrintDensity = 'compact' | 'normal' | 'relaxed';
 
 export interface PrintColumnDef {
   id: string;
-  label: string;
-  shortLabel?: string;
-  category: 'أساسي' | 'الوارد والمصروف' | 'المبيعات' | 'بيانات إضافية';
+  /** العنوان: finance:etihadPrint.col.<id>، والفئة: finance:etihadPrint.cat.<category> */
+  category: 'basic' | 'flow' | 'sales' | 'extra';
   defaultVisible: boolean;
-  align: 'right' | 'center' | 'left';
+  align: 'start' | 'center' | 'end';
   widthWeight: number;
 }
 
 export const ETIHAD_PRINT_COLUMNS: PrintColumnDef[] = [
-  { id: 'index', label: 'ت', shortLabel: 'ت', category: 'أساسي', defaultVisible: true, align: 'center', widthWeight: 3.5 },
-  { id: 'date', label: 'التاريخ', category: 'أساسي', defaultVisible: true, align: 'center', widthWeight: 7.5 },
-  { id: 'previousBalance', label: 'الرصيد السابق', category: 'أساسي', defaultVisible: true, align: 'center', widthWeight: 9.5 },
-  { id: 'purchases', label: 'المشتريات / الوارد', category: 'الوارد والمصروف', defaultVisible: true, align: 'center', widthWeight: 9.5 },
-  { id: 'etihadExpense', label: 'مصروف الاتحاد', category: 'الوارد والمصروف', defaultVisible: true, align: 'center', widthWeight: 9.0 },
-  { id: 'saharaSales', label: 'مبيعات صحاري', category: 'المبيعات', defaultVisible: true, align: 'center', widthWeight: 8.5 },
-  { id: 'cablesSales', label: 'مبيعات كبلات', category: 'المبيعات', defaultVisible: true, align: 'center', widthWeight: 8.5 },
-  { id: 'otherSales', label: 'مبيعات أخرى', category: 'المبيعات', defaultVisible: true, align: 'center', widthWeight: 8.0 },
-  { id: 'totalSales', label: 'إجمالي المبيعات', category: 'المبيعات', defaultVisible: true, align: 'center', widthWeight: 9.0 },
-  { id: 'currentBalance', label: 'الرصيد الحالي', category: 'أساسي', defaultVisible: true, align: 'center', widthWeight: 10.0 },
-  { id: 'price', label: 'السعر (د.ع)', category: 'بيانات إضافية', defaultVisible: false, align: 'center', widthWeight: 6.5 },
-  { id: 'notes', label: 'ملاحظات / البيان', category: 'بيانات إضافية', defaultVisible: false, align: 'right', widthWeight: 10.0 },
+  { id: 'index', category: 'basic', defaultVisible: true, align: 'center', widthWeight: 3.5 },
+  { id: 'date', category: 'basic', defaultVisible: true, align: 'center', widthWeight: 7.5 },
+  { id: 'previousBalance', category: 'basic', defaultVisible: true, align: 'center', widthWeight: 9.5 },
+  { id: 'purchases', category: 'flow', defaultVisible: true, align: 'center', widthWeight: 9.5 },
+  { id: 'etihadExpense', category: 'flow', defaultVisible: true, align: 'center', widthWeight: 9.0 },
+  { id: 'saharaSales', category: 'sales', defaultVisible: true, align: 'center', widthWeight: 8.5 },
+  { id: 'cablesSales', category: 'sales', defaultVisible: true, align: 'center', widthWeight: 8.5 },
+  { id: 'otherSales', category: 'sales', defaultVisible: true, align: 'center', widthWeight: 8.0 },
+  { id: 'totalSales', category: 'sales', defaultVisible: true, align: 'center', widthWeight: 9.0 },
+  { id: 'currentBalance', category: 'basic', defaultVisible: true, align: 'center', widthWeight: 10.0 },
+  { id: 'price', category: 'extra', defaultVisible: false, align: 'center', widthWeight: 6.5 },
+  { id: 'notes', category: 'extra', defaultVisible: false, align: 'start', widthWeight: 10.0 },
 ];
+
+export const ALIGN_CLASS: Record<PrintColumnDef['align'], string> = { start: 'text-start', center: 'text-center', end: 'text-end' };
 
 export const DEFAULT_ETIHAD_PRINT_COLUMNS: Record<string, boolean> = ETIHAD_PRINT_COLUMNS.reduce(
   (acc, col) => ({ ...acc, [col.id]: col.defaultVisible }),
@@ -52,9 +55,9 @@ export interface EtihadPrintReportProps {
 
 export const EtihadPrintReport: React.FC<EtihadPrintReportProps> = ({
   records,
-  title = 'كشف حركات وسجل رصيد شركة الاتحاد',
-  subtitle = 'وثيقة محاسبية معتمدة - مطابقة القيود اليومية والمخزون الحي',
-  filterDateLabel = 'كافة السجلات التراكمية',
+  title,
+  subtitle,
+  filterDateLabel,
   visibleColumns = DEFAULT_ETIHAD_PRINT_COLUMNS,
   paperSize = 'auto',
   orientation = 'auto',
@@ -63,6 +66,10 @@ export const EtihadPrintReport: React.FC<EtihadPrintReportProps> = ({
   showKpiCards = true,
   showSignatures = true,
 }) => {
+  const { t, i18n } = useTranslation(['finance', 'common']);
+  title = title ?? t('finance:etihadPrint.title');
+  subtitle = subtitle ?? t('finance:etihadPrint.subtitle');
+  filterDateLabel = filterDateLabel ?? t('finance:etihadArchive.allCumulative');
   // 1. Calculate active columns
   const activeCols = useMemo(() => {
     return ETIHAD_PRINT_COLUMNS.filter(col => visibleColumns[col.id] ?? col.defaultVisible);
@@ -113,11 +120,7 @@ export const EtihadPrintReport: React.FC<EtihadPrintReportProps> = ({
   const latestBalance = records.length > 0 ? records[0].currentBalance : 0;
   const initialBalance = records.length > 0 ? records[records.length - 1].previousBalance : 0;
 
-  const currentDateStr = new Intl.DateTimeFormat('ar-IQ', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
+  const currentDateStr = fmtDate(new Date(), { year: 'numeric', month: '2-digit', day: '2-digit' });
 
   // 6. MULTI-PAGE CHUNKING ENGINE
   const pagesData = useMemo(() => {
@@ -214,7 +217,7 @@ export const EtihadPrintReport: React.FC<EtihadPrintReportProps> = ({
   `;
 
   return (
-    <div className="print-report-root w-full font-cairo text-slate-900 select-text space-y-6 print:space-y-0" dir="rtl">
+    <div className="print-report-root w-full font-cairo text-slate-900 select-text space-y-6 print:space-y-0" dir={i18n.dir()}>
       {/* Dynamic @page print orientation stylesheet */}
       <style>{pageCssRule}</style>
 
@@ -229,7 +232,7 @@ export const EtihadPrintReport: React.FC<EtihadPrintReportProps> = ({
         return (
           <div
             key={page.pageNumber}
-            className="print-page-box bg-white p-4 sm:p-6 print:p-0 w-full min-h-[720px] flex flex-col justify-between text-right box-border rounded-xl shadow-lg border border-slate-300 print:rounded-none print:shadow-none print:border-none"
+            className="print-page-box bg-white p-4 sm:p-6 print:p-0 w-full min-h-[720px] flex flex-col justify-between text-start box-border rounded-xl shadow-lg border border-slate-300 print:rounded-none print:shadow-none print:border-none"
           >
             {/* Top Area: Header + Filters + KPIs (Full on Page 1, Compact on subsequent pages) */}
             <div className="w-full shrink-0">
@@ -244,39 +247,39 @@ export const EtihadPrintReport: React.FC<EtihadPrintReportProps> = ({
                       <div className="flex flex-row items-center gap-2 flex-nowrap">
                         <img
                           src="/logos/sahara.png"
-                          alt="صحاري كربلاء"
+                          alt={t('common:enum.company.sahara')}
                           className="h-9 w-auto object-contain shrink-0"
                         />
                         <img
                           src="/logos/sama.png"
-                          alt="سما كربلاء"
+                          alt={t('common:print.logo.sama')}
                           className="h-9 w-auto object-contain shrink-0"
                         />
                         <img
                           src="/logos/bawadi.png"
-                          alt="بوادي كربلاء"
+                          alt={t('common:print.logo.bawadi')}
                           className="h-8 w-auto object-contain shrink-0"
                         />
                         <img
                           src="/logos/kac.png"
-                          alt="مدينة كربلاء الزراعية"
+                          alt={t('common:print.logo.kac')}
                           className="h-8 w-auto object-contain shrink-0"
                         />
                       </div>
                       <div className="mt-0.5">
                         <h1 className="text-[12.5px] font-black text-slate-950 leading-tight whitespace-nowrap">
-                          مجموعة شركات كربلاء للإنتاج الزراعي والحيواني
+                          {t('common:print.groupName')}
                         </h1>
                         <p className="text-[9.5px] font-bold text-slate-700 whitespace-nowrap">
-                          الإدارة المركزية للوقود والمشتقات النفطية
+                          {t('common:print.fuelDepartment')}
                         </p>
                       </div>
                     </div>
 
                     {/* Center Section: Official Clean Title */}
-                    <div className="text-center flex flex-col items-center justify-center shrink-0 px-3">
+                    <div className="text-center flex flex-col items-center justify-center flex-1 min-w-0 px-3">
                       <div className="inline-block px-4 py-0.5 rounded-full bg-slate-900 text-white text-[10.5px] font-black tracking-wide mb-1">
-                        وثيقة محاسبية وجدول مطابقة أرصدة معتمد
+                        {t('finance:etihadPrint.badge')}
                       </div>
                       <h2 className="text-base sm:text-lg font-black text-slate-950 tracking-tight leading-snug">
                         {title}
@@ -290,15 +293,15 @@ export const EtihadPrintReport: React.FC<EtihadPrintReportProps> = ({
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <img
                         src="/logos/etihad.png"
-                        alt="شركة الاتحاد"
+                        alt={t('common:enum.company.etihad')}
                         className="h-10 w-auto object-contain shrink-0"
                       />
-                      <div className="text-left" dir="rtl">
+                      <div className="text-end">
                         <span className="text-[12px] font-black text-slate-950 block leading-tight whitespace-nowrap">
-                          مجموعة الاتحاد للصناعات
+                          {t('common:print.etihadGroup')}
                         </span>
                         <span className="text-[9px] font-bold text-teal-800 block whitespace-nowrap">
-                          قسم الحسابات ومطابقة أرصدة الوقود
+                          {t('finance:etihadPrint.etihadDept')}
                         </span>
                       </div>
                     </div>
@@ -311,18 +314,18 @@ export const EtihadPrintReport: React.FC<EtihadPrintReportProps> = ({
               <div className="flex items-center justify-between bg-slate-100/90 text-slate-800 text-[10px] px-3 py-1 rounded-md mb-2 border border-slate-300 font-bold">
                 <div className="flex items-center gap-4">
                   <span>
-                    <strong className="text-slate-950">نطاق التقرير:</strong> {filterDateLabel}
+                    <strong className="text-slate-950">{t('finance:etihadPrint.range')}</strong> {filterDateLabel}
                   </span>
                   <span>
-                    <strong className="text-slate-950">تاريخ الإصدار:</strong> {currentDateStr}
+                    <strong className="text-slate-950">{t('finance:etihadPrint.issued')}</strong> {currentDateStr}
                   </span>
                 </div>
                 <div className="flex items-center gap-4">
                   <span>
-                    <strong className="text-slate-950">عدد السجلات:</strong> {records.length} حركة
+                    <strong className="text-slate-950">{t('finance:etihadPrint.recordCount')}</strong> {t('finance:etihadPrint.txCount', { count: records.length })}
                   </span>
                   <span>
-                    <strong className="text-slate-950">الصفحة:</strong> {page.pageNumber} من {totalPages}
+                    <strong className="text-slate-950">{t('finance:etihadPrint.pageLabel')}</strong> {t('finance:etihadPrint.pageNofM', { page: page.pageNumber, count: totalPages })}
                   </span>
                 </div>
               </div>
@@ -331,37 +334,37 @@ export const EtihadPrintReport: React.FC<EtihadPrintReportProps> = ({
               {showKpiCards && page.isFirstPage && (
                 <div className="grid grid-cols-5 gap-2 mb-2">
                   <div className="p-2 bg-slate-50 border border-slate-300 rounded-lg text-center">
-                    <span className="text-[9.5px] text-slate-600 font-bold block mb-0.5">الرصيد الافتتاحي</span>
+                    <span className="text-[9.5px] text-slate-600 font-bold block mb-0.5">{t('finance:etihadPrint.opening')}</span>
                     <span className="text-xs font-black text-slate-900 font-mono">
-                      {formatNumber(initialBalance)} <span className="text-[9px] font-cairo">لتر</span>
+                      {formatNumber(initialBalance)} <span className="text-[9px] font-cairo">{t('common:units.liter')}</span>
                     </span>
                   </div>
 
                   <div className="p-2 bg-emerald-50/70 border border-emerald-300 rounded-lg text-center">
-                    <span className="text-[9.5px] text-emerald-800 font-bold block mb-0.5">إجمالي الوارد</span>
+                    <span className="text-[9.5px] text-emerald-800 font-bold block mb-0.5">{t('finance:etihadArchive.totalInbound')}</span>
                     <span className="text-xs font-black text-emerald-900 font-mono">
-                      {formatNumber(grandTotalPurchases)} <span className="text-[9px] font-cairo">لتر</span>
+                      {formatNumber(grandTotalPurchases)} <span className="text-[9px] font-cairo">{t('common:units.liter')}</span>
                     </span>
                   </div>
 
                   <div className="p-2 bg-rose-50/70 border border-rose-300 rounded-lg text-center">
-                    <span className="text-[9.5px] text-rose-800 font-bold block mb-0.5">مصروف الاتحاد</span>
+                    <span className="text-[9.5px] text-rose-800 font-bold block mb-0.5">{t('finance:tx.etihadExpense')}</span>
                     <span className="text-xs font-black text-rose-900 font-mono">
-                      {formatNumber(grandTotalExpense)} <span className="text-[9px] font-cairo">لتر</span>
+                      {formatNumber(grandTotalExpense)} <span className="text-[9px] font-cairo">{t('common:units.liter')}</span>
                     </span>
                   </div>
 
                   <div className="p-2 bg-amber-50/70 border border-amber-300 rounded-lg text-center">
-                    <span className="text-[9.5px] text-amber-800 font-bold block mb-0.5">إجمالي المبيعات</span>
+                    <span className="text-[9.5px] text-amber-800 font-bold block mb-0.5">{t('finance:etihadArchive.totalSales')}</span>
                     <span className="text-xs font-black text-amber-900 font-mono">
-                      {formatNumber(grandTotalSales)} <span className="text-[9px] font-cairo">لتر</span>
+                      {formatNumber(grandTotalSales)} <span className="text-[9px] font-cairo">{t('common:units.liter')}</span>
                     </span>
                   </div>
 
                   <div className="p-2 bg-teal-50/80 border border-teal-300 rounded-lg text-center">
-                    <span className="text-[9.5px] text-teal-800 font-bold block mb-0.5">الرصيد الختامي</span>
+                    <span className="text-[9.5px] text-teal-800 font-bold block mb-0.5">{t('finance:etihadPrint.closing')}</span>
                     <span className="text-xs font-black text-teal-900 font-mono">
-                      {formatNumber(latestBalance)} <span className="text-[9px] font-cairo">لتر</span>
+                      {formatNumber(latestBalance)} <span className="text-[9px] font-cairo">{t('common:units.liter')}</span>
                     </span>
                   </div>
                 </div>
@@ -369,20 +372,20 @@ export const EtihadPrintReport: React.FC<EtihadPrintReportProps> = ({
 
               {/* 📋 4. Official Table View */}
               <div className="w-full overflow-hidden border border-slate-800 rounded-md">
-                <table className={`w-full text-right border-collapse ${tableFontSizeClass}`}>
+                <table className={`w-full text-start border-collapse ${tableFontSizeClass}`}>
                   <thead>
                     <tr className="bg-slate-900 text-white font-black border-b border-slate-900">
                       {activeCols.map(col => (
                         <th
                           key={col.id}
                           style={{ width: colWidths[col.id] }}
-                          className={`py-2 px-2 border-l border-slate-700 font-black text-center whitespace-nowrap ${tableHeaderFontSizeClass} ${
+                          className={`py-2 px-2 border-e border-slate-700 font-black text-center whitespace-nowrap ${tableHeaderFontSizeClass} ${
                             col.id === 'purchases' ? 'bg-emerald-950 text-emerald-200' :
                             col.id === 'etihadExpense' ? 'bg-rose-950 text-rose-200' :
                             col.id === 'currentBalance' ? 'bg-teal-950 text-teal-200 font-black' : ''
                           }`}
                         >
-                          {col.label}
+                          {t(`finance:etihadPrint.col.${col.id}`)}
                         </th>
                       ))}
                     </tr>
@@ -445,7 +448,7 @@ export const EtihadPrintReport: React.FC<EtihadPrintReportProps> = ({
                             return (
                               <td
                                 key={col.id}
-                                className={`${rowPaddingClass} px-2 border-l border-slate-300 text-${col.align} whitespace-nowrap ${
+                                className={`${rowPaddingClass} px-2 border-e border-slate-300 ${ALIGN_CLASS[col.align]} whitespace-nowrap ${
                                   col.id === 'purchases' ? 'bg-emerald-50/30' :
                                   col.id === 'etihadExpense' ? 'bg-rose-50/30' :
                                   col.id === 'currentBalance' ? 'bg-teal-50/40 font-black' : ''
@@ -466,8 +469,8 @@ export const EtihadPrintReport: React.FC<EtihadPrintReportProps> = ({
                       {activeCols.map((col, cIdx) => {
                         if (cIdx === 0) {
                           return (
-                            <td key={col.id} colSpan={2} className="py-1.5 px-2 text-center border-l border-slate-400 font-sans text-[10px]">
-                              مجموع الصفحة ({page.items.length})
+                            <td key={col.id} colSpan={2} className="py-1.5 px-2 text-center border-e border-slate-400 font-sans text-[10px]">
+                              {t('finance:etihadPrint.pageTotal', { count: page.items.length })}
                             </td>
                           );
                         }
@@ -484,7 +487,7 @@ export const EtihadPrintReport: React.FC<EtihadPrintReportProps> = ({
                         return (
                           <td
                             key={col.id}
-                            className={`py-1.5 px-2 text-${col.align} border-l border-slate-400 font-mono text-[10px] font-black`}
+                            className={`py-1.5 px-2 ${ALIGN_CLASS[col.align]} border-e border-slate-400 font-mono text-[10px] font-black`}
                           >
                             {sumValue}
                           </td>
@@ -502,27 +505,27 @@ export const EtihadPrintReport: React.FC<EtihadPrintReportProps> = ({
               {showSignatures && (
                 <div className="grid grid-cols-4 gap-4 text-center text-[10.5px] text-slate-900 font-bold mb-3">
                   <div className="space-y-6">
-                    <span>منظّم الكشف (المحاسب المسؤول)</span>
+                    <span>{t('finance:etihadPrint.sign.preparer')}</span>
                     <div className="border-b border-dotted border-slate-400 w-3/4 mx-auto"></div>
                   </div>
                   <div className="space-y-6">
-                    <span>تدقيق الحسابات والمالية</span>
+                    <span>{t('finance:etihadPrint.sign.audit')}</span>
                     <div className="border-b border-dotted border-slate-400 w-3/4 mx-auto"></div>
                   </div>
                   <div className="space-y-6">
-                    <span>مدير إدارة المحروقات والمستودعات</span>
+                    <span>{t('finance:etihadPrint.sign.manager')}</span>
                     <div className="border-b border-dotted border-slate-400 w-3/4 mx-auto"></div>
                   </div>
                   <div className="space-y-6">
-                    <span>المصادقة والاعتماد الإداري</span>
+                    <span>{t('finance:etihadPrint.sign.approval')}</span>
                     <div className="border-b border-dotted border-slate-400 w-3/4 mx-auto"></div>
                   </div>
                 </div>
               )}
 
               <div className="flex items-center justify-between text-[9px] text-slate-500 font-sans pt-1 border-t border-slate-200">
-                <span>وثيقة رسمية صادرة من النظام المركزي لإدارة الوقود - مجموعة شركات كربلاء © {new Date().getFullYear()}</span>
-                <span className="font-mono font-bold text-slate-700">صفحة {page.pageNumber} من {totalPages}</span>
+                <span>{t('finance:etihadPrint.footer', { year: new Date().getFullYear() })}</span>
+                <span className="font-mono font-bold text-slate-700">{t('finance:tanksReport.pageOf', { page: page.pageNumber, count: totalPages })}</span>
               </div>
             </div>
 

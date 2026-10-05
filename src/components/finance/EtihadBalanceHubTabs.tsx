@@ -7,7 +7,7 @@ import {
   CheckCircle2,
   ChevronLeft
 } from 'lucide-react';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
 
 export type EtihadSubtabKey = 'balance' | 'tanks' | 'black-oil' | 'reserves' | 'archive' | 'reports';
 
@@ -28,15 +28,15 @@ export const EtihadBalanceHubTabs: React.FC<EtihadBalanceHubTabsProps> = ({
   blackOilLiters = 38401951,
   reservesSitesCount = 4
 }) => {
-  const { tr } = useLanguage();
+  const { t } = useTranslation(['finance', 'common']);
 
   const tabsConfig = [
     {
       id: 'balance' as EtihadSubtabKey,
-      title: tr('رصيد الشركة'),
-      subtitle: tr('سجل الوارد والحركات والمعالج الذكي'),
-      statValue: `${(balanceLiters / 1000000).toFixed(2)}M لتر`,
-      badge: tr('حسابات حية'),
+      title: t('finance:hub.companyBalance'),
+      subtitle: t('finance:hub.tabs.balanceSub'),
+      statValue: t('finance:hub.statMillionLiters', { value: (balanceLiters / 1000000).toFixed(2) }),
+      badge: t('finance:hub.tabs.live'),
       icon: Wallet,
       colorTheme: 'teal',
       accentGradient: 'from-teal-600 to-emerald-600',
@@ -46,10 +46,10 @@ export const EtihadBalanceHubTabs: React.FC<EtihadBalanceHubTabsProps> = ({
     },
     {
       id: 'tanks' as EtihadSubtabKey,
-      title: tr('خزانات الاتحاد'),
-      subtitle: tr('السعات التخزينية والقياسات الحجمية'),
-      statValue: `${(tanksCapacity / 1000000).toFixed(0)}M لتر سعة`,
-      badge: tr('4 خزانات'),
+      title: t('finance:hub.etihadTanks'),
+      subtitle: t('finance:hub.tabs.tanksSub'),
+      statValue: t('finance:hub.statMillionCapacity', { value: (tanksCapacity / 1000000).toFixed(0) }),
+      badge: t('finance:hub.tabs.fourTanks'),
       icon: Database,
       colorTheme: 'blue',
       accentGradient: 'from-blue-600 to-indigo-600',
@@ -59,10 +59,10 @@ export const EtihadBalanceHubTabs: React.FC<EtihadBalanceHubTabsProps> = ({
     },
     {
       id: 'black-oil' as EtihadSubtabKey,
-      title: tr('نفط أسود'),
-      subtitle: tr('المخزون الاستراتيجي ومطابقة الأفران'),
-      statValue: `${(blackOilLiters / 1000000).toFixed(1)}M لتر`,
-      badge: tr('76.8% امتلاء'),
+      title: t('finance:hub.blackOil'),
+      subtitle: t('finance:hub.tabs.blackOilSub'),
+      statValue: t('finance:hub.statMillionLiters', { value: (blackOilLiters / 1000000).toFixed(1) }),
+      badge: t('finance:hub.tabs.fillBadge'),
       icon: Droplets,
       colorTheme: 'purple',
       accentGradient: 'from-purple-600 to-indigo-700',
@@ -72,10 +72,10 @@ export const EtihadBalanceHubTabs: React.FC<EtihadBalanceHubTabsProps> = ({
     },
     {
       id: 'reserves' as EtihadSubtabKey,
-      title: tr('رصيد الاحتياطي'),
-      subtitle: tr('احتياط الأمان موزّع لأكثر من موقع'),
-      statValue: `${reservesSitesCount} ${tr('مواقع مؤمنة')}`,
-      badge: tr('أمان 45 يوم'),
+      title: t('finance:hub.reserves'),
+      subtitle: t('finance:hub.tabs.reservesSub'),
+      statValue: t('finance:hub.securedSites', { count: reservesSitesCount }),
+      badge: t('finance:hub.tabs.safety45'),
       icon: ShieldCheck,
       colorTheme: 'amber',
       accentGradient: 'from-amber-500 to-orange-600',
@@ -140,7 +140,7 @@ export const EtihadBalanceHubTabs: React.FC<EtihadBalanceHubTabsProps> = ({
                   {isActive && (
                     <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
                       <CheckCircle2 className="w-3 h-3" />
-                      {tr('عرض نشط')}
+                      {t('finance:hub.tabs.activeView')}
                     </span>
                   )}
                 </div>
@@ -158,7 +158,7 @@ export const EtihadBalanceHubTabs: React.FC<EtihadBalanceHubTabsProps> = ({
                 </p>
 
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs font-mono font-bold">
-                  <span className="text-slate-400 text-[11px]">{tr('المؤشر')}:</span>
+                  <span className="text-slate-400 text-[11px]">{t('finance:hub.tabs.indicator')}:</span>
                   <span className={isActive ? 'text-slate-900 dark:text-white font-black' : 'text-slate-600 dark:text-slate-300'}>
                     {tab.statValue}
                   </span>

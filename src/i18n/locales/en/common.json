@@ -108,6 +108,9 @@
       "rayyan": "Al-Rayyan site",
       "sukkar": "Al-Sukkar site",
       "sahara": "Sahara site"
+    },
+    "relative": {
+      "today": "Today"
     }
   },
   "calendar": {

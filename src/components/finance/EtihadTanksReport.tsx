@@ -8,6 +8,7 @@ import { OFFICIAL_TABLE_TANK_UNITS, TankUnitRow } from '../tanks/TanksOverview';
 import { OfficialReportHeaderRow } from '../print/OfficialReportHeader';
 import { RealisticTank } from '../tanks/RealisticTank';
 import { getBlackOilAvgDaily } from './BlackOilDailyLedger';
+import { useTranslation, Trans } from 'react-i18next';
 
 type GroupKey = 'black-oil' | 'gasoil';
 type SectionKey = 'balances' | 'coverage' | 'drawings' | 'fill';
@@ -21,12 +22,8 @@ interface GroupData {
   company: BlackOilCompany;
 }
 
-const SECTION_LABELS: Record<SectionKey, string> = {
-  balances: 'جدول الأرصدة',
-  coverage: 'كارت التأمين',
-  drawings: 'شكل الخزانات',
-  fill: 'متطلبات الملء'
-};
+/** عناوين أقسام الكشف: finance:tanksReport.section.<key> */
+const SECTION_KEYS: SectionKey[] = ['balances', 'coverage', 'drawings', 'fill'];
 
 const SECTION_ICONS: Record<SectionKey, React.ElementType> = {
   balances: Table2,
@@ -44,13 +41,14 @@ const ALARM_LOW = 20;
 
 /** خزان أسطواني للطباعة: قبة، جسم، سطح سائل، ومسطرة جانبية — أزرق موحد، وبرتقالي تحت الحد الأدنى */
 const PrintTank: React.FC<{ tank: TankUnitRow }> = ({ tank }) => {
+  const { t } = useTranslation(['finance', 'common']);
   const p = Math.min(100, Math.max(0, pctOf(tank)));
   return (
     <div className="flex flex-col items-center text-center">
       <RealisticTank percent={p} alarmPercent={ALARM_LOW} />
       <div className="text-[11px] font-black text-slate-900 mt-1">{tank.name}</div>
       <div className="text-[18px] font-black font-mono tabular-nums text-slate-950 leading-tight">{p.toFixed(1)}%</div>
-      <div className="text-[9px] font-mono text-slate-600">{formatNumber(tankLiters(tank))} لتر · {tank.levelMeters.toFixed(2)} م</div>
+      <div className="text-[9px] font-mono text-slate-600">{t('finance:tanksReport.litersMeters', { liters: formatNumber(tankLiters(tank)), meters: tank.levelMeters.toFixed(2) })}</div>
     </div>
   );
 };
@@ -72,6 +70,7 @@ const TanksReportPage: React.FC<{
   /** يوم العمل للكشف (لعمليات الحفظ السابقة) */
   asOfDate?: string;
 }> = ({ group, sections, pageIndex, pageCount, issuedAt, asOfDate }) => {
+  const { t, i18n } = useTranslation(['finance', 'common']);
   const today = asOfDate ?? getBusinessDate();
   const rows = group.tanks.map(t => {
     const prev = getPreviousLiters(t.id, today);
@@ -107,16 +106,16 @@ const TanksReportPage: React.FC<{
   let n = 0;
 
   return (
-    <div className="print-page-box bg-white text-slate-900 p-6 print:p-0 w-full flex flex-col gap-3 text-right break-after-page font-cairo" dir="rtl">
+    <div className="print-page-box bg-white text-slate-900 p-6 print:p-0 w-full flex flex-col gap-3 text-start break-after-page font-cairo" dir={i18n.dir()}>
       {/* الترويسة + بيانات الوثيقة */}
       <header className="print-header report-header border-b-[3px] border-double border-slate-900 pb-2 block w-full">
-        <OfficialReportHeaderRow badge="وثيقة جرد رسمية معتمدة" title={group.company === 'sahara' ? 'كشف خزانات الصحاري' : 'كشف خزانات الاتحاد'} />
+        <OfficialReportHeaderRow badge={t('finance:tanksReport.badge')} title={t(group.company === 'sahara' ? 'finance:tanksReport.titleSahara' : 'finance:tanksReport.titleEtihad')} />
         <div className="mt-2 grid grid-cols-4 border border-slate-300 text-[9.5px]">
           {[
-            ['القسم', group.title],
-            ['رقم الوثيقة', docNo],
-            ['تاريخ الإصدار', issued],
-            ['يوم العمل', today]
+            [t('finance:tanksReport.meta.section'), group.title],
+            [t('finance:tanksReport.meta.docNo'), docNo],
+            [t('finance:tanksReport.meta.issued'), issued],
+            [t('finance:tanksReport.meta.businessDay'), today]
           ].map(([k, v], i) => (
             <div key={k} className={`px-2.5 py-1 flex items-center justify-between gap-2 ${i ? 'border-r border-slate-300' : ''}`}>
               <span className="text-slate-500 font-bold">{k}</span>
@@ -127,16 +126,16 @@ const TanksReportPage: React.FC<{
       </header>
 
       {group.tanks.length === 0 ? (
-        <div className="py-10 text-center text-sm text-slate-500">لا توجد خزانات في هذا القسم</div>
+        <div className="py-10 text-center text-sm text-slate-500">{t('finance:tanksReport.noTanks')}</div>
       ) : (
         <>
           {/* شريط المؤشرات الرئيسية */}
           <div className="grid grid-cols-4 border border-slate-400">
             {[
-              ['السعة الكلية (لتر)', formatNumber(totalCapacity)],
-              ['الرصيد الحالي (لتر)', formatNumber(totalCurrent)],
-              ['نسبة الامتلاء', `${totalPct.toFixed(1)}%`],
-              ['الفراغ المتاح (لتر)', formatNumber(freeSpace)]
+              [t('finance:tanksReport.sum.capacity'), formatNumber(totalCapacity)],
+              [t('finance:tanksReport.sum.current'), formatNumber(totalCurrent)],
+              [t('finance:blackOil.col.fill'), `${totalPct.toFixed(1)}%`],
+              [t('finance:tanksReport.sum.free'), formatNumber(freeSpace)]
             ].map(([k, v]) => (
               <div key={k} className="px-3 py-1.5 border-l border-slate-300">
                 <div className="text-[9px] font-bold text-slate-500">{k}</div>
@@ -150,23 +149,23 @@ const TanksReportPage: React.FC<{
             <div className={`grid gap-4 ${sections.balances && sections.coverage ? 'grid-cols-[7fr_3fr]' : 'grid-cols-1'}`}>
               {sections.balances && (
                 <div className="flex flex-col">
-                  <SectionTitle n={++n}>جدول الأرصدة</SectionTitle>
+                  <SectionTitle n={++n}>{t('finance:tanksReport.section.balances')}</SectionTitle>
                   <table className="w-full flex-1 border-collapse border-b border-slate-300">
                     <thead>
                       <tr>
-                        <th className={th}>ت</th>
-                        <th className={`${th} text-right`}>الخزان</th>
-                        <th className={th}>الكمية السابقة (لتر){prevDateLabel && <div className="text-[8px] font-bold text-slate-300">{prevDateLabel}</div>}</th>
-                        <th className={th}>الكمية الحالية (لتر)</th>
-                        <th className={th}>التغيّر</th>
-                        <th className={th}>نسبة الخزان</th>
+                        <th className={th}>{t('finance:tanksReport.col.no')}</th>
+                        <th className={`${th} text-start`}>{t('finance:tanksReport.col.tank')}</th>
+                        <th className={th}>{t('finance:tanksReport.col.previous')}{prevDateLabel && <div className="text-[8px] font-bold text-slate-300">{prevDateLabel}</div>}</th>
+                        <th className={th}>{t('finance:tanksReport.col.current')}</th>
+                        <th className={th}>{t('finance:tanksReport.col.change')}</th>
+                        <th className={th}>{t('finance:tanksReport.col.pct')}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {rows.map((r, i) => (
                         <tr key={r.tank.id} className={zebra(i)}>
                           <td className={td}>{i + 1}</td>
-                          <td className={`${td} font-cairo font-bold text-right`}>{r.tank.name}</td>
+                          <td className={`${td} font-cairo font-bold text-start`}>{r.tank.name}</td>
                           <td className={td}>{r.previous === null ? '—' : formatNumber(r.previous)}</td>
                           <td className={`${td} font-black text-slate-950`}>{formatNumber(r.current)}</td>
                           <td className={td}>{delta(r.current, r.previous)}</td>
@@ -174,7 +173,7 @@ const TanksReportPage: React.FC<{
                         </tr>
                       ))}
                       <tr className="border-t-2 border-slate-900 bg-slate-100">
-                        <td className={`${td} font-cairo font-black`} colSpan={2}>الإجمالي</td>
+                        <td className={`${td} font-cairo font-black`} colSpan={2}>{t('finance:archive.total')}</td>
                         <td className={`${td} font-black`}>{totalPrevious === null ? '—' : formatNumber(totalPrevious)}</td>
                         <td className={`${td} font-black text-slate-950`}>{formatNumber(totalCurrent)}</td>
                         <td className={td}>{delta(totalCurrent, totalPrevious)}</td>
@@ -187,20 +186,19 @@ const TanksReportPage: React.FC<{
 
               {sections.coverage && (
                 <div className="flex flex-col">
-                  <SectionTitle n={++n}>مؤشر التأمين التشغيلي</SectionTitle>
+                  <SectionTitle n={++n}>{t('finance:tanksReport.coverageTitle')}</SectionTitle>
                   <div className="flex-1 border border-slate-400 p-3 flex flex-col justify-between gap-2">
                     <div className="flex items-baseline gap-1.5">
-                      <span className="text-[34px] font-black leading-none text-slate-950 font-mono">{coverageDays}</span>
-                      <span className="text-[12px] font-black text-slate-700">يومًا</span>
+                      <Trans t={t} i18nKey="finance:tanksReport.coverageDays" count={coverageDays} components={{ 1: <span className="text-[34px] font-black leading-none text-slate-950 font-mono" />, 2: <span className="text-[12px] font-black text-slate-700" /> }} />
                     </div>
                     <div className="h-2 bg-slate-200">
                       <div className="h-full bg-slate-800" style={{ width: `${Math.min(100, (coverageDays / 120) * 100)}%` }} />
                     </div>
                     <table className="w-full text-[9.5px]">
                       <tbody>
-                        <tr><td className="text-slate-500 py-0.5">تاريخ النفاد المتوقع</td><td className="font-mono font-black text-left">{coverageDate}</td></tr>
-                        <tr><td className="text-slate-500 py-0.5">الاستهلاك اليومي</td><td className="font-mono font-black text-left">{formatNumber(group.dailyBurn)} لتر</td></tr>
-                        <tr><td className="text-slate-500 py-0.5">الرصيد المحتسب</td><td className="font-mono font-black text-left">{formatNumber(totalCurrent)} لتر</td></tr>
+                        <tr><td className="text-slate-500 py-0.5">{t('finance:saharaPetrol.runOutDate')}</td><td className="font-mono font-black text-end">{coverageDate}</td></tr>
+                        <tr><td className="text-slate-500 py-0.5">{t('finance:ledger.dailyConsumption')}</td><td className="font-mono font-black text-end">{formatNumber(group.dailyBurn)} {t('common:units.liter')}</td></tr>
+                        <tr><td className="text-slate-500 py-0.5">{t('finance:tanksReport.calcBalance')}</td><td className="font-mono font-black text-end">{formatNumber(totalCurrent)} {t('common:units.liter')}</td></tr>
                       </tbody>
                     </table>
                   </div>
@@ -218,7 +216,7 @@ const TanksReportPage: React.FC<{
                   <div className="border border-slate-400 rounded-md overflow-hidden flex flex-col">
                     <div className="bg-slate-900 text-white px-3 py-1.5 flex items-center gap-2">
                       <span className="w-5 h-5 rounded-sm bg-white text-slate-900 text-[10px] font-black flex items-center justify-center">{idx}</span>
-                      <span className="text-[11.5px] font-black">الوضع الحالي للخزانات</span>
+                      <span className="text-[11.5px] font-black">{t('finance:tanksReport.currentState')}</span>
                     </div>
                     <div className="flex-1 grid items-center divide-x divide-x-reverse divide-slate-200" style={{ gridTemplateColumns: `repeat(${Math.min(group.tanks.length, 4)}, minmax(0, 1fr))` }}>
                       {group.tanks.map(t => (
@@ -233,15 +231,15 @@ const TanksReportPage: React.FC<{
 
               {sections.fill && (
                 <div className="flex flex-col">
-                  <SectionTitle n={++n}>متطلبات الملء</SectionTitle>
+                  <SectionTitle n={++n}>{t('finance:tanksReport.section.fill')}</SectionTitle>
                   <table className="w-full flex-1 border-collapse border-b border-slate-300">
                     <thead>
                       <tr>
-                        <th className={`${th} text-right`}>الخزان</th>
-                        <th className={th}>السعة (لتر)</th>
-                        <th className={th}>المطلوب للملء (لتر)</th>
-                        <th className={th}>النسبة</th>
-                        <th className={th}>صهاريج</th>
+                        <th className={`${th} text-start`}>{t('finance:tanksReport.col.tank')}</th>
+                        <th className={th}>{t('finance:tanksReport.col.capacity')}</th>
+                        <th className={th}>{t('finance:tanksReport.col.need')}</th>
+                        <th className={th}>{t('finance:tanksReport.col.ratio')}</th>
+                        <th className={th}>{t('finance:tanksReport.col.tankers')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -249,7 +247,7 @@ const TanksReportPage: React.FC<{
                         const need = Math.max(0, t.capacityLiters - tankLiters(t));
                         return (
                           <tr key={t.id} className={zebra(i)}>
-                            <td className={`${td} font-cairo font-bold text-right`}>{t.name}</td>
+                            <td className={`${td} font-cairo font-bold text-start`}>{t.name}</td>
                             <td className={td}>{formatNumber(t.capacityLiters)}</td>
                             <td className={`${td} font-black text-slate-950`}>{formatNumber(need)}</td>
                             <td className={td}>{(100 - Math.min(100, pctOf(t))).toFixed(1)}%</td>
@@ -258,14 +256,14 @@ const TanksReportPage: React.FC<{
                         );
                       })}
                       <tr className="border-t-2 border-slate-900 bg-slate-100">
-                        <td className={`${td} font-cairo font-black`}>الإجمالي</td>
+                        <td className={`${td} font-cairo font-black`}>{t('finance:archive.total')}</td>
                         <td className={`${td} font-black`}>{formatNumber(totalCapacity)}</td>
                         <td className={`${td} font-black text-slate-950`}>{formatNumber(freeSpace)}</td>
                         <td className={`${td} font-black`}>{(100 - totalPct).toFixed(1)}%</td>
                         <td className={`${td} font-black`}>{formatNumber(Math.ceil(freeSpace / TANKER_LITERS))}</td>
                       </tr>
                       <tr style={{ height: 1 }}>
-                        <td colSpan={5} className="pt-1 text-[8px] text-slate-500 text-right">* الصهاريج محسوبة على أساس {formatNumber(TANKER_LITERS)} لتر للصهريج.</td>
+                        <td colSpan={5} className="pt-1 text-[8px] text-slate-500 text-start">* {t('finance:tanksReport.tankerNote', { liters: formatNumber(TANKER_LITERS) })}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -282,30 +280,30 @@ const TanksReportPage: React.FC<{
         <div className="print-avoid-break mb-2">
           <div className="border border-slate-400 rounded p-1.5 bg-slate-50">
             <div className="text-[9px] font-black text-slate-900 mb-0.5 border-b border-slate-300 pb-0.5 flex items-center justify-between">
-              <span>مصادقة واعتماد جرد الخزانات والمطابقة المخزنية:</span>
-              <span className="text-[8px] font-bold text-slate-600">الاعتماد الرسمي المركزي للوقود والمشتقات</span>
+              <span>{t('finance:tanksReport.approval.title')}</span>
+              <span className="text-[8px] font-bold text-slate-600">{t('finance:tanksReport.approval.central')}</span>
             </div>
             <div className="grid grid-cols-4 gap-2 text-center">
-              {['مسؤول الخزانات', 'مدير الموقع', 'المدير العام'].map(r => (
+              {[t('common:print.role.tanks'), t('common:print.role.site'), t('common:print.role.general')].map(r => (
                 <div key={r} className="border border-dashed border-slate-400 rounded p-1 bg-white flex flex-col justify-between">
                   <span className="text-[8.5px] font-black text-slate-800 block">{r}</span>
                   <div className="h-5 border-b border-slate-200 my-0.5"></div>
-                  <span className="text-[7.5px] text-slate-500 block">التوقيع والتاريخ</span>
+                  <span className="text-[7.5px] text-slate-500 block">{t('common:print.signature')}</span>
                 </div>
               ))}
               <div className="border border-dashed border-slate-400 rounded p-1 bg-white flex flex-col justify-between">
-                <span className="text-[8.5px] font-black text-slate-800 block">مصادقة الإدارة المركزية والختم</span>
+                <span className="text-[8.5px] font-black text-slate-800 block">{t('finance:tanksReport.approval.stampTitle')}</span>
                 <div className="h-5 border-b border-slate-200 my-0.5 flex items-center justify-center">
-                  <span className="text-[7px] text-slate-400 border border-slate-300 px-2 rounded font-sans">ختم الاعتماد الرسمي</span>
+                  <span className="text-[7px] text-slate-400 border border-slate-300 px-2 rounded font-sans">{t('finance:tanksReport.approval.stamp')}</span>
                 </div>
-                <span className="text-[7.5px] text-slate-500 block">المصادقة النهائية</span>
+                <span className="text-[7.5px] text-slate-500 block">{t('finance:tanksReport.approval.final')}</span>
               </div>
             </div>
           </div>
         </div>
         <div className="flex items-center justify-between border-t border-slate-200 mt-2 pt-1 text-[8.5px] text-slate-400">
-          <span>وثيقة صادرة إلكترونيًا من منظومة وقود صحاري كربلاء — {docNo}</span>
-          <span className="font-mono">صفحة {pageIndex + 1} من {pageCount}</span>
+          <span>{t('finance:tanksReport.issuedBy', { docNo })}</span>
+          <span className="font-mono">{t('finance:tanksReport.pageOf', { page: pageIndex + 1, count: pageCount })}</span>
         </div>
       </footer>
     </div>
@@ -314,6 +312,7 @@ const TanksReportPage: React.FC<{
 
 /** تبويب "جرد الخزانات": سجل عمليات الحفظ (10 لكل صفحة) + معاينة وطباعة كشف كل عملية */
 export const EtihadTanksReport: React.FC<{ company?: BlackOilCompany }> = ({ company = 'etihad' }) => {
+  const { t, i18n } = useTranslation(['finance', 'common']);
   const [centralTanks] = useCentralTanks(OFFICIAL_TABLE_TANK_UNITS);
   const { computed } = useBlackOilLedger(company);
   const blackOilKey = BLACK_OIL_SECTION_KEYS[company];
@@ -346,8 +345,8 @@ export const EtihadTanksReport: React.FC<{ company?: BlackOilCompany }> = ({ com
   const groups: GroupData[] = useMemo(() => {
     const gasoilKey = company === 'sahara' ? resolveSaharaGasoilSectionKey(tanksAtSave) : resolveGasoilSectionKey(tanksAtSave);
     return [
-      { key: 'black-oil', title: 'النفط الأسود', company, dailyBurn: selected?.avgDaily ?? getBlackOilAvgDaily(company), tanks: tanksAtSave.filter(t => t.sectionKey === blackOilKey) },
-      { key: 'gasoil', title: 'الكاز', company, dailyBurn: 175000, tanks: gasoilKey ? tanksAtSave.filter(t => t.sectionKey === gasoilKey) : [] }
+      { key: 'black-oil', title: t('finance:tanksReport.group.blackOil'), company, dailyBurn: selected?.avgDaily ?? getBlackOilAvgDaily(company), tanks: tanksAtSave.filter(t => t.sectionKey === blackOilKey) },
+      { key: 'gasoil', title: t('finance:tanksReport.group.gasoil'), company, dailyBurn: 175000, tanks: gasoilKey ? tanksAtSave.filter(t => t.sectionKey === gasoilKey) : [] }
     ];
   }, [tanksAtSave, selected, company, blackOilKey]);
 
@@ -355,9 +354,9 @@ export const EtihadTanksReport: React.FC<{ company?: BlackOilCompany }> = ({ com
   const anySection = Object.values(sections).some(Boolean);
 
   const groupOptions = [
-    { key: 'black-oil' as const, label: 'النفط الأسود', icon: Droplets },
-    { key: 'gasoil' as const, label: 'الكاز', icon: Fuel },
-    { key: 'both' as const, label: 'الاثنان', icon: Layers }
+    { key: 'black-oil' as const, label: t('finance:tanksReport.group.blackOil'), icon: Droplets },
+    { key: 'gasoil' as const, label: t('finance:tanksReport.group.gasoil'), icon: Fuel },
+    { key: 'both' as const, label: t('finance:tanksReport.group.both'), icon: Layers }
   ];
 
   const issuedAt = useMemo(
@@ -387,24 +386,24 @@ export const EtihadTanksReport: React.FC<{ company?: BlackOilCompany }> = ({ com
           <div className="p-4 sm:p-5 border-b border-slate-200/90 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
             <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
               <History className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              <span>سجل عمليات جرد الخزانات</span>
+              <span>{t('finance:tanksReport.logTitle')}</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              كل عملية حفظ في السجل اليومي للنفط الأسود مع مناسيب الخزانات وقت الحفظ — اضغط طباعة لمعاينة كشف العملية
+              {t('finance:tanksReport.logHint')}
             </p>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-right text-xs border-collapse font-mono">
+            <table className="w-full text-start text-xs border-collapse font-mono">
               <thead>
                 <tr className="bg-[#eef2f8] dark:bg-[#1c2b44] text-[#1c3b6f] dark:text-blue-100 border-b-2 border-[#1c3b6f]/70 dark:border-blue-900 font-black text-[11.5px] whitespace-nowrap font-sans select-none">
                   <th className={th}>#</th>
-                  <th className={th}>الرصيد السابق (لتر)</th>
-                  <th className={th}>الوارد (لتر)</th>
-                  <th className={th}>الاستهلاك (لتر)</th>
-                  <th className={th}>الحالي (لتر)</th>
-                  <th className={th}>نسبة الامتلاء</th>
-                  <th className={th}>المطلوب للامتلاء (لتر)</th>
-                  <th className={th}>التاريخ</th>
+                  <th className={th}>{t('finance:tanksReport.col.prevBalance')}</th>
+                  <th className={th}>{t('finance:blackOil.form.inboundL')}</th>
+                  <th className={th}>{t('finance:blackOil.form.consumptionL')}</th>
+                  <th className={th}>{t('finance:tanksReport.col.currentShort')}</th>
+                  <th className={th}>{t('finance:blackOil.col.fill')}</th>
+                  <th className={th}>{t('finance:tanksReport.col.needFull')}</th>
+                  <th className={th}>{t('finance:blackOil.col.date')}</th>
                   <th className={th}></th>
                 </tr>
               </thead>
@@ -412,7 +411,7 @@ export const EtihadTanksReport: React.FC<{ company?: BlackOilCompany }> = ({ com
                 {pageRows.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="p-10 text-center text-sm text-slate-500 dark:text-slate-400 font-sans">
-                      لا توجد عمليات حفظ بعد. سجّل يومًا من صفحة النفط الأسود.
+                      {t('finance:tanksReport.logEmpty')}
                     </td>
                   </tr>
                 ) : (
@@ -441,10 +440,10 @@ export const EtihadTanksReport: React.FC<{ company?: BlackOilCompany }> = ({ com
                             type="button"
                             onClick={() => setSelected(r)}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-[11px] font-bold cursor-pointer active:scale-95 transition-all font-sans"
-                            title={r.tanksSnapshot ? 'طباعة كشف هذه العملية' : 'عملية قديمة بلا صورة للخزانات: تُطبع بالمناسيب الحالية'}
+                            title={r.tanksSnapshot ? t('finance:tanksReport.printThis') : t('finance:tanksReport.printOld')}
                           >
                             <Printer className="w-3.5 h-3.5" />
-                            طباعة
+                            {t('common:print.print')}
                           </button>
                         </td>
                       </tr>
@@ -458,9 +457,12 @@ export const EtihadTanksReport: React.FC<{ company?: BlackOilCompany }> = ({ com
           {saves.length > 0 && (
             <div className="p-4 sm:p-5 border-t border-slate-200/90 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
               <div className="text-slate-600 dark:text-slate-400">
-                عرض السجلات من <strong className="font-bold text-slate-900 dark:text-white font-mono">{startIndex + 1}</strong> إلى{' '}
-                <strong className="font-bold text-slate-900 dark:text-white font-mono">{startIndex + pageRows.length}</strong> من أصل{' '}
-                <strong className="font-bold text-blue-700 dark:text-blue-400 font-mono">{saves.length}</strong> سجل
+                <Trans
+                  t={t}
+                  i18nKey="common:pagination.showing"
+                  values={{ from: startIndex + 1, to: startIndex + pageRows.length, total: saves.length }}
+                  components={{ 1: <strong className="font-bold text-slate-900 dark:text-white font-mono" />, 2: <strong className="font-bold text-blue-700 dark:text-blue-400 font-mono" /> }}
+                />
               </div>
               <div className="flex items-center gap-1.5">
                 <button
@@ -469,8 +471,8 @@ export const EtihadTanksReport: React.FC<{ company?: BlackOilCompany }> = ({ com
                   disabled={safePage === 1}
                   className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-bold disabled:opacity-40 disabled:pointer-events-none cursor-pointer flex items-center gap-1"
                 >
-                  <ChevronRight className="w-4 h-4" />
-                  <span>السابق</span>
+                  <ChevronRight className="w-4 h-4 ltr:rotate-180" />
+                  <span>{t('common:pagination.prev')}</span>
                 </button>
                 <div className="flex items-center gap-1 mx-1">
                   {Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -498,8 +500,8 @@ export const EtihadTanksReport: React.FC<{ company?: BlackOilCompany }> = ({ com
                   disabled={safePage === totalPages}
                   className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-bold disabled:opacity-40 disabled:pointer-events-none cursor-pointer flex items-center gap-1"
                 >
-                  <span>التالي</span>
-                  <ChevronLeft className="w-4 h-4" />
+                  <span>{t('common:pagination.next')}</span>
+                  <ChevronLeft className="w-4 h-4 ltr:rotate-180" />
                 </button>
               </div>
             </div>
@@ -509,7 +511,7 @@ export const EtihadTanksReport: React.FC<{ company?: BlackOilCompany }> = ({ com
 
       {/* معاينة كشف العملية المختارة ثم الطباعة */}
       {selected && createPortal(
-        <div className="no-print fixed inset-0 z-[200] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6" dir="rtl" onClick={() => setSelected(null)}>
+        <div className="no-print fixed inset-0 z-[200] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6" dir={i18n.dir()} onClick={() => setSelected(null)}>
           <div onClick={e => e.stopPropagation()} className="w-full max-w-6xl max-h-full flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
@@ -517,7 +519,7 @@ export const EtihadTanksReport: React.FC<{ company?: BlackOilCompany }> = ({ com
                   <Printer className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[15px] font-black text-slate-900 dark:text-white leading-tight whitespace-nowrap">معاينة كشف جرد الخزانات</div>
+                  <div className="text-[15px] font-black text-slate-900 dark:text-white leading-tight whitespace-nowrap">{t('finance:tanksReport.previewTitle')}</div>
                   <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-600 dark:text-slate-300">
                       <CalendarDays className="w-3 h-3 text-blue-600" />
@@ -555,14 +557,14 @@ export const EtihadTanksReport: React.FC<{ company?: BlackOilCompany }> = ({ com
                     }`}
                   >
                     <LayoutGrid className="w-4 h-4" />
-                    أقسام الكشف
+                    {t('finance:tanksReport.sectionsLabel')}
                     <span className="font-mono px-1.5 rounded-md bg-blue-600 text-white text-[10px]">{Object.values(sections).filter(Boolean).length}/4</span>
                   </button>
                   {showSections && (
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setShowSections(false)} />
                       <div className="absolute left-0 top-full mt-1 z-20 w-[17rem] p-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xl grid grid-cols-2 gap-1">
-                        {(Object.keys(SECTION_LABELS) as SectionKey[]).map(k => {
+                        {SECTION_KEYS.map(k => {
                           const Icon = SECTION_ICONS[k];
                           const on = sections[k];
                           return (
@@ -580,7 +582,7 @@ export const EtihadTanksReport: React.FC<{ company?: BlackOilCompany }> = ({ com
                                 {on && <Check className="w-2.5 h-2.5" />}
                               </span>
                               <Icon className="w-3.5 h-3.5 shrink-0" />
-                              <span>{SECTION_LABELS[k]}</span>
+                              <span>{t(`finance:tanksReport.section.${k}`)}</span>
                             </button>
                           );
                         })}
@@ -597,18 +599,18 @@ export const EtihadTanksReport: React.FC<{ company?: BlackOilCompany }> = ({ com
                   className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-bold shadow-md cursor-pointer"
                 >
                   <Printer className="w-4 h-4" />
-                  طباعة
+                  {t('common:print.print')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setSelected(null)}
                   className="group flex items-center gap-1.5 pl-3 pr-2 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold shadow-sm hover:bg-slate-900 hover:text-white hover:border-slate-900 dark:hover:bg-slate-100 dark:hover:text-slate-900 cursor-pointer active:scale-95 transition-all"
-                  title="إغلاق"
+                  title={t('common:actions.close')}
                 >
                   <span className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-700 group-hover:bg-white/15 dark:group-hover:bg-slate-900/10 flex items-center justify-center transition-colors">
                     <X className="w-3.5 h-3.5" strokeWidth={2.5} />
                   </span>
-                  إغلاق
+                  {t('common:actions.close')}
                 </button>
                 </div>
               </div>
@@ -623,7 +625,7 @@ export const EtihadTanksReport: React.FC<{ company?: BlackOilCompany }> = ({ com
                   ))}
                 </div>
               ) : (
-                <div className="py-16 text-center text-sm text-slate-200">اختر قسمًا واحدًا على الأقل للطباعة</div>
+                <div className="py-16 text-center text-sm text-slate-200">{t('finance:tanksReport.pickSection')}</div>
               )}
             </div>
           </div>
