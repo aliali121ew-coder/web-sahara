@@ -853,7 +853,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* ==========================================================================
             FLOATING ENTERPRISE USER PROFILE & LOGOUT
            ========================================================================== */}
-        <div className={`transition-all duration-200 ${isCollapsed ? 'p-1 m-1' : 'p-2 m-2'} rounded-2xl border ${tokens.cardBg} ${tokens.cardBorder}`}>
+        <div className={`transition-all duration-200 ${isCollapsed ? 'p-0.5 m-0.5' : 'p-2 m-2'} rounded-2xl border ${tokens.cardBg} ${tokens.cardBorder}`}>
           {/* User Profile Card */}
           <div
             ref={profileMenuRef}
@@ -864,7 +864,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             aria-expanded={showProfileMenu}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowProfileMenu(prev => !prev); } }}
             title={profile?.name || t('profile')}
-            className={`flex items-center gap-2 p-1 rounded-xl cursor-pointer transition-colors group ${
+            className={`flex items-center gap-2.5 ${isCollapsed ? 'p-0.5' : 'p-1'} rounded-xl cursor-pointer transition-colors group ${
               isCollapsed ? 'justify-center' : 'justify-between hover:bg-black/5 dark:hover:bg-white/5'
             }`}
           >
@@ -873,12 +873,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 className="relative rounded-xl text-white font-black text-xs flex items-center justify-center shadow-xs overflow-hidden shrink-0 ring-1 ring-white/20"
                 style={{
                   background: profile?.color || '#2563eb',
-                  width: isCollapsed ? '30px' : '36px',
-                  height: isCollapsed ? '30px' : '36px',
-                  minWidth: isCollapsed ? '30px' : '36px',
-                  minHeight: isCollapsed ? '30px' : '36px',
-                  maxWidth: isCollapsed ? '30px' : '36px',
-                  maxHeight: isCollapsed ? '30px' : '36px',
+                  width: isCollapsed ? '38px' : '46px',
+                  height: isCollapsed ? '38px' : '46px',
+                  minWidth: isCollapsed ? '38px' : '46px',
+                  minHeight: isCollapsed ? '38px' : '46px',
+                  maxWidth: isCollapsed ? '38px' : '46px',
+                  maxHeight: isCollapsed ? '38px' : '46px',
                 }}
               >
                 {profile?.avatar ? (
