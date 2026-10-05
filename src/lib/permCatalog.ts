@@ -23,6 +23,7 @@ export const PERM_GROUPS: SectionGroup[] = [
       { id: 'reports', label: 'التقارير' },
       { id: 'chat', label: 'المحادثة' },
       { id: 'settings', label: 'الإعدادات' },
+      { id: 'appearance', label: 'ضبط المظهر والخلفية' },
     ],
   },
   {

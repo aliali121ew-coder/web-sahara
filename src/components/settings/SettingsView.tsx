@@ -68,7 +68,8 @@ export const SettingsView: React.FC = () => {
     window.scrollTo({ top: 0 });
   };
 
-  const visible = SECTIONS.filter(s => !s.adminOnly || isAdmin);
+  const { canCustomize } = useTheme();
+  const visible = SECTIONS.filter(s => (!s.adminOnly || isAdmin) && (s.id !== 'appearance' || canCustomize));
   const current = visible.find(s => s.id === section) || null;
 
   return (
@@ -191,6 +192,14 @@ const AppearanceAndNavigationSection: React.FC = () => {
     tag: string;
   }[] = [
     {
+      id: 'none',
+      title: 'تلقائي (Auto)',
+      desc: 'الافتراضي: خلفية هادئة تتبع الوضع الفاتح أو الليلي تلقائياً',
+      previewGradient: 'bg-gradient-to-r from-slate-100 to-slate-300 dark:from-slate-800 dark:to-slate-950',
+      colors: ['#f8fafc', '#94a3b8', '#090e17'],
+      tag: 'افتراضي تلقائي',
+    },
+    {
       id: 'titanium-slate',
       title: 'رصاصي التيتانيوم الهادئ (Titanium Slate)',
       desc: 'تدرج رمادي ورصاصي فائق الهدوء والراحة للعين، متطابق مع الواجهات الهندسية',
@@ -245,14 +254,6 @@ const AppearanceAndNavigationSection: React.FC = () => {
       previewGradient: 'bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-700',
       colors: ['#7c3aed', '#9333ea', '#4338ca'],
       tag: 'شفق مخملي',
-    },
-    {
-      id: 'none',
-      title: 'الافتراضي النقي (Pure Default)',
-      desc: 'لون مسطح هادئ كلاسيكي بدون أي تدرجات إضافية',
-      previewGradient: 'bg-gradient-to-r from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-900',
-      colors: ['#e2e8f0', '#94a3b8'],
-      tag: 'كلاسيكي مسطح',
     },
   ];
 

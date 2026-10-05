@@ -7,6 +7,11 @@ import {
   GradientIntensity,
   UiDensity,
 } from '../types';
+import { useSessionProfile } from '../lib/session';
+import { levelOf } from '../lib/permCatalog';
+
+/** المظهر الافتراضي: خلفية تلقائية تتبع الوضع الفاتح/الليلي. يُطبَّق على من لا يملك صلاحية ضبط المظهر */
+const DEFAULTS = { sidebarStyle: 'navy' as SidebarStyle, bgGradient: 'none' as BgGradientTheme, bgType: 'gradient' as BgType, gradientIntensity: 'subtle' as GradientIntensity, shadeLevel: 4, glassmorphism: true, uiDensity: 'standard' as UiDensity };
 
 interface ThemeContextType {
   themeMode: ThemeMode;
@@ -27,6 +32,8 @@ interface ThemeContextType {
   setGlassmorphism: (enabled: boolean) => void;
   setUiDensity: (density: UiDensity) => void;
   resetAllAppearance: () => void;
+  /** هل يملك الحساب صلاحية تخصيص المظهر */
+  canCustomize: boolean;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -44,7 +51,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [bgGradient, setBgGradientState] = useState<BgGradientTheme>(() => {
     const saved = localStorage.getItem('sahara_bg_gradient');
-    return (saved as BgGradientTheme) || 'petrol-blue';
+    return (saved as BgGradientTheme) || DEFAULTS.bgGradient;
   });
 
   const [bgType, setBgTypeState] = useState<BgType>(() => {
@@ -71,6 +78,13 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const saved = localStorage.getItem('sahara_ui_density');
     return (saved as UiDensity) || 'standard';
   });
+
+  // بدون صلاحية «ضبط المظهر»: تُعرض القيم الافتراضية دون مسح اختيارات الجهاز (تعود إن مُنحت الصلاحية)
+  const profile = useSessionProfile();
+  const canCustomize = !profile || levelOf(profile.perms || {}, !!profile.is_admin, 'appearance') >= 2;
+  const eff = canCustomize
+    ? { sidebarStyle, bgGradient, bgType, gradientIntensity, shadeLevel, glassmorphism, uiDensity }
+    : DEFAULTS;
 
   const applyThemeMode = (mode: ThemeMode) => {
     const root = document.documentElement;
@@ -135,8 +149,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('sahara_glassmorphism', String(glassmorphism));
     localStorage.setItem('sahara_ui_density', uiDensity);
 
-    applyAttributes(bgGradient, bgType, gradientIntensity, shadeLevel, glassmorphism, uiDensity);
-  }, [bgGradient, bgType, gradientIntensity, shadeLevel, glassmorphism, uiDensity]);
+    applyAttributes(eff.bgGradient, eff.bgType, eff.gradientIntensity, eff.shadeLevel, eff.glassmorphism, eff.uiDensity);
+  }, [bgGradient, bgType, gradientIntensity, shadeLevel, glassmorphism, uiDensity, canCustomize]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleThemeMode = () => {
     setThemeModeState((prev) => (prev === 'light' ? 'dark' : 'light'));
@@ -189,13 +203,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <ThemeContext.Provider
       value={{
         themeMode,
-        sidebarStyle,
-        bgGradient,
-        bgType,
-        gradientIntensity,
-        shadeLevel,
-        glassmorphism,
-        uiDensity,
+        ...eff,
+        canCustomize,
         toggleThemeMode,
         setThemeMode,
         setSidebarStyle,
