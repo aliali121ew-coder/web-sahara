@@ -3,7 +3,6 @@ import { useCanOpenTab } from '../../lib/usePermission';
 import {
   LayoutDashboard,
   Database,
-  Users,
   MessageSquare,
   Settings,
   Flame,
@@ -283,7 +282,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             { id: 'finance-sahara', label: t('navFinanceSahara') || 'مالية شركة صحاري' },
           ]
         },
-        { id: 'managers', label: t('navManagers') || 'مسؤولو المحطات', icon: Users },
       ]
     },
     {
