@@ -11,6 +11,8 @@ const SLUG: Record<string, string> = {
   SAT: 'weekday.sat', SUN: 'weekday.sun', MON: 'weekday.mon', TUE: 'weekday.tue', WED: 'weekday.wed', THU: 'weekday.thu', FRI: 'weekday.fri',
   // الشركات والمواقع الثابتة
   'صحاري كربلاء': 'company.sahara', 'شركة الاتحاد': 'company.etihad', 'شركة صحاري كربلاء': 'company.saharaCompany', 'المستودع الرئيسي': 'company.mainDepot',
+  // مواقع تخزين النفط الأسود
+  'موقع الريان': 'site.rayyan', 'موقع السكر': 'site.sukkar', 'موقع الصحاري': 'site.sahara',
   // أصناف بطاقات المشتريات
   'بنزين الصحاري': 'product.saharaGasoline', 'كاز الصحاري': 'product.saharaGasoil', 'كاز محطات': 'product.stationGasoil',
   'كاز الاتحاد': 'product.etihadGasoil', 'نفط الأسود': 'product.blackOil', 'نفط أسود': 'product.blackOil',

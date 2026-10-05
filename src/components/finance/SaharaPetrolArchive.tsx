@@ -6,7 +6,7 @@ import { SaharaFilePreview } from './SaharaFilePreview';
 import { OfficialReportHeaderRow } from '../print/OfficialReportHeader';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
 import { formatNumber, getBusinessDate } from '../../lib/utils';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation, Trans } from 'react-i18next';
 import { usePetrolLedger, PETROL_STATIONS, type ComputedPetrolRecord } from '../../lib/petrolLedger';
 import { useCentralTanks, resolveSaharaPetrolSectionKey } from '../../lib/centralTanks';
 import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
@@ -16,7 +16,7 @@ import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
  * (بنفس نمط أرشيف كشف رصيد شركة الصحاري)
  */
 export const SaharaPetrolArchive: React.FC = () => {
-  const { tr } = useLanguage();
+  const { t, i18n } = useTranslation(['finance', 'common']);
   const { computed, update } = usePetrolLedger();
 
   // المحطات بنفس ترتيب ومعرّفات صفحة البنزين (خزان المنظومة المطابق أو معرّف ثابت بالاسم)
@@ -79,7 +79,7 @@ export const SaharaPetrolArchive: React.FC = () => {
         </button>
         {manageFiles && (
           <>
-            <label title={tr('تغيير الملف')} className="px-1 py-1 border-s border-black/10 dark:border-white/10 opacity-60 hover:opacity-100 cursor-pointer">
+            <label title={t('finance:archive.changeFile')} className="px-1 py-1 border-s border-black/10 dark:border-white/10 opacity-60 hover:opacity-100 cursor-pointer">
               <RefreshCw className="w-3 h-3" />
               <input
                 type="file"
@@ -95,7 +95,7 @@ export const SaharaPetrolArchive: React.FC = () => {
             <button
               type="button"
               onClick={() => { setFilesPop(null); setConfirmDelete({ kind: 'file', file: f }); }}
-              title={tr('حذف الملف')}
+              title={t('finance:archive.deleteFile')}
               className="px-1 py-1 opacity-60 hover:opacity-100 cursor-pointer"
             >
               <Trash2 className="w-3 h-3" />
@@ -139,19 +139,19 @@ export const SaharaPetrolArchive: React.FC = () => {
     inbound: visible.reduce((a, r) => a + inboundOf(r), 0)
   }), [visible, stations]);
 
-  const rangeLabel = range === 'all' ? 'كل الأيام' : range === 'month' ? 'آخر شهر' : range === 'week' ? 'آخر أسبوع' : `من ${fromDate || '—'} إلى ${toDate || '—'}`;
+  const rangeLabel = range === 'all' ? t('common:print.rangeAll') : range === 'month' ? t('common:print.rangeMonth') : range === 'week' ? t('common:print.rangeWeek') : t('common:print.rangeFromTo', { from: fromDate || '—', to: toDate || '—' });
 
-  const HEADERS = ['#', 'التاريخ', 'الرصيد السابق', ...stations.map(s => s.name), 'الاستهلاك الكلي', 'الوارد', 'الرصيد الحالي'];
+  const HEADERS = ['#', t('finance:archive.col.date'), t('finance:ledger.previousBalance'), ...stations.map(s => s.name), t('finance:archive.col.totalConsumption'), t('finance:ledger.inbound'), t('finance:ledger.currentBalance')];
 
   // نسخة الطباعة الرسمية (كل الأيام حسب الفلتر)
   const sheet = (
-    <div className={`print-page-box bg-white text-slate-900 w-full ${orientation === 'landscape' ? 'min-h-[196mm]' : 'min-h-[279mm]'} flex flex-col gap-3 text-right font-cairo`} dir="rtl">
+    <div className={`print-page-box bg-white text-slate-900 w-full ${orientation === 'landscape' ? 'min-h-[196mm]' : 'min-h-[279mm]'} flex flex-col gap-3 text-start font-cairo`} dir={i18n.dir()}>
       <header className="print-header border-b-[3px] border-double border-slate-900 pb-2">
-        <OfficialReportHeaderRow compact={orientation === 'portrait'} badge="وثيقة رسمية معتمدة" title="كشف بنزين شركة الصحاري" />
+        <OfficialReportHeaderRow compact={orientation === 'portrait'} badge={t('common:print.badgeOfficial')} title={t('finance:archive.petrol.printTitle')} />
         <div className="mt-2 flex justify-between border border-slate-300 px-2.5 py-1 text-[9.5px]">
           <span className="text-slate-500 font-bold">{rangeLabel}</span>
           <span className="font-mono font-black">{visible.length ? `${visible[visible.length - 1].date} — ${visible[0].date}` : ''}</span>
-          <span className="text-slate-500">تاريخ الطباعة: <span className="font-mono font-black text-slate-900">{getBusinessDate()}</span></span>
+          <span className="text-slate-500"><Trans t={t} i18nKey="common:print.printDate" values={{ date: getBusinessDate() }} components={{ 1: <span className="font-mono font-black text-slate-900" /> }} /></span>
         </div>
       </header>
       <table className="w-full border-collapse text-[9.5px]">
@@ -177,7 +177,7 @@ export const SaharaPetrolArchive: React.FC = () => {
         {visible.length > 0 && (
           <tfoot>
             <tr className="bg-slate-100 font-black">
-              <td className="px-1.5 py-1 text-center border border-slate-300" colSpan={3}>الإجمالي</td>
+              <td className="px-1.5 py-1 text-center border border-slate-300" colSpan={3}>{t('finance:archive.total')}</td>
               {[...totals.stations, totals.consumption, totals.inbound].map((val, k) => (
                 <td key={k} className="px-1.5 py-1 text-center font-mono border border-slate-300">{formatNumber(val)}</td>
               ))}
@@ -187,11 +187,11 @@ export const SaharaPetrolArchive: React.FC = () => {
         )}
       </table>
       <div className="grid grid-cols-3 gap-2 text-center mt-auto pt-4">
-        {['المحاسب', 'مدير الموقع', 'المدير العام'].map(role => (
+        {[t('common:print.role.accountant'), t('common:print.role.site'), t('common:print.role.general')].map(role => (
           <div key={role} className="border border-dashed border-slate-400 rounded p-1">
             <span className="text-[8.5px] font-black text-slate-800 block">{role}</span>
             <div className="h-5 border-b border-slate-200 my-0.5" />
-            <span className="text-[7.5px] text-slate-500 block">التوقيع والتاريخ</span>
+            <span className="text-[7.5px] text-slate-500 block">{t('common:print.signature')}</span>
           </div>
         ))}
       </div>
@@ -206,24 +206,24 @@ export const SaharaPetrolArchive: React.FC = () => {
   );
 
   const previewModal = showPreview && createPortal(
-    <div className="no-print fixed inset-0 z-[200] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6" dir="rtl" onClick={() => setShowPreview(false)}>
+    <div className="no-print fixed inset-0 z-[200] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6" dir={i18n.dir()} onClick={() => setShowPreview(false)}>
       <div onClick={e => e.stopPropagation()} className="w-full max-w-6xl max-h-full flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-50 dark:bg-slate-900">
           <div className="flex items-center gap-2 font-black text-slate-900 dark:text-white">
             <Printer className="w-5 h-5 text-teal-600" />
-            {tr('معاينة كشف بنزين شركة الصحاري')}
+            {t('finance:archive.petrol.preview')}
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-2 py-1 rounded-xl border border-slate-300 dark:border-slate-700">
               <LayoutTemplate className="w-3.5 h-3.5 text-indigo-600" />
-              <span className="text-slate-500 dark:text-slate-400 font-bold text-[11px]">{tr('الاتجاه')}:</span>
+              <span className="text-slate-500 dark:text-slate-400 font-bold text-[11px]">{t('common:print.orientation')}:</span>
               <select
                 value={orientation}
                 onChange={e => setOrientation(e.target.value as 'landscape' | 'portrait')}
                 className="bg-transparent text-slate-800 dark:text-slate-200 font-black focus:outline-none cursor-pointer text-xs"
               >
-                <option value="landscape" className="dark:bg-slate-800">{tr('أفقي بالعرض')}</option>
-                <option value="portrait" className="dark:bg-slate-800">{tr('عمودي بالطول')}</option>
+                <option value="landscape" className="dark:bg-slate-800">{t('common:print.landscape')}</option>
+                <option value="portrait" className="dark:bg-slate-800">{t('common:print.portrait')}</option>
               </select>
             </div>
             <button
@@ -232,9 +232,9 @@ export const SaharaPetrolArchive: React.FC = () => {
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-md cursor-pointer"
             >
               <Printer className="w-4 h-4" />
-              {tr('طباعة')}
+              {t('common:print.print')}
             </button>
-            <button type="button" onClick={() => setShowPreview(false)} className="p-2 rounded-xl text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 cursor-pointer" title={tr('إغلاق')}>
+            <button type="button" onClick={() => setShowPreview(false)} className="p-2 rounded-xl text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 cursor-pointer" title={t('common:actions.close')}>
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -261,7 +261,7 @@ export const SaharaPetrolArchive: React.FC = () => {
       {previewModal}
       {previewFile && <SaharaFilePreview file={previewFile} onClose={() => setPreviewFile(null)} />}
       {confirmDelete && createPortal(
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm animate-in fade-in duration-150" dir="rtl" onClick={() => setConfirmDelete(null)}>
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm animate-in fade-in duration-150" dir={i18n.dir()} onClick={() => setConfirmDelete(null)}>
           <div onClick={e => e.stopPropagation()} className="w-full max-w-sm rounded-3xl bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
             <div className="p-5 flex items-start gap-3.5">
               <div className="w-11 h-11 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
@@ -270,23 +270,23 @@ export const SaharaPetrolArchive: React.FC = () => {
               <div className="min-w-0 space-y-1">
                 {confirmDelete.kind === 'file' ? (
                   <>
-                    <div className="font-black text-slate-900 dark:text-white">{tr('حذف الملف؟')}</div>
+                    <div className="font-black text-slate-900 dark:text-white">{t('finance:archive.deleteFileTitle')}</div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 break-all">{confirmDelete.file.name}</p>
                   </>
                 ) : (
                   <>
-                    <div className="font-black text-slate-900 dark:text-white">{tr('حذف يوم')} <span className="font-mono">{confirmDelete.date}</span>{tr('؟')}</div>
+                    <div className="font-black text-slate-900 dark:text-white"><Trans t={t} i18nKey="finance:blackOil.deleteDay" values={{ date: confirmDelete.date }} components={{ 1: <span className="font-mono" /> }} /></div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                      {tr('يُحذف من الأرشيف ومن صفحة بنزين الصحاري مع ملفاته المرفقة، ويُعاد حساب أرصدة الأيام التي بعده.')}
+                      {t('finance:archive.petrol.deleteText')}
                     </p>
                   </>
                 )}
-                <p className="text-[11px] text-rose-600 dark:text-rose-400 font-bold">{tr('لا يمكن التراجع عن الحذف')}</p>
+                <p className="text-[11px] text-rose-600 dark:text-rose-400 font-bold">{t('finance:blackOil.deleteWarning')}</p>
               </div>
             </div>
             <div className="px-5 pb-5 grid grid-cols-[auto_1fr] gap-2.5">
               <button type="button" autoFocus onClick={() => setConfirmDelete(null)} className="px-5 h-11 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold cursor-pointer">
-                {tr('إلغاء')}
+                {t('common:actions.cancel')}
               </button>
               <button
                 type="button"
@@ -298,7 +298,7 @@ export const SaharaPetrolArchive: React.FC = () => {
                 className="h-11 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-black flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] transition-all"
               >
                 <Trash2 className="w-4 h-4" />
-                {tr('نعم، احذف')}
+                {t('finance:blackOil.deleteYes')}
               </button>
             </div>
           </div>
@@ -310,13 +310,13 @@ export const SaharaPetrolArchive: React.FC = () => {
         <>
           <div className="fixed inset-0 z-[110]" onClick={() => setFilesPop(null)} />
           <div
-            dir="rtl"
+            dir={i18n.dir()}
             style={{ top: filesPop.top, left: Math.min(Math.max(filesPop.left - 150, 12), window.innerWidth - 312) }}
             className="fixed z-[111] w-[300px] rounded-2xl bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-700 shadow-2xl p-3 space-y-2 animate-in fade-in zoom-in-95 duration-150"
           >
             <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800">
               <span className="text-xs font-black text-slate-800 dark:text-slate-100">
-                {tr('ملفات يوم')} <span className="font-mono">{filesPop.date}</span>
+                <Trans t={t} i18nKey="finance:archive.dayFiles" values={{ date: filesPop.date }} components={{ 1: <span className="font-mono" /> }} />
               </span>
               <span className="text-[10px] font-black font-mono px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500">
                 {filesByRecord.get(filesPop.recordId)?.length ?? 0}
@@ -334,23 +334,23 @@ export const SaharaPetrolArchive: React.FC = () => {
           <div>
             <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
               <Fuel className="w-5 h-5 text-teal-600 dark:text-teal-400" />
-              <span>{tr('أرشيف بنزين الصحاري')}</span>
+              <span>{t('finance:archive.petrol.title')}</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              {tr('كل الأيام المسجلة: الرصيد السابق + الوارد − استهلاك المحطات = الرصيد الحالي')}
+              {t('finance:archive.petrol.hint')}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs">
-              {([['all', 'الكل'], ['month', 'آخر شهر'], ['week', 'آخر أسبوع']] as const).map(([k, l]) => (
+              {([['all', t('common:enum.category.all')], ['month', t('common:print.rangeMonth')], ['week', t('common:print.rangeWeek')]] as const).map(([k, l]) => (
                 <button
                   key={k}
                   type="button"
                   onClick={() => { setRange(k); setPage(1); }}
                   className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${range === k ? 'bg-teal-600 text-white' : 'text-slate-600 dark:text-slate-300'}`}
                 >
-                  {tr(l)}
+                  {l}
                 </button>
               ))}
             </div>
@@ -366,7 +366,7 @@ export const SaharaPetrolArchive: React.FC = () => {
                     ? 'border-teal-400 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300'
                     : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                 }`}
-                title={tr('تحديد فترة')}
+                title={t('finance:blackOil.pickRange')}
               >
                 <CalendarDays className="w-4 h-4" />
                 {range === 'custom' && <span className="font-mono">{fromDate || '…'} — {toDate || '…'}</span>}
@@ -390,11 +390,11 @@ export const SaharaPetrolArchive: React.FC = () => {
             <button
               type="button"
               onClick={() => setManageFiles(m => !m)}
-              title={tr(manageFiles ? 'إنهاء تعديل الملفات' : 'تغيير أو حذف الملفات')}
+              title={manageFiles ? t('finance:archive.finishFiles') : t('finance:archive.manageFiles')}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold shadow-md active:scale-95 transition-all cursor-pointer ${manageFiles ? 'bg-teal-600 hover:bg-teal-700 text-white shadow-teal-600/25' : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-slate-900/5'}`}
             >
               {manageFiles ? <Check className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
-              {tr(manageFiles ? 'تم' : 'تعديل')}
+              {manageFiles ? t('common:actions.done') : t('common:actions.edit')}
             </button>
             <button
               type="button"
@@ -403,31 +403,31 @@ export const SaharaPetrolArchive: React.FC = () => {
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 disabled:opacity-40 text-white text-xs font-bold shadow-md active:scale-95 transition-all cursor-pointer"
             >
               <Printer className="w-4 h-4" />
-              {tr('طباعة')}
+              {t('common:print.print')}
             </button>
           </div>
         </div>
 
         {filesError && (
           <div className="mx-4 sm:mx-5 mb-3 flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 ring-1 ring-rose-200 dark:ring-rose-900 text-rose-700 dark:text-rose-300 text-xs font-bold">
-            <span className="flex items-center gap-1.5"><AlertTriangle className="w-4 h-4 shrink-0" />{tr(filesError)}</span>
+            <span className="flex items-center gap-1.5"><AlertTriangle className="w-4 h-4 shrink-0" />{filesError}</span>
             <button type="button" onClick={clearError} className="p-0.5 cursor-pointer"><X className="w-3.5 h-3.5" /></button>
           </div>
         )}
 
         <div className="overflow-x-auto">
-          <table className="w-full text-right text-xs border-collapse font-mono">
+          <table className="w-full text-start text-xs border-collapse font-mono">
             <thead>
               <tr className="bg-[#eef2f8] dark:bg-[#1c2b44] text-[#1c3b6f] dark:text-blue-100 border-b-2 border-[#1c3b6f]/70 dark:border-blue-900 font-black text-[11.5px] whitespace-nowrap font-sans select-none">
-                {HEADERS.map(h => <th key={h} className={th}>{tr(h)}</th>)}
-                <th className={`${th} text-center`}>{tr('الإجراءات')}</th>
+                {HEADERS.map(h => <th key={h} className={th}>{h}</th>)}
+                <th className={`${th} text-center`}>{t('finance:archive.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
               {visible.length === 0 ? (
                 <tr>
                   <td colSpan={HEADERS.length + 1} className="p-10 text-center text-sm text-slate-500 dark:text-slate-400 font-sans">
-                    {tr('لا توجد سجلات في هذه الفترة. سجّل الأيام من صفحة بنزين الصحاري.')}
+                    {t('finance:archive.petrol.empty')}
                   </td>
                 </tr>
               ) : (
@@ -442,7 +442,7 @@ export const SaharaPetrolArchive: React.FC = () => {
                     <td className={`${td} font-bold text-red-600 dark:text-red-400`}>{formatNumber(r.totalConsumption)}</td>
                     <td
                       className={`${td} font-bold text-emerald-600 dark:text-emerald-400`}
-                      title={r.inboundInternal ? `${tr('خارجي')}: ${formatNumber(r.inboundQty || 0)} · ${tr('داخلي')}: ${formatNumber(r.inboundInternal)}` : undefined}
+                      title={r.inboundInternal ? t('finance:archive.petrol.inboundSplit', { external: formatNumber(r.inboundQty || 0), internal: formatNumber(r.inboundInternal) }) : undefined}
                     >
                       {formatNumber(inboundOf(r))}
                     </td>
@@ -459,7 +459,7 @@ export const SaharaPetrolArchive: React.FC = () => {
                               const rect = e.currentTarget.getBoundingClientRect();
                               setFilesPop({ recordId: r.id, date: r.date, top: rect.bottom + 6, left: rect.left + rect.width / 2 });
                             }}
-                            title={tr('عرض كل الملفات')}
+                            title={t('finance:archive.viewFiles')}
                             className="inline-flex items-center px-2 py-1 rounded-lg bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 text-[10px] font-black font-mono cursor-pointer hover:brightness-110"
                             dir="ltr"
                           >
@@ -469,11 +469,11 @@ export const SaharaPetrolArchive: React.FC = () => {
                         {/* الإرفاق: دائمًا لليوم بلا ملفات، ولليوم الذي فيه ملفات من وضع الإدارة فقط */}
                         {(manageFiles || !filesByRecord.get(r.id)?.length) && (
                         <label
-                          title={tr('إرفاق ملفات PDF و Excel')}
+                          title={t('finance:archive.attachHint')}
                           className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:ring-teal-400 hover:text-teal-700 dark:hover:text-teal-300 text-[10px] font-bold transition-colors ${busy === r.id ? 'opacity-60 pointer-events-none' : 'cursor-pointer'}`}
                         >
                           {busy === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Paperclip className="w-3.5 h-3.5" />}
-                          {tr(busy === r.id ? 'جارٍ الرفع' : 'إرفاق')}
+                          {busy === r.id ? t('finance:archive.uploading') : t('finance:archive.attach')}
                           <input
                             type="file"
                             multiple
@@ -492,11 +492,11 @@ export const SaharaPetrolArchive: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => setConfirmDelete({ kind: 'day', id: r.id, date: r.date })}
-                            title={tr('حذف اليوم')}
+                            title={t('finance:archive.deleteDay')}
                             className="inline-flex items-center gap-1 px-2 py-1 rounded-lg ring-1 ring-rose-200 dark:ring-rose-900 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-950 text-[10px] font-bold cursor-pointer transition-colors"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
-                            {tr('حذف اليوم')}
+                            {t('finance:archive.deleteDay')}
                           </button>
                         )}
                       </div>
@@ -508,7 +508,7 @@ export const SaharaPetrolArchive: React.FC = () => {
             {visible.length > 0 && (
               <tfoot>
                 <tr className="bg-slate-50 dark:bg-slate-800/60 border-t-2 border-slate-300 dark:border-slate-700 font-black text-slate-900 dark:text-white whitespace-nowrap">
-                  <td className={`${td} font-sans`} colSpan={3}>{tr('الإجمالي')} <span className="text-[10px] font-bold text-slate-400">({visible.length} {tr('يوم')})</span></td>
+                  <td className={`${td} font-sans`} colSpan={3}>{t('finance:archive.total')} <span className="text-[10px] font-bold text-slate-400">({t('common:units.days', { count: visible.length })})</span></td>
                   {totals.stations.map((v, k) => <td key={k} className={td}>{formatNumber(v)}</td>)}
                   <td className={`${td} text-red-600 dark:text-red-400`}>{formatNumber(totals.consumption)}</td>
                   <td className={`${td} text-emerald-600 dark:text-emerald-400`}>{formatNumber(totals.inbound)}</td>
@@ -523,9 +523,12 @@ export const SaharaPetrolArchive: React.FC = () => {
         {visible.length > 0 && (
           <div className="p-4 sm:p-5 border-t border-slate-200/90 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
             <div className="text-slate-600 dark:text-slate-400">
-              {tr('عرض السجلات من')} <strong className="font-bold text-slate-900 dark:text-white font-mono">{startIndex + 1}</strong> {tr('إلى')}{' '}
-              <strong className="font-bold text-slate-900 dark:text-white font-mono">{endIndex}</strong> {tr('من أصل')}{' '}
-              <strong className="font-bold text-teal-700 dark:text-teal-400 font-mono">{visible.length}</strong> {tr('سجل')}
+              <Trans
+                t={t}
+                i18nKey="common:pagination.showing"
+                values={{ from: startIndex + 1, to: endIndex, total: visible.length }}
+                components={{ 1: <strong className="font-bold text-slate-900 dark:text-white font-mono" />, 2: <strong className="font-bold text-teal-700 dark:text-teal-400 font-mono" /> }}
+              />
             </div>
             <div className="flex items-center gap-1.5">
               <button
@@ -534,8 +537,8 @@ export const SaharaPetrolArchive: React.FC = () => {
                 disabled={safePage === 1}
                 className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-bold disabled:opacity-40 disabled:pointer-events-none cursor-pointer flex items-center gap-1"
               >
-                <ChevronRight className="w-4 h-4" />
-                <span>{tr('السابق')}</span>
+                <ChevronRight className="w-4 h-4 ltr:rotate-180" />
+                <span>{t('common:pagination.prev')}</span>
               </button>
               <div className="flex items-center gap-1 mx-1">
                 {Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -563,8 +566,8 @@ export const SaharaPetrolArchive: React.FC = () => {
                 disabled={safePage === totalPages}
                 className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-bold disabled:opacity-40 disabled:pointer-events-none cursor-pointer flex items-center gap-1"
               >
-                <span>{tr('التالي')}</span>
-                <ChevronLeft className="w-4 h-4" />
+                <span>{t('common:pagination.next')}</span>
+                <ChevronLeft className="w-4 h-4 ltr:rotate-180" />
               </button>
             </div>
           </div>

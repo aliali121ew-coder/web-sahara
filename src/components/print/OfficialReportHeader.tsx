@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface OfficialReportHeaderRowProps {
   /** الشارة الداكنة فوق العنوان */
@@ -10,7 +11,9 @@ interface OfficialReportHeaderRowProps {
 }
 
 /** صف الترويسة الرسمية الموحّدة للكشوفات المطبوعة: شعارات المجموعة يمينًا، العنوان وسطًا، شعار الاتحاد يسارًا */
-export const OfficialReportHeaderRow: React.FC<OfficialReportHeaderRowProps> = ({ badge, title, compact = false }) => (
+export const OfficialReportHeaderRow: React.FC<OfficialReportHeaderRowProps> = ({ badge, title, compact = false }) => {
+  const { t } = useTranslation('common');
+  return (
   <div className={`flex flex-row items-center justify-between w-full ${compact ? 'gap-2' : 'gap-5'}`}>
     
     {/* Right Section: Group Logos & Agricultural Entity Name */}
@@ -18,31 +21,31 @@ export const OfficialReportHeaderRow: React.FC<OfficialReportHeaderRowProps> = (
       <div className={`flex flex-row items-center flex-nowrap ${compact ? 'gap-1.5' : 'gap-2.5'}`}>
         <img
           src="/logos/sahara.png"
-          alt="صحاري كربلاء"
+          alt={t('enum.company.sahara')}
           className={`${compact ? 'h-10' : 'h-14'} w-auto object-contain shrink-0`}
         />
         <img
           src="/logos/sama.png"
-          alt="سما كربلاء"
+          alt={t('print.logo.sama')}
           className={`${compact ? 'h-10' : 'h-14'} w-auto object-contain shrink-0`}
         />
         <img
           src="/logos/bawadi.png"
-          alt="بوادي كربلاء"
+          alt={t('print.logo.bawadi')}
           className={`${compact ? 'h-9' : 'h-12'} w-auto object-contain shrink-0`}
         />
         <img
           src="/logos/kac.png"
-          alt="مدينة كربلاء الزراعية"
+          alt={t('print.logo.kac')}
           className={`${compact ? 'h-9' : 'h-12'} w-auto object-contain shrink-0`}
         />
       </div>
       <div className="mt-0.5">
         <h1 className={`${compact ? 'text-[11px]' : 'text-[13px]'} font-black text-slate-950 leading-tight whitespace-nowrap`}>
-          مجموعة شركات كربلاء للإنتاج الزراعي والحيواني
+          {t('print.groupName')}
         </h1>
         <p className={`${compact ? 'text-[8.5px]' : 'text-[10px]'} font-bold text-slate-700 whitespace-nowrap`}>
-          الإدارة المركزية للوقود والمشتقات النفطية
+          {t('print.fuelDepartment')}
         </p>
       </div>
     </div>
@@ -61,18 +64,19 @@ export const OfficialReportHeaderRow: React.FC<OfficialReportHeaderRowProps> = (
     <div className="flex flex-col items-end gap-1 shrink-0">
       <img
         src="/logos/etihad.png"
-        alt="شركة الاتحاد"
+        alt={t('enum.company.etihad')}
         className={`${compact ? 'h-11' : 'h-16'} w-auto object-contain shrink-0`}
       />
-      <div className="text-left" dir="rtl">
+      <div className="text-end">
         <span className={`${compact ? 'text-[10.5px]' : 'text-[12.5px]'} font-black text-slate-950 block leading-tight whitespace-nowrap`}>
-          مجموعة الاتحاد للصناعات
+          {t('print.etihadGroup')}
         </span>
         <span className="text-[9.5px] font-bold text-blue-900 block whitespace-nowrap">
-          الشريك الاستراتيجي المعتمد
+          {t('print.partner')}
         </span>
       </div>
     </div>
 
   </div>
-);
+  );
+};

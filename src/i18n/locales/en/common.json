@@ -103,6 +103,11 @@
       "surplus": "Surplus",
       "draw": "Drawn from balance",
       "balanced": "Balanced"
+    },
+    "site": {
+      "rayyan": "Al-Rayyan site",
+      "sukkar": "Al-Sukkar site",
+      "sahara": "Sahara site"
     }
   },
   "calendar": {
@@ -124,5 +129,38 @@
       "thu": "Th",
       "fri": "Fr"
     }
+  },
+  "print": {
+    "logo": {
+      "sama": "Sama Karbala",
+      "bawadi": "Bawadi Karbala",
+      "kac": "Karbala Agricultural City"
+    },
+    "groupName": "Karbala Group for Agricultural and Livestock Production",
+    "fuelDepartment": "Central Department of Fuel and Petroleum Products",
+    "etihadGroup": "Etihad Industries Group",
+    "partner": "Accredited strategic partner",
+    "badgeOfficial": "Approved official document",
+    "printDate": "Printed on: <1>{{date}}</1>",
+    "signature": "Signature and date",
+    "role": {
+      "tanks": "Tanks officer",
+      "site": "Site manager",
+      "general": "General manager",
+      "accountant": "Accountant"
+    },
+    "orientation": "Orientation",
+    "landscape": "Landscape",
+    "portrait": "Portrait",
+    "print": "Print",
+    "rangeAll": "All days",
+    "rangeMonth": "Last month",
+    "rangeWeek": "Last week",
+    "rangeFromTo": "From {{from}} to {{to}}"
+  },
+  "pagination": {
+    "showing": "Showing records <1>{{from}}</1> to <1>{{to}}</1> of <2>{{total}}</2>",
+    "prev": "Previous",
+    "next": "Next"
   }
 }

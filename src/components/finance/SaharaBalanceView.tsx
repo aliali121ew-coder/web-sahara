@@ -38,7 +38,8 @@ import { useFuelData } from '../../context/FuelDataContext';
 import { computeDailyBuys, ownSaharaDeliveries } from '../../lib/inboundPrice';
 import { isSpreadsheetOrPdf, readSaharaReportFile, matchStation } from '../../lib/saharaReportFile';
 import { formatNumber, getBusinessDate } from '../../lib/utils';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation, Trans } from 'react-i18next';
+import { fmtList } from '../../i18n/format';
 import {
   useSaharaLedger,
   computeSahara,
@@ -114,7 +115,6 @@ const iconProps = { xmlns: 'http://www.w3.org/2000/svg', viewBox: '0 0 24 24', f
 
 const ChickenIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg {...iconProps} className={className}>
-    <title>دجاجة</title>
     {/* العُرف والمنقار والدلّاية مملوءة حتى يبقى الرأس واضحًا بالحجم الصغير */}
     <path d="M8.6 9.6C7.7 7.8 8.6 6.2 10.3 6.5c.3-2 2.6-2.6 3.6-1 1.2-1.2 3.4-.4 3 1.8l-.8 2" fill="currentColor" />
     <path d="M7 22v-8.5a5.5 5.5 0 0 1 11 0V15a3 3 0 0 1-3 3v4" />
@@ -126,7 +126,6 @@ const ChickenIcon: React.FC<{ className?: string }> = ({ className }) => (
 
 const DieselGeneratorIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg {...iconProps} className={className}>
-    <title>مولدة ديزل 500 KVA</title>
     <rect x="3" y="8" width="18" height="11" rx="1.5" />
     <path d="M17 8V4h2.5" />
     <rect x="5.5" y="11" width="5" height="5" rx=".5" />
@@ -171,7 +170,7 @@ const formConsumption = (f: Pick<FormState, 'vehicles' | 'farms' | 'generators' 
 const MAX_STATION_SLOTS = 8;
 
 export const SaharaBalanceView: React.FC = () => {
-  const { tr } = useLanguage();
+  const { t } = useTranslation(['finance', 'common']);
   const { records, computed, latest, update, hasPending, publish, discard } = useSaharaLedger();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
@@ -226,7 +225,7 @@ export const SaharaBalanceView: React.FC = () => {
     try {
       // Excel و PDF يُقرآن داخل المتصفح مباشرة (الصور غير مدعومة حاليًا)
       if (!isSpreadsheetOrPdf(file)) {
-        setUpload({ status: 'error', message: 'رفع الصور غير مدعوم — ارفع الكشف كملف Excel أو PDF' });
+        setUpload({ status: 'error', message: t('finance:saharaBalance.upload.imagesUnsupported') });
         return;
       }
       const names = liveStations.map(s => s.name);
@@ -285,12 +284,12 @@ export const SaharaBalanceView: React.FC = () => {
         const consumption = r.vehicles + r.farms + r.generators + r.sentToFarms;
         const diff = Math.round(previous + inbound - consumption - r.currentInFile);
         check = diff === 0
-          ? `✓ الرصيد الحالي مطابق للكشف: ${formatNumber(Math.round(r.currentInFile))} لتر`
-          : `⚠ الرصيد المحسوب يختلف عن الكشف (${formatNumber(Math.round(r.currentInFile))}) بمقدار ${formatNumber(diff)} لتر`;
+          ? `✓ ${t('finance:saharaBalance.upload.checkMatch', { value: formatNumber(Math.round(r.currentInFile)) })}`
+          : `⚠ ${t('finance:saharaBalance.upload.checkMismatch', { value: formatNumber(Math.round(r.currentInFile)), diff: formatNumber(diff) })}`;
       }
       setUpload({ status: 'done', fileName: file.name, filled, unmatched, notes: [check, r.notes].filter(Boolean).join(' — ') });
     } catch (e) {
-      setUpload({ status: 'error', message: e instanceof Error ? e.message : 'تعذّر تحليل الصورة' });
+      setUpload({ status: 'error', message: e instanceof Error ? e.message : t('finance:ledger.upload.parseFailed') });
     }
   };
 
@@ -469,10 +468,10 @@ export const SaharaBalanceView: React.FC = () => {
   const goodTone = 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300';
   const badTone = 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300';
   const compareChip = (today: number, yesterday: number | undefined, increaseIsGood: boolean) => {
-    if (yesterday === undefined) return { chip: tr('لا يوجد أمس'), chipTone: neutralTone, chipTitle: undefined };
+    if (yesterday === undefined) return { chip: t('finance:ledger.noYesterday'), chipTone: neutralTone, chipTitle: undefined };
     const diff = today - yesterday;
-    const chipTitle = `${tr('أمس')}: ${formatNumber(yesterday)} ← ${tr('اليوم')}: ${formatNumber(today)}`;
-    if (diff === 0) return { chip: `= ${tr('بدون تغيير')}`, chipTone: neutralTone, chipTitle };
+    const chipTitle = t('finance:ledger.compareTitle', { yesterday: formatNumber(yesterday), today: formatNumber(today) });
+    if (diff === 0) return { chip: `= ${t('finance:ledger.noChange')}`, chipTone: neutralTone, chipTitle };
     return {
       chip: `${diff > 0 ? '▲ +' : '▼ −'}${formatNumber(Math.abs(diff))}`,
       chipTone: (diff > 0) === increaseIsGood ? goodTone : badTone,
@@ -482,33 +481,33 @@ export const SaharaBalanceView: React.FC = () => {
 
   const kpis = [
     {
-      label: 'الرصيد السابق',
+      label: t('finance:ledger.previousBalance'),
       value: v?.previous ?? 0,
       icon: History,
       iconBg: 'text-slate-600 dark:text-slate-300',
       accent: 'from-slate-300 to-slate-500',
-      note: 'الرصيد الحالي لليوم السابق ',
+      note: t('finance:ledger.previousBalanceNote'),
       chip: v ? v.date : '—',
       chipTone: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
       chipTitle: undefined as string | undefined
     },
     {
-      label: 'الوارد',
+      label: t('finance:ledger.inbound'),
       value: v?.inbound ?? 0,
       icon: ArrowDownToLine,
       iconBg: 'text-emerald-600 dark:text-emerald-400',
       accent: 'from-emerald-400 to-teal-500',
-      note: 'الاتحاد + خارجي',
+      note: t('finance:saharaBalance.inboundNote'),
       // زيادة الوارد عن أمس = أخضر
       ...compareChip(v?.inbound ?? 0, prevView?.inbound, true)
     },
     {
-      label: 'الاستهلاك الفعلي',
+      label: t('finance:saharaBalance.actualConsumption'),
       value: v?.actualConsumption ?? 0,
       icon: Flame,
       iconBg: 'text-rose-600 dark:text-rose-400',
       accent: 'from-rose-400 to-red-500',
-      note: 'آليات + مزارع + مولدات',
+      note: t('finance:saharaBalance.actualConsumptionNote'),
       // زيادة الاستهلاك عن أمس = أحمر
       ...compareChip(v?.actualConsumption ?? 0, prevView?.actualConsumption, false)
     }
@@ -516,9 +515,9 @@ export const SaharaBalanceView: React.FC = () => {
 
   const actual = v?.actualConsumption ?? 0;
   const consumptionItems = [
-    { label: 'الآليات', value: v?.vehicles ?? 0, icon: Tractor, tile: 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400', bar: 'bg-blue-500' },
-    { label: 'المزارع', value: v?.farms ?? 0, icon: ChickenIcon, tile: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400', bar: 'bg-emerald-500' },
-    { label: 'المولدات', value: v?.generators ?? 0, icon: DieselGeneratorIcon, tile: 'bg-violet-50 text-violet-600 dark:bg-violet-950/50 dark:text-violet-400', bar: 'bg-violet-500' }
+    { label: t('finance:saharaBalance.vehicles'), value: v?.vehicles ?? 0, icon: Tractor, tile: 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400', bar: 'bg-blue-500' },
+    { label: t('finance:saharaBalance.farms'), value: v?.farms ?? 0, icon: ChickenIcon, tile: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400', bar: 'bg-emerald-500' },
+    { label: t('finance:saharaBalance.generators'), value: v?.generators ?? 0, icon: DieselGeneratorIcon, tile: 'bg-violet-50 text-violet-600 dark:bg-violet-950/50 dark:text-violet-400', bar: 'bg-violet-500' }
   ];
 
   const EXTERNAL_TONES: Record<SaharaExternalSource, { tile: string; bar: string }> = {
@@ -548,8 +547,8 @@ export const SaharaBalanceView: React.FC = () => {
           <Icon className="w-5 h-5" />
         </div>
         <div className="min-w-0">
-          <h3 className="text-[15px] font-black text-slate-900 dark:text-white truncate">{tr(title)}</h3>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{tr(subtitle)}</p>
+          <h3 className="text-[15px] font-black text-slate-900 dark:text-white truncate">{title}</h3>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{subtitle}</p>
         </div>
       </div>
     </div>
@@ -570,7 +569,7 @@ export const SaharaBalanceView: React.FC = () => {
 
   const numInput = (key: 'vehicles' | 'farms' | 'generators' | 'sales', label: string, autoFocus = false) => (
     <label className="space-y-1">
-      <div className="h-5 flex items-center"><span className={fieldLabel}>{tr(label)}</span></div>
+      <div className="h-5 flex items-center"><span className={fieldLabel}>{label}</span></div>
       <NumberInput
 
         autoFocus={autoFocus}
@@ -591,10 +590,10 @@ onValue={v => setForm({ ...form!, [key]: v })}
             type="button"
             disabled={viewIndex <= 0}
             onClick={() => setViewId(computed[viewIndex - 1]?.id ?? null)}
-            title={tr('اليوم السابق')}
+            title={t('finance:ledger.prevDay')}
             className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-4 h-4 ltr:rotate-180" />
           </button>
           {/* التاريخ: يفتح تقويمًا للانتقال لأي يوم مسجّل (نفس تقويم الأرشيف) */}
           <button
@@ -604,13 +603,13 @@ onValue={v => setForm({ ...form!, [key]: v })}
               const r = e.currentTarget.getBoundingClientRect();
               setDatePop(p => (p ? null : { top: r.bottom + 8, left: Math.max(8, Math.min(r.left, window.innerWidth - 308)) }));
             }}
-            title={tr('اختيار يوم')}
+            title={t('finance:saharaBalance.pickDay')}
             className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-teal-400 dark:hover:border-teal-700 transition-colors cursor-pointer disabled:cursor-default"
           >
             <CalendarDays className="w-4 h-4 text-teal-600" />
             <span className="font-mono font-black text-sm text-slate-900 dark:text-white">{v?.date ?? '—'}</span>
             {v && viewIndex === computed.length - 1 && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300">{tr('آخر يوم')}</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300">{t('finance:ledger.latestDay')}</span>
             )}
           </button>
           {datePop && createPortal(
@@ -637,10 +636,10 @@ onValue={v => setForm({ ...form!, [key]: v })}
             type="button"
             disabled={viewIndex < 0 || viewIndex >= computed.length - 1}
             onClick={() => setViewId(viewIndex + 1 >= computed.length - 1 ? null : computed[viewIndex + 1].id)}
-            title={tr('اليوم التالي')}
+            title={t('finance:ledger.nextDay')}
             className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-4 h-4 ltr:rotate-180" />
           </button>
         </div>
         <div className="flex items-center gap-2">
@@ -652,7 +651,7 @@ onValue={v => setForm({ ...form!, [key]: v })}
               className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-amber-600/25 cursor-pointer active:scale-95 transition-all animate-pulse"
             >
               <CheckCircle2 className="w-4 h-4" />
-              {tr('تأكيد البيانات')}
+              {t('finance:ledger.confirmData')}
             </button>
           )}
           {/* إلغاء العملية: رفض البيانات المحفوظة غير المؤكدة والعودة لآخر نسخة معتمدة */}
@@ -663,7 +662,7 @@ onValue={v => setForm({ ...form!, [key]: v })}
               className="px-4 py-2 rounded-xl border border-rose-200 dark:border-rose-800/60 bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-black flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
             >
               <XCircle className="w-4 h-4" />
-              {tr('إلغاء العملية')}
+              {t('finance:ledger.discard')}
             </button>
           )}
           {/* السعر: سعر شراء اليوم (تلقائي من وارد الصحاري) — للعرض فقط */}
@@ -671,13 +670,13 @@ onValue={v => setForm({ ...form!, [key]: v })}
             <button
               type="button"
               onClick={() => setPriceOpen(true)}
-              title={tr('سعر شراء اليوم')}
+              title={t('finance:saharaBalance.todayBuyPrice')}
               className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
             >
               <Coins className="w-3.5 h-3.5 text-amber-500" />
-              {tr('السعر')}
+              {t('finance:ledger.price')}
               <span className="font-mono font-black text-blue-700 dark:text-blue-300">{buys.today ? buys.today.price.toFixed(1) : '—'}</span>
-              <span className="text-[10px] text-slate-400">{tr('د.ع')}</span>
+              <span className="text-[10px] text-slate-400">{t('common:units.iqd')}</span>
             </button>
             {/* نافذة السعر في وسط الشاشة: الأعلى السعر المعتمد (للقراءة فقط)، والأسفل السعر الجديد */}
             {priceOpen && createPortal(
@@ -694,9 +693,9 @@ onValue={v => setForm({ ...form!, [key]: v })}
                         <span className="w-8 h-8 rounded-xl bg-white/15 ring-1 ring-white/25 flex items-center justify-center backdrop-blur-sm">
                           <Coins className="w-4 h-4" />
                         </span>
-                        <span className="text-sm font-black tracking-wide">{tr('سعر شراء اليوم')}</span>
+                        <span className="text-sm font-black tracking-wide">{t('finance:saharaBalance.todayBuyPrice')}</span>
                       </div>
-                      <button type="button" onClick={() => setPriceOpen(false)} aria-label={tr('إغلاق')} className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 ring-1 ring-white/20 flex items-center justify-center cursor-pointer transition-colors">
+                      <button type="button" onClick={() => setPriceOpen(false)} aria-label={t('common:actions.close')} className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 ring-1 ring-white/20 flex items-center justify-center cursor-pointer transition-colors">
                         <X className="w-4 h-4" />
                       </button>
                     </div>
@@ -704,11 +703,11 @@ onValue={v => setForm({ ...form!, [key]: v })}
                     <div className="relative mt-5 text-center">
                       <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 ring-1 ring-white/20 text-[10.5px] font-bold text-white/90">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-300" />
-                        {tr('تلقائي من وارد الصحاري')}{buys.today && <span className="font-mono"> · {buys.today.day}</span>}
+                        {t('finance:saharaBalance.priceAuto')}{buys.today && <span className="font-mono"> · {buys.today.day}</span>}
                       </div>
                       <div className="mt-2 flex items-baseline justify-center gap-2">
                         <span className="text-[52px] leading-none font-black font-mono tracking-tight tabular-nums [text-shadow:0_2px_14px_rgba(0,0,0,0.2)]" dir="ltr">{buys.today ? buys.today.price.toFixed(1) : '—'}</span>
-                        <span className="text-sm font-bold text-white/70">{tr('د.ع')}</span>
+                        <span className="text-sm font-bold text-white/70">{t('common:units.iqd')}</span>
                       </div>
                     </div>
                   </div>
@@ -716,9 +715,9 @@ onValue={v => setForm({ ...form!, [key]: v })}
                   {/* الأسفل: السعر السابق ونسبة التغير (للعرض فقط) */}
                   <div className="px-6 py-5 grid grid-cols-2 gap-2.5">
                     <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/70 ring-1 ring-slate-200 dark:ring-slate-700 px-3 py-3 text-center">
-                      <div className="text-[10.5px] font-bold text-slate-400">{tr('السعر السابق')}{buys.previous && <span className="font-mono"> · {buys.previous.day}</span>}</div>
+                      <div className="text-[10.5px] font-bold text-slate-400">{t('finance:saharaBalance.previousPrice')}{buys.previous && <span className="font-mono"> · {buys.previous.day}</span>}</div>
                       <div className="mt-1 font-mono font-black text-xl text-slate-800 dark:text-slate-100 tabular-nums">
-                        {buys.previous ? buys.previous.price.toFixed(1) : '—'} <span className="text-[10px] font-bold text-slate-400">{tr('د.ع')}</span>
+                        {buys.previous ? buys.previous.price.toFixed(1) : '—'} <span className="text-[10px] font-bold text-slate-400">{t('common:units.iqd')}</span>
                       </div>
                     </div>
                     {(() => {
@@ -727,9 +726,9 @@ onValue={v => setForm({ ...form!, [key]: v })}
                       return (
                         <div
                           className="rounded-2xl bg-slate-50 dark:bg-slate-800/70 ring-1 ring-slate-200 dark:ring-slate-700 px-3 py-3 text-center"
-                          title={buys.twoDayAvg !== null ? `${tr('معدل اليومين')}: ${buys.twoDayAvg.toFixed(1)} ${tr('د.ع')}` : undefined}
+                          title={buys.twoDayAvg !== null ? `${t('finance:ledger.twoDayAvg')}: ${buys.twoDayAvg.toFixed(1)} ${t('common:units.iqd')}` : undefined}
                         >
-                          <div className="text-[10.5px] font-bold text-slate-400">{tr('نسبة التغير')}</div>
+                          <div className="text-[10.5px] font-bold text-slate-400">{t('finance:saharaBalance.changeRate')}</div>
                           <div className={`mt-1 flex items-center justify-center gap-1 font-mono font-black text-xl tabular-nums ${tone}`}>
                             {pct !== null && pct < 0 && <TrendingDown className="w-4 h-4 shrink-0" />}
                             {pct !== null && pct > 0 && <TrendingUp className="w-4 h-4 shrink-0" />}
@@ -738,7 +737,7 @@ onValue={v => setForm({ ...form!, [key]: v })}
                         </div>
                       );
                     })()}
-                    <p className="col-span-2 text-[10.5px] text-slate-400 dark:text-slate-500 text-center">{tr('يتحدث تلقائيًا عند رفع وارد جديد — للعرض فقط')}</p>
+                    <p className="col-span-2 text-[10.5px] text-slate-400 dark:text-slate-500 text-center">{t('finance:saharaBalance.priceReadOnly')}</p>
                   </div>
                 </div>
               </div>,
@@ -752,7 +751,7 @@ onValue={v => setForm({ ...form!, [key]: v })}
               className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
             >
               <Pencil className="w-3.5 h-3.5" />
-              {tr('تعديل اليوم')}
+              {t('finance:ledger.editDay')}
             </button>
           )}
           <button
@@ -761,7 +760,7 @@ onValue={v => setForm({ ...form!, [key]: v })}
             className="px-4 py-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-teal-600/20 cursor-pointer active:scale-95 transition-all"
           >
             <Plus className="w-4 h-4" />
-            {tr('تسجيل يوم جديد')}
+            {t('finance:ledger.newDay')}
           </button>
         </div>
       </div>
@@ -775,12 +774,12 @@ onValue={v => setForm({ ...form!, [key]: v })}
               <div className={`absolute top-0 inset-x-0 h-1 bg-gradient-to-l ${k.accent}`} />
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block">{tr(k.label)}</span>
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block">{k.label}</span>
                   <div className="flex items-baseline gap-1.5 mt-1">
                     <span className="text-2xl sm:text-[28px] leading-none font-black font-mono tracking-tight tabular-nums text-slate-900 dark:text-white">
                       {formatNumber(k.value)}
                     </span>
-                    <span className="text-[11px] font-bold text-slate-400">{tr('لتر')}</span>
+                    <span className="text-[11px] font-bold text-slate-400">{t('common:units.liter')}</span>
                   </div>
                 </div>
                 <div className={`w-11 h-11 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-sm ${k.iconBg} flex items-center justify-center shrink-0`}>
@@ -788,7 +787,7 @@ onValue={v => setForm({ ...form!, [key]: v })}
                 </div>
               </div>
               <div className="mt-3.5 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{tr(k.note)}</span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{k.note}</span>
                 <span className={`shrink-0 px-2 py-0.5 rounded-md text-[10.5px] font-black font-mono ${k.chipTone}`} dir="ltr" title={k.chipTitle}>{k.chip}</span>
               </div>
             </div>
@@ -800,10 +799,10 @@ onValue={v => setForm({ ...form!, [key]: v })}
           <div className="absolute -top-14 -left-14 w-40 h-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
           <div className="relative flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <span className="text-xs font-bold text-white/75 block">{tr('الرصيد الحالي')}</span>
+              <span className="text-xs font-bold text-white/75 block">{t('finance:ledger.currentBalance')}</span>
               <div className="flex items-baseline gap-1.5 mt-1">
                 <span className="text-2xl sm:text-[28px] leading-none font-black font-mono tracking-tight tabular-nums">{formatNumber(v?.current ?? 0)}</span>
-                <span className="text-[11px] font-bold text-white/70">{tr('لتر')}</span>
+                <span className="text-[11px] font-bold text-white/70">{t('common:units.liter')}</span>
               </div>
             </div>
             <div className="w-11 h-11 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center shrink-0">
@@ -811,7 +810,7 @@ onValue={v => setForm({ ...form!, [key]: v })}
             </div>
           </div>
           <div className="relative mt-3.5 pt-2.5 border-t border-white/15 flex items-center justify-between gap-2">
-            <span className="text-[11px] text-white/75 truncate">{tr('السابق + الوارد − الاستهلاك')}</span>
+            <span className="text-[11px] text-white/75 truncate">{t('finance:saharaBalance.currentFormula')}</span>
             <span className="shrink-0 px-2 py-0.5 rounded-md bg-white/15 text-[10.5px] font-black font-mono" dir="ltr">
               {delta > 0 ? '▲ +' : delta < 0 ? '▼ ' : ''}{formatNumber(delta)}
             </span>
@@ -825,7 +824,7 @@ onValue={v => setForm({ ...form!, [key]: v })}
 
           {/* القسم 1: الاستهلاك اليومي */}
           <div className={sectionBox}>
-            {sectionHeader(Flame, 'text-rose-600 dark:text-rose-400', 'الاستهلاك اليومي', 'توزيع الاستهلاك الفعلي حسب القطاع')}
+            {sectionHeader(Flame, 'text-rose-600 dark:text-rose-400', t('finance:ledger.dailyConsumption'), t('finance:saharaBalance.dailyConsumptionHint'))}
             <div className="grid grid-cols-3 gap-2.5 flex-1">
               {consumptionItems.map(c => {
                 const Icon = c.icon;
@@ -836,12 +835,12 @@ onValue={v => setForm({ ...form!, [key]: v })}
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${c.tile}`}>
                         <Icon className="w-4 h-4" />
                       </div>
-                      <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{tr(c.label)}</span>
+                      <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{c.label}</span>
                     </div>
                     <div className="font-mono font-black text-lg sm:text-xl text-slate-900 dark:text-white tabular-nums">{formatNumber(c.value)}</div>
                     <div className="space-y-1">
                       {shareBar(p, c.bar)}
-                      <div className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">{pctLabel(p)} {tr('من الفعلي')}</div>
+                      <div className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">{pctLabel(p)} {t('finance:saharaBalance.ofActual')}</div>
                     </div>
                   </div>
                 );
@@ -851,9 +850,9 @@ onValue={v => setForm({ ...form!, [key]: v })}
 
           {/* القسم 2: أرصدة المحطات */}
           <div className={sectionBox}>
-            {sectionHeader(MapPin, 'text-blue-600 dark:text-blue-400', 'أرصدة المحطات', 'الرصيد ونسبة الامتلاء من سعة الخزان')}
+            {sectionHeader(MapPin, 'text-blue-600 dark:text-blue-400', t('finance:ledger.stationBalances'), t('finance:ledger.stationBalancesHint'))}
             {stationSlots.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center text-xs text-slate-400 py-4">{tr('لا توجد محطات في منظومة الخزانات')}</div>
+              <div className="flex-1 flex items-center justify-center text-xs text-slate-400 py-4">{t('finance:ledger.noStations')}</div>
             ) : (
               <div className="grid grid-cols-4 grid-rows-2 gap-2.5 flex-1">
                 {stationSlots.map(st => {
@@ -862,11 +861,11 @@ onValue={v => setForm({ ...form!, [key]: v })}
                   return (
                     <div
                       key={st.id}
-                      title={`${tr(st.name)}: ${formatNumber(st.balance)} / ${formatNumber(st.capacity)} ${tr('لتر')}`}
+                      title={`${st.name}: ${formatNumber(st.balance)} / ${formatNumber(st.capacity)} ${t('common:units.liter')}`}
                       className={`${tileCard} justify-between gap-1.5 !p-2.5`}
                     >
                       <div className="flex items-center justify-between gap-1">
-                        <span className="text-[11px] font-extrabold text-[#1d576a] dark:text-sky-300 truncate">{tr(st.name)}</span>
+                        <span className="text-[11px] font-extrabold text-[#1d576a] dark:text-sky-300 truncate">{st.name}</span>
                         <span className={`text-[10px] font-black font-mono ${tone.text}`}>{pctLabel(p)}</span>
                       </div>
                       <div className="font-mono font-black text-sm sm:text-[15px] text-slate-900 dark:text-white tabular-nums">{formatNumber(st.balance)}</div>
@@ -880,12 +879,12 @@ onValue={v => setForm({ ...form!, [key]: v })}
 
           {/* القسم 3: الوارد */}
           <div className={sectionBox}>
-            {sectionHeader(Truck, 'text-emerald-600 dark:text-emerald-400', 'الوارد', 'خارجي والاتحاد')}
+            {sectionHeader(Truck, 'text-emerald-600 dark:text-emerald-400', t('finance:ledger.inbound'), t('finance:saharaBalance.inboundHint'))}
             <div className="grid grid-cols-2 gap-2.5 flex-1">
               {[
                 ...SAHARA_EXTERNAL_SOURCES.map(s => ({
                   key: s.key,
-                  label: s.label,
+                  label: t(`finance:saharaBalance.source.${s.key}`),
                   // الخارجي يشمل أي وارد "تجاري" قديم محفوظ قبل دمج المصادر
                   value: (v?.inboundExternal?.[s.key] ?? 0) + (s.key === 'government' ? v?.inboundExternal?.commercial ?? 0 : 0),
                   icon: EXTERNAL_ICONS[s.key],
@@ -901,12 +900,12 @@ onValue={v => setForm({ ...form!, [key]: v })}
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${c.tile}`}>
                         <Icon className="w-4 h-4" />
                       </div>
-                      <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{tr(c.label)}</span>
+                      <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{c.label}</span>
                     </div>
                     <div className="font-mono font-black text-lg sm:text-xl text-slate-900 dark:text-white tabular-nums">{formatNumber(c.value)}</div>
                     <div className="space-y-1">
                       {shareBar(p, c.bar)}
-                      <div className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">{pctLabel(p)} {tr('من الوارد')}</div>
+                      <div className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">{pctLabel(p)} {t('finance:saharaBalance.ofInbound')}</div>
                     </div>
                   </div>
                 );
@@ -916,14 +915,14 @@ onValue={v => setForm({ ...form!, [key]: v })}
 
           {/* القسم 4: المرسل إلى المزارع (من ملف الكشف) — الاستهلاك الكلي = الفعلي + المرسل إلى المزارع */}
           <div className={sectionBox}>
-            {sectionHeader(Repeat, 'text-amber-600 dark:text-amber-400', 'المرسل إلى المزارع', 'الاستهلاك الكلي = الفعلي + المرسل إلى المزارع')}
+            {sectionHeader(Repeat, 'text-amber-600 dark:text-amber-400', t('finance:saharaBalance.sentToFarms'), t('finance:saharaBalance.sentToFarmsHint'))}
             <div className="flex-1 flex items-stretch gap-2.5">
               <div className={`${tileCard} flex-1 justify-center gap-1`}>
-                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{tr('المرسل إلى المزارع')}</span>
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{t('finance:saharaBalance.sentToFarms')}</span>
                 <span className="font-mono font-black text-lg sm:text-xl text-slate-900 dark:text-white tabular-nums">{formatNumber(v?.sales ?? 0)}</span>
               </div>
               <div className={`${tileCard} flex-1 justify-center gap-1`}>
-                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{tr('الاستهلاك الكلي')}</span>
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{t('finance:saharaBalance.totalConsumption')}</span>
                 <span className="font-mono font-black text-lg sm:text-xl text-slate-900 dark:text-white tabular-nums">{formatNumber(v?.totalConsumption ?? 0)}</span>
               </div>
             </div>
@@ -933,8 +932,8 @@ onValue={v => setForm({ ...form!, [key]: v })}
                 <div className="h-full bg-slate-500 transition-all duration-500" style={{ width: `${pct(actual, v?.totalConsumption ?? 0)}%` }} />
               </div>
               <div className="flex items-center justify-between text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500" />{tr('المرسل إلى المزارع')} {pctLabel(pct(v?.sales ?? 0, v?.totalConsumption ?? 0))}</span>
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-500" />{tr('الفعلي')} {pctLabel(pct(actual, v?.totalConsumption ?? 0))}</span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500" />{t('finance:saharaBalance.sentToFarms')} {pctLabel(pct(v?.sales ?? 0, v?.totalConsumption ?? 0))}</span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-500" />{t('finance:saharaBalance.actual')} {pctLabel(pct(actual, v?.totalConsumption ?? 0))}</span>
               </div>
             </div>
           </div>
@@ -942,7 +941,7 @@ onValue={v => setForm({ ...form!, [key]: v })}
 
         {!v && (
           <p className="mt-3 text-center text-xs font-bold text-slate-500">
-            {tr('لا توجد سجلات بعد — اضغط "تسجيل يوم جديد" وأدخل الرصيد الافتتاحي.')}
+            {t('finance:saharaBalance.empty')}
           </p>
         )}
       </div>
@@ -962,25 +961,25 @@ onValue={v => setForm({ ...form!, [key]: v })}
                 </div>
                 <div>
                   <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white">
-                    {tr(form.id ? 'تعديل سجل يوم الصحاري' : 'تسجيل يوم جديد لرصيد الصحاري')}
+                    {form.id ? t('finance:saharaBalance.form.editTitle') : t('finance:saharaBalance.form.newTitle')}
                   </h3>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    {tr('الرصيد السابق + الوارد − (الاستهلاك الفعلي + المرسل إلى المزارع) = الرصيد الحالي')}
+                    {t('finance:saharaBalance.form.formula')}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <label className={`flex items-center gap-1.5 h-9 pl-1 pr-2.5 rounded-xl border bg-slate-50 dark:bg-slate-800 ${dateTaken ? 'border-red-400' : 'border-slate-200 dark:border-slate-700'}`}>
+                <label className={`flex items-center gap-1.5 h-9 pe-1 ps-2.5 rounded-xl border bg-slate-50 dark:bg-slate-800 ${dateTaken ? 'border-red-400' : 'border-slate-200 dark:border-slate-700'}`}>
                   <CalendarDays className="w-4 h-4 text-teal-600 shrink-0" />
                   <input
                     type="date"
-                    aria-label={tr('التاريخ')}
+                    aria-label={t('finance:ledger.form.date')}
                     className="bg-transparent text-xs font-mono font-bold text-slate-900 dark:text-white outline-none w-[118px]"
                     value={toInputDate(form.date)}
                     onChange={e => setForm({ ...form, date: fromInputDate(e.target.value) })}
                   />
                 </label>
-                <button type="button" onClick={() => setForm(null)} aria-label={tr('إغلاق')} className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700 cursor-pointer">
+                <button type="button" onClick={() => setForm(null)} aria-label={t('common:actions.close')} className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700 cursor-pointer">
                   <X className="w-4.5 h-4.5" />
                 </button>
               </div>
@@ -989,19 +988,19 @@ onValue={v => setForm({ ...form!, [key]: v })}
             <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 space-y-3 bg-slate-50/40 dark:bg-slate-900/40">
               {/* 1. الرصيد السابق والرصيد الحالي المحسوب */}
               <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-3.5">
-                <div className={cardTitle}><span className={cardNum}>1</span><Wallet className="w-3.5 h-3.5" /><span>{tr('الرصيد')}</span></div>
+                <div className={cardTitle}><span className={cardNum}>1</span><Wallet className="w-3.5 h-3.5" /><span>{t('finance:ledger.form.balance')}</span></div>
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5 items-stretch">
                   {/* الرصيد السابق: كارت بنفس نمط الرصيد الحالي (فيروزي فاتح)، ويصبح قابلًا للإدخال عند التصحيح */}
                   <div className="sm:col-span-4 relative overflow-hidden rounded-2xl p-4 bg-teal-50/70 dark:bg-teal-950/25 border border-teal-200/80 dark:border-teal-900/50 flex flex-col">
                     <div className="relative flex items-center justify-center min-h-[28px]">
-                      <div className="text-[11px] font-bold text-teal-700 dark:text-teal-400">{tr('الرصيد السابق')}</div>
+                      <div className="text-[11px] font-bold text-teal-700 dark:text-teal-400">{t('finance:ledger.previousBalance')}</div>
                       {/* تعديل ← يفتح الإدخال، وحفظ ← يثبّت القيمة */}
                       <button
                         type="button"
                         onClick={() => (form.prevEditing ? commitPrevious() : startEditPrevious())}
-                        title={tr(form.prevEditing ? 'حفظ' : 'تعديل')}
-                        aria-label={tr(form.prevEditing ? 'حفظ' : 'تعديل')}
-                        className={`absolute left-0 top-0 w-7 h-7 rounded-lg border flex items-center justify-center cursor-pointer transition-colors ${form.prevEditing ? 'bg-teal-600 hover:bg-teal-700 border-teal-600 text-white shadow-sm' : 'bg-white/80 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300'}`}
+                        title={form.prevEditing ? t('common:actions.save') : t('common:actions.edit')}
+                        aria-label={form.prevEditing ? t('common:actions.save') : t('common:actions.edit')}
+                        className={`absolute end-0 top-0 w-7 h-7 rounded-lg border flex items-center justify-center cursor-pointer transition-colors ${form.prevEditing ? 'bg-teal-600 hover:bg-teal-700 border-teal-600 text-white shadow-sm' : 'bg-white/80 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300'}`}
                       >
                         {form.prevEditing ? <Check className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
                       </button>
@@ -1013,7 +1012,7 @@ onValue={v => setForm({ ...form!, [key]: v })}
                           autoFocus
                           className="w-full h-11 px-3 rounded-xl text-center bg-white dark:bg-slate-900 border border-teal-200 dark:border-teal-800 focus:ring-2 focus:ring-teal-300/60 outline-none text-xl font-black font-mono text-slate-800 dark:text-slate-100 placeholder:text-slate-400 placeholder:text-sm placeholder:font-bold"
                           value={form.previous}
-                          placeholder={tr('الرصيد الافتتاحي')}
+                          placeholder={t('finance:ledger.form.openingBalance')}
 onValue={v => setForm({ ...form, previous: v })}
                           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commitPrevious(); } }}
                         />
@@ -1022,17 +1021,17 @@ onValue={v => setForm({ ...form, previous: v })}
                           <span className="text-3xl font-black font-mono tracking-tight tabular-nums text-slate-800 dark:text-slate-100" dir="ltr">
                             {formatNumber(form.editPrevious ? num(form.previous) : autoPrevious ?? 0)}
                           </span>
-                          <span className="text-xs font-bold text-teal-600/70 dark:text-teal-400/70">{tr('لتر')}</span>
+                          <span className="text-xs font-bold text-teal-600/70 dark:text-teal-400/70">{t('common:units.liter')}</span>
                         </div>
                       )}
                     </div>
                     <div className="relative mt-3 pt-2.5 border-t border-teal-100 dark:border-teal-900/40 text-[10.5px] font-bold text-teal-700/80 dark:text-teal-400/80 flex flex-wrap items-center justify-center text-center gap-x-2 gap-y-0.5">
                       <span>
                         {form.prevEditing
-                          ? tr('أدخل الرصيد ثم اضغط حفظ')
+                          ? t('finance:ledger.form.enterThenSave')
                           : form.editPrevious
-                            ? tr(autoPrevious === null ? 'الرصيد الافتتاحي' : 'معدّل يدويًا')
-                            : `${tr('من الرصيد الحالي ليوم')} ${prevSourceDate ?? ''}`}
+                            ? autoPrevious === null ? t('finance:ledger.form.openingBalance') : t('finance:ledger.form.manuallyEdited')
+                            : t('finance:ledger.form.fromCurrentOf', { date: prevSourceDate ?? '' })}
                       </span>
                     </div>
                   </div>
@@ -1050,19 +1049,19 @@ onValue={v => setForm({ ...form, previous: v })}
                         <span className="w-6 h-6 rounded-lg bg-white/15 border border-white/20 flex items-center justify-center">
                           <Wallet className="w-3.5 h-3.5" />
                         </span>
-                        {tr('الرصيد الحالي')}
+                        {t('finance:ledger.currentBalance')}
                       </div>
                       <div className="flex items-baseline justify-center gap-2">
                         <span className="text-[40px] font-black font-mono tracking-tight tabular-nums leading-none [text-shadow:0_2px_12px_rgba(0,0,0,0.18)]" dir="ltr">{formatNumber(formEmpty ? 0 : preview.current)}</span>
-                        <span className="text-sm font-bold text-white/70">{tr('لتر')}</span>
+                        <span className="text-sm font-bold text-white/70">{t('common:units.liter')}</span>
                       </div>
                       {form.currentOverride.trim() !== '' && (
                         <div className="flex items-center gap-1.5 text-[10.5px] font-bold text-white/85">
-                          <span className="px-2 py-0.5 rounded-full bg-white/15 border border-white/20">{tr('من ملف الكشف — الرصيد التراكمي')}</span>
+                          <span className="px-2 py-0.5 rounded-full bg-white/15 border border-white/20">{t('finance:saharaBalance.form.fromFile')}</span>
                           <button
                             type="button"
                             onClick={() => setForm({ ...form, currentOverride: '', overrideBase: null })}
-                            title={tr('إلغاء واحتساب الرصيد تلقائيًا')}
+                            title={t('finance:saharaBalance.form.resetAuto')}
                             className="w-5 h-5 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 flex items-center justify-center cursor-pointer"
                           >
                             <X className="w-3 h-3" />
@@ -1077,7 +1076,7 @@ onValue={v => setForm({ ...form, previous: v })}
                             <span className={`px-2 py-0.5 rounded-full font-black font-mono border ${change > 0 ? 'bg-emerald-400/20 border-emerald-200/30 text-emerald-50' : change < 0 ? 'bg-rose-400/25 border-rose-200/30 text-rose-50' : 'bg-white/10 border-white/20 text-white/80'}`} dir="ltr">
                               {change > 0 ? '▲ +' : change < 0 ? '▼ ' : ''}{formatNumber(change)}
                             </span>
-                            <span className="text-white/65 font-bold">{tr('عن الرصيد السابق')}</span>
+                            <span className="text-white/65 font-bold">{t('finance:ledger.form.vsPrevious')}</span>
                           </div>
                         );
                       })()}
@@ -1087,18 +1086,18 @@ onValue={v => setForm({ ...form, previous: v })}
                   {/* طريقة الإدخال: قلم (يدوي) أو رفع ملف الكشف */}
                   <div className="sm:col-span-2 rounded-2xl p-2 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-700 flex sm:flex-col gap-2">
                     {([
-                      ['manual', 'يدوي', PenLine],
-                      ['upload', 'رفع ملف', Upload]
+                      ['manual', t('finance:ledger.form.manual'), PenLine],
+                      ['upload', t('finance:ledger.form.upload'), Upload]
                     ] as const).map(([k, label, Icon]) => (
                       <button
                         key={k}
                         type="button"
                         onClick={() => setEntryMode(k)}
-                        title={tr(k === 'manual' ? 'إدخال يدوي' : 'رفع ملف الكشف (Excel / PDF)')}
+                        title={k === 'manual' ? t('finance:ledger.form.manualHint') : t('finance:ledger.form.uploadHint')}
                         className={`flex-1 min-h-[52px] rounded-xl flex flex-col items-center justify-center gap-1 text-[10.5px] font-bold cursor-pointer transition-all ${entryMode === k ? 'bg-teal-600 text-white shadow-sm' : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:bg-teal-50 hover:text-teal-700 dark:hover:bg-slate-700'}`}
                       >
                         <Icon className="w-5 h-5" />
-                        {tr(label)}
+                        {label}
                       </button>
                     ))}
                   </div>
@@ -1125,14 +1124,14 @@ onValue={v => setForm({ ...form, previous: v })}
                     {upload.status === 'loading' ? (
                       <>
                         <Loader2 className="w-7 h-7 text-teal-600 animate-spin" />
-                        <span className="text-sm font-black text-slate-800 dark:text-slate-100">{tr('جارٍ قراءة الكشف…')}</span>
+                        <span className="text-sm font-black text-slate-800 dark:text-slate-100">{t('finance:ledger.upload.reading')}</span>
                         <span className="text-[11px] text-slate-500">{upload.fileName}</span>
                       </>
                     ) : (
                       <>
                         <ImagePlus className="w-7 h-7 text-teal-600" />
-                        <span className="text-sm font-black text-slate-800 dark:text-slate-100">{tr('اختر ملف الكشف اليومي أو اسحبه هنا')}</span>
-                        <span className="text-[11px] text-slate-500 dark:text-slate-400">{tr('ملف Excel أو PDF — تُعبّأ أرصدة المحطات والاستهلاك والوارد والمدوّر السابق تلقائيًا، ثم راجعها قبل الحفظ')}</span>
+                        <span className="text-sm font-black text-slate-800 dark:text-slate-100">{t('finance:saharaBalance.upload.choose')}</span>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400">{t('finance:saharaBalance.upload.chooseHint')}</span>
                       </>
                     )}
                   </button>
@@ -1147,11 +1146,11 @@ onValue={v => setForm({ ...form, previous: v })}
                     <div className="rounded-xl bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-900/60 px-3 py-2 space-y-1 text-xs">
                       <div className="flex items-center gap-2 font-black text-teal-800 dark:text-teal-300">
                         <Sparkles className="w-4 h-4" />
-                        {tr('تمت تعبئة')} {upload.filled} {tr('حقل من الكشف — راجع الأرقام ثم احفظ')}
+                        {t('finance:ledger.upload.filled', { count: upload.filled })}
                       </div>
                       {upload.unmatched.length > 0 && (
                         <div className="font-bold text-amber-700 dark:text-amber-300">
-                          {tr('مواقع في الكشف غير موجودة في النظام (لم تُعبّأ)')}: {upload.unmatched.join('، ')}
+                          {t('finance:saharaBalance.upload.unmatched', { list: fmtList(upload.unmatched) })}
                         </div>
                       )}
                       {upload.notes && <div className="text-slate-600 dark:text-slate-300">{upload.notes}</div>}
@@ -1162,37 +1161,37 @@ onValue={v => setForm({ ...form, previous: v })}
 
               {/* 2. الاستهلاك اليومي */}
               <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-3.5">
-                <div className={cardTitle}><span className={cardNum}>2</span><Flame className="w-3.5 h-3.5" /><span>{tr('الاستهلاك اليومي')}</span></div>
+                <div className={cardTitle}><span className={cardNum}>2</span><Flame className="w-3.5 h-3.5" /><span>{t('finance:ledger.dailyConsumption')}</span></div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                  {numInput('vehicles', 'الآليات (لتر)', true)}
-                  {numInput('farms', 'المزارع (لتر)')}
-                  {numInput('generators', 'المولدات (لتر)')}
+                  {numInput('vehicles', t('finance:saharaBalance.form.vehiclesL'), true)}
+                  {numInput('farms', t('finance:saharaBalance.form.farmsL'))}
+                  {numInput('generators', t('finance:saharaBalance.form.generatorsL'))}
                 </div>
               </div>
 
               {/* 3. أرصدة المحطات (تُنقل لمنظومة الخزانات والشاشة الرئيسية) */}
               <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-3.5">
                 <div className={cardTitle}>
-                  <span className={cardNum}>3</span><MapPin className="w-3.5 h-3.5" /><span>{tr('أرصدة المحطات')}</span>
-                  <span className="mr-auto font-normal text-[10.5px] text-slate-500 dark:text-slate-400">
-                    {tr(isLatestDate ? 'تُنقل إلى خزانات المواقع والشاشة الرئيسية بعد تأكيد البيانات' : 'يوم سابق: تُحفظ مع السجل فقط ولا تغيّر الخزانات')}
+                  <span className={cardNum}>3</span><MapPin className="w-3.5 h-3.5" /><span>{t('finance:ledger.stationBalances')}</span>
+                  <span className="ms-auto font-normal text-[10.5px] text-slate-500 dark:text-slate-400">
+                    {isLatestDate ? t('finance:ledger.form.stationsLatest') : t('finance:ledger.form.stationsPast')}
                   </span>
                 </div>
                 {liveStations.length === 0 ? (
-                  <p className="text-xs text-slate-400">{tr('لا توجد محطات في منظومة الخزانات')}</p>
+                  <p className="text-xs text-slate-400">{t('finance:ledger.noStations')}</p>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {liveStations.map(st => {
                       const over = num(form.stations[st.id] || '') > st.capacity;
                       return (
                         <label key={st.id} className="space-y-1">
-                          <div className="h-5 flex items-center"><span className={`${fieldLabel} truncate`}>{tr(st.name)}</span></div>
+                          <div className="h-5 flex items-center"><span className={`${fieldLabel} truncate`}>{st.name}</span></div>
                           <NumberInput
 
                             className={`${field} ${over ? '!border-red-500 !ring-red-500' : ''}`}
                             value={form.stations[st.id] ?? ''}
                             placeholder="0"
-                            title={`${tr('السعة')}: ${formatNumber(st.capacity)} ${tr('لتر')}`}
+                            title={`${t('finance:ledger.form.capacity')}: ${formatNumber(st.capacity)} ${t('common:units.liter')}`}
 onValue={v => setForm({ ...form, stations: { ...form.stations, [st.id]: v } })}
                           />
                         </label>
@@ -1202,18 +1201,18 @@ onValue={v => setForm({ ...form, stations: { ...form.stations, [st.id]: v } })}
                 )}
                 {overCapacity.length > 0 && (
                   <p className="mt-2 text-xs font-bold text-red-600">
-                    {tr('الرصيد أكبر من سعة الخزان')}: {overCapacity.map(s => `${tr(s.name)} (${formatNumber(s.capacity)})`).join('، ')}
+                    {t('finance:ledger.form.overCapacityList', { list: fmtList(overCapacity.map(s => `${s.name} (${formatNumber(s.capacity)})`)) })}
                   </p>
                 )}
               </div>
 
               {/* 4. الوارد */}
               <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-3.5">
-                <div className={cardTitle}><span className={cardNum}>4</span><Truck className="w-3.5 h-3.5" /><span>{tr('الوارد')}</span></div>
+                <div className={cardTitle}><span className={cardNum}>4</span><Truck className="w-3.5 h-3.5" /><span>{t('finance:ledger.inbound')}</span></div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   {SAHARA_EXTERNAL_SOURCES.map(s => (
                     <label key={s.key} className="space-y-1">
-                      <div className="h-5 flex items-center"><span className={fieldLabel}>{tr(`${s.label} (لتر)`)}</span></div>
+                      <div className="h-5 flex items-center"><span className={fieldLabel}>{t('finance:ledger.form.withLiters', { label: t(`finance:saharaBalance.source.${s.key}`) })}</span></div>
                       <NumberInput
 
                         className={field}
@@ -1230,22 +1229,22 @@ onValue={v => setForm({ ...form, external: { ...form.external, [s.key]: v } })}
 
             <div className="px-5 py-3 border-t border-slate-200/90 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-2 min-w-0">
-                <button type="button" onClick={clearData} title={tr('تفريغ الخانات لإعادة الإدخال أو رفع الملف من جديد (لا يحذف اليوم)')} className="px-3.5 py-2.5 rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0">
+                <button type="button" onClick={clearData} title={t('finance:saharaBalance.form.clearHint')} className="px-3.5 py-2.5 rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0">
                   <Eraser className="w-4 h-4" />
-                  {tr('مسح البيانات')}
+                  {t('finance:ledger.form.clear')}
                 </button>
                 {/* سبب تعطّل الحفظ بجانب الزر */}
                 {dateTaken ? (
-                  <p className="text-xs font-bold text-red-600">{tr('يوجد سجل لهذا التاريخ — غيّر التاريخ أو عدّل اليوم نفسه.')}</p>
+                  <p className="text-xs font-bold text-red-600">{t('finance:ledger.form.duplicate')}</p>
                 ) : !form.editPrevious && autoPrevious === null ? (
-                  <p className="text-xs font-bold text-amber-600">{tr('لا يوجد يوم قبل هذا التاريخ — أدخل الرصيد السابق يدويًا.')}</p>
+                  <p className="text-xs font-bold text-amber-600">{t('finance:ledger.form.noPrevious')}</p>
                 ) : overCapacity.length > 0 ? (
-                  <p className="text-xs font-bold text-red-600">{tr('رصيد محطة أكبر من سعة خزانها.')}</p>
+                  <p className="text-xs font-bold text-red-600">{t('finance:ledger.form.overCapacity')}</p>
                 ) : null}
               </div>
               <div className="flex items-center gap-2.5">
                 <button type="button" onClick={() => setForm(null)} className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 text-xs font-bold cursor-pointer">
-                  {tr('إلغاء')}
+                  {t('common:actions.cancel')}
                 </button>
                 <button
                   type="button"
@@ -1254,7 +1253,7 @@ onValue={v => setForm({ ...form, external: { ...form.external, [s.key]: v } })}
                   className="px-6 sm:px-8 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-black shadow-lg shadow-teal-900/20 flex items-center gap-2 cursor-pointer active:scale-95 transition-all"
                 >
                   <Save className="w-4 h-4" />
-                  {tr(form.id ? 'حفظ التعديلات' : 'تأكيد حفظ اليوم')}
+                  {form.id ? t('common:actions.saveChanges') : t('finance:ledger.form.saveDay')}
                 </button>
               </div>
             </div>
@@ -1272,31 +1271,31 @@ onValue={v => setForm({ ...form, external: { ...form.external, [s.key]: v } })}
                 <AlertTriangle className="w-5.5 h-5.5" />
               </div>
               <div className="space-y-1">
-                <div className="font-black text-slate-900 dark:text-white">{tr('هل أنت متأكد من صحة البيانات؟')}</div>
+                <div className="font-black text-slate-900 dark:text-white">{t('finance:ledger.confirm.title')}</div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  {tr('سيتم تحديث الواجهة الرئيسية وأرصدة خزانات المواقع ببيانات يوم')} <span className="font-mono font-black text-slate-800 dark:text-slate-100">{latest.date}</span>
+                  <Trans t={t} i18nKey="finance:saharaBalance.confirm.text" values={{ date: latest.date }} components={{ 1: <span className="font-mono font-black text-slate-800 dark:text-slate-100" /> }} />
                 </p>
               </div>
             </div>
             <div className="mx-5 mb-4 grid grid-cols-3 gap-2 text-center">
               {[
-                { label: 'الرصيد الحالي', value: latest.current },
-                { label: 'الاستهلاك الفعلي', value: latest.actualConsumption },
-                { label: 'الوارد', value: latest.inbound }
+                { label: t('finance:ledger.currentBalance'), value: latest.current },
+                { label: t('finance:saharaBalance.actualConsumption'), value: latest.actualConsumption },
+                { label: t('finance:ledger.inbound'), value: latest.inbound }
               ].map(c => (
                 <div key={c.label} className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 px-2 py-2">
-                  <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{tr(c.label)}</div>
+                  <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{c.label}</div>
                   <div className="font-mono font-black text-sm text-slate-900 dark:text-white tabular-nums">{formatNumber(c.value)}</div>
                 </div>
               ))}
             </div>
             <div className="px-5 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2.5">
               <button type="button" onClick={() => setConfirmOpen(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 text-xs font-bold cursor-pointer">
-                {tr('رجوع')}
+                {t('finance:ledger.back')}
               </button>
               <button type="button" onClick={confirmPublish} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white text-xs font-black shadow-lg shadow-teal-900/20 flex items-center gap-2 cursor-pointer active:scale-95 transition-all">
                 <CheckCircle2 className="w-4 h-4" />
-                {tr('نعم، تأكيد وتحديث')}
+                {t('finance:ledger.confirm.yes')}
               </button>
             </div>
           </div>
@@ -1313,15 +1312,15 @@ onValue={v => setForm({ ...form, external: { ...form.external, [s.key]: v } })}
                 <XCircle className="w-5.5 h-5.5" />
               </div>
               <div className="space-y-1">
-                <div className="font-black text-slate-900 dark:text-white">{tr('إلغاء العملية ورفض البيانات؟')}</div>
+                <div className="font-black text-slate-900 dark:text-white">{t('finance:ledger.discardDialog.title')}</div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  {tr('سيتم حذف كل ما حُفظ أو رُفع ولم يُؤكَّد بعد، والعودة إلى آخر بيانات معتمدة. الواجهة الرئيسية والخزانات لن تتغير.')}
+                  {t('finance:saharaBalance.discardDialog.text')}
                 </p>
               </div>
             </div>
             <div className="px-5 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2.5">
               <button type="button" onClick={() => setDiscardOpen(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 text-xs font-bold cursor-pointer">
-                {tr('رجوع')}
+                {t('finance:ledger.back')}
               </button>
               <button
                 type="button"
@@ -1329,7 +1328,7 @@ onValue={v => setForm({ ...form, external: { ...form.external, [s.key]: v } })}
                 className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white text-xs font-black shadow-lg shadow-rose-900/20 flex items-center gap-2 cursor-pointer active:scale-95 transition-all"
               >
                 <XCircle className="w-4 h-4" />
-                {tr('نعم، إلغاء العملية')}
+                {t('finance:ledger.discardDialog.yes')}
               </button>
             </div>
           </div>

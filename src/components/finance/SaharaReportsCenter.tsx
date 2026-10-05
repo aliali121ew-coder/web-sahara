@@ -1,7 +1,7 @@
 import React from 'react';
 import { useSessionState } from '../../lib/useSessionState';
 import { Wallet, Truck, Database, Droplets, Sprout, Fuel, Hourglass } from 'lucide-react';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
 import { InboundDeliveries } from '../deliveries/InboundDeliveries';
 import { SaharaBalanceArchive } from './SaharaBalanceArchive';
 import { SaharaPetrolArchive } from './SaharaPetrolArchive';
@@ -16,16 +16,16 @@ type ReportCategoryKey = 'balance' | 'inbound' | 'tanks' | 'black-oil' | 'reserv
  * - في الأسفل: كارت كبير يعرض الفئة المختارة
  */
 export const SaharaReportsCenter: React.FC = () => {
-  const { tr } = useLanguage();
+  const { t } = useTranslation(['finance', 'common']);
   const [active, setActive] = useSessionState<ReportCategoryKey>('sahara_reports_tab', 'balance');
 
   const categories: { key: ReportCategoryKey; title: string; icon: React.ElementType; accent: string }[] = [
-    { key: 'balance', title: tr('كشف رصيد الشركة'), icon: Wallet, accent: 'from-teal-600 to-emerald-600' },
-    { key: 'inbound', title: tr('كشف الوارد'), icon: Truck, accent: 'from-sky-500 to-blue-600' },
-    { key: 'tanks', title: tr('جرد الخزانات'), icon: Database, accent: 'from-indigo-700 to-slate-900' },
-    { key: 'black-oil', title: tr('تقرير النفط الأسود'), icon: Droplets, accent: 'from-zinc-700 to-neutral-900' },
-    { key: 'reserves', title: tr('تقرير مزارع الموقع'), icon: Sprout, accent: 'from-amber-500 to-orange-600' },
-    { key: 'petrol', title: tr('تقرير البنزين'), icon: Fuel, accent: 'from-emerald-500 to-green-700' }
+    { key: 'balance', title: t('finance:reports.balance'), icon: Wallet, accent: 'from-teal-600 to-emerald-600' },
+    { key: 'inbound', title: t('finance:reports.inbound'), icon: Truck, accent: 'from-sky-500 to-blue-600' },
+    { key: 'tanks', title: t('finance:reports.tanks'), icon: Database, accent: 'from-indigo-700 to-slate-900' },
+    { key: 'black-oil', title: t('finance:reports.blackOil'), icon: Droplets, accent: 'from-zinc-700 to-neutral-900' },
+    { key: 'reserves', title: t('finance:reports.farms'), icon: Sprout, accent: 'from-amber-500 to-orange-600' },
+    { key: 'petrol', title: t('finance:reports.petrol'), icon: Fuel, accent: 'from-emerald-500 to-green-700' }
   ];
 
   const activeCategory = categories.find(c => c.key === active) ?? categories[0];
@@ -77,7 +77,7 @@ export const SaharaReportsCenter: React.FC = () => {
               <Hourglass className="w-6 h-6" />
             </div>
             <div className="text-lg font-black text-slate-900 dark:text-white">{activeCategory.title}</div>
-            <div className="text-sm text-slate-500 dark:text-slate-400">{tr('سيتم تصميم هذا التقرير في المرحلة التالية')}</div>
+            <div className="text-sm text-slate-500 dark:text-slate-400">{t('finance:reports.comingSoon')}</div>
           </div>
         )}
       </div>

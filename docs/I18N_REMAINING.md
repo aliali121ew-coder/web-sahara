@@ -10,12 +10,10 @@
 - لوحة القيادة.
 - الخزانات كاملة.
 - الأسعار (`prices`) والتقويم المشترك `ui/DateRangeCalendar.tsx` (مفاتيحه في `common.calendar`).
+- رصيد الصحاري (`finance`): النصوص المشتركة بين سجلات الأيام في `finance:ledger.*`، والأرشيفات في `finance:archive.*`. ترويسة الطباعة الرسمية `print/OfficialReportHeader.tsx` وعناصر الطباعة المشتركة (التوقيعات، تاريخ الطباعة، الاتجاه) في `common.print`، وترقيم الصفحات في `common.pagination`.
 
 ## ما بقي
 الرقم = عدد الأسطر التي فيها عربي (يشمل بيانات ومقارنات تبقى كما هي).
-
-### 3. رصيد الصحاري (`finance`)
-`SaharaBalanceView.tsx` (120)، `SaharaPetrolView.tsx` (112)، `BlackOilDailyLedger.tsx` (95)، `SaharaPetrolArchive.tsx` (45)، `SaharaBalanceArchive.tsx` (43)، `SaharaFilePreview.tsx` (30)، `SaharaReportsCenter.tsx` (7)، `SaharaSiteFarmsView.tsx` (2)
 
 ### 4. رصيد الاتحاد (`finance`)
 `EtihadTanksReport.tsx` (77)، `EtihadTransactionModal.tsx` (56)، `EtihadArchiveView.tsx` (52)، `EtihadTanksView.tsx` (51)، `EtihadMultiSiteReservesView.tsx` (47)، `EtihadPrintReport.tsx` (47)، `FinanceBalance.tsx` (39)، `EtihadPortalHub.tsx` (38)، `EtihadBalanceCards.tsx` (31)، `EtihadPrintModal.tsx` (31)، `EtihadQuickActions.tsx` (27)، `EtihadBalanceTable.tsx` (27)، `EtihadBalanceHubTabs.tsx` (18)، `EtihadBlackOilView.tsx` (14)، `EtihadReportsCenter.tsx` (6)

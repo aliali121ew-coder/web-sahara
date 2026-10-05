@@ -29,7 +29,8 @@ import {
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatNumber, getBusinessDate } from '../../lib/utils';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation, Trans } from 'react-i18next';
+import { fmtList } from '../../i18n/format';
 import { usePetrolLedger, petrolPriceStats, PetrolLedgerRecord, PETROL_STATIONS } from '../../lib/petrolLedger';
 import { readPetrolReportFile } from '../../lib/petrolReportFile';
 import { useCentralTanks, resolveSaharaPetrolSectionKey, tankLiters } from '../../lib/centralTanks';
@@ -64,7 +65,7 @@ const pctLabel = (p: number | null, decimals = 2) =>
   p === null ? '—' : `${p > 0 ? '+' : p < 0 ? '−' : ''}${Math.abs(p).toFixed(decimals)}%`;
 
 export const SaharaPetrolView: React.FC = () => {
-  const { tr } = useLanguage();
+  const { t } = useTranslation(['finance', 'common']);
   const { records, computed, latest, update, hasPending, publish, discard } = usePetrolLedger();
 
   // محطات البنزين (ثابتة، بهذا الترتيب) — الاستهلاك والأرصدة لهذه المحطات فقط.
@@ -228,7 +229,7 @@ export const SaharaPetrolView: React.FC = () => {
       setForm(next);
       setUpload({ status: 'done', filled, unmatched, notes: data.notes });
     } catch (e) {
-      setUpload({ status: 'error', message: e instanceof Error ? e.message : tr('تعذّر قراءة الملف') });
+      setUpload({ status: 'error', message: e instanceof Error ? e.message : t('finance:saharaPetrol.readFailed') });
     }
   };
 
@@ -283,8 +284,8 @@ export const SaharaPetrolView: React.FC = () => {
           <Icon className="w-5 h-5" />
         </div>
         <div className="min-w-0">
-          <h3 className="text-[15px] font-black text-slate-900 dark:text-white truncate">{tr(title)}</h3>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{tr(subtitle)}</p>
+          <h3 className="text-[15px] font-black text-slate-900 dark:text-white truncate">{title}</h3>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{subtitle}</p>
         </div>
       </div>
     </div>
@@ -314,30 +315,30 @@ export const SaharaPetrolView: React.FC = () => {
   const goodTone = 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300';
   const badTone = 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300';
   const compareChip = (today: number, yesterday: number | undefined, increaseIsGood: boolean) => {
-    if (yesterday === undefined) return { chip: tr('لا يوجد أمس'), chipTone: neutralTone, chipTitle: undefined as string | undefined };
+    if (yesterday === undefined) return { chip: t('finance:ledger.noYesterday'), chipTone: neutralTone, chipTitle: undefined as string | undefined };
     const diff = today - yesterday;
-    const chipTitle = `${tr('أمس')}: ${formatNumber(yesterday)} ← ${tr('اليوم')}: ${formatNumber(today)}`;
-    if (diff === 0) return { chip: `= ${tr('بدون تغيير')}`, chipTone: neutralTone, chipTitle };
+    const chipTitle = t('finance:ledger.compareTitle', { yesterday: formatNumber(yesterday), today: formatNumber(today) });
+    if (diff === 0) return { chip: `= ${t('finance:ledger.noChange')}`, chipTone: neutralTone, chipTitle };
     return { chip: `${diff > 0 ? '▲ +' : '▼ −'}${formatNumber(Math.abs(diff))}`, chipTone: (diff > 0) === increaseIsGood ? goodTone : badTone, chipTitle };
   };
   const kpis = view
     ? [
         {
-          label: 'الرصيد السابق', value: view.previous, icon: History,
+          label: t('finance:ledger.previousBalance'), value: view.previous, icon: History,
           iconBg: 'text-slate-600 dark:text-slate-300', accent: 'from-slate-300 to-slate-500',
-          note: 'الرصيد الحالي لليوم السابق', chip: view.date,
+          note: t('finance:ledger.previousBalanceNote'), chip: view.date,
           chipTone: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300', chipTitle: undefined as string | undefined
         },
         {
-          label: 'الوارد', value: view.inboundQty, icon: ArrowDownToLine,
+          label: t('finance:ledger.inbound'), value: view.inboundQty, icon: ArrowDownToLine,
           iconBg: 'text-emerald-700 dark:text-emerald-400', accent: 'from-emerald-500 to-green-700',
-          note: 'الوارد الخارجي',
+          note: t('finance:saharaPetrol.inboundNote'),
           ...compareChip(view.inboundQty, prevView?.inboundQty, true)
         },
         {
-          label: 'الاستهلاك اليومي', value: view.totalConsumption, icon: Flame,
+          label: t('finance:ledger.dailyConsumption'), value: view.totalConsumption, icon: Flame,
           iconBg: 'text-rose-600 dark:text-rose-400', accent: 'from-rose-400 to-red-500',
-          note: 'مجموع المحطات',
+          note: t('finance:saharaPetrol.consumptionNote'),
           ...compareChip(view.totalConsumption, prevView?.totalConsumption, false)
         }
       ]
@@ -348,18 +349,18 @@ export const SaharaPetrolView: React.FC = () => {
       {/* ── شريط اليوم المعروض والأزرار (بدون كارت، نفس تصميم رصيد الكاز) ── */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          <button type="button" disabled={viewIndex <= 0} onClick={() => { setViewId(computed[viewIndex - 1]?.id ?? null); setPickedFromTable(false); }} title={tr('اليوم السابق')} className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
-            <ChevronRight className="w-4 h-4" />
+          <button type="button" disabled={viewIndex <= 0} onClick={() => { setViewId(computed[viewIndex - 1]?.id ?? null); setPickedFromTable(false); }} title={t('finance:ledger.prevDay')} className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+            <ChevronRight className="w-4 h-4 ltr:rotate-180" />
           </button>
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
             <CalendarDays className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
             <span className="font-mono font-black text-sm text-slate-900 dark:text-white">{view?.date ?? '—'}</span>
             {view && isLatestView && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">{tr('آخر يوم')}</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">{t('finance:ledger.latestDay')}</span>
             )}
           </div>
-          <button type="button" disabled={viewIndex >= computed.length - 1} onClick={() => { setViewId(viewIndex + 1 >= computed.length - 1 ? null : computed[viewIndex + 1].id); setPickedFromTable(false); }} title={tr('اليوم التالي')} className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
-            <ChevronLeft className="w-4 h-4" />
+          <button type="button" disabled={viewIndex >= computed.length - 1} onClick={() => { setViewId(viewIndex + 1 >= computed.length - 1 ? null : computed[viewIndex + 1].id); setPickedFromTable(false); }} title={t('finance:ledger.nextDay')} className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+            <ChevronLeft className="w-4 h-4 ltr:rotate-180" />
           </button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -367,11 +368,11 @@ export const SaharaPetrolView: React.FC = () => {
             <>
               <button type="button" onClick={() => setConfirmOpen(true)} className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-700 to-emerald-600 hover:from-emerald-800 hover:to-emerald-700 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-700/25 cursor-pointer active:scale-95 transition-all animate-pulse">
                 <CheckCircle2 className="w-4 h-4" />
-                {tr('تأكيد البيانات')}
+                {t('finance:ledger.confirmData')}
               </button>
               <button type="button" onClick={() => setDiscardOpen(true)} className="px-4 py-2 rounded-xl border border-rose-200 dark:border-rose-800/60 bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-black flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all">
                 <XCircle className="w-4 h-4" />
-                {tr('إلغاء العملية')}
+                {t('finance:ledger.discard')}
               </button>
             </>
           )}
@@ -382,12 +383,12 @@ export const SaharaPetrolView: React.FC = () => {
             return (
               <div
                 className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5"
-                title={price.twoDayAvg !== null ? `${tr('معدل اليومين')}: ${price.twoDayAvg.toFixed(1)} ${tr('د.ع')}` : tr('متوسط السعر')}
+                title={price.twoDayAvg !== null ? `${t('finance:ledger.twoDayAvg')}: ${price.twoDayAvg.toFixed(1)} ${t('common:units.iqd')}` : t('finance:saharaPetrol.avgPrice')}
               >
                 <Coins className="w-3.5 h-3.5 text-amber-500" />
-                {tr('السعر')}
+                {t('finance:ledger.price')}
                 <span className="font-mono font-black text-emerald-800 dark:text-emerald-300">{price.avgPrice > 0 ? price.avgPrice.toFixed(1) : '—'}</span>
-                <span className="text-[10px] text-slate-400">{tr('د.ع')}</span>
+                <span className="text-[10px] text-slate-400">{t('common:units.iqd')}</span>
                 {p !== null && (
                   <span dir="ltr" className={`ms-1 flex items-center gap-0.5 font-mono font-black text-[10.5px] ${tone}`}>
                     {p < 0 && <TrendingDown className="w-3 h-3" />}
@@ -401,12 +402,12 @@ export const SaharaPetrolView: React.FC = () => {
           {view && (
             <button type="button" onClick={() => openEdit(view)} className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold flex items-center gap-1.5 cursor-pointer">
               <Pencil className="w-3.5 h-3.5" />
-              {tr('تعديل اليوم')}
+              {t('finance:ledger.editDay')}
             </button>
           )}
           <button type="button" onClick={openNew} className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-700 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-700/25 cursor-pointer active:scale-95 transition-all">
             <Plus className="w-4 h-4" />
-            {tr('تسجيل يوم جديد')}
+            {t('finance:ledger.newDay')}
           </button>
         </div>
       </div>
@@ -414,8 +415,8 @@ export const SaharaPetrolView: React.FC = () => {
       {!view ? (
         <div className={`${card} p-10 text-center`}>
           <Fuel className="w-10 h-10 mx-auto text-emerald-600 mb-3" />
-          <div className="font-black text-slate-800 dark:text-slate-100">{tr('لا توجد بيانات بنزين بعد')}</div>
-          <div className="text-xs text-slate-500 mt-1">{tr('اضغط "إضافة يوم" لإدخال أول يوم (الرصيد الافتتاحي والوارد والاستهلاك وأرصدة المحطات)')}</div>
+          <div className="font-black text-slate-800 dark:text-slate-100">{t('finance:saharaPetrol.empty')}</div>
+          <div className="text-xs text-slate-500 mt-1">{t('finance:saharaPetrol.emptyHint')}</div>
         </div>
       ) : (
         <>
@@ -428,12 +429,12 @@ export const SaharaPetrolView: React.FC = () => {
                   <div className={`absolute top-0 inset-x-0 h-1 bg-gradient-to-l ${k.accent}`} />
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block">{tr(k.label)}</span>
+                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block">{k.label}</span>
                       <div className="flex items-baseline gap-1.5 mt-1">
                         <span className="text-2xl sm:text-[28px] leading-none font-black font-mono tracking-tight tabular-nums text-slate-900 dark:text-white">
                           {formatNumber(k.value)}
                         </span>
-                        <span className="text-[11px] font-bold text-slate-400">{tr('لتر')}</span>
+                        <span className="text-[11px] font-bold text-slate-400">{t('common:units.liter')}</span>
                       </div>
                     </div>
                     <div className={`w-11 h-11 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-sm ${k.iconBg} flex items-center justify-center shrink-0`}>
@@ -441,7 +442,7 @@ export const SaharaPetrolView: React.FC = () => {
                     </div>
                   </div>
                   <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{tr(k.note)}</span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{k.note}</span>
                     <span className={`shrink-0 px-2 py-0.5 rounded-md text-[10.5px] font-black font-mono ${k.chipTone}`} dir="ltr" title={k.chipTitle}>{k.chip}</span>
                   </div>
                 </div>
@@ -453,10 +454,10 @@ export const SaharaPetrolView: React.FC = () => {
               <div className="absolute -top-14 -left-14 w-40 h-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
               <div className="relative flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <span className="text-xs font-bold text-white/75 block">{tr('الرصيد الحالي')}</span>
+                  <span className="text-xs font-bold text-white/75 block">{t('finance:ledger.currentBalance')}</span>
                   <div className="flex items-baseline gap-1.5 mt-1">
                     <span className="text-2xl sm:text-[28px] leading-none font-black font-mono tracking-tight tabular-nums">{formatNumber(view.current)}</span>
-                    <span className="text-[11px] font-bold text-white/70">{tr('لتر')}</span>
+                    <span className="text-[11px] font-bold text-white/70">{t('common:units.liter')}</span>
                   </div>
                 </div>
                 <div className="w-11 h-11 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center shrink-0">
@@ -465,13 +466,15 @@ export const SaharaPetrolView: React.FC = () => {
               </div>
               <div className="relative mt-5 pt-3 border-t border-white/15 flex items-center justify-between gap-2">
                 {/* يؤمن لغاية: الرصيد ÷ متوسط الاستهلاك اليومي (آخر 7 أيام)، وتاريخ النفاد المتوقع */}
-                <span className="text-[11px] text-white/80 truncate" title={`${tr('متوسط الاستهلاك')}: ${formatNumber(Math.round(avgConsumption))} ${tr('لتر/يوم')}`}>
-                  {tr('يؤمن لغاية')}{' '}
-                  <span className="font-mono font-black text-white">{coverageDays === null ? '—' : formatNumber(coverageDays)}</span>{' '}
-                  {coverageDays !== null && tr(coverageDays >= 3 && coverageDays <= 10 ? 'أيام' : 'يوم')}
+                <span className="text-[11px] text-white/80 truncate" title={t('finance:saharaPetrol.avgConsumptionTitle', { value: formatNumber(Math.round(avgConsumption)) })}>
+                  {coverageDays === null ? (
+                    <>{t('finance:saharaPetrol.coversUntil')} <span className="font-mono font-black text-white">—</span></>
+                  ) : (
+                    <Trans t={t} i18nKey="finance:saharaPetrol.coversDays" count={coverageDays} values={{ days: formatNumber(coverageDays) }} components={{ 1: <span className="font-mono font-black text-white" /> }} />
+                  )}
                 </span>
                 {coverageDate && (
-                  <span className="shrink-0 px-2 py-0.5 rounded-md bg-white/15 text-[10.5px] font-black font-mono" title={tr('تاريخ النفاد المتوقع')}>
+                  <span className="shrink-0 px-2 py-0.5 rounded-md bg-white/15 text-[10.5px] font-black font-mono" title={t('finance:saharaPetrol.runOutDate')}>
                     {coverageDate}
                   </span>
                 )}
@@ -485,9 +488,9 @@ export const SaharaPetrolView: React.FC = () => {
 
               {/* القسم 1: الاستهلاك اليومي — مصروف كل محطة */}
               <div className={sectionBox}>
-                {sectionHeader(Flame, 'text-emerald-700 dark:text-emerald-600', 'الحركة اليومية', 'الوارد والاستهلاك لآخر 7 أيام، واستهلاك كل محطة')}
+                {sectionHeader(Flame, 'text-emerald-700 dark:text-emerald-600', t('finance:saharaPetrol.dailyMovement'), t('finance:saharaPetrol.dailyMovementHint'))}
                 {stationRows.length === 0 ? (
-                  <div className="flex-1 flex items-center justify-center text-xs text-slate-400 py-4">{tr('لا توجد خزانات في قسم "بنزين - صحاري كربلاء"')}</div>
+                  <div className="flex-1 flex items-center justify-center text-xs text-slate-400 py-4">{t('finance:saharaPetrol.noTanks')}</div>
                 ) : (
                   // الاستهلاك: رسم بياني فني للوارد والاستهلاك في الأعلى، ثم كمية كل محطة (لونها يتدرج من الأخضر للأحمر مع الحصة)، والمجموع
                   (() => {
@@ -502,20 +505,20 @@ export const SaharaPetrolView: React.FC = () => {
 
                           <div className="relative flex items-start justify-between gap-3">
                             <div className="space-y-1.5">
-                              <div className="text-[11px] font-bold text-slate-500 dark:text-emerald-100/70 tracking-wide">{tr('حركة البنزين اليومية')}</div>
+                              <div className="text-[11px] font-bold text-slate-500 dark:text-emerald-100/70 tracking-wide">{t('finance:saharaPetrol.chartTitle')}</div>
                               <div className="flex items-center gap-4">
                                 <div>
-                                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-300"><span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#34d399]" />{tr('الوارد')}</div>
+                                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-300"><span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#34d399]" />{t('finance:ledger.inbound')}</div>
                                   <div className="font-mono font-black text-lg leading-tight tabular-nums">{formatNumber(view.inboundQty)}</div>
                                 </div>
                                 <div className="w-px h-8 bg-slate-200 dark:bg-white/10" />
                                 <div>
-                                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-rose-500 dark:text-rose-300"><span className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_#fb7185]" />{tr('الاستهلاك')}</div>
+                                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-rose-500 dark:text-rose-300"><span className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_#fb7185]" />{t('finance:saharaPetrol.consumption')}</div>
                                   <div className="font-mono font-black text-lg leading-tight tabular-nums">{formatNumber(view.totalConsumption)}</div>
                                 </div>
                               </div>
                             </div>
-                            <span className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 dark:ring-emerald-900">{tr('آخر 7 أيام')}</span>
+                            <span className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 dark:ring-emerald-900">{t('finance:saharaPetrol.last7Days')}</span>
                           </div>
 
                           <div className="relative flex-1 min-h-40 mt-2" dir="ltr">
@@ -542,8 +545,8 @@ export const SaharaPetrolView: React.FC = () => {
                                     return (
                                       <div dir="rtl" className="rounded-xl px-3 py-2 text-[11px] bg-white/95 dark:bg-slate-900/90 backdrop-blur-md ring-1 ring-slate-200 dark:ring-white/15 shadow-xl space-y-1 min-w-[140px]">
                                         <div className="font-mono font-bold text-slate-500 dark:text-white/70">{d.date}</div>
-                                        <div className="flex items-center justify-between gap-3 text-emerald-600 dark:text-emerald-300 font-bold"><span>{tr('الوارد')}</span><span className="font-mono font-black">{formatNumber(d.inbound)}</span></div>
-                                        <div className="flex items-center justify-between gap-3 text-rose-500 dark:text-rose-300 font-bold"><span>{tr('الاستهلاك')}</span><span className="font-mono font-black">{formatNumber(d.consumption)}</span></div>
+                                        <div className="flex items-center justify-between gap-3 text-emerald-600 dark:text-emerald-300 font-bold"><span>{t('finance:ledger.inbound')}</span><span className="font-mono font-black">{formatNumber(d.inbound)}</span></div>
+                                        <div className="flex items-center justify-between gap-3 text-rose-500 dark:text-rose-300 font-bold"><span>{t('finance:saharaPetrol.consumption')}</span><span className="font-mono font-black">{formatNumber(d.consumption)}</span></div>
                                       </div>
                                     );
                                   }}
@@ -557,7 +560,7 @@ export const SaharaPetrolView: React.FC = () => {
                               </AreaChart>
                             </ResponsiveContainer>
                             {chartData.length < 2 && (
-                              <div className="absolute inset-x-0 top-2 text-center text-[10px] font-bold text-slate-400 pointer-events-none">{tr('يكتمل الرسم كلما أُضيفت أيام')}</div>
+                              <div className="absolute inset-x-0 top-2 text-center text-[10px] font-bold text-slate-400 pointer-events-none">{t('finance:saharaPetrol.chartFills')}</div>
                             )}
                           </div>
                         </div>
@@ -576,12 +579,12 @@ export const SaharaPetrolView: React.FC = () => {
                                 <div className="flex items-center justify-between gap-1.5">
                                   <span className="flex items-center gap-1.5 min-w-0">
                                     <span className="w-2 h-2 rounded-full shrink-0" style={{ background: used ? heat(p) : '#cbd5e1' }} />
-                                    <span className="text-[11.5px] font-extrabold text-slate-700 dark:text-slate-200 truncate">{tr(st.name)}</span>
+                                    <span className="text-[11.5px] font-extrabold text-slate-700 dark:text-slate-200 truncate">{st.name}</span>
                                   </span>
                                   <span className="text-[9.5px] font-black font-mono px-1 rounded" style={used ? { color: heat(p, 32), background: heat(p, 94) } : { color: '#94a3b8' }}>{pctText(p)}</span>
                                 </div>
                                 <div className="mt-1 font-mono font-black text-[15px] text-slate-900 dark:text-white tabular-nums">
-                                  {formatNumber(st.consumption)} <span className="text-[9.5px] font-bold text-slate-400">{tr('لتر')}</span>
+                                  {formatNumber(st.consumption)} <span className="text-[9.5px] font-bold text-slate-400">{t('common:units.liter')}</span>
                                 </div>
                               </div>
                             );
@@ -589,8 +592,8 @@ export const SaharaPetrolView: React.FC = () => {
                         </div>
 
                         <div className="mt-auto pt-2 flex items-center justify-between text-xs border-t border-dashed border-slate-200 dark:border-slate-700 shrink-0">
-                          <span className="font-bold text-slate-500 dark:text-slate-400">{tr('مجموع الاستهلاك')}</span>
-                          <span className="font-mono font-black text-slate-900 dark:text-white">{formatNumber(view.totalConsumption)} <span className="text-[10px] text-slate-400">{tr('لتر')}</span></span>
+                          <span className="font-bold text-slate-500 dark:text-slate-400">{t('finance:saharaPetrol.totalConsumption')}</span>
+                          <span className="font-mono font-black text-slate-900 dark:text-white">{formatNumber(view.totalConsumption)} <span className="text-[10px] text-slate-400">{t('common:units.liter')}</span></span>
                         </div>
                       </div>
                     );
@@ -600,9 +603,9 @@ export const SaharaPetrolView: React.FC = () => {
 
               {/* القسم 2: أرصدة المحطات */}
               <div className={sectionBox}>
-                {sectionHeader(MapPin, 'text-blue-600 dark:text-blue-400', 'أرصدة المحطات', 'الرصيد ونسبة الامتلاء من سعة الخزان')}
+                {sectionHeader(MapPin, 'text-blue-600 dark:text-blue-400', t('finance:ledger.stationBalances'), t('finance:ledger.stationBalancesHint'))}
                 {stationRows.length === 0 ? (
-                  <div className="flex-1 flex items-center justify-center text-xs text-slate-400 py-4">{tr('أضف خزانات لقسم "بنزين - صحاري كربلاء" في منظومة الخزانات')}</div>
+                  <div className="flex-1 flex items-center justify-center text-xs text-slate-400 py-4">{t('finance:saharaPetrol.addTanksHint')}</div>
                 ) : (
                   (() => {
                     // المحطة التي لها خزان بنزين: نسبة الامتلاء من السعة؛ وإلا حصتها من إجمالي الأرصدة
@@ -631,7 +634,7 @@ export const SaharaPetrolView: React.FC = () => {
                             return (
                               <div
                                 key={st.id}
-                                title={byCapacity ? `${tr(st.name)}: ${formatNumber(st.balance)} / ${formatNumber(st.capacity)} ${tr('لتر')}` : `${tr(st.name)}: ${formatNumber(st.balance)} ${tr('لتر')}`}
+                                title={byCapacity ? `${st.name}: ${formatNumber(st.balance)} / ${formatNumber(st.capacity)} ${t('common:units.liter')}` : `${st.name}: ${formatNumber(st.balance)} ${t('common:units.liter')}`}
                                 className={`group relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700/80 px-3 pt-3 pb-2.5 flex flex-col justify-between gap-2 shadow-[0_2px_10px_-4px_rgba(15,23,42,0.12)] hover:shadow-[0_10px_24px_-10px_rgba(15,23,42,0.25)] hover:-translate-y-0.5 transition-all duration-200 ${empty ? 'opacity-60' : ''}`}
                               >
                                 {/* خط إبراز علوي */}
@@ -641,20 +644,20 @@ export const SaharaPetrolView: React.FC = () => {
                                     <span className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${empty ? 'bg-slate-100 text-slate-400 dark:bg-slate-800' : 'bg-slate-50 text-[#1d576a] ring-1 ring-slate-200 dark:bg-slate-800 dark:text-sky-300 dark:ring-slate-700'}`}>
                                       <MapPin className="w-3.5 h-3.5" />
                                     </span>
-                                    <span className="text-[12px] font-extrabold text-slate-800 dark:text-slate-100 truncate">{tr(st.name)}</span>
+                                    <span className="text-[12px] font-extrabold text-slate-800 dark:text-slate-100 truncate">{st.name}</span>
                                   </div>
                                   <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black font-mono ${empty ? 'bg-slate-100 text-slate-400 dark:bg-slate-800' : 'bg-slate-50 dark:bg-slate-800 ' + tone.text}`}>{pctText(p)}</span>
                                 </div>
                                 <div className="flex items-baseline gap-1">
                                   {/* الرقم بالأحمر فقط إذا نزل الامتلاء تحت 10% */}
                                   <span className={`font-mono font-black text-lg sm:text-xl tabular-nums tracking-tight ${empty ? 'text-slate-400' : critical ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white'}`}>{formatNumber(st.balance)}</span>
-                                  <span className="text-[10px] font-bold text-slate-400">{tr('لتر')}</span>
+                                  <span className="text-[10px] font-bold text-slate-400">{t('common:units.liter')}</span>
                                 </div>
                                 <div className="space-y-1">
                                   {shareBar(p, tone.bar)}
                                   <div className="flex items-center justify-between text-[10px] font-bold text-slate-400">
                                     <span className="truncate">
-                                      {empty ? tr('لا يوجد رصيد') : days !== null ? `${tr('يكفي')} ${formatNumber(days)} ${tr('يوم')}` : byCapacity ? tr('من سعة الخزان') : tr('من إجمالي الأرصدة')}
+                                      {empty ? t('finance:saharaPetrol.noBalance') : days !== null ? t('finance:saharaPetrol.enoughFor', { count: days, days: formatNumber(days) }) : byCapacity ? t('finance:saharaPetrol.ofCapacity') : t('finance:saharaPetrol.ofTotal')}
                                     </span>
                                     {byCapacity && <span className="font-mono shrink-0">{formatNumber(st.capacity)}</span>}
                                   </div>
@@ -675,9 +678,9 @@ export const SaharaPetrolView: React.FC = () => {
                 <div className="mb-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl p-2.5 flex items-center justify-between shrink-0">
                   <span className="flex items-center gap-1.5 text-xs font-black text-slate-700 dark:text-slate-200">
                     <History className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                    {tr('الرصيد الأسبوعي')}
+                    {t('finance:saharaPetrol.weeklyBalance')}
                   </span>
-                  <span className="text-[10px] font-bold text-slate-400">{tr('آخر 7 أيام')}</span>
+                  <span className="text-[10px] font-bold text-slate-400">{t('finance:saharaPetrol.last7Days')}</span>
                 </div>
 
                 <div className="shrink-0" ref={weeklyTableRef}>
@@ -686,8 +689,8 @@ export const SaharaPetrolView: React.FC = () => {
                       <table className="w-full text-[11px]">
                         <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
                           <tr>
-                            {['التاريخ', 'الرصيد السابق', 'الوارد', 'الاستهلاك', 'الرصيد الحالي'].map(h => (
-                              <th key={h} className="px-2 py-2 font-bold text-right whitespace-nowrap">{tr(h)}</th>
+                            {[t('finance:ledger.form.date'), t('finance:ledger.previousBalance'), t('finance:ledger.inbound'), t('finance:saharaPetrol.consumption'), t('finance:ledger.currentBalance')].map(h => (
+                              <th key={h} className="px-2 py-2 font-bold text-start whitespace-nowrap">{h}</th>
                             ))}
                           </tr>
                         </thead>
@@ -699,7 +702,7 @@ export const SaharaPetrolView: React.FC = () => {
                               <tr
                                 key={r.id}
                                 onClick={() => { const isLatest = r.id === latest?.id; setViewId(isLatest ? null : r.id); setPickedFromTable(!isLatest); }}
-                                title={tr('عرض هذا اليوم')}
+                                title={t('finance:saharaPetrol.viewDay')}
                                 className={`border-t border-slate-100 dark:border-slate-800 cursor-pointer transition-colors ${
                                   isGray
                                     ? 'bg-slate-50/50 dark:bg-slate-800/30 hover:bg-slate-100/50 dark:hover:bg-slate-700/50'
@@ -711,8 +714,8 @@ export const SaharaPetrolView: React.FC = () => {
                                   {r.date}
                                 </td>
                                 <td className="px-2 py-2 font-mono tabular-nums text-slate-600 dark:text-slate-300">{formatNumber(r.previous)}</td>
-                                <td dir="ltr" className="px-2 py-2 font-mono tabular-nums text-right text-emerald-700 dark:text-emerald-400">{r.inboundQty ? `+${formatNumber(r.inboundQty)}` : '0'}</td>
-                                <td dir="ltr" className="px-2 py-2 font-mono tabular-nums text-right text-rose-600 dark:text-rose-400">{r.totalConsumption ? `−${formatNumber(r.totalConsumption)}` : '0'}</td>
+                                <td className="px-2 py-2 font-mono tabular-nums text-start text-emerald-700 dark:text-emerald-400"><span dir="ltr">{r.inboundQty ? `+${formatNumber(r.inboundQty)}` : '0'}</span></td>
+                                <td className="px-2 py-2 font-mono tabular-nums text-start text-rose-600 dark:text-rose-400"><span dir="ltr">{r.totalConsumption ? `−${formatNumber(r.totalConsumption)}` : '0'}</span></td>
                                 <td className="px-2 py-2 font-mono font-black tabular-nums text-slate-900 dark:text-white">{formatNumber(r.current)}</td>
                               </tr>
                             );
@@ -743,25 +746,25 @@ export const SaharaPetrolView: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white">
-                    {tr(form.id ? 'تعديل سجل يوم البنزين' : 'تسجيل يوم جديد لرصيد البنزين')}
+                    {form.id ? t('finance:saharaPetrol.form.editTitle') : t('finance:saharaPetrol.form.newTitle')}
                   </h3>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    {tr('الرصيد السابق + الوارد (خارجي + داخلي) − الاستهلاك اليومي = الرصيد الحالي')}
+                    {t('finance:saharaPetrol.form.formula')}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <label className={`flex items-center gap-1.5 h-9 pl-1 pr-2.5 rounded-xl border bg-slate-50 dark:bg-slate-800 ${dateTaken ? 'border-red-400' : 'border-slate-200 dark:border-slate-700'}`}>
+                <label className={`flex items-center gap-1.5 h-9 pe-1 ps-2.5 rounded-xl border bg-slate-50 dark:bg-slate-800 ${dateTaken ? 'border-red-400' : 'border-slate-200 dark:border-slate-700'}`}>
                   <CalendarDays className="w-4 h-4 text-emerald-700 shrink-0" />
                   <input
                     type="date"
-                    aria-label={tr('التاريخ')}
+                    aria-label={t('finance:ledger.form.date')}
                     className="bg-transparent text-xs font-mono font-bold text-slate-900 dark:text-white outline-none w-[118px]"
                     value={toInputDate(form.date)}
                     onChange={e => setForm({ ...form, date: fromInputDate(e.target.value) })}
                   />
                 </label>
-                <button type="button" onClick={() => setForm(null)} aria-label={tr('إغلاق')} className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700 cursor-pointer">
+                <button type="button" onClick={() => setForm(null)} aria-label={t('common:actions.close')} className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700 cursor-pointer">
                   <X className="w-4.5 h-4.5" />
                 </button>
               </div>
@@ -770,18 +773,18 @@ export const SaharaPetrolView: React.FC = () => {
             <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 space-y-3 bg-slate-50/40 dark:bg-slate-900/40">
               {/* 1. الرصيد السابق والرصيد الحالي المحسوب */}
               <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-3.5">
-                <div className={cardTitle}><span className={cardNum}>1</span><Wallet className="w-3.5 h-3.5" /><span>{tr('الرصيد')}</span></div>
+                <div className={cardTitle}><span className={cardNum}>1</span><Wallet className="w-3.5 h-3.5" /><span>{t('finance:ledger.form.balance')}</span></div>
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5 items-stretch">
                   {/* الرصيد السابق: تلقائي من اليوم الذي قبله، ويصبح قابلًا للإدخال عند التصحيح */}
                   <div className="sm:col-span-4 relative overflow-hidden rounded-2xl p-4 bg-emerald-50/70 dark:bg-emerald-950/25 border border-emerald-200/80 dark:border-emerald-900/50 flex flex-col">
                     <div className="relative flex items-center justify-center min-h-[28px]">
-                      <div className="text-[11px] font-bold text-emerald-800 dark:text-emerald-600">{tr('الرصيد السابق')}</div>
+                      <div className="text-[11px] font-bold text-emerald-800 dark:text-emerald-600">{t('finance:ledger.previousBalance')}</div>
                       <button
                         type="button"
                         onClick={() => (form.prevEditing ? commitPrevious() : startEditPrevious())}
-                        title={tr(form.prevEditing ? 'حفظ' : 'تعديل')}
-                        aria-label={tr(form.prevEditing ? 'حفظ' : 'تعديل')}
-                        className={`absolute left-0 top-0 w-7 h-7 rounded-lg border flex items-center justify-center cursor-pointer transition-colors ${form.prevEditing ? 'bg-emerald-700 hover:bg-emerald-800 border-emerald-700 text-white shadow-sm' : 'bg-white/80 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'}`}
+                        title={form.prevEditing ? t('common:actions.save') : t('common:actions.edit')}
+                        aria-label={form.prevEditing ? t('common:actions.save') : t('common:actions.edit')}
+                        className={`absolute end-0 top-0 w-7 h-7 rounded-lg border flex items-center justify-center cursor-pointer transition-colors ${form.prevEditing ? 'bg-emerald-700 hover:bg-emerald-800 border-emerald-700 text-white shadow-sm' : 'bg-white/80 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'}`}
                       >
                         {form.prevEditing ? <Check className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
                       </button>
@@ -794,7 +797,7 @@ export const SaharaPetrolView: React.FC = () => {
                           dir="ltr"
                           className="w-full h-11 px-3 rounded-xl text-center bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 focus:ring-2 focus:ring-emerald-300/60 outline-none text-xl font-black font-mono text-slate-800 dark:text-slate-100 placeholder:text-slate-400 placeholder:text-sm placeholder:font-bold"
                           value={form.previous}
-                          placeholder={tr('الرصيد الافتتاحي')}
+                          placeholder={t('finance:ledger.form.openingBalance')}
                           onChange={e => setForm({ ...form, previous: withCommas(e.target.value) })}
                           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commitPrevious(); } }}
                         />
@@ -803,16 +806,16 @@ export const SaharaPetrolView: React.FC = () => {
                           <span className="text-3xl font-black font-mono tracking-tight tabular-nums text-slate-800 dark:text-slate-100" dir="ltr">
                             {formatNumber(formPrevious)}
                           </span>
-                          <span className="text-xs font-bold text-emerald-700/70 dark:text-emerald-600/70">{tr('لتر')}</span>
+                          <span className="text-xs font-bold text-emerald-700/70 dark:text-emerald-600/70">{t('common:units.liter')}</span>
                         </div>
                       )}
                     </div>
                     <div className="relative mt-3 pt-2.5 border-t border-emerald-100 dark:border-emerald-900/40 text-[10.5px] font-bold text-emerald-800/80 dark:text-emerald-600/80 text-center">
                       {form.prevEditing
-                        ? tr('أدخل الرصيد ثم اضغط حفظ')
+                        ? t('finance:ledger.form.enterThenSave')
                         : form.editPrevious || autoPrevious === null
-                          ? tr(autoPrevious === null ? 'الرصيد الافتتاحي' : 'معدّل يدويًا')
-                          : `${tr('من الرصيد الحالي ليوم')} ${prevRecord?.date ?? ''}`}
+                          ? autoPrevious === null ? t('finance:ledger.form.openingBalance') : t('finance:ledger.form.manuallyEdited')
+                          : t('finance:ledger.form.fromCurrentOf', { date: prevRecord?.date ?? '' })}
                     </div>
                   </div>
 
@@ -827,11 +830,11 @@ export const SaharaPetrolView: React.FC = () => {
                         <span className="w-6 h-6 rounded-lg bg-white/15 border border-white/20 flex items-center justify-center">
                           <Wallet className="w-3.5 h-3.5" />
                         </span>
-                        {tr('الرصيد الحالي')}
+                        {t('finance:ledger.currentBalance')}
                       </div>
                       <div className="flex items-baseline justify-center gap-2">
                         <span className="text-[40px] font-black font-mono tracking-tight tabular-nums leading-none [text-shadow:0_2px_12px_rgba(0,0,0,0.18)]" dir="ltr">{formatNumber(formEmpty ? 0 : formCurrent)}</span>
-                        <span className="text-sm font-bold text-white/70">{tr('لتر')}</span>
+                        <span className="text-sm font-bold text-white/70">{t('common:units.liter')}</span>
                       </div>
                       {!formEmpty && (() => {
                         const change = formCurrent - formPrevious;
@@ -840,7 +843,7 @@ export const SaharaPetrolView: React.FC = () => {
                             <span className={`px-2 py-0.5 rounded-full font-black font-mono border ${change > 0 ? 'bg-emerald-400/20 border-emerald-200/30 text-emerald-50' : change < 0 ? 'bg-rose-400/25 border-rose-200/30 text-rose-50' : 'bg-white/10 border-white/20 text-white/80'}`} dir="ltr">
                               {change > 0 ? '▲ +' : change < 0 ? '▼ ' : ''}{formatNumber(change)}
                             </span>
-                            <span className="text-white/65 font-bold">{tr('عن الرصيد السابق')}</span>
+                            <span className="text-white/65 font-bold">{t('finance:ledger.form.vsPrevious')}</span>
                           </div>
                         );
                       })()}
@@ -850,18 +853,18 @@ export const SaharaPetrolView: React.FC = () => {
                   {/* طريقة الإدخال: يدوي أو رفع ملف */}
                   <div className="sm:col-span-2 rounded-2xl p-2 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-700 flex sm:flex-col gap-2">
                     {([
-                      ['manual', 'يدوي', PenLine],
-                      ['upload', 'رفع ملف', Upload]
+                      ['manual', t('finance:ledger.form.manual'), PenLine],
+                      ['upload', t('finance:ledger.form.upload'), Upload]
                     ] as const).map(([k, label, Icon]) => (
                       <button
                         key={k}
                         type="button"
                         onClick={() => setEntryMode(k)}
-                        title={tr(k === 'manual' ? 'إدخال يدوي' : 'رفع ملف الكشف (Excel / PDF)')}
+                        title={k === 'manual' ? t('finance:ledger.form.manualHint') : t('finance:ledger.form.uploadHint')}
                         className={`flex-1 min-h-[52px] rounded-xl flex flex-col items-center justify-center gap-1 text-[10.5px] font-bold cursor-pointer transition-all ${entryMode === k ? 'bg-emerald-700 text-white shadow-sm' : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:bg-emerald-50 hover:text-emerald-800 dark:hover:bg-slate-700'}`}
                       >
                         <Icon className="w-5 h-5" />
-                        {tr(label)}
+                        {label}
                       </button>
                     ))}
                   </div>
@@ -888,14 +891,14 @@ export const SaharaPetrolView: React.FC = () => {
                     {upload.status === 'loading' ? (
                       <>
                         <Loader2 className="w-7 h-7 text-emerald-700 animate-spin" />
-                        <span className="text-sm font-black text-slate-800 dark:text-slate-100">{tr('جارٍ قراءة الكشف…')}</span>
+                        <span className="text-sm font-black text-slate-800 dark:text-slate-100">{t('finance:ledger.upload.reading')}</span>
                         <span className="text-[11px] text-slate-500">{upload.fileName}</span>
                       </>
                     ) : (
                       <>
                         <Upload className="w-7 h-7 text-emerald-700" />
-                        <span className="text-sm font-black text-slate-800 dark:text-slate-100">{tr('اختر ملف كشف البنزين أو اسحبه هنا')}</span>
-                        <span className="text-[11px] text-slate-500 dark:text-slate-400">{tr('ملف Excel أو PDF — تُعبّأ استهلاك وأرصدة المحطات والوارد والسعر تلقائيًا، ثم راجعها قبل الحفظ')}</span>
+                        <span className="text-sm font-black text-slate-800 dark:text-slate-100">{t('finance:saharaPetrol.upload.choose')}</span>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400">{t('finance:saharaPetrol.upload.chooseHint')}</span>
                       </>
                     )}
                   </button>
@@ -909,11 +912,11 @@ export const SaharaPetrolView: React.FC = () => {
                     <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/60 px-3 py-2 space-y-1 text-xs">
                       <div className="flex items-center gap-2 font-black text-emerald-800 dark:text-emerald-300">
                         <CheckCircle2 className="w-4 h-4" />
-                        {tr('تمت تعبئة')} {upload.filled} {tr('حقل من الكشف — راجع الأرقام ثم احفظ')}
+                        {t('finance:ledger.upload.filled', { count: upload.filled })}
                       </div>
                       {upload.unmatched.length > 0 && (
                         <div className="font-bold text-amber-700 dark:text-amber-300">
-                          {tr('محطات في الكشف غير موجودة في البنزين (لم تُعبّأ)')}: {upload.unmatched.join('، ')}
+                          {t('finance:saharaPetrol.upload.unmatched', { list: fmtList(upload.unmatched) })}
                         </div>
                       )}
                       {upload.notes && <div className="text-slate-600 dark:text-slate-300">{upload.notes}</div>}
@@ -925,16 +928,16 @@ export const SaharaPetrolView: React.FC = () => {
               {/* 2. الاستهلاك اليومي */}
               <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-3.5">
                 <div className={cardTitle}>
-                  <span className={cardNum}>2</span><Flame className="w-3.5 h-3.5" /><span>{tr('الاستهلاك اليومي')}</span>
-                  <span className="mr-auto font-mono text-[10.5px] text-emerald-700">{tr('المجموع')}: {formatNumber(formConsumption)}</span>
+                  <span className={cardNum}>2</span><Flame className="w-3.5 h-3.5" /><span>{t('finance:ledger.dailyConsumption')}</span>
+                  <span className="ms-auto font-mono text-[10.5px] text-emerald-700">{t('finance:saharaPetrol.total')}: {formatNumber(formConsumption)}</span>
                 </div>
                 {stations.length === 0 ? (
-                  <p className="text-xs text-slate-400">{tr('لا توجد خزانات في قسم "بنزين - صحاري كربلاء"')}</p>
+                  <p className="text-xs text-slate-400">{t('finance:saharaPetrol.noTanks')}</p>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                     {stations.map((st, i) => (
                       <label key={st.id} className="space-y-1">
-                        <div className="h-5 flex items-center"><span className={`${fieldLabel} truncate`}>{tr(`${st.name} (لتر)`)}</span></div>
+                        <div className="h-5 flex items-center"><span className={`${fieldLabel} truncate`}>{t('finance:ledger.form.withLiters', { label: st.name })}</span></div>
                         <input
                           autoFocus={i === 0 && !form.prevEditing}
                           inputMode="numeric"
@@ -953,27 +956,27 @@ export const SaharaPetrolView: React.FC = () => {
               {/* 3. أرصدة المحطات */}
               <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-3.5">
                 <div className={cardTitle}>
-                  <span className={cardNum}>3</span><MapPin className="w-3.5 h-3.5" /><span>{tr('أرصدة المحطات')}</span>
-                  <span className="mr-auto font-normal text-[10.5px] text-slate-500 dark:text-slate-400">
-                    {tr(!prevRecord || !computed.some(r => r.date > form.date && r.id !== form.id) ? 'تُنقل إلى خزانات المواقع والشاشة الرئيسية بعد تأكيد البيانات' : 'يوم سابق: تُحفظ مع السجل فقط ولا تغيّر الخزانات')}
+                  <span className={cardNum}>3</span><MapPin className="w-3.5 h-3.5" /><span>{t('finance:ledger.stationBalances')}</span>
+                  <span className="ms-auto font-normal text-[10.5px] text-slate-500 dark:text-slate-400">
+                    {!prevRecord || !computed.some(r => r.date > form.date && r.id !== form.id) ? t('finance:ledger.form.stationsLatest') : t('finance:ledger.form.stationsPast')}
                   </span>
                 </div>
                 {stations.length === 0 ? (
-                  <p className="text-xs text-slate-400">{tr('لا توجد محطات في منظومة الخزانات')}</p>
+                  <p className="text-xs text-slate-400">{t('finance:ledger.noStations')}</p>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {stations.map(st => {
                       const over = st.capacity > 0 && num(form.balances[st.id] || '') > st.capacity;
                       return (
                         <label key={st.id} className="space-y-1">
-                          <div className="h-5 flex items-center"><span className={`${fieldLabel} truncate`}>{tr(st.name)}</span></div>
+                          <div className="h-5 flex items-center"><span className={`${fieldLabel} truncate`}>{st.name}</span></div>
                           <input
                             inputMode="numeric"
                             dir="ltr"
                             className={`${field} ${over ? '!border-red-500 !ring-red-500' : ''}`}
                             value={form.balances[st.id] ?? ''}
                             placeholder="0"
-                            title={`${tr('السعة')}: ${formatNumber(st.capacity)} ${tr('لتر')}`}
+                            title={`${t('finance:ledger.form.capacity')}: ${formatNumber(st.capacity)} ${t('common:units.liter')}`}
                             onChange={e => setForm({ ...form, balances: { ...form.balances, [st.id]: withCommas(e.target.value) } })}
                           />
                         </label>
@@ -983,23 +986,23 @@ export const SaharaPetrolView: React.FC = () => {
                 )}
                 {overCapacity.length > 0 && (
                   <p className="mt-2 text-xs font-bold text-red-600">
-                    {tr('الرصيد أكبر من سعة الخزان')}: {overCapacity.map(s => `${tr(s.name)} (${formatNumber(s.capacity)})`).join('، ')}
+                    {t('finance:ledger.form.overCapacityList', { list: fmtList(overCapacity.map(s => `${s.name} (${formatNumber(s.capacity)})`)) })}
                   </p>
                 )}
               </div>
 
               {/* 4. الوارد */}
               <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-3.5">
-                <div className={cardTitle}><span className={cardNum}>4</span><Truck className="w-3.5 h-3.5" /><span>{tr('الوارد')}</span></div>
+                <div className={cardTitle}><span className={cardNum}>4</span><Truck className="w-3.5 h-3.5" /><span>{t('finance:ledger.inbound')}</span></div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                   <label className="space-y-1">
-                    <div className="h-5 flex items-center"><span className={fieldLabel}>{tr('وارد خارجي (لتر)')}</span></div>
+                    <div className="h-5 flex items-center"><span className={fieldLabel}>{t('finance:saharaPetrol.form.externalL')}</span></div>
                     <input inputMode="numeric" dir="ltr" className={field} value={form.inboundQty} placeholder="0" onChange={e => setForm({ ...form, inboundQty: withCommas(e.target.value) })} />
                   </label>
                   <label className="space-y-1">
                     <div className="h-5 flex items-center gap-1.5">
-                      <span className={fieldLabel}>{tr('وارد داخلي (لتر)')}</span>
-                      <span className="text-[9.5px] font-bold text-slate-400">{tr('للرصيد فقط')}</span>
+                      <span className={fieldLabel}>{t('finance:saharaPetrol.form.internalL')}</span>
+                      <span className="text-[9.5px] font-bold text-slate-400">{t('finance:saharaPetrol.form.balanceOnly')}</span>
                     </div>
                     <input
                       inputMode="numeric"
@@ -1007,12 +1010,12 @@ export const SaharaPetrolView: React.FC = () => {
                       className={field}
                       value={form.inboundInternal}
                       placeholder="0"
-                      title={tr('يُضاف إلى الرصيد الحالي، ولا يظهر ضمن الوارد في الكارتات ولا الشاشة الرئيسية')}
+                      title={t('finance:saharaPetrol.form.internalHint')}
                       onChange={e => setForm({ ...form, inboundInternal: withCommas(e.target.value) })}
                     />
                   </label>
                   <label className="space-y-1">
-                    <div className="h-5 flex items-center"><span className={fieldLabel}>{tr('سعر شراء اللتر (د.ع)')}</span></div>
+                    <div className="h-5 flex items-center"><span className={fieldLabel}>{t('finance:saharaPetrol.form.pricePerLiter')}</span></div>
                     <input inputMode="decimal" dir="ltr" className={field} value={form.inboundPrice} placeholder="0" onChange={e => setForm({ ...form, inboundPrice: withCommas(e.target.value) })} />
                   </label>
                 </div>
@@ -1021,23 +1024,23 @@ export const SaharaPetrolView: React.FC = () => {
 
             <div className="px-5 py-3 border-t border-slate-200/90 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-2 min-w-0">
-                <button type="button" onClick={clearData} title={tr('تفريغ الخانات لإعادة الإدخال (لا يحذف اليوم)')} className="px-3.5 py-2.5 rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0">
+                <button type="button" onClick={clearData} title={t('finance:saharaPetrol.form.clearHint')} className="px-3.5 py-2.5 rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0">
                   <Eraser className="w-4 h-4" />
-                  {tr('مسح البيانات')}
+                  {t('finance:ledger.form.clear')}
                 </button>
                 {dateTaken ? (
-                  <p className="text-xs font-bold text-red-600">{tr('يوجد سجل لهذا التاريخ — غيّر التاريخ أو عدّل اليوم نفسه.')}</p>
+                  <p className="text-xs font-bold text-red-600">{t('finance:ledger.form.duplicate')}</p>
                 ) : !form.editPrevious && autoPrevious === null && !form.previous.trim() ? (
-                  <p className="text-xs font-bold text-amber-600">{tr('لا يوجد يوم قبل هذا التاريخ — أدخل الرصيد السابق يدويًا.')}</p>
+                  <p className="text-xs font-bold text-amber-600">{t('finance:ledger.form.noPrevious')}</p>
                 ) : overCapacity.length > 0 ? (
-                  <p className="text-xs font-bold text-red-600">{tr('رصيد محطة أكبر من سعة خزانها.')}</p>
+                  <p className="text-xs font-bold text-red-600">{t('finance:ledger.form.overCapacity')}</p>
                 ) : num(form.inboundQty) > 0 && !num(form.inboundPrice) ? (
-                  <p className="text-xs font-bold text-amber-600">{tr('يوجد وارد بدون سعر شراء — أدخل السعر حتى يُحسب متوسط السعر.')}</p>
+                  <p className="text-xs font-bold text-amber-600">{t('finance:saharaPetrol.form.missingPrice')}</p>
                 ) : null}
               </div>
               <div className="flex items-center gap-2.5">
                 <button type="button" onClick={() => setForm(null)} className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 text-xs font-bold cursor-pointer">
-                  {tr('إلغاء')}
+                  {t('common:actions.cancel')}
                 </button>
                 <button
                   type="button"
@@ -1046,7 +1049,7 @@ export const SaharaPetrolView: React.FC = () => {
                   className="px-6 sm:px-8 py-2.5 rounded-xl bg-gradient-to-r from-emerald-700 to-emerald-600 hover:from-emerald-800 hover:to-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-black shadow-lg shadow-emerald-900/20 flex items-center gap-2 cursor-pointer active:scale-95 transition-all"
                 >
                   <Save className="w-4 h-4" />
-                  {tr(form.id ? 'حفظ التعديلات' : 'تأكيد حفظ اليوم')}
+                  {form.id ? t('common:actions.saveChanges') : t('finance:ledger.form.saveDay')}
                 </button>
               </div>
             </div>
@@ -1064,31 +1067,31 @@ export const SaharaPetrolView: React.FC = () => {
                 <AlertTriangle className="w-5.5 h-5.5" />
               </div>
               <div className="space-y-1">
-                <div className="font-black text-slate-900 dark:text-white">{tr('هل أنت متأكد من صحة البيانات؟')}</div>
+                <div className="font-black text-slate-900 dark:text-white">{t('finance:ledger.confirm.title')}</div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  {tr('سيتم تحديث الواجهة الرئيسية وأرصدة خزانات البنزين ببيانات يوم')} <span className="font-mono font-black text-slate-800 dark:text-slate-100">{latest.date}</span>
+                  <Trans t={t} i18nKey="finance:saharaPetrol.confirmText" values={{ date: latest.date }} components={{ 1: <span className="font-mono font-black text-slate-800 dark:text-slate-100" /> }} />
                 </p>
               </div>
             </div>
             <div className="mx-5 mb-4 grid grid-cols-3 gap-2 text-center">
               {[
-                { label: 'الرصيد الحالي', value: latest.current },
-                { label: 'الاستهلاك اليومي', value: latest.totalConsumption },
-                { label: 'الوارد', value: latest.inboundQty }
+                { label: t('finance:ledger.currentBalance'), value: latest.current },
+                { label: t('finance:ledger.dailyConsumption'), value: latest.totalConsumption },
+                { label: t('finance:ledger.inbound'), value: latest.inboundQty }
               ].map(c => (
                 <div key={c.label} className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 px-2 py-2">
-                  <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{tr(c.label)}</div>
+                  <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{c.label}</div>
                   <div className="font-mono font-black text-sm text-slate-900 dark:text-white tabular-nums">{formatNumber(c.value)}</div>
                 </div>
               ))}
             </div>
             <div className="px-5 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2.5">
               <button type="button" onClick={() => setConfirmOpen(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 text-xs font-bold cursor-pointer">
-                {tr('رجوع')}
+                {t('finance:ledger.back')}
               </button>
               <button type="button" onClick={confirmPublish} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-700 to-emerald-600 hover:from-emerald-800 hover:to-emerald-700 text-white text-xs font-black shadow-lg shadow-emerald-900/20 flex items-center gap-2 cursor-pointer active:scale-95 transition-all">
                 <CheckCircle2 className="w-4 h-4" />
-                {tr('نعم، تأكيد وتحديث')}
+                {t('finance:ledger.confirm.yes')}
               </button>
             </div>
           </div>
@@ -1105,19 +1108,19 @@ export const SaharaPetrolView: React.FC = () => {
                 <XCircle className="w-5.5 h-5.5" />
               </div>
               <div className="space-y-1">
-                <div className="font-black text-slate-900 dark:text-white">{tr('إلغاء العملية ورفض البيانات؟')}</div>
+                <div className="font-black text-slate-900 dark:text-white">{t('finance:ledger.discardDialog.title')}</div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  {tr('سيتم حذف كل ما حُفظ ولم يُؤكَّد بعد، والعودة إلى آخر بيانات معتمدة. الواجهة الرئيسية والخزانات لن تتغير.')}
+                  {t('finance:saharaPetrol.discardText')}
                 </p>
               </div>
             </div>
             <div className="px-5 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2.5">
               <button type="button" onClick={() => setDiscardOpen(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 text-xs font-bold cursor-pointer">
-                {tr('رجوع')}
+                {t('finance:ledger.back')}
               </button>
               <button type="button" onClick={() => { discard(); setViewId(null); setDiscardOpen(false); }} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white text-xs font-black shadow-lg shadow-rose-900/20 flex items-center gap-2 cursor-pointer active:scale-95 transition-all">
                 <XCircle className="w-4 h-4" />
-                {tr('نعم، إلغاء العملية')}
+                {t('finance:ledger.discardDialog.yes')}
               </button>
             </div>
           </div>
@@ -1126,7 +1129,7 @@ export const SaharaPetrolView: React.FC = () => {
       )}
 
       {/* عدد الأيام المسجّلة */}
-      {records.length > 0 && <div className="text-[11px] text-slate-400 text-center">{tr('الأيام المسجّلة')}: <span className="font-mono font-bold">{records.length}</span></div>}
+      {records.length > 0 && <div className="text-[11px] text-slate-400 text-center">{t('finance:saharaPetrol.recordedDays')}: <span className="font-mono font-bold">{records.length}</span></div>}
     </div>
   );
 };
