@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@100..900&family=Cairo:wght@200..1000&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -9,11 +8,11 @@
     --bg-canvas: #f8fafc;
     --card-bg: #ffffff;
     --border-color: #f1f5f9;
-    font-family: 'Noto Kufi Arabic', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Noto Kufi Arabic Variable', 'Noto Kufi Arabic', 'Cairo Variable', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
   *, *::before, *::after {
-    font-family: 'Noto Kufi Arabic', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Noto Kufi Arabic Variable', 'Noto Kufi Arabic', 'Cairo Variable', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
   .dark {
@@ -25,12 +24,12 @@
   body {
     background-color: var(--bg-canvas);
     color: #1e293b;
-    font-family: 'Noto Kufi Arabic', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Noto Kufi Arabic Variable', 'Noto Kufi Arabic', 'Cairo Variable', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     /* بدون "cv02/cv03/cv04/cv11": بدائل لخطوط لاتينية كانت تفعّل في الخطوط العربية ياءً أخيرة بلا نقاط (الصحاري ← الصحارى) */
   }
 
   button, input, select, textarea {
-    font-family: 'Noto Kufi Arabic', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Noto Kufi Arabic Variable', 'Noto Kufi Arabic', 'Cairo Variable', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
   .dark body {
@@ -258,7 +257,7 @@ svg path:focus-visible {
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
-    font-family: 'Cairo', 'Noto Kufi Arabic', system-ui, sans-serif !important;
+    font-family: 'Cairo Variable', 'Cairo', 'Noto Kufi Arabic Variable', 'Noto Kufi Arabic', system-ui, sans-serif !important;
     font-size: 10px !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -539,8 +538,8 @@ body[data-glassmorphism="true"] .shadow-soft-card {
    الإنجليزية: Inter، مع الرجوع لخط عربي للبيانات العربية التي يدخلها المستخدمون (أسماء المحطات وغيرها).
    العربية: بلا تباعد بين الحروف، لأنه يكسر اتصالها. */
 :root {
-  --font-ar: 'Noto Kufi Arabic', 'Cairo', system-ui, sans-serif;
-  --font-en: 'Inter', 'Noto Kufi Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-ar: 'Noto Kufi Arabic Variable', 'Noto Kufi Arabic', 'Cairo Variable', 'Cairo', system-ui, sans-serif;
+  --font-en: 'Inter Variable', 'Inter', 'Noto Kufi Arabic Variable', 'Noto Kufi Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 html[lang="en"] body,
 html[lang="en"] body * {

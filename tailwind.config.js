@@ -8,13 +8,13 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"Noto Kufi Arabic"', 'Cairo', 'system-ui', 'sans-serif'],
-        noto: ['"Noto Kufi Arabic"', 'Cairo', 'system-ui', 'sans-serif'],
-        cairo: ['"Noto Kufi Arabic"', 'Cairo', 'system-ui', 'sans-serif'],
-        ibm: ['"Noto Kufi Arabic"', 'Cairo', 'system-ui', 'sans-serif'],
-        outfit: ['"Noto Kufi Arabic"', 'Cairo', 'system-ui', 'sans-serif'],
-        num: ['"Noto Kufi Arabic"', 'Cairo', 'system-ui', 'sans-serif'],
-        mono: ['"Noto Kufi Arabic"', 'Cairo', 'monospace', 'sans-serif'],
+        sans: ['"Noto Kufi Arabic Variable"', '"Noto Kufi Arabic"', '"Cairo Variable"', 'Cairo', 'system-ui', 'sans-serif'],
+        noto: ['"Noto Kufi Arabic Variable"', '"Noto Kufi Arabic"', '"Cairo Variable"', 'Cairo', 'system-ui', 'sans-serif'],
+        cairo: ['"Noto Kufi Arabic Variable"', '"Noto Kufi Arabic"', '"Cairo Variable"', 'Cairo', 'system-ui', 'sans-serif'],
+        ibm: ['"Noto Kufi Arabic Variable"', '"Noto Kufi Arabic"', '"Cairo Variable"', 'Cairo', 'system-ui', 'sans-serif'],
+        outfit: ['"Noto Kufi Arabic Variable"', '"Noto Kufi Arabic"', '"Cairo Variable"', 'Cairo', 'system-ui', 'sans-serif'],
+        num: ['"Noto Kufi Arabic Variable"', '"Noto Kufi Arabic"', '"Cairo Variable"', 'Cairo', 'system-ui', 'sans-serif'],
+        mono: ['"Noto Kufi Arabic Variable"', '"Noto Kufi Arabic"', '"Cairo Variable"', 'Cairo', 'monospace', 'sans-serif'],
       },
 
       colors: {

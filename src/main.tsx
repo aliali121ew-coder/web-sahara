@@ -1,5 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import '@fontsource-variable/noto-kufi-arabic';
+import '@fontsource-variable/cairo';
+import '@fontsource-variable/inter';
 import './index.css';
 import { i18nReady } from './i18n';
 import { initCloudSync } from './lib/cloudSync';
