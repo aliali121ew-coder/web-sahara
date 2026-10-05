@@ -40,6 +40,8 @@ const read = (k: string) => {
   try { return localStorage.getItem(k) || sessionStorage.getItem(k) || ''; } catch { return ''; }
 };
 export const getSessionUser = () => read(SESSION_USER_KEY);
+/** وقت بدء الجلسة الحالية (ms) أو 0 */
+export const getSessionStarted = () => Number(read(SESSION_STARTED_KEY)) || 0;
 
 /** هل توجد جلسة صالحة؟ الجلسة الأقدم من 24 ساعة تُمسح حتى بدون اتصال بالخادم */
 export const hasSession = () => {

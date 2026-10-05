@@ -17,8 +17,7 @@ import {
   Tags,
   LogOut,
   Loader2,
-  Search,
-  UserCheck
+  Search
 } from 'lucide-react';
 import { initials, logout, useSessionProfile } from '../../lib/session';
 import { useTheme } from '../../context/ThemeContext';
@@ -26,6 +25,7 @@ import { useFuelData } from '../../context/FuelDataContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { NavTabId } from '../../types';
 import { getAmbientBgColor, getAmbientGradientStyle } from '../../lib/themeGradients';
+import { ProfileCard } from './ProfileCard';
 
 /* ==========================================================================
    1. CORE DESIGN SYSTEM & TOKENS
@@ -247,6 +247,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   // State for user quick profile popover
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [profileAnchor, setProfileAnchor] = useState<DOMRect | null>(null);
+  const openProfileCard = () => {
+    if (showProfileMenu) { setShowProfileMenu(false); return; }
+    if (profileMenuRef.current) setProfileAnchor(profileMenuRef.current.getBoundingClientRect());
+    setShowProfileMenu(true);
+  };
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
   // State for logout confirmation
@@ -395,18 +401,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     });
   }, [activeTab, permittedGroups]);
 
-  // Close profile popup when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
-        setShowProfileMenu(false);
-      }
-    };
-    if (showProfileMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showProfileMenu]);
 
   // Navigate to a page, then dismiss the overlay (desktop: collapse back to the strip, mobile: close drawer)
   const handleItemClick = (id: NavTabId) => {
@@ -857,12 +851,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* User Profile Card */}
           <div
             ref={profileMenuRef}
-            onClick={() => setShowProfileMenu(prev => !prev)}
+            onClick={openProfileCard}
             role="button"
             tabIndex={0}
-            aria-haspopup="menu"
+            aria-haspopup="dialog"
             aria-expanded={showProfileMenu}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowProfileMenu(prev => !prev); } }}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProfileCard(); } }}
             title={profile?.name || t('profile')}
             className={`flex items-center gap-3 ${isCollapsed ? 'p-0.5' : 'p-1.5'} rounded-xl cursor-pointer transition-colors group ${
               isCollapsed ? 'justify-center' : 'justify-between hover:bg-black/5 dark:hover:bg-white/5'
@@ -912,41 +906,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
           </div>
 
-          {/* User Profile Popover / Dropdown Menu */}
-          {showProfileMenu && !isCollapsed && (
-            <div
-              role="menu"
-              className={`mt-2 p-1.5 rounded-xl border space-y-1 text-xs font-medium animate-in fade-in slide-in-from-bottom-2 duration-150 ${
-                tokens.isLightMode ? 'bg-white border-slate-200 shadow-lg' : 'bg-slate-900/95 border-slate-700/80 shadow-xl'
-              }`}
-            >
-              <button
-                onClick={() => {
-                  handleItemClick('settings');
-                  setShowProfileMenu(false);
-                }}
-                role="menuitem"
-                className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-colors ${
-                  tokens.isLightMode ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/10 text-slate-200'
-                }`}
-              >
-                <UserCheck className="w-3.5 h-3.5 text-blue-500" />
-                <span>{tr('الملف الشخصي والحساب')}</span>
-              </button>
-              <button
-                onClick={() => {
-                  handleItemClick('settings');
-                  setShowProfileMenu(false);
-                }}
-                role="menuitem"
-                className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-colors ${
-                  tokens.isLightMode ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/10 text-slate-200'
-                }`}
-              >
-                <Settings className="w-3.5 h-3.5 text-slate-400" />
-                <span>{tr('إعدادات المنظومة')}</span>
-              </button>
-            </div>
+          {/* بطاقة الملف الشخصي (تصعد من فوق الزر، أو بجانب الشريط المطوي) */}
+          {showProfileMenu && profileAnchor && (
+            <ProfileCard
+              profile={profile}
+              anchor={profileAnchor}
+              beside={isCollapsed}
+              isRtl={isRtl}
+              sectionsCount={permittedGroups.reduce((n, g) => n + g.items.length, 0)}
+              onOpenProfile={() => handleItemClick('settings')}
+              onClose={() => setShowProfileMenu(false)}
+            />
           )}
 
           {/* Logout Section */}
