@@ -1,6 +1,7 @@
-import React, { useEffect, useLayoutEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Briefcase, AtSign, ShieldCheck, Settings, X, LayoutGrid, Clock } from 'lucide-react';
+import { Briefcase, AtSign, ShieldCheck, Settings, X, LayoutGrid, Clock, Camera, PenLine, Check, Loader2, Trash2 } from 'lucide-react';
+import { resizeAvatar } from '../admin/adminUi';
 import { initials, getSessionStarted, type SessionProfile } from '../../lib/session';
 import { useLanguage } from '../../context/LanguageContext';
 
@@ -22,6 +23,8 @@ interface Props {
   /** الإحصاء الثالث (الافتراضي: مدة الجلسة الحالية) */
   lastStat?: { label: string; value: string };
   actionLabel?: string;
+  /** حسابي: يسمح بتغيير الاسم والصورة فقط من داخل البطاقة */
+  onSaveSelf?: (v: { name: string; avatar: string }) => Promise<void>;
   onOpenProfile: () => void;
   onClose: () => void;
 }
@@ -38,9 +41,36 @@ const sinceText = (started: number, tr: (s: string) => string) => {
 };
 
 /** بطاقة الملف الشخصي: غلاف بمنظر جبلي يتلاشى للأبيض، صورة دائرية، الاسم والدور، إحصاءات، وزر رئيسي */
-export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, isRtl, sectionsCount, status, lastStat, actionLabel, onOpenProfile, onClose }) => {
+export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, isRtl, sectionsCount, status, lastStat, actionLabel, onSaveSelf, onOpenProfile, onClose }) => {
   const { tr } = useLanguage();
   const [open, setOpen] = useState(false);
+  // تعديل الاسم والصورة (حسابي فقط)
+  const [editing, setEditing] = useState(false);
+  const [draftName, setDraftName] = useState(profile?.name || '');
+  const [draftAvatar, setDraftAvatar] = useState(profile?.avatar || '');
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+  const startEdit = () => { setDraftName(profile?.name || ''); setDraftAvatar(profile?.avatar || ''); setEditError(''); setEditing(true); };
+  const pickPhoto = async (file?: File) => {
+    if (!file) return;
+    setEditError('');
+    try { setDraftAvatar(await resizeAvatar(file)); } catch (e) { setEditError((e as Error).message); }
+  };
+  const saveSelf = async () => {
+    if (!onSaveSelf) return;
+    if (!draftName.trim()) return setEditError(tr('الاسم مطلوب'));
+    setSaving(true);
+    setEditError('');
+    try {
+      await onSaveSelf({ name: draftName.trim(), avatar: draftAvatar });
+      setEditing(false);
+    } catch (e) {
+      setEditError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   useLayoutEffect(() => {
     const id = requestAnimationFrame(() => setOpen(true));
@@ -52,8 +82,10 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
     setTimeout(onClose, 160);
   };
 
+  const editingRef = useRef(false);
+  editingRef.current = editing;
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); if (editingRef.current) setEditing(false); else close(); } };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -128,20 +160,58 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
           >
             <X className="w-4 h-4" />
           </button>
+          {onSaveSelf && !editing && (
+            <button
+              type="button"
+              onClick={startEdit}
+              className={`absolute top-3 ${isRtl ? 'right-3' : 'left-3'} h-8 px-3 rounded-full bg-white/90 dark:bg-slate-900/80 text-slate-700 dark:text-slate-200 inline-flex items-center gap-1.5 text-[11.5px] font-bold shadow-sm hover:bg-white cursor-pointer`}
+            >
+              <PenLine className="w-3.5 h-3.5" />{tr('تعديل الاسم والصورة')}
+            </button>
+          )}
         </div>
 
         <div className="px-5 pb-5 -mt-14 relative">
           {/* الصورة الدائرية */}
-          <div
-            className="w-[76px] h-[76px] rounded-full ring-4 ring-white dark:ring-slate-900 shadow-md overflow-hidden flex items-center justify-center text-white text-2xl font-black relative"
-            style={{ background: profile?.color || '#2563eb' }}
-          >
-            {profile?.avatar ? <img src={profile.avatar} alt="" className="w-full h-full object-cover" /> : initials(profile?.name)}
-          </div>
+          {(() => {
+            const shownAvatar = editing ? draftAvatar : profile?.avatar;
+            const shownName = editing ? draftName : profile?.name;
+            const face = shownAvatar ? <img src={shownAvatar} alt="" className="w-full h-full object-cover" /> : initials(shownName);
+            const cls = 'w-[76px] h-[76px] rounded-full ring-4 ring-white dark:ring-slate-900 shadow-md overflow-hidden flex items-center justify-center text-white text-2xl font-black relative';
+            if (!editing) return <div className={cls} style={{ background: profile?.color || '#2563eb' }}>{face}</div>;
+            return (
+              <div className="flex items-end gap-2">
+                <button type="button" onClick={() => fileRef.current?.click()} aria-label={tr('تغيير الصورة')} className={`${cls} group cursor-pointer`} style={{ background: profile?.color || '#2563eb' }}>
+                  {face}
+                  <span className="absolute inset-0 bg-black/45 flex items-center justify-center opacity-90 group-hover:opacity-100 transition">
+                    <Camera className="w-6 h-6 text-white" />
+                  </span>
+                </button>
+                {draftAvatar && (
+                  <button type="button" onClick={() => setDraftAvatar('')} className="mb-1 inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 hover:underline cursor-pointer">
+                    <Trash2 className="w-3.5 h-3.5" />{tr('إزالة الصورة')}
+                  </button>
+                )}
+                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => { pickPhoto(e.target.files?.[0]); e.target.value = ''; }} />
+              </div>
+            );
+          })()}
 
           <div className="mt-2.5 flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <div className="text-lg font-black text-slate-900 dark:text-white truncate">{profile?.name || '—'}</div>
+              {editing ? (
+                <input
+                  value={draftName}
+                  onChange={e => setDraftName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') saveSelf(); }}
+                  maxLength={60}
+                  autoFocus
+                  aria-label={tr('الاسم')}
+                  className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-blue-500 bg-white dark:bg-slate-900 text-base font-black text-slate-900 dark:text-white outline-none"
+                />
+              ) : (
+                <div className="text-lg font-black text-slate-900 dark:text-white truncate">{profile?.name || '—'}</div>
+              )}
               <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{role}</div>
             </div>
             {(() => {
@@ -184,6 +254,19 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
             </div>
           </div>
 
+          {editing ? (
+            <>
+              {editError && <p className="mt-3 text-xs font-bold text-rose-600">{editError}</p>}
+              <div className="mt-4 flex items-center gap-2">
+                <button type="button" onClick={() => setEditing(false)} disabled={saving} className="h-11 px-5 rounded-full text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
+                  {tr('إلغاء')}
+                </button>
+                <button type="button" onClick={saveSelf} disabled={saving} className="flex-1 h-11 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-slate-800 disabled:opacity-60 cursor-pointer">
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}{tr('حفظ')}
+                </button>
+              </div>
+            </>
+          ) : (
           <button
             type="button"
             onClick={() => { onOpenProfile(); close(); }}
@@ -191,6 +274,7 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
           >
             <Settings className="w-4 h-4" />{actionLabel ?? tr('الملف الشخصي والحساب')}
           </button>
+          )}
         </div>
       </div>
     </>,

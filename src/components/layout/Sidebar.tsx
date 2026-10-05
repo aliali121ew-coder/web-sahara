@@ -19,13 +19,14 @@ import {
   Loader2,
   Search
 } from 'lucide-react';
-import { initials, logout, useSessionProfile } from '../../lib/session';
+import { initials, logout, refreshProfile, useSessionProfile } from '../../lib/session';
 import { useTheme } from '../../context/ThemeContext';
 import { useFuelData } from '../../context/FuelDataContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { NavTabId } from '../../types';
 import { getAmbientBgColor, getAmbientGradientStyle } from '../../lib/themeGradients';
 import { ProfileCard } from './ProfileCard';
+import { chatApi } from '../chat/chatApi';
 
 /* ==========================================================================
    1. CORE DESIGN SYSTEM & TOKENS
@@ -914,6 +915,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               beside={isCollapsed}
               isRtl={isRtl}
               sectionsCount={permittedGroups.reduce((n, g) => n + g.items.length, 0)}
+              onSaveSelf={async v => { await chatApi.saveProfile(v); await refreshProfile(); }}
               onOpenProfile={() => handleItemClick('settings')}
               onClose={() => setShowProfileMenu(false)}
             />

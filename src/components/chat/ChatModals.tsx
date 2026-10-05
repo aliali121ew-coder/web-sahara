@@ -135,10 +135,8 @@ const PeoplePicker: React.FC<{
 export const AccountModal: React.FC<{ store: ChatStore; onClose: () => void; onAdmin: () => void }> = ({ store, onClose, onAdmin }) => {
   const me = store.me;
   const [name, setName] = useState(me?.name || '');
-  const [role, setRole] = useState(me?.role || '');
-  const [bio, setBio] = useState(me?.bio || '');
   const [avatar, setAvatar] = useState(me?.avatar || '');
-  const [color, setColor] = useState(me?.color || AVATAR_COLORS[0]);
+  const color = me?.color || AVATAR_COLORS[0];
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notif, setNotif] = useState(() => ('Notification' in window ? Notification.permission : 'denied'));
@@ -153,7 +151,7 @@ export const AccountModal: React.FC<{ store: ChatStore; onClose: () => void; onA
     setBusy(true);
     setError('');
     try {
-      await store.saveProfile({ name: name.trim(), role: role.trim(), bio: bio.trim(), avatar, color });
+      await store.saveProfile({ name: name.trim(), avatar });
       onClose();
     } catch (e) {
       setError((e as Error).message);
@@ -206,22 +204,10 @@ export const AccountModal: React.FC<{ store: ChatStore; onClose: () => void; onA
             <span dir="ltr" className="text-xs font-bold px-3 py-1 rounded-full cx-soft cx-muted">@{store.account.username}{store.isAdmin ? ' · admin' : ''}</span>
           </div>
         )}
-        {!avatar && (
-          <div className="flex justify-center gap-2 flex-wrap">
-            {AVATAR_COLORS.map(c => (
-              <button key={c} type="button" onClick={() => setColor(c)} className="w-7 h-7 rounded-full transition" style={{ background: c, outline: color === c ? '3px solid var(--accent)' : 'none', outlineOffset: 2 }} aria-label="لون" />
-            ))}
-          </div>
-        )}
         <Field label="الاسم *">
           <input value={name} onChange={e => setName(e.target.value)} maxLength={60} className={inputCls} placeholder="مثال: علي حسين" onKeyDown={e => e.key === 'Enter' && save()} />
         </Field>
-        <Field label="الوظيفة">
-          <input value={role} onChange={e => setRole(e.target.value)} maxLength={60} className={inputCls} placeholder="مسؤول خزانات، سائق صهريج..." />
-        </Field>
-        <Field label="نبذة">
-          <textarea value={bio} onChange={e => setBio(e.target.value)} maxLength={200} rows={2} className="cx-input w-full rounded-2xl px-4 py-3 text-sm resize-none" placeholder="سطر قصير عنك" />
-        </Field>
+        <p className="text-[11px] cx-muted text-center">يمكنك تغيير اسمك وصورتك فقط؛ الوظيفة والصلاحيات يحددها مدير النظام.</p>
 
         <div className="space-y-2 pt-2">
           {store.isAdmin && (

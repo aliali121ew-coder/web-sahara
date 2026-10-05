@@ -11,7 +11,6 @@ import { QuickActionModal } from './components/layout/QuickActionModal';
 import { CommandPalette } from './components/navigation/CommandPalette';
 import { lazyPage } from './lib/lazyPage';
 import { NoAccess } from './components/auth/NoAccess';
-import { ReadOnlyBanner } from './components/auth/ReadOnlyBanner';
 import { useCanOpenTab, TAB_SECTION } from './lib/usePermission';
 import type { NavTabId } from './types';
 
@@ -221,7 +220,6 @@ const AppContent: React.FC = () => {
           {/* Active View Container */}
           <div className="flex-1 flex flex-col print:animate-none">
             <QuickActionContext.Provider value={handleOpenQuickAction}>
-              {canOpenTab(activeTab) && TAB_SECTION[activeTab]?.section && <ReadOnlyBanner section={TAB_SECTION[activeTab].section!} />}
               <Suspense fallback={null}>
                 {mountedTabs.map(tab => (
                   <Activity key={tab} mode={tab === activeTab ? 'visible' : 'hidden'}>

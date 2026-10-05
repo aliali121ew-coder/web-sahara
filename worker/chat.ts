@@ -467,7 +467,8 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
   }
 
   // ───── صلاحية المحادثة: العرض للقراءة، والتعديل للإرسال وإدارة الغرف ─────
-  if (!path.startsWith('/admin/')) {
+  // تعديل الاسم والصورة متاح لكل حساب حتى بدون صلاحية المحادثة
+  if (!path.startsWith('/admin/') && !(path === '/profile' && method === 'PUT')) {
     const chatLevel = levelOf(session.perms, session.admin, 'chat');
     const readOnlyOk = method === 'GET' || ['/read', '/typing', '/prefs'].includes(path);
     if (chatLevel < (readOnlyOk ? 1 : 2)) return json({ error: chatLevel ? 'صلاحيتك على المحادثة للعرض فقط' : 'لا تملك صلاحية الدخول إلى المحادثة', code: 'forbidden' }, 403);
@@ -600,20 +601,27 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
   }
 
   // ───── الحساب ─────
+  // المستخدم يغيّر اسمه وصورته فقط؛ الوظيفة والصلاحيات والحالة بيد مدير النظام
   if (path === '/profile' && method === 'PUT') {
-    const b = await body<Partial<UserRow>>(request);
+    const b = await body<{ name?: unknown; avatar?: unknown }>(request);
     if (!b) return json({ error: 'بيانات غير صالحة' }, 400);
     const id = authId;
     const name = str(b.name, 60).trim();
     if (!name) return json({ error: 'الاسم مطلوب' }, 400);
-    const avatar = str(b.avatar, MAX_AVATAR_CHARS);
-    await db.batch([
-      db.prepare(
-        'INSERT INTO chat_users (id, name, role, bio, avatar, color, last_seen, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7) ' +
-        'ON CONFLICT(id) DO UPDATE SET name = ?2, role = ?3, bio = ?4, avatar = ?5, color = ?6, last_seen = ?7, updated_at = ?7'
-      ).bind(id, name, str(b.role, 60), str(b.bio, 200), avatar, str(b.color, 20), now),
-      db.prepare("INSERT OR IGNORE INTO chat_members (room_id, user_id, role, last_read, joined_at) VALUES (?, ?, 'member', 0, ?)").bind(GENERAL_ROOM, id, now),
-    ]);
+    const stmts: D1PreparedStatement[] = [
+      db.prepare('UPDATE chat_users SET name = ?, last_seen = ?, updated_at = ? WHERE id = ?').bind(name, now, now, id),
+    ];
+    // الانضمام للغرفة العامة لمن يملك صلاحية المحادثة فقط
+    if (levelOf(session.perms, session.admin, 'chat') >= 1) {
+      stmts.push(db.prepare("INSERT OR IGNORE INTO chat_members (room_id, user_id, role, last_read, joined_at) VALUES (?, ?, 'member', 0, ?)").bind(GENERAL_ROOM, id, now));
+    }
+    if (b.avatar !== undefined) {
+      const avatar = avatarValue(b.avatar);
+      if (avatar === null) return json({ error: 'الصورة غير صالحة (PNG أو JPEG أو WebP بحجم صغير)' }, 400);
+      stmts.push(db.prepare('UPDATE chat_users SET avatar = ? WHERE id = ?').bind(avatar, id));
+    }
+    await db.batch(stmts);
+    await audit(db, request, authId, 'profile.update', b.avatar !== undefined ? 'الاسم والصورة' : 'الاسم');
     return json({ ok: true, id });
   }
 

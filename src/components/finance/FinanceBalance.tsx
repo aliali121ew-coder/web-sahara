@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { usePermissions } from '../../lib/usePermission';
-import { ReadOnlyBanner } from '../auth/ReadOnlyBanner';
 import { useSessionState } from '../../lib/useSessionState';
 import { Wallet } from 'lucide-react';
 import { useFuelData } from '../../context/FuelDataContext';
@@ -459,7 +458,6 @@ export const FinanceBalance: React.FC = () => {
           /* 2. DEDICATED SEPARATE SUBPAGE VIEW                        */
           /* ========================================================= */
           <div className={`w-full mx-auto ${activeSubtab === 'tanks' || activeSubtab === 'archive' ? 'space-y-1.5' : 'space-y-2.5 sm:space-y-3'}`}>
-            <ReadOnlyBanner section={`etihad.${activeSubtab}`} />
             {/* Breadcrumb Path (مخفي في صفحة الخزانات والأرشيف لأن لهما ترويسة خاصة تتضمن المسار) — هامش ثابت وموحّد في كل صفحات البرنامج */}
             {activeSubtab !== 'tanks' && activeSubtab !== 'archive' && (
               <Breadcrumb
@@ -586,7 +584,6 @@ export const FinanceBalance: React.FC = () => {
         /* شركة الصحاري: لوحة البطاقات، ورصيد الشركة مفعّل */
         saharaSubtab ? (
           <div className="w-full flex-1 flex flex-col mx-auto gap-2.5 sm:gap-3">
-            <ReadOnlyBanner section={`sahara.${saharaSubtab}`} />
             {/* صفحة الخزانات لها ترويسة خاصة تتضمن المسار */}
             {saharaSubtab !== 'tanks' && (
               <Breadcrumb
