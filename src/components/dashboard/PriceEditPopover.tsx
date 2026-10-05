@@ -27,6 +27,8 @@ interface Props {
   /** السعر اليدوي الساري (null = تلقائي) */
   manual: { price: number; setAt: string } | null;
   /** كارت يدوي بالكامل (غير مرتبط بالوارد): يعدّل السعر والكمية والتاريخ معًا */
+  /** عرض فقط: بلا تعديل ولا رجوع للتلقائي (الصفحة الرئيسية) */
+  readOnly?: boolean;
   standalone?: { volume: number; date: string; onSave: (v: { price: number; volume: number; date: string }) => void };
   onSave: (price: number) => void;
   onReset: () => void;
@@ -38,7 +40,7 @@ const EST_HEIGHT = 470;
 const toInputDate = (d: string) => (/^\d{4}\/\d{2}\/\d{2}$/.test(d) ? d.replace(/\//g, '-') : '');
 
 /** نافذة سعر المنتج: تنفتح في مكان الكارت بحركة تكبير، وفيها تعديل السعر يدويًا أو إرجاعه للتلقائي */
-export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon: Icon, iconClass, price, autoPrice, autoDate, days, manual, standalone, onSave, onReset, onClose }) => {
+export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon: Icon, iconClass, price, autoPrice, autoDate, days, manual, standalone, readOnly, onSave, onReset, onClose }) => {
   const { tr } = useLanguage();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -127,7 +129,7 @@ export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon
           </button>
         </div>
 
-        {standalone ? (
+        {standalone && !readOnly ? (
           <>
             <div className="mx-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 p-3.5 space-y-3">
               <label className="block">
@@ -163,7 +165,11 @@ export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon
         <div className="mx-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 p-3.5">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{tr('سعر اللتر المعتمد')}</span>
-            {manual ? (
+            {standalone ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10.5px] font-black">
+                <PenLine className="w-3 h-3" />{tr('إدخال يدوي')}
+              </span>
+            ) : manual ? (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 text-[10.5px] font-black ring-1 ring-amber-200 dark:ring-amber-900">
                 <PenLine className="w-3 h-3" />{tr('يدوي')}
               </span>
@@ -200,6 +206,7 @@ export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon
                 <span className="text-4xl font-black font-mono tracking-tight text-slate-900 dark:text-white">{formatNumber(price)}</span>
                 <span className="text-xs font-bold text-slate-400">{tr('د.ع')}</span>
               </div>
+              {!readOnly && (
               <button
                 type="button"
                 onClick={() => { setValue(String(price)); setEditing(true); }}
@@ -207,6 +214,7 @@ export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon
               >
                 <PenLine className="w-3.5 h-3.5" />{tr('تعديل السعر')}
               </button>
+              )}
             </div>
           )}
 
@@ -221,7 +229,21 @@ export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon
           )}
         </div>
 
+        {standalone ? (
+          <div className="mx-4 mt-3 grid grid-cols-2 gap-2 text-center">
+            <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 py-2">
+              <div className="text-[10.5px] font-bold text-slate-400">{tr('الكمية')}</div>
+              <div className="font-mono font-black text-slate-900 dark:text-white">{formatNumber(standalone.volume)} <span className="text-[10px] font-normal text-slate-400">{tr('لتر')}</span></div>
+            </div>
+            <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 py-2">
+              <div className="text-[10.5px] font-bold text-slate-400">{tr('آخر تحديث')}</div>
+              <div className="font-mono font-black text-slate-900 dark:text-white">{standalone.date}</div>
+            </div>
+          </div>
+        ) : null}
+
         {/* ملاحظة سلوك التحديث */}
+        {!standalone && (
         <div className="mx-4 mt-2.5 flex items-start gap-1.5 text-[10.5px] leading-relaxed text-slate-500 dark:text-slate-400">
           <Info className="w-3.5 h-3.5 shrink-0 mt-px" />
           {manual
@@ -229,7 +251,10 @@ export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon
             : <span>{tr('يُحدَّث تلقائيًا مع كل عملية وارد جديدة (متوسط موزون لآخر يوم وارد).')}{autoDate ? <> {tr('آخر وارد')}: <b className="font-mono">{autoDate}</b></> : null}</span>}
         </div>
 
+        )}
+
         {/* آخر أيام الوارد */}
+        {!standalone && (
         <div className="mx-4 mt-3">
           <div className="flex items-center gap-1.5 text-[11px] font-black text-slate-700 dark:text-slate-200 mb-1.5">
             <Truck className="w-3.5 h-3.5 text-slate-400" />{tr('آخر أيام الوارد')}
@@ -262,9 +287,11 @@ export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon
           )}
         </div>
 
+        )}
+
         {/* الأزرار */}
         <div className="mt-3.5 px-4 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-          {manual ? (
+          {manual && !readOnly ? (
             <button type="button" onClick={onReset} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
               <RotateCcw className="w-3.5 h-3.5" />{tr('رجوع للسعر التلقائي')}
             </button>

@@ -532,6 +532,7 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
             autoDate={d.auto?.date ?? null}
             days={d.src?.days ?? []}
             manual={d.manual ? { price: d.manual.price, setAt: d.manual.setAt } : null}
+            readOnly={!isSide}
             standalone={item.id === MANUAL_ONLY_ID ? { volume: d.volume, date: d.priceUpdatedAt, onSave: v => saveCard(item.id, v, item.priceIqd) } : undefined}
             onSave={price => setOverride(item.id, price, d.src?.sig ?? '')}
             onReset={() => clearOverride(item.id)}
