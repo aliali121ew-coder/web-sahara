@@ -85,7 +85,9 @@
       "etihadGasoil": "Etihad gasoil",
       "blackOil": "Black oil",
       "gasoline": "Gasoline",
-      "gasoil": "Gasoil"
+      "gasoil": "Gasoil",
+      "diesel": "Diesel",
+      "gasoilDiesel": "Gasoil / diesel"
     },
     "category": {
       "all": "All",
@@ -111,6 +113,23 @@
     },
     "relative": {
       "today": "Today"
+    },
+    "color": {
+      "red": "Red",
+      "yellow": "Yellow",
+      "honey": "Amber",
+      "kerosene": "Kerosene (white)",
+      "greenishYellow": "Greenish yellow"
+    },
+    "shipment": {
+      "received": "Received",
+      "enRoute": "En route",
+      "inspection": "Under inspection",
+      "cancelled": "Cancelled"
+    },
+    "supplier": {
+      "karbalaRefinery": "Karbala International Refinery",
+      "karbalaRefineryShort": "Karbala Refinery"
     }
   },
   "calendar": {

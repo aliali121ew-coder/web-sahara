@@ -18,6 +18,11 @@ const SLUG: Record<string, string> = {
   'بنزين الصحاري': 'product.saharaGasoline', 'كاز الصحاري': 'product.saharaGasoil', 'كاز محطات': 'product.stationGasoil',
   'كاز الاتحاد': 'product.etihadGasoil', 'نفط الأسود': 'product.blackOil', 'نفط أسود': 'product.blackOil',
   'بنزين': 'product.gasoline', 'كاز': 'product.gasoil',
+  'ديزل': 'product.diesel', 'كاز / ديزل': 'product.gasoilDiesel',
+  // ألوان المنتج وحالات الشحنة والمجهز الافتراضي في كشف الوارد
+  'احمر': 'color.red', 'اصفر': 'color.yellow', 'عسلي': 'color.honey', 'نفط ابيض': 'color.kerosene', 'أصفر مخضر': 'color.greenishYellow',
+  'تم الاستلام': 'shipment.received', 'في الطريق': 'shipment.enRoute', 'قيد الفحص': 'shipment.inspection', 'ملغي': 'shipment.cancelled',
+  'مصفى كربلاء الدولي': 'supplier.karbalaRefinery', 'مصفى كربلاء': 'supplier.karbalaRefineryShort',
   // تصنيفات الموردين وحالة التوفر
   'الكل': 'category.all', 'تجاري': 'category.commercial', 'رسمي': 'category.official', 'حكومي': 'category.government',
   'متوفر': 'availability.available', 'محدود': 'availability.limited', 'غير متوفر': 'availability.unavailable',

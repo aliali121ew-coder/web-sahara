@@ -34,6 +34,8 @@ import {
 } from 'lucide-react';
 import { useFuelData } from '../../context/FuelDataContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation, Trans } from 'react-i18next';
+import { enumText } from '../../i18n/enums';
 import { Breadcrumb } from '../navigation/Breadcrumb';
 import { useQuickAction } from '../../context/QuickActionContext';
 import { formatNumber, formatIQD, getBusinessDate } from '../../lib/utils';
@@ -49,25 +51,25 @@ import {
   PrintDensity,
 } from './InboundPrintReport';
 
+/** عنوان العمود: deliveries:col.<id> */
 export interface ColumnConfig {
   id: string;
-  label: string;
   isDefault: boolean;
 }
 
 export const ALL_INBOUND_COLUMNS: ColumnConfig[] = [
-  { id: 'supplier', label: 'اسم المجهز', isDefault: true },
-  { id: 'company', label: 'الشركة المجهزة', isDefault: true },
-  { id: 'driver', label: 'اسم السائق', isDefault: true },
-  { id: 'truckNumber', label: 'رقم العجلة', isDefault: true },
-  { id: 'voucherNumber', label: 'رقم الفوجر', isDefault: true },
-  { id: 'quantity', label: 'الكميه المستلمة', isDefault: true },
-  { id: 'density', label: 'كثافة المنتج', isDefault: false },
-  { id: 'color', label: 'لون المنتج', isDefault: false },
-  { id: 'price', label: 'سعر المنتج', isDefault: false },
-  { id: 'cost', label: 'تكلفة المنتج', isDefault: true },
-  { id: 'receiptDate', label: 'تاريخ الاستلام والتفريغ', isDefault: true },
-  { id: 'attachments', label: 'المرفقات', isDefault: true },
+  { id: 'supplier', isDefault: true },
+  { id: 'company', isDefault: true },
+  { id: 'driver', isDefault: true },
+  { id: 'truckNumber', isDefault: true },
+  { id: 'voucherNumber', isDefault: true },
+  { id: 'quantity', isDefault: true },
+  { id: 'density', isDefault: false },
+  { id: 'color', isDefault: false },
+  { id: 'price', isDefault: false },
+  { id: 'cost', isDefault: true },
+  { id: 'receiptDate', isDefault: true },
+  { id: 'attachments', isDefault: true },
 ];
 
 const DEFAULT_COLUMNS_STATE: Record<string, boolean> = ALL_INBOUND_COLUMNS.reduce(
@@ -100,7 +102,8 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
     activeTab,
     setActiveTab
   } = useFuelData();
-  const { tr, isRTL } = useLanguage();
+  const { isRTL } = useLanguage();
+  const { t } = useTranslation(['deliveries', 'common']);
   const openQuickAction = useQuickAction();
 
   // 🔒 Strict Scope Isolation: determine active company domain
@@ -226,7 +229,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
   const deliveryDays = useMemo(() => new Set(scopedDeliveries.map(deliveryDay)), [scopedDeliveries]);
 
   // نص فلتر التاريخ: كل التواريخ / يوم واحد / فترة (من ← إلى)
-  const dateRangeLabel = !dateFrom ? '' : dateFrom === dateTo ? dateFrom : `${dateFrom} ← ${dateTo}`;
+  const dateRangeLabel = !dateFrom ? '' : dateFrom === dateTo ? dateFrom : `${dateFrom} — ${dateTo}`;
 
   useEffect(() => {
     try {
@@ -478,10 +481,10 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
         {!isArchive && <Breadcrumb
           items={[
             {
-              label: activeTab === 'deliveries-sahara' ? 'صحاري كربلاء' : activeTab === 'deliveries-etihad' ? 'شركة الاتحاد' : tr('الشركات'),
+              label: activeTab === 'deliveries-sahara' ? t('common:enum.company.sahara') : activeTab === 'deliveries-etihad' ? t('common:enum.company.etihad') : t('deliveries:companies'),
               onClick: () => setActiveTab(activeTab === 'deliveries-sahara' ? 'finance-sahara' : 'finance-etihad')
             },
-            { label: tr('الوارد') }
+            { label: t('deliveries:inbound') }
           ]}
         />}
 
@@ -495,23 +498,23 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-cairo">
                   {isArchive
-                    ? tr('أرشيف الوارد الكامل')
+                    ? t('deliveries:archiveTitle')
                     : isSaharaScoped
-                    ? 'وارد الصحاري (Sahara Inbound)'
+                    ? t('deliveries:titleSahara')
                     : isEtihadScoped
-                    ? 'وارد الاتحاد (Etihad Inbound)'
-                    : tr('شحنات الوقود الواردة (Inbound Deliveries)')}
+                    ? t('deliveries:titleEtihad')
+                    : t('deliveries:title')}
                 </h2>
                 {!isArchive && (
                   <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-mono">
-                    {tr('يوم العمل')} {businessDay}
+                    {t('deliveries:businessDay')} {businessDay}
                   </span>
                 )}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-cairo">
                 {isArchive
-                  ? tr('السجل التراكمي لكافة الشحنات الواردة بجميع التواريخ')
-                  : tr('وارد يوم العمل الحالي (من 7 صباحًا إلى 7 صباحًا) — ينتقل تلقائيًا إلى الأرشيف بعد انتهاء اليوم')}
+                  ? t('deliveries:archiveSubtitle')
+                  : t('deliveries:subtitle')}
               </p>
             </div>
           </div>
@@ -526,19 +529,19 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                   ? 'bg-slate-600 hover:bg-slate-700 border-slate-600 text-white shadow-md shadow-slate-500/25'
                   : 'border-slate-300 dark:border-slate-600 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
               }`}
-              title={tr('تعديل الحقول وتحديد الشحنات للحذف')}
+              title={t('deliveries:editHint')}
             >
               {editMode ? <Check className="w-4 h-4" /> : <Edit className="w-4 h-4" />}
-              <span>{editMode ? tr('إنهاء التعديل') : tr('تعديل')}</span>
+              <span>{editMode ? t('deliveries:finishEditing') : t('common:actions.edit')}</span>
             </button>
 
             <button
               onClick={() => setShowPrintReportModal(true)}
               className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-blue-500/30 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 text-xs font-bold active:scale-95 transition-all shadow-2xs cursor-pointer"
-              title="طباعة التقرير وجدول الوارد الرسمي"
+              title={t('deliveries:printHint')}
             >
               <Printer className="w-4 h-4" />
-              <span>{tr('طباعة تقرير')}</span>
+              <span>{t('deliveries:printReport')}</span>
             </button>
 
             {!isArchive && (
@@ -547,7 +550,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 active:scale-95 transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>{tr('اضافة وارد')}</span>
+              <span>{t('deliveries:add')}</span>
             </button>
             )}
           </div>
@@ -558,36 +561,36 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
         {/* كل الكارتات: العنوان أعلى، والرقم في منتصف المساحة الباقية بنفس الارتفاع */}
         <div className={KPI_CARD}>
           <div className={KPI_HEAD}>
-            <span className="text-xs font-bold font-cairo">{tr('إجمالي الكميات المستلمة')}</span>
+            <span className="text-xs font-bold font-cairo">{t('deliveries:print.kpi.volume')}</span>
             <Fuel className="w-4 h-4 text-blue-600" />
           </div>
           <div className={KPI_BODY}>
             <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-sans">
-              {formatNumber(totalVolume)} <span className="text-xs font-bold text-blue-600 font-cairo">{tr('لتر')}</span>
+              {formatNumber(totalVolume)} <span className="text-xs font-bold text-blue-600 font-cairo">{t('common:units.liter')}</span>
             </span>
           </div>
         </div>
 
         <div className={KPI_CARD}>
           <div className={KPI_HEAD}>
-            <span className="text-xs font-bold font-cairo">{tr('تكلفة المنتج الإجمالية')}</span>
+            <span className="text-xs font-bold font-cairo">{t('deliveries:totalCost')}</span>
             <DollarSign className="w-4 h-4 text-emerald-600" />
           </div>
           <div className={KPI_BODY}>
             <span className="text-xl sm:text-2xl font-black text-emerald-600 font-sans">
-              {formatNumber(totalCost)} <span className="text-xs font-bold font-cairo text-emerald-700 dark:text-emerald-400">{tr('د.ع')}</span>
+              {formatNumber(totalCost)} <span className="text-xs font-bold font-cairo text-emerald-700 dark:text-emerald-400">{t('common:units.iqd')}</span>
             </span>
           </div>
         </div>
 
         <div className={KPI_CARD}>
           <div className={KPI_HEAD}>
-            <span className="text-xs font-bold font-cairo">{tr('متوسط سعر اللتر')}</span>
+            <span className="text-xs font-bold font-cairo">{t('deliveries:avgPrice')}</span>
             <Gauge className="w-4 h-4 text-amber-500" />
           </div>
           <div className={KPI_BODY}>
             <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-sans">
-              {avgPrice.toFixed(1)} <span className="text-xs font-bold text-amber-600 font-cairo">{tr('د.ع / لتر')}</span>
+              {avgPrice.toFixed(1)} <span className="text-xs font-bold text-amber-600 font-cairo">{t('deliveries:print.iqdPerLiter')}</span>
             </span>
           </div>
         </div>
@@ -595,7 +598,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
         {/* معدل سعر آخر وارد (آخر يوم عمل = 24 ساعة) = تكلفته ÷ كميته، وتحته نسبة تغير المتوسط (ارتفاع = أحمر، انخفاض = أخضر) */}
         <div className={KPI_CARD}>
           <div className={KPI_HEAD}>
-            <span className="text-xs font-bold font-cairo">{tr('معدل سعر آخر وارد')}</span>
+            <span className="text-xs font-bold font-cairo">{t('deliveries:lastAvg')}</span>
             {priceChange && priceChange.pct <= -0.005
               ? <TrendingDown className="w-4 h-4 text-emerald-600" />
               : priceChange && priceChange.pct >= 0.005
@@ -618,13 +621,13 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
               // تصميم مقسوم: السعر يمينًا، والنسبة في لوحة ملوّنة مستقلة يسارًا
               <div
                 className="flex-1 flex items-center justify-between gap-2 pt-2"
-                title={`${priceChange.lastDay} · ${priceChange.lastCount} ${tr('شحنة')} · ${formatNumber(priceChange.lastQty)} ${tr('لتر')}`}
+                title={`${priceChange.lastDay} · ${t('deliveries:shipments', { count: priceChange.lastCount })} · ${formatNumber(priceChange.lastQty)} ${t('common:units.liter')}`}
               >
                 <div className="min-w-0">
                   <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-sans leading-none tabular-nums">
                     {priceChange.lastPrice.toFixed(1)}
                   </div>
-                  <div className="mt-1 text-[10px] font-bold text-amber-600 font-cairo">{tr('د.ع / لتر')}</div>
+                  <div className="mt-1 text-[10px] font-bold text-amber-600 font-cairo">{t('deliveries:print.iqdPerLiter')}</div>
                 </div>
                 <div className={`shrink-0 flex flex-col items-center gap-1 px-2.5 py-1.5 rounded-xl ring-1 ${tone.box}`}>
                   {(up || down) && (
@@ -643,12 +646,12 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
 
         <div className={KPI_CARD}>
           <div className={KPI_HEAD}>
-            <span className="text-xs font-bold font-cairo">{tr('عدد الشحنات المقيدة')}</span>
+            <span className="text-xs font-bold font-cairo">{t('deliveries:count')}</span>
             <FileText className="w-4 h-4 text-purple-600" />
           </div>
           <div className={KPI_BODY}>
             <span className="text-xl sm:text-2xl font-black text-purple-600 font-sans">
-              {formatNumber(filteredDeliveries.length)} <span className="text-xs font-bold font-cairo text-purple-700 dark:text-purple-300">{tr('شحنة')}</span>
+              {formatNumber(filteredDeliveries.length)} <span className="text-xs font-bold font-cairo text-purple-700 dark:text-purple-300">{t('deliveries:shipmentUnit', { count: filteredDeliveries.length })}</span>
             </span>
           </div>
         </div>
@@ -663,7 +666,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
             <Search className={`w-4 h-4 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-3' : 'left-3'} text-slate-400`} />
             <input
               type="text"
-              placeholder={tr('بحث بالشركة، السائق، رقم العجلة، أو رقم الفوجر...')}
+              placeholder={t('deliveries:search')}
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
               className={`w-full ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-1.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none font-cairo`}
@@ -674,7 +677,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
           <div className="flex flex-wrap items-center gap-2">
             {!lockedCompanyName && (
               <div className="flex items-center gap-1 bg-white dark:bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
-                <span className="font-bold text-slate-400 font-cairo">{tr('الشركة:')}</span>
+                <span className="font-bold text-slate-400 font-cairo">{t('deliveries:filter.company')}</span>
                 <select
                   value={filterCompany}
                   onChange={(e) => setFilterCompany(e.target.value)}
@@ -682,7 +685,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                 >
                   {companiesList.map((c) => (
                     <option key={c} value={c} className="bg-white dark:bg-slate-900 font-cairo">
-                      {tr(c)}
+                      {enumText(c)}
                     </option>
                   ))}
                 </select>
@@ -690,7 +693,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
             )}
 
             <div className="flex items-center gap-1 bg-white dark:bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
-              <span className="font-bold text-slate-400 font-cairo">{tr('المجهز:')}</span>
+              <span className="font-bold text-slate-400 font-cairo">{t('deliveries:filter.supplier')}</span>
               <select
                 value={filterSupplier}
                 onChange={(e) => setFilterSupplier(e.target.value)}
@@ -698,14 +701,14 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
               >
                 {suppliersList.map((s) => (
                   <option key={s} value={s} className="bg-white dark:bg-slate-900 font-cairo">
-                    {tr(s)}
+                    {enumText(s)}
                   </option>
                 ))}
               </select>
             </div>
 
             <div className="flex items-center gap-1 bg-white dark:bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
-              <span className="font-bold text-slate-400 font-cairo">{tr('الشركة المجهزة:')}</span>
+              <span className="font-bold text-slate-400 font-cairo">{t('deliveries:filter.supplierCompany')}</span>
               <select
                 value={filterSupplierCompany}
                 onChange={(e) => setFilterSupplierCompany(e.target.value)}
@@ -713,14 +716,14 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
               >
                 {supplierCompaniesList.map((s) => (
                   <option key={s} value={s} className="bg-white dark:bg-slate-900 font-cairo">
-                    {tr(s)}
+                    {enumText(s)}
                   </option>
                 ))}
               </select>
             </div>
 
             <div className="flex items-center gap-1 bg-white dark:bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
-              <span className="font-bold text-slate-400 font-cairo">{tr('الوقود:')}</span>
+              <span className="font-bold text-slate-400 font-cairo">{t('deliveries:filter.fuel')}</span>
               <select
                 value={filterFuelType}
                 onChange={(e) => setFilterFuelType(e.target.value)}
@@ -728,7 +731,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
               >
                 {fuelTypesList.map((f) => (
                   <option key={f} value={f} className="bg-white dark:bg-slate-900 font-cairo">
-                    {tr(f)}
+                    {enumText(f)}
                   </option>
                 ))}
               </select>
@@ -746,18 +749,18 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                 }`}
               >
                 <Calendar className={`w-3.5 h-3.5 ${dateFrom ? 'text-purple-600 dark:text-purple-400' : 'text-blue-600 dark:text-blue-400'}`} />
-                <span className={dateFrom ? 'font-mono' : ''}>{dateRangeLabel || tr('كل التواريخ')}</span>
+                <span className={dateFrom ? 'font-mono' : ''}>{dateRangeLabel || t('deliveries:allDates')}</span>
                 {dateFrom ? (
                   <span
                     role="button"
-                    title={tr('مسح')}
+                    title={t('common:calendar.clear')}
                     onClick={(e) => { e.stopPropagation(); setDateFrom(''); setDateTo(''); }}
                     className="p-0.5 rounded hover:bg-purple-100 dark:hover:bg-purple-900/50"
                   >
                     <X className="w-3 h-3" />
                   </span>
                 ) : (
-                  <ChevronDown className={`w-3.5 h-3.5 ml-1 transition-transform ${isDatePickerOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-3.5 h-3.5 ms-1 transition-transform ${isDatePickerOpen ? 'rotate-180' : ''}`} />
                 )}
               </button>
 
@@ -788,10 +791,10 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                     ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/25 ring-2 ring-blue-400/40'
                     : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-600 shadow-2xs hover:bg-blue-50/50 dark:hover:bg-slate-800'
                 }`}
-                title={tr('تخصيص الأعمدة')}
+                title={t('deliveries:customizeCols')}
               >
                 <SlidersHorizontal className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                <span>{tr('الأعمدة')}</span>
+                <span>{t('deliveries:cols')}</span>
                 <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-sans font-black border border-blue-200 dark:border-blue-800">
                   {Object.values(visibleColumns).filter(Boolean).length}/{ALL_INBOUND_COLUMNS.length}
                 </span>
@@ -809,10 +812,10 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                     <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100 dark:border-slate-800">
                       <div className="flex items-center gap-1.5 text-xs font-black text-slate-800 dark:text-white">
                         <SlidersHorizontal className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                        <span>{tr('إظهار وإخفاء الأعمدة')}</span>
+                        <span>{t('deliveries:toggleCols')}</span>
                       </div>
                       <span className="text-[10px] text-slate-400 font-sans font-bold">
-                        {Object.values(visibleColumns).filter(Boolean).length} {tr('أعمدة معروضة')}
+                        {t('deliveries:shownCols', { count: Object.values(visibleColumns).filter(Boolean).length })}
                       </span>
                     </div>
 
@@ -824,7 +827,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                         className="px-2 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95"
                       >
                         <Check className="w-3 h-3" />
-                        <span>{tr('عرض الكل')}</span>
+                        <span>{t('deliveries:showAll')}</span>
                       </button>
                       <button
                         type="button"
@@ -832,7 +835,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                         className="px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95"
                       >
                         <RotateCcw className="w-3 h-3" />
-                        <span>{tr('الأعمدة الافتراضية')}</span>
+                        <span>{t('deliveries:defaultCols')}</span>
                       </button>
                     </div>
 
@@ -856,11 +859,11 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                                 onChange={() => toggleColumn(col.id)}
                                 className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
                               />
-                              <span>{tr(col.label)}</span>
+                              <span>{t(`deliveries:col.${col.id}`)}</span>
                             </div>
                             {col.isDefault && (
                               <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800">
-                                افتراضي
+                                {t('deliveries:default')}
                               </span>
                             )}
                           </label>
@@ -885,13 +888,13 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                   onChange={toggleSelectAll}
                   className="w-4 h-4 accent-amber-600 cursor-pointer"
                 />
-                <span>{tr('تحديد الكل')} (<span className="font-sans">{filteredDeliveries.length}</span>)</span>
+                <span>{t('deliveries:selectAll')} (<span className="font-sans">{filteredDeliveries.length}</span>)</span>
               </label>
               <span className="text-xs font-bold text-amber-700 dark:text-amber-300">
-                {tr('المحدد')}: <span className="font-sans">{selectedIds.size}</span>
+                {t('deliveries:selected')}: <span className="font-sans">{selectedIds.size}</span>
               </span>
               <span className="hidden md:inline text-[11px] text-slate-500 dark:text-slate-400">
-                {tr('اضغط على أي حقل لتعديله، ويُحفظ عند الخروج منه أو الضغط على Enter')}
+                {t('deliveries:editTip')}
               </span>
             </div>
             <button
@@ -905,7 +908,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
               }`}
             >
               <Trash2 className="w-4 h-4" />
-              <span>{tr('حذف المحدد')} (<span className="font-sans">{selectedIds.size}</span>)</span>
+              <span>{t('deliveries:deleteSelected')} (<span className="font-sans">{selectedIds.size}</span>)</span>
             </button>
           </div>
         )}
@@ -922,7 +925,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                       type="checkbox"
                       checked={allSelected}
                       onChange={toggleSelectAll}
-                      title={tr('تحديد الكل')}
+                      title={t('deliveries:selectAll')}
                       className="w-4 h-4 accent-amber-500 cursor-pointer"
                     />
                   </th>
@@ -933,66 +936,66 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
 
                 {/* 1. اسم المجهز */}
                 {visibleColumns.supplier && (
-                  <th className="py-3.5 px-3.5 whitespace-nowrap text-white font-cairo">{tr('اسم المجهز')}</th>
+                  <th className="py-3.5 px-3.5 whitespace-nowrap text-white font-cairo">{t('deliveries:col.supplier')}</th>
                 )}
 
                 {/* 2. الشركة المجهزة */}
                 {visibleColumns.company && (
-                  <th className="py-3.5 px-3.5 whitespace-nowrap text-white font-cairo">{tr('الشركة المجهزة')}</th>
+                  <th className="py-3.5 px-3.5 whitespace-nowrap text-white font-cairo">{t('deliveries:col.company')}</th>
                 )}
 
                 {/* 3. اسم السائق */}
                 {visibleColumns.driver && (
-                  <th className="py-3.5 px-3.5 whitespace-nowrap text-white font-cairo">{tr('اسم السائق')}</th>
+                  <th className="py-3.5 px-3.5 whitespace-nowrap text-white font-cairo">{t('deliveries:col.driver')}</th>
                 )}
 
                 {/* 4. رقم العجلة */}
                 {visibleColumns.truckNumber && (
-                  <th className="py-3.5 px-3.5 whitespace-nowrap text-white font-cairo">{tr('رقم العجلة')}</th>
+                  <th className="py-3.5 px-3.5 whitespace-nowrap text-white font-cairo">{t('deliveries:col.truckNumber')}</th>
                 )}
 
                 {/* 5. رقم الفوجر */}
                 {visibleColumns.voucherNumber && (
-                  <th className="py-3.5 px-3.5 whitespace-nowrap text-white font-cairo">{tr('رقم الفوجر')}</th>
+                  <th className="py-3.5 px-3.5 whitespace-nowrap text-white font-cairo">{t('deliveries:col.voucherNumber')}</th>
                 )}
 
                 {/* 6. الكميه المستلمة */}
                 {visibleColumns.quantity && (
-                  <th className="py-3.5 px-3.5 whitespace-nowrap text-white font-cairo">{tr('الكميه المستلمة')}</th>
+                  <th className="py-3.5 px-3.5 whitespace-nowrap text-white font-cairo">{t('deliveries:col.quantity')}</th>
                 )}
 
                 {/* 7. كثافة المنتج */}
                 {visibleColumns.density && (
-                  <th className="py-3.5 px-3.5 whitespace-nowrap text-white font-cairo">{tr('كثافة المنتج')}</th>
+                  <th className="py-3.5 px-3.5 whitespace-nowrap text-white font-cairo">{t('deliveries:col.density')}</th>
                 )}
 
                 {/* 8. لون المنتج */}
                 {visibleColumns.color && (
-                  <th className="py-3.5 px-3.5 whitespace-nowrap text-white font-cairo">{tr('لون المنتج')}</th>
+                  <th className="py-3.5 px-3.5 whitespace-nowrap text-white font-cairo">{t('deliveries:col.color')}</th>
                 )}
 
                 {/* 9. سعر المنتج */}
                 {visibleColumns.price && (
-                  <th className="py-3.5 px-3.5 whitespace-nowrap text-white font-cairo">{tr('سعر المنتج')}</th>
+                  <th className="py-3.5 px-3.5 whitespace-nowrap text-white font-cairo">{t('deliveries:col.price')}</th>
                 )}
 
                 {/* 10. تكلفة المنتج */}
                 {visibleColumns.cost && (
-                  <th className="py-3.5 px-3.5 whitespace-nowrap text-white font-cairo">{tr('تكلفة المنتج')}</th>
+                  <th className="py-3.5 px-3.5 whitespace-nowrap text-white font-cairo">{t('deliveries:col.cost')}</th>
                 )}
 
                 {/* 11. تاريخ الاستلام */}
                 {visibleColumns.receiptDate && (
-                  <th className="py-3.5 px-3.5 whitespace-nowrap text-white font-cairo">{tr('تاريخ الاستلام')}</th>
+                  <th className="py-3.5 px-3.5 whitespace-nowrap text-white font-cairo">{t('deliveries:col.receiptDate')}</th>
                 )}
 
                 {/* 12. المرفقات */}
                 {visibleColumns.attachments && (
-                  <th className="py-3.5 px-3.5 text-center whitespace-nowrap text-white font-cairo">{tr('المرفقات')}</th>
+                  <th className="py-3.5 px-3.5 text-center whitespace-nowrap text-white font-cairo">{t('deliveries:col.attachments')}</th>
                 )}
 
                 {/* الإجراءات - دائم */}
-                <th className="py-3.5 px-3.5 text-center whitespace-nowrap w-20 text-white font-cairo">{tr('الإجراءات')}</th>
+                <th className="py-3.5 px-3.5 text-center whitespace-nowrap w-20 text-white font-cairo">{t('deliveries:actions')}</th>
               </tr>
             </thead>
 
@@ -1003,7 +1006,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                   <td colSpan={activeColumnsCount} className="py-14 text-center text-slate-400">
                     <Truck className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 mb-2.5 stroke-1" />
                     <p className="font-bold text-sm text-slate-600 dark:text-slate-400 font-cairo">
-                      {tr('لا توجد شحنات واردة مطابقة للبحث')}
+                      {t('deliveries:empty')}
                     </p>
                   </td>
                 </tr>
@@ -1024,7 +1027,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                   const rowAttachments = (item.attachments && item.attachments.length > 0)
                     ? item.attachments
                     : (item.attachmentUrl
-                        ? [{ id: 'att-1', name: item.attachmentName || 'مستند_الفوجر.png', url: item.attachmentUrl, type: (item.attachmentType || 'image') as 'pdf' | 'image', size: item.attachmentSize || 0 }]
+                        ? [{ id: 'att-1', name: item.attachmentName || t('deliveries:voucherFile'), url: item.attachmentUrl, type: (item.attachmentType || 'image') as 'pdf' | 'image', size: item.attachmentSize || 0 }]
                         : []);
 
                   return (
@@ -1052,14 +1055,14 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                       {/* 1. اسم المجهز */}
                       {visibleColumns.supplier && (
                         <td className="py-3.5 px-3.5 whitespace-nowrap font-bold text-slate-900 dark:text-white">
-                          {editMode ? editInput(item, 'supplierName', supplierPersonName) : tr(supplierPersonName)}
+                          {editMode ? editInput(item, 'supplierName', supplierPersonName) : enumText(supplierPersonName)}
                         </td>
                       )}
 
                       {/* 2. الشركة المجهزة */}
                       {visibleColumns.company && (
                         <td className="py-3.5 px-3.5 whitespace-nowrap font-bold text-slate-800 dark:text-slate-100">
-                          {editMode ? editInput(item, 'supplierCompany', item.supplierCompany || '') : tr(supplierCompanyName)}
+                          {editMode ? editInput(item, 'supplierCompany', item.supplierCompany || '') : enumText(supplierCompanyName)}
                         </td>
                       )}
 
@@ -1069,7 +1072,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                           {editMode ? editInput(item, 'driverName', item.driverName || '') : (
                           <div className="flex items-center gap-1.5">
                             <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            <span className="font-semibold">{tr(item.driverName || 'سائق غير محدد')}</span>
+                            <span className="font-semibold">{enumText(item.driverName || t('deliveries:noDriver'))}</span>
                           </div>
                           )}
                         </td>
@@ -1098,7 +1101,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                         <td className="py-3.5 px-3.5 whitespace-nowrap font-sans font-bold text-slate-900 dark:text-white">
                           {editMode ? editInput(item, 'receivedQuantity', qty, true) : (<>
                           <span>{formatNumber(qty)}</span>
-                          <span className="text-[10px] text-blue-600 dark:text-blue-400 mr-1 font-cairo font-semibold">{tr('لتر')}</span>
+                          <span className="text-[10px] text-blue-600 dark:text-blue-400 ms-1 font-cairo font-semibold">{t('common:units.liter')}</span>
                           </>)}
                         </td>
                       )}
@@ -1117,7 +1120,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                       {/* 8. لون المنتج */}
                       {visibleColumns.color && (
                         <td className="py-3.5 px-3.5 whitespace-nowrap font-semibold text-slate-800 dark:text-slate-200">
-                          {editMode ? editInput(item, 'productColor', item.productColor || '') : tr(color)}
+                          {editMode ? editInput(item, 'productColor', item.productColor || '') : enumText(color)}
                         </td>
                       )}
 
@@ -1125,7 +1128,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                       {visibleColumns.price && (
                         <td className="py-3.5 px-3.5 whitespace-nowrap font-sans font-semibold text-slate-800 dark:text-slate-200">
                           {editMode ? editInput(item, 'productPrice', price, true) : (<>
-                          {price.toLocaleString()} <span className="text-[10px] text-slate-400 font-cairo">د.ع</span>
+                          {price.toLocaleString()} <span className="text-[10px] text-slate-400 font-cairo">{t('common:units.iqd')}</span>
                           </>)}
                         </td>
                       )}
@@ -1133,7 +1136,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                       {/* 10. تكلفة المنتج */}
                       {visibleColumns.cost && (
                         <td className="py-3.5 px-3.5 whitespace-nowrap font-sans font-bold text-emerald-600 dark:text-emerald-400">
-                          {formatIQD(cost)} <span className="text-[10px] text-emerald-700/80 dark:text-emerald-400 font-cairo">د.ع</span>
+                          {formatIQD(cost)} <span className="text-[10px] text-emerald-700/80 dark:text-emerald-400 font-cairo">{t('common:units.iqd')}</span>
                         </td>
                       )}
 
@@ -1163,7 +1166,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                                     setPreviewFile(att);
                                   }}
                                   className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 border border-blue-200/80 dark:border-blue-800/80 transition-all shadow-2xs cursor-pointer active:scale-95"
-                                  title={att.name || tr('معاينة المستند')}
+                                  title={att.name || t('deliveries:previewDoc')}
                                 >
                                   {(() => {
                                     const lowerName = (att.name || '').toLowerCase();
@@ -1180,7 +1183,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                                     setViewAllAttachmentsId(item.id);
                                   }}
                                   className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700/80 transition-all shadow-2xs cursor-pointer active:scale-95"
-                                  title={tr('عرض جميع المرفقات')}
+                                  title={t('deliveries:viewAttachments')}
                                 >
                                   <span className="text-[10px] font-black text-slate-600 dark:text-slate-300 font-sans">
                                     +{rowAttachments.length - 3}
@@ -1215,7 +1218,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                                 ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/25 ring-2 ring-blue-400/40'
                                 : 'text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 bg-slate-100/90 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 border-slate-200/90 dark:border-slate-700 hover:shadow-xs active:scale-95'
                             }`}
-                            title={tr('الإجراءات')}
+                            title={t('deliveries:actions')}
                           >
                             <Edit className="w-4 h-4 stroke-[2.2]" />
                           </button>
@@ -1229,7 +1232,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                               />
                               <div
                                 style={menuPos ? { top: menuPos.top, left: menuPos.left } : undefined}
-                                className={`fixed w-44 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xl py-1.5 z-40 animate-in fade-in zoom-in-95 duration-150 text-right`}
+                                className={`fixed w-44 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xl py-1.5 z-40 animate-in fade-in zoom-in-95 duration-150 text-start`}
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <button
@@ -1241,7 +1244,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                                   className="w-full px-3.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-slate-800 flex items-center gap-2.5 transition-colors cursor-pointer"
                                 >
                                   <Edit className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                                  <span>{tr('تعديل الشحنة')}</span>
+                                  <span>{t('deliveries:editShipment')}</span>
                                 </button>
 
                                 <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
@@ -1255,7 +1258,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                                   className="w-full px-3.5 py-2 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center gap-2.5 transition-colors cursor-pointer"
                                 >
                                   <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
-                                  <span>{tr('حذف السجل')}</span>
+                                  <span>{t('deliveries:deleteRecord')}</span>
                                 </button>
                               </div>
                             </>
@@ -1266,7 +1269,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                   );
                 })
               )), [
-                paginatedDeliveries, visibleColumns, openMenuDeliveryId, menuPos, startIndex, activeColumnsCount, tr, isRTL, editMode, selectedIds
+                paginatedDeliveries, visibleColumns, openMenuDeliveryId, menuPos, startIndex, activeColumnsCount, t, isRTL, editMode, selectedIds
               ])}
             </tbody>
 
@@ -1277,7 +1280,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
         {filteredDeliveries.length > 0 && (
           <div className="p-3 sm:p-4 bg-slate-50/90 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 font-cairo">
             <div className="text-xs font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap shrink-0">
-              {tr('عرض')} <span className="font-sans font-black text-blue-600 dark:text-blue-400">{startIndex + 1}</span> - <span className="font-sans font-black text-blue-600 dark:text-blue-400">{endIndex}</span> {tr('من أصل')} <span className="font-sans font-black text-slate-900 dark:text-white">{filteredDeliveries.length}</span> {tr('شحنة')}
+              <Trans t={t} i18nKey="deliveries:showing" count={filteredDeliveries.length} values={{ from: startIndex + 1, to: endIndex, total: filteredDeliveries.length }} components={{ 1: <span className="font-sans font-black text-blue-600 dark:text-blue-400" />, 2: <span className="font-sans font-black text-slate-900 dark:text-white" /> }} />
             </div>
 
             {totalPages > 1 && (
@@ -1294,7 +1297,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                   }`}
                 >
                   {isRTL ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
-                  <span>{tr('السابق')}</span>
+                  <span>{t('common:pagination.prev')}</span>
                 </button>
 
                 {/* Page Number Buttons */}
@@ -1337,7 +1340,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                       : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 cursor-pointer shadow-2xs active:scale-95'
                   }`}
                 >
-                  <span>{tr('التالي')}</span>
+                  <span>{t('common:pagination.next')}</span>
                   {isRTL ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                 </button>
               </div>
@@ -1355,7 +1358,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
               <div className="flex items-center gap-2">
                 <Edit className="w-5 h-5 text-amber-500" />
                 <h3 className="font-bold text-slate-900 dark:text-white text-sm font-cairo">
-                  {tr('تعديل بيانات شحنة الوارد')} ({editingDelivery.voucherNumber || editingDelivery.receiptNumber})
+                  {t('deliveries:editTitle')} ({editingDelivery.voucherNumber || editingDelivery.receiptNumber})
                 </h3>
               </div>
               <button
@@ -1369,7 +1372,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
             <form onSubmit={handleSaveEdit} className="p-5 space-y-3.5 max-h-[75vh] overflow-y-auto font-cairo">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">{tr('اسم المجهز')}</label>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">{t('deliveries:col.supplier')}</label>
                   <input
                     type="text"
                     value={editingDelivery.supplierName && editingDelivery.supplierName !== editingDelivery.supplierCompany ? editingDelivery.supplierName : ''}
@@ -1379,7 +1382,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">{tr('الشركة المجهزة')}</label>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">{t('deliveries:col.company')}</label>
                   <input
                     type="text"
                     value={editingDelivery.supplierCompany || ''}
@@ -1392,7 +1395,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">{tr('اسم السائق')}</label>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">{t('deliveries:col.driver')}</label>
                   <input
                     type="text"
                     value={editingDelivery.driverName || ''}
@@ -1403,7 +1406,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">{tr('رقم العجلة')}</label>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">{t('deliveries:col.truckNumber')}</label>
                   <input
                     type="text"
                     value={editingDelivery.truckNumber || ''}
@@ -1416,7 +1419,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">{tr('رقم الفوجر')}</label>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">{t('deliveries:col.voucherNumber')}</label>
                   <input
                     type="text"
                     value={editingDelivery.voucherNumber || editingDelivery.receiptNumber || ''}
@@ -1427,7 +1430,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">{tr('الكميه المستلمة')} (لتر)</label>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">{t('deliveries:col.quantity')} ({t('common:units.liter')})</label>
                   <input
                     type="text"
                     value={formatNumber(editingDelivery.receivedQuantity ?? editingDelivery.volumeLiters ?? 0)}
@@ -1451,7 +1454,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">{tr('كثافة المنتج')}</label>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">{t('deliveries:col.density')}</label>
                   <input
                     type="text"
                     value={editingDelivery.productDensity || '0.840'}
@@ -1461,23 +1464,23 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">{tr('لون المنتج')}</label>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">{t('deliveries:col.color')}</label>
                   <select
                     value={editingDelivery.productColor || 'احمر'}
                     onChange={(e) => setEditingDelivery({ ...editingDelivery, productColor: e.target.value })}
                     className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-bold"
                   >
-                    <option value="احمر">احمر</option>
-                    <option value="اصفر">اصفر</option>
-                    <option value="عسلي">عسلي</option>
-                    <option value="نفط ابيض">نفط ابيض</option>
+                    <option value="احمر">{enumText('احمر')}</option>
+                    <option value="اصفر">{enumText('اصفر')}</option>
+                    <option value="عسلي">{enumText('عسلي')}</option>
+                    <option value="نفط ابيض">{enumText('نفط ابيض')}</option>
                   </select>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">{tr('سعر المنتج')} (د.ع)</label>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">{t('deliveries:col.price')} ({t('common:units.iqd')})</label>
                   <input
                     type="text"
                     value={formatNumber(editingDelivery.productPrice ?? editingDelivery.pricePerLiter ?? 0)}
@@ -1499,17 +1502,17 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">{tr('تكلفة المنتج')} (د.ع)</label>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">{t('deliveries:col.cost')} ({t('common:units.iqd')})</label>
                   <div className="w-full px-3 py-1.5 text-xs rounded-xl border border-emerald-500/30 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 font-sans font-black flex items-center justify-between">
                     <span>{formatIQD((editingDelivery.receivedQuantity ?? 0) * (editingDelivery.productPrice ?? 0))}</span>
-                    <span className="text-[10px] text-emerald-600 font-cairo">د.ع</span>
+                    <span className="text-[10px] text-emerald-600 font-cairo">{t('common:units.iqd')}</span>
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">{tr('تاريخ الاستلام')}</label>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">{t('deliveries:col.receiptDate')}</label>
                   <input
                     type="text"
                     value={editingDelivery.receiptUnloadDate || ''}
@@ -1520,7 +1523,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">{tr('المحطة المستلمة')}</label>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">{t('deliveries:station')}</label>
                   <select
                     value={editingDelivery.stationName || 'الطاقة'}
                     onChange={(e) => setEditingDelivery({ ...editingDelivery, stationName: e.target.value })}
@@ -1528,7 +1531,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                   >
                     {['الطاقة', 'التسمين', 'الطار', 'البياض', 'أمهات', 'الأجداد'].map((st) => (
                       <option key={st} value={st}>
-                        محطة {st}
+                        {t('deliveries:stationName', { name: st })}
                       </option>
                     ))}
                   </select>
@@ -1541,13 +1544,13 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                   onClick={() => setEditingDelivery(null)}
                   className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 cursor-pointer"
                 >
-                  {tr('إلغاء')}
+                  {t('common:actions.cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 cursor-pointer"
                 >
-                  {tr('حفظ التعديلات')}
+                  {t('common:actions.saveChanges')}
                 </button>
               </div>
             </form>
@@ -1565,8 +1568,8 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
               <Trash2 className="w-7 h-7 stroke-[2.2]" />
             </div>
             <div className="space-y-1.5">
-              <h4 className="font-black text-slate-900 dark:text-white text-base sm:text-lg">{tr('تأكيد حذف الفوجر')}</h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{tr('هل أنت متأكد من حذف هذا السجل نهائياً من قاعدة بيانات الوارد؟')}</p>
+              <h4 className="font-black text-slate-900 dark:text-white text-base sm:text-lg">{t('deliveries:deleteTitle')}</h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{t('deliveries:deleteText')}</p>
             </div>
             <div className="grid grid-cols-2 gap-2.5 pt-2">
               <button
@@ -1574,7 +1577,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                 onClick={() => setDeleteConfirmId(null)}
                 className="w-full py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-bold text-xs sm:text-sm transition-colors cursor-pointer"
               >
-                {tr('إلغاء')}
+                {t('common:actions.cancel')}
               </button>
               <button
                 type="button"
@@ -1585,7 +1588,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                 className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-black text-xs sm:text-sm shadow-md shadow-rose-500/25 transition-all cursor-pointer hover:shadow-lg active:scale-98 flex items-center justify-center gap-1.5"
               >
                 <Trash2 className="w-4 h-4" />
-                <span>{tr('حذف')}</span>
+                <span>{t('common:actions.delete')}</span>
               </button>
             </div>
           </div>
@@ -1603,9 +1606,9 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
             </div>
             <div className="space-y-1.5">
               <h4 className="font-black text-slate-900 dark:text-white text-base sm:text-lg">
-                {tr('حذف')} <span className="font-sans">{selectedIds.size}</span> {tr('شحنة')}
+                <Trans t={t} i18nKey="deliveries:deleteCount" count={selectedIds.size} components={{ 1: <span className="font-sans" /> }} />
               </h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{tr('سيتم حذف الشحنات المحددة نهائياً من قاعدة بيانات الوارد ولا يمكن التراجع عن ذلك.')}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{t('deliveries:deleteManyText')}</p>
             </div>
             <div className="grid grid-cols-2 gap-2.5 pt-2">
               <button
@@ -1613,7 +1616,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                 onClick={() => setBulkDeleteOpen(false)}
                 className="w-full py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-bold text-xs sm:text-sm transition-colors cursor-pointer"
               >
-                {tr('إلغاء')}
+                {t('common:actions.cancel')}
               </button>
               <button
                 type="button"
@@ -1621,7 +1624,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                 className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-black text-xs sm:text-sm shadow-md shadow-rose-500/25 transition-all cursor-pointer hover:shadow-lg active:scale-98 flex items-center justify-center gap-1.5"
               >
                 <Trash2 className="w-4 h-4" />
-                <span>{tr('حذف')}</span>
+                <span>{t('common:actions.delete')}</span>
               </button>
             </div>
           </div>
@@ -1639,7 +1642,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
               <div className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-indigo-600" />
                 <h3 className="font-black text-sm text-slate-900 dark:text-white">
-                  {tr('وثيقة استلام وتفريغ رسمية')} ({selectedVoucher.voucherNumber || selectedVoucher.receiptNumber})
+                  {t('deliveries:voucherTitle')} ({selectedVoucher.voucherNumber || selectedVoucher.receiptNumber})
                 </h3>
               </div>
               <button
@@ -1654,67 +1657,67 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
             <div className="p-5 space-y-4">
               <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border border-blue-500/20 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] font-bold text-slate-400 block">{tr('الشركة المستلمة')}</span>
-                  <span className="text-sm font-black text-blue-600 dark:text-blue-400">{tr(selectedVoucher.company || 'صحاري كربلاء')}</span>
+                  <span className="text-[10px] font-bold text-slate-400 block">{t('deliveries:receiver')}</span>
+                  <span className="text-sm font-black text-blue-600 dark:text-blue-400">{enumText(selectedVoucher.company || 'صحاري كربلاء')}</span>
                 </div>
-                <div className="text-right">
-                  <span className="text-[10px] font-bold text-slate-400 block">{tr('اسم المجهز')}</span>
-                  <span className="text-sm font-black text-slate-900 dark:text-white">{tr(selectedVoucher.supplierCompany || selectedVoucher.supplierName || 'مصفى كربلاء')}</span>
+                <div className="text-start">
+                  <span className="text-[10px] font-bold text-slate-400 block">{t('deliveries:col.supplier')}</span>
+                  <span className="text-sm font-black text-slate-900 dark:text-white">{enumText(selectedVoucher.supplierCompany || selectedVoucher.supplierName || 'مصفى كربلاء')}</span>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
                 <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-                  <span className="text-[10px] font-bold text-slate-400 block">{tr('اسم السائق')}</span>
-                  <span className="font-bold text-slate-800 dark:text-slate-200">{tr(selectedVoucher.driverName || 'سائق غير محدد')}</span>
+                  <span className="text-[10px] font-bold text-slate-400 block">{t('deliveries:col.driver')}</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">{enumText(selectedVoucher.driverName || t('deliveries:noDriver'))}</span>
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-                  <span className="text-[10px] font-bold text-slate-400 block">{tr('رقم العجلة')}</span>
+                  <span className="text-[10px] font-bold text-slate-400 block">{t('deliveries:col.truckNumber')}</span>
                   <span className="font-sans font-bold text-slate-800 dark:text-slate-200">{formatTruckNumber(selectedVoucher.truckNumber)}</span>
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-                  <span className="text-[10px] font-bold text-slate-400 block">{tr('رقم الفوجر')}</span>
+                  <span className="text-[10px] font-bold text-slate-400 block">{t('deliveries:col.voucherNumber')}</span>
                   <span className="font-sans font-bold text-indigo-600 dark:text-indigo-400">{selectedVoucher.voucherNumber || selectedVoucher.receiptNumber}</span>
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-                  <span className="text-[10px] font-bold text-slate-400 block">{tr('الكميه المستلمة')}</span>
+                  <span className="text-[10px] font-bold text-slate-400 block">{t('deliveries:col.quantity')}</span>
                   <span className="font-sans font-black text-slate-900 dark:text-white">
-                    {formatNumber(selectedVoucher.receivedQuantity ?? selectedVoucher.volumeLiters ?? 0)} {tr('لتر')}
+                    {formatNumber(selectedVoucher.receivedQuantity ?? selectedVoucher.volumeLiters ?? 0)} {t('common:units.liter')}
                   </span>
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-                  <span className="text-[10px] font-bold text-slate-400 block">{tr('كثافة المنتج')}</span>
+                  <span className="text-[10px] font-bold text-slate-400 block">{t('deliveries:col.density')}</span>
                   <span className="font-sans font-bold text-slate-800 dark:text-slate-200">{selectedVoucher.productDensity || '0.840'}</span>
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-                  <span className="text-[10px] font-bold text-slate-400 block">{tr('لون المنتج')}</span>
-                  <span className="font-bold text-slate-800 dark:text-slate-200">{tr(selectedVoucher.productColor || 'أصفر مخضر')}</span>
+                  <span className="text-[10px] font-bold text-slate-400 block">{t('deliveries:col.color')}</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">{enumText(selectedVoucher.productColor || 'أصفر مخضر')}</span>
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-                  <span className="text-[10px] font-bold text-slate-400 block">{tr('سعر المنتج')}</span>
+                  <span className="text-[10px] font-bold text-slate-400 block">{t('deliveries:col.price')}</span>
                   <span className="font-sans font-bold text-slate-800 dark:text-slate-200">
-                    {(selectedVoucher.productPrice ?? selectedVoucher.pricePerLiter ?? 0).toLocaleString()} د.ع
+                    {(selectedVoucher.productPrice ?? selectedVoucher.pricePerLiter ?? 0).toLocaleString()} {t('common:units.iqd')}
                   </span>
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-500/20 col-span-2">
-                  <span className="text-[10px] font-bold text-emerald-600 block">{tr('تكلفة المنتج الإجمالية')}</span>
+                  <span className="text-[10px] font-bold text-emerald-600 block">{t('deliveries:totalCost')}</span>
                   <span className="text-sm font-sans font-black text-emerald-600 dark:text-emerald-400">
-                    {formatIQD(selectedVoucher.productCost ?? selectedVoucher.totalCostIqd ?? 0)} د.ع
+                    {formatIQD(selectedVoucher.productCost ?? selectedVoucher.totalCostIqd ?? 0)} {t('common:units.iqd')}
                   </span>
                 </div>
               </div>
 
-              {((selectedVoucher.attachments && selectedVoucher.attachments.length > 0) ? selectedVoucher.attachments : (selectedVoucher.attachmentUrl ? [{ id: '1', name: selectedVoucher.attachmentName || 'المستند المرفق', url: selectedVoucher.attachmentUrl, type: selectedVoucher.attachmentType || 'image', size: selectedVoucher.attachmentSize || 0 }] : [])).length > 0 && (
+              {((selectedVoucher.attachments && selectedVoucher.attachments.length > 0) ? selectedVoucher.attachments : (selectedVoucher.attachmentUrl ? [{ id: '1', name: selectedVoucher.attachmentName || t('deliveries:attachedDoc'), url: selectedVoucher.attachmentUrl, type: selectedVoucher.attachmentType || 'image', size: selectedVoucher.attachmentSize || 0 }] : [])).length > 0 && (
                 <div className="space-y-2">
-                  <span className="text-[10px] font-bold text-slate-400 block">{tr('المستندات والفوجرات المرفقة')}</span>
-                  {((selectedVoucher.attachments && selectedVoucher.attachments.length > 0) ? selectedVoucher.attachments : [{ id: '1', name: selectedVoucher.attachmentName || 'المستند المرفق', url: selectedVoucher.attachmentUrl!, type: selectedVoucher.attachmentType || 'image', size: selectedVoucher.attachmentSize || 0 }]).map((att) => (
+                  <span className="text-[10px] font-bold text-slate-400 block">{t('deliveries:attachedDocs')}</span>
+                  {((selectedVoucher.attachments && selectedVoucher.attachments.length > 0) ? selectedVoucher.attachments : [{ id: '1', name: selectedVoucher.attachmentName || t('deliveries:attachedDoc'), url: selectedVoucher.attachmentUrl!, type: selectedVoucher.attachmentType || 'image', size: selectedVoucher.attachmentSize || 0 }]).map((att) => (
                     <div key={att.id} className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
                         {(() => {
@@ -1734,7 +1737,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                         className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
                       >
                         <Download className="w-3.5 h-3.5" />
-                        <span>{tr('تحميل / عرض')}</span>
+                        <span>{t('deliveries:downloadView')}</span>
                       </a>
                     </div>
                   ))}
@@ -1743,14 +1746,14 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
 
               <div className="p-3 rounded-xl bg-slate-100/80 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
                 <div>
-                  <span className="text-slate-400 block text-[10px] font-bold">{tr('تاريخ الاستلام')}</span>
+                  <span className="text-slate-400 block text-[10px] font-bold">{t('deliveries:col.receiptDate')}</span>
                   <span className="font-sans font-bold text-slate-800 dark:text-slate-200">
                     {selectedVoucher.receiptUnloadDate ? selectedVoucher.receiptUnloadDate.split(' ')[0] : (selectedVoucher.date ? selectedVoucher.date.split(' ')[0] : '2026/08/20')}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-100 dark:bg-emerald-950 px-2.5 py-1 rounded-lg">
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>{tr('معتمد ومفرغ رسمياً')}</span>
+                  <span>{t('deliveries:approved')}</span>
                 </div>
               </div>
             </div>
@@ -1761,14 +1764,14 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                 onClick={() => setSelectedVoucher(null)}
                 className="px-4 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700 cursor-pointer"
               >
-                {tr('إغلاق')}
+                {t('common:actions.close')}
               </button>
               <button
                 onClick={handlePrint}
                 className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer"
               >
                 <Printer className="w-4 h-4" />
-                <span>{tr('طباعة الفوجر')}</span>
+                <span>{t('deliveries:printVoucher')}</span>
               </button>
             </div>
           </div>
@@ -1786,7 +1789,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
               <div className="flex items-center gap-2">
                 <Paperclip className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                  {tr('جميع المرفقات')} ({deliveries.find(i => i.id === viewAllAttachmentsId)?.attachments?.length || 0})
+                  {t('deliveries:allAttachments')} ({deliveries.find(i => i.id === viewAllAttachmentsId)?.attachments?.length || 0})
                 </h3>
               </div>
               <button
@@ -1812,12 +1815,12 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                           return <Image className="w-4 h-4 text-blue-500" />;
                         })()}
                       </div>
-                      <div className="min-w-0 flex-1 pr-2">
+                      <div className="min-w-0 flex-1 pe-2">
                         <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate" title={att.name}>
-                          {att.name || `مرفق ${idx + 1}`}
+                          {att.name || t('deliveries:attachmentN', { n: idx + 1 })}
                         </p>
                         <p className="text-[10px] text-slate-400 font-sans mt-0.5">
-                          {att.type === 'pdf' ? 'PDF Document' : 'Image File'}
+                          {att.type === 'pdf' ? t('deliveries:pdfDoc') : t('deliveries:imageFile')}
                         </p>
                       </div>
                     </div>
@@ -1828,7 +1831,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                         setPreviewFile(att);
                       }}
                       className="shrink-0 p-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400 transition-colors ml-2 cursor-pointer"
-                      title={tr('معاينة')}
+                      title={t('deliveries:preview')}
                     >
                       <Eye className="w-4 h-4" />
                     </button>
@@ -1872,13 +1875,13 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                   className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>{tr('تحميل')}</span>
+                  <span>{t('deliveries:download')}</span>
                 </a>
                 <button
                   type="button"
                   onClick={() => setPreviewFile(null)}
                   className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                  title={tr('إغلاق')}
+                  title={t('common:actions.close')}
                 >
                   <X className="w-5 h-5 stroke-[2.5]" />
                 </button>
@@ -1922,20 +1925,20 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-black text-sm text-slate-900 dark:text-white">
-                      إعدادات ومعاينة كشف طباعة الوارد
+                      {t('deliveries:printModal.title')}
                     </h3>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 font-black">
-                      {printActiveColCount} عموداً مفعّلاً
+                      {t('deliveries:printModal.activeCols', { count: printActiveColCount })}
                     </span>
                     {printActiveColCount > 10 && (
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold flex items-center gap-1">
                         <Sparkles className="w-3 h-3 text-amber-600" />
-                        وضع A3 الأفقي العريض
+                        {t('deliveries:printModal.a3')}
                       </span>
                     )}
                   </div>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    تخصيص الأعمدة، حجم الورقة (A4 / A3 / A2)، الاتجاه، ومطابقة التقرير قبل الطباعة
+                    {t('deliveries:printModal.subtitle')}
                   </p>
                 </div>
               </div>
@@ -1947,13 +1950,13 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                   className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-md shadow-blue-500/25 flex items-center gap-2 cursor-pointer active:scale-95 transition-all"
                 >
                   <Printer className="w-4 h-4" />
-                  <span>طباعة الآن / حفظ كـ PDF</span>
+                  <span>{t('deliveries:printModal.print')}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowPrintReportModal(false)}
                   className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                  title={tr('إغلاق')}
+                  title={t('common:actions.close')}
                 >
                   <X className="w-5 h-5 stroke-[2.5]" />
                 </button>
@@ -1972,7 +1975,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                     className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold flex items-center gap-1.5 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors cursor-pointer shadow-sm"
                   >
                     <SlidersHorizontal className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                    <span>تحديد الأعمدة</span>
+                    <span>{t('deliveries:printModal.columns')}</span>
                     <span className="px-1.5 py-0.2 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-md text-[10px] font-mono">
                       {printActiveColCount}/{PRINT_AVAILABLE_COLUMNS.length}
                     </span>
@@ -1986,7 +1989,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                       <div className="absolute right-0 top-full mt-2 w-80 max-h-[380px] overflow-y-auto bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-3 z-50 animate-in fade-in zoom-in-95 duration-100">
                         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2 mb-2">
                           <span className="font-black text-slate-800 dark:text-slate-100 text-xs">
-                            الأعمدة المضمنة بالطباعة
+                            {t('deliveries:printModal.included')}
                           </span>
                           <div className="flex items-center gap-1 text-[10px]">
                             <button
@@ -1997,7 +2000,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                               }}
                               className="text-blue-600 hover:underline px-1 py-0.5"
                             >
-                              الكل
+                              {t('common:enum.category.all')}
                             </button>
                             <span>|</span>
                             <button
@@ -2005,7 +2008,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                               onClick={() => setPrintVisibleColumns(DEFAULT_PRINT_COLUMNS)}
                               className="text-slate-600 dark:text-slate-400 hover:underline px-1 py-0.5"
                             >
-                              الافتراضي
+                              {t('deliveries:printModal.default')}
                             </button>
                           </div>
                         </div>
@@ -2034,10 +2037,10 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                                     }}
                                     className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
                                   />
-                                  <span>{col.label}</span>
+                                  <span>{t(`deliveries:print.col.${col.id}`)}</span>
                                 </div>
                                 <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 font-normal">
-                                  {col.category}
+                                  {t(`deliveries:print.cat.${col.category}`)}
                                 </span>
                               </label>
                             );
@@ -2051,47 +2054,47 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                 {/* 2. Paper Size Selector */}
                 <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-2 py-1 rounded-xl border border-slate-300 dark:border-slate-700 shadow-sm">
                   <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-                  <span className="text-slate-500 dark:text-slate-400 font-bold text-[11px]">مقاس الورقة:</span>
+                  <span className="text-slate-500 dark:text-slate-400 font-bold text-[11px]">{t('deliveries:printModal.paper')}</span>
                   <select
                     value={printPaperSize}
                     onChange={(e) => setPrintPaperSize(e.target.value as PrintPaperSize)}
                     className="bg-transparent text-slate-800 dark:text-slate-200 font-black focus:outline-none cursor-pointer text-xs"
                   >
-                    <option value="auto" className="dark:bg-slate-800">تلقائي ذكي (Auto)</option>
-                    <option value="a4" className="dark:bg-slate-800">A4 (قياسي 297×210)</option>
-                    <option value="a3" className="dark:bg-slate-800">A3 (عريض وموسع 420×297)</option>
-                    <option value="a2" className="dark:bg-slate-800">A2 (فائق العرض 594×420)</option>
-                    <option value="legal" className="dark:bg-slate-800">Legal (طويل)</option>
+                    <option value="auto" className="dark:bg-slate-800">{t('deliveries:printModal.auto')}</option>
+                    <option value="a4" className="dark:bg-slate-800">{t('deliveries:printModal.a4opt')}</option>
+                    <option value="a3" className="dark:bg-slate-800">{t('deliveries:printModal.a3opt')}</option>
+                    <option value="a2" className="dark:bg-slate-800">{t('deliveries:printModal.a2opt')}</option>
+                    <option value="legal" className="dark:bg-slate-800">{t('deliveries:printModal.legal')}</option>
                   </select>
                 </div>
 
                 {/* 3. Orientation Selector */}
                 <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-2 py-1 rounded-xl border border-slate-300 dark:border-slate-700 shadow-sm">
                   <LayoutTemplate className="w-3.5 h-3.5 text-indigo-600" />
-                  <span className="text-slate-500 dark:text-slate-400 font-bold text-[11px]">الاتجاه:</span>
+                  <span className="text-slate-500 dark:text-slate-400 font-bold text-[11px]">{t('deliveries:printModal.orientation')}</span>
                   <select
                     value={printOrientation}
                     onChange={(e) => setPrintOrientation(e.target.value as PrintOrientation)}
                     className="bg-transparent text-slate-800 dark:text-slate-200 font-black focus:outline-none cursor-pointer text-xs"
                   >
-                    <option value="auto" className="dark:bg-slate-800">تلقائي (حسب الأعمدة)</option>
-                    <option value="landscape" className="dark:bg-slate-800">أفقي بالعرض (Landscape)</option>
-                    <option value="portrait" className="dark:bg-slate-800">عمودي بالطول (Portrait)</option>
+                    <option value="auto" className="dark:bg-slate-800">{t('deliveries:printModal.autoCols')}</option>
+                    <option value="landscape" className="dark:bg-slate-800">{t('common:print.landscape')}</option>
+                    <option value="portrait" className="dark:bg-slate-800">{t('common:print.portrait')}</option>
                   </select>
                 </div>
 
                 {/* 4. Density & Font Scaling */}
                 <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-2 py-1 rounded-xl border border-slate-300 dark:border-slate-700 shadow-sm">
                   <Layers className="w-3.5 h-3.5 text-purple-600" />
-                  <span className="text-slate-500 dark:text-slate-400 font-bold text-[11px]">حجم الخط:</span>
+                  <span className="text-slate-500 dark:text-slate-400 font-bold text-[11px]">{t('deliveries:printModal.font')}</span>
                   <select
                     value={printDensity}
                     onChange={(e) => setPrintDensity(e.target.value as PrintDensity)}
                     className="bg-transparent text-slate-800 dark:text-slate-200 font-black focus:outline-none cursor-pointer text-xs"
                   >
-                    <option value="compact" className="dark:bg-slate-800">مضغوط (Compact)</option>
-                    <option value="normal" className="dark:bg-slate-800">عادي (Normal)</option>
-                    <option value="relaxed" className="dark:bg-slate-800">مريح (Relaxed)</option>
+                    <option value="compact" className="dark:bg-slate-800">{t('deliveries:printModal.compact')}</option>
+                    <option value="normal" className="dark:bg-slate-800">{t('deliveries:printModal.normal')}</option>
+                    <option value="relaxed" className="dark:bg-slate-800">{t('deliveries:printModal.relaxed')}</option>
                   </select>
                 </div>
               </div>
@@ -2105,7 +2108,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                     onChange={(e) => setPrintShowLogos(e.target.checked)}
                     className="w-3.5 h-3.5 rounded text-blue-600 cursor-pointer"
                   />
-                  <span>الشعارات</span>
+                  <span>{t('deliveries:printModal.logos')}</span>
                 </label>
                 <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-300 cursor-pointer select-none">
                   <input
@@ -2114,7 +2117,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                     onChange={(e) => setPrintShowKpis(e.target.checked)}
                     className="w-3.5 h-3.5 rounded text-blue-600 cursor-pointer"
                   />
-                  <span>المؤشرات</span>
+                  <span>{t('deliveries:printModal.kpis')}</span>
                 </label>
                 <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-300 cursor-pointer select-none">
                   <input
@@ -2123,7 +2126,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                     onChange={(e) => setPrintShowSignatures(e.target.checked)}
                     className="w-3.5 h-3.5 rounded text-blue-600 cursor-pointer"
                   />
-                  <span>التواقيع</span>
+                  <span>{t('deliveries:printModal.signatures')}</span>
                 </label>
               </div>
 
@@ -2135,7 +2138,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                   <span>
-                    <strong>تنبيه ذكي:</strong> عدد الأعمدة المفعلة هو <strong>{printActiveColCount} أعمدة</strong>. قام النظام تلقائياً بتفعيل مقاس ورقة عريض <strong>A3 Landscape</strong> مع تحجيم الخط ليتسع الجدول بالكامل بدقة متناهية دون أي ضغط أو اقتطاع.
+                    <Trans t={t} i18nKey="deliveries:printModal.smartHint" count={printActiveColCount} components={{ 1: <strong /> }} />
                   </span>
                 </div>
               </div>

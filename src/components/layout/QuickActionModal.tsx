@@ -29,6 +29,8 @@ import {
 } from 'lucide-react';
 import { useFuelData } from '../../context/FuelDataContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { enumText } from '../../i18n/enums';
+import { useTranslation } from 'react-i18next';
 import { formatIQD } from '../../lib/utils';
 
 interface QuickActionModalProps {
@@ -80,7 +82,9 @@ const productFromColor = (_color: string) => 'كاز ممتاز';
 
 export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onClose, editData }) => {
   const { addDelivery, updateDelivery, deliveries } = useFuelData();
-  const { tr, isRTL } = useLanguage();
+  const { isRTL } = useLanguage();
+
+  const { t, i18n } = useTranslation(['deliveries', 'common']);
 
   // Prevent background scroll when modal is open
   useEffect(() => {
@@ -197,7 +201,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
       } else if (editData.attachmentUrl) {
         setAttachments([{
           id: '1',
-          name: editData.attachmentName || 'المستند المرفق',
+          name: editData.attachmentName || t('deliveries:attachedDoc'),
           url: editData.attachmentUrl,
           type: editData.attachmentType || 'image',
           size: editData.attachmentSize || 0
@@ -291,7 +295,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
     });
 
     if (invalidCount > 0) {
-      alert(tr('تم تخطي بعض الملفات لأنها ليست بصيغة PDF أو JPG أو PNG'));
+      alert(t('deliveries:quick.skippedFiles'));
     }
   };
 
@@ -502,10 +506,10 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
     setImportState({ status: 'reading', fileName: file.name });
     try {
       const rows = await parseInboundFile(file);
-      if (!rows.length) throw new Error('لم يُعثر على شحنات تحت صف العناوين في الملف');
+      if (!rows.length) throw new Error(t('deliveries:quick.noRows'));
       setImportState({ status: 'ready', fileName: file.name, rows });
     } catch (err) {
-      setImportState({ status: 'error', message: err instanceof Error ? err.message : 'تعذّر قراءة الملف' });
+      setImportState({ status: 'error', message: err instanceof Error ? err.message : t('deliveries:quick.readFailed') });
     }
   };
 
@@ -558,12 +562,12 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
   // بعد الحفظ: بطاقة نجاح صغيرة مع علامة صح متحركة بدل النافذة الكبيرة
   if (submitted) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-[2px] animate-in fade-in duration-150" dir="rtl">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-[2px] animate-in fade-in duration-150" dir={i18n.dir()}>
         <div className="success-pop relative w-[300px] rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xl px-6 py-6 flex flex-col items-center text-center font-cairo">
           <button
             type="button"
             onClick={closeSuccess}
-            aria-label={tr('إغلاق')}
+            aria-label={t('common:actions.close')}
             autoFocus
             className="absolute top-3 left-3 w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700 cursor-pointer transition-all"
           >
@@ -577,10 +581,10 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
             </svg>
           </div>
           <h4 className="font-black text-base text-slate-900 dark:text-white">
-            {editData?.id ? tr('تم حفظ التعديلات') : tr('تم تسجيل الشحنة بنجاح')}
+            {editData?.id ? t('deliveries:quick.saved') : t('deliveries:quick.recorded')}
           </h4>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            {tr('تم ترحيلها إلى جدول الوارد')}
+            {t('deliveries:quick.posted')}
           </p>
         </div>
       </div>
@@ -600,14 +604,14 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white tracking-tight">
-                  {editData?.id ? tr('تعديل بيانات شحنة الوارد') : tr('تسجيل شحنة وقود واردة جديدة')}
+                  {editData?.id ? t('deliveries:editTitle') : t('deliveries:quick.newTitle')}
                 </h3>
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                   ERP Gate Entry
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                {tr('توثيق الفوجر والمطابقة الوزنية وتحديد المحطة المستلمة والتكلفة التلقائية')}
+                {t('deliveries:quick.subtitle')}
               </p>
             </div>
           </div>
@@ -617,18 +621,18 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
               <select
                 value={deliveryCompany}
                 onChange={(e) => setDeliveryCompany(e.target.value)}
-                title={tr('الشركة المستلمة')}
+                title={t('deliveries:receiver')}
                 className="h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none cursor-pointer"
               >
-                {companies.map((c) => <option key={c} value={c}>{tr(c)}</option>)}
+                {companies.map((c) => <option key={c} value={c}>{enumText(c)}</option>)}
               </select>
             )}
             {/* طريقة الإدخال: يدوي أو رفع ملف الوارد اليومي (للتسجيل الجديد فقط) */}
             {!editData?.id && (
               <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
                 {([
-                  { key: 'manual', label: 'يدوي', icon: PenLine },
-                  { key: 'upload', label: 'رفع ملف', icon: Upload }
+                  { key: 'manual', label: t('deliveries:quick.manual'), icon: PenLine },
+                  { key: 'upload', label: t('deliveries:quick.upload'), icon: Upload }
                 ] as const).map(({ key, label, icon: ModeIcon }) => (
                   <button
                     key={key}
@@ -637,7 +641,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${entryMode === key ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-white/70 dark:hover:bg-slate-700'}`}
                   >
                     <ModeIcon className="w-3.5 h-3.5" />
-                    {tr(label)}
+                    {enumText(label)}
                   </button>
                 ))}
               </div>
@@ -647,7 +651,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
           <button
             type="button"
             onClick={onClose}
-            aria-label="إغلاق"
+            aria-label={t('common:actions.close')}
             className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer border border-slate-200/80 dark:border-slate-700"
           >
             <X className="w-4.5 h-4.5 stroke-[2.5]" />
@@ -665,7 +669,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                     {/* التاريخ + الملف */}
                     <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-3.5 sm:p-4 shadow-2xs grid grid-cols-1 md:grid-cols-[220px_1fr] gap-3.5 items-stretch">
                       <div className="space-y-1">
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">{tr('فترة ملف الوارد')}</label>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">{t('deliveries:quick.period')}</label>
                         <button
                           type="button"
                           onClick={(e) => {
@@ -677,7 +681,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                           <Calendar className="w-4 h-4 text-purple-600 shrink-0" />
                           <span className="truncate">{importFrom === importTo ? importFrom : `${importFrom} — ${importTo}`}</span>
                         </button>
-                        <p className="text-[10.5px] text-slate-400">{tr('الشحنة بلا تاريخ تأخذ بداية الفترة، والتي خارجها لا تُستورد')}</p>
+                        <p className="text-[10.5px] text-slate-400">{t('deliveries:quick.periodHint')}</p>
                         {importDatePop && createPortal(
                           <>
                             <div className="fixed inset-0 z-[150]" onClick={() => setImportDatePop(null)} />
@@ -700,10 +704,10 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                       >
                         {importState.status === 'reading' ? <Loader2 className="w-7 h-7 text-blue-600 animate-spin" /> : <UploadCloud className="w-7 h-7 text-blue-600" />}
                         <span className="text-sm font-black text-slate-800 dark:text-slate-100">
-                          {importState.status === 'reading' ? `${tr('جارٍ قراءة')} ${importState.fileName}` : tr('اختر ملف الوارد اليومي أو اسحبه هنا')}
+                          {importState.status === 'reading' ? t('deliveries:quick.reading', { file: importState.fileName }) : t('deliveries:quick.choose')}
                         </span>
                         <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                          {tr('Excel أو PDF بنفس العناوين: اسم المجهز، الشركة المجهزة، اسم السائق، رقم العجلة، رقم الفوجر، الكمية المستلمة، الكثافة، اللون، السعر، التكلفة، تاريخ الاستلام والتفريغ')}
+                          {t('deliveries:quick.chooseHint')}
                         </span>
                         <input
                           type="file"
@@ -717,7 +721,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                     {importState.status === 'error' && (
                       <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs font-bold">
                         <AlertTriangle className="w-4 h-4 shrink-0" />
-                        {tr(importState.message)}
+                        {enumText(importState.message)}
                       </div>
                     )}
 
@@ -726,20 +730,20 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                         {/* ملخص */}
                         <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex flex-wrap items-center gap-2 text-xs">
                           <span className="font-black text-slate-800 dark:text-slate-100 truncate max-w-[260px]" title={importState.fileName}>{importState.fileName}</span>
-                          <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-700 font-bold text-slate-600 dark:text-slate-300">{importRows.length} {tr('شحنة')}</span>
-                          <span className="px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 font-bold text-emerald-700 dark:text-emerald-300">{newImportRows.length} {tr('جديدة')}</span>
+                          <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-700 font-bold text-slate-600 dark:text-slate-300">{t('deliveries:shipments', { count: importRows.length })}</span>
+                          <span className="px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 font-bold text-emerald-700 dark:text-emerald-300">{t('deliveries:quick.newCount', { count: newImportRows.length })}</span>
                           {importRows.length > newImportRows.length && (
-                            <span className="px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950/50 font-bold text-amber-700 dark:text-amber-300">{importRows.length - newImportRows.length} {tr('تُتخطى (مسجّلة مسبقًا أو خارج الفترة)')}</span>
+                            <span className="px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950/50 font-bold text-amber-700 dark:text-amber-300">{t('deliveries:quick.skipCount', { count: importRows.length - newImportRows.length })}</span>
                           )}
-                          <span className="ms-auto font-bold text-slate-500">{tr('مجموع الكمية')}: <span className="font-sans font-black text-slate-900 dark:text-white">{formatIQD(newImportRows.reduce((a, r) => a + r.receivedQuantity, 0))}</span> {tr('لتر')}</span>
+                          <span className="ms-auto font-bold text-slate-500">{t('deliveries:quick.totalQty')}: <span className="font-sans font-black text-slate-900 dark:text-white">{formatIQD(newImportRows.reduce((a, r) => a + r.receivedQuantity, 0))}</span> {t('common:units.liter')}</span>
                         </div>
                         {/* معاينة الصفوف */}
                         <div className="max-h-[46vh] overflow-auto">
-                          <table className="w-full text-xs text-right whitespace-nowrap">
+                          <table className="w-full text-xs text-start whitespace-nowrap">
                             <thead className="sticky top-0 bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-300 font-black">
                               <tr>
-                                {['#', 'اسم المجهز', 'الشركة المجهزة', 'اسم السائق', 'رقم العجلة', 'رقم الفوجر', 'الكميه المستلمة', 'كثافة المنتج', 'لون المنتج', 'سعر المنتج', 'تكلفة المنتج', 'تاريخ الاستلام والتفريغ', 'الحالة'].map((h) => (
-                                  <th key={h} className="px-3 py-2">{tr(h)}</th>
+                                {['#', t('deliveries:col.supplier'), t('deliveries:col.company'), t('deliveries:col.driver'), t('deliveries:col.truckNumber'), t('deliveries:col.voucherNumber'), t('deliveries:col.quantity'), t('deliveries:col.density'), t('deliveries:col.color'), t('deliveries:col.price'), t('deliveries:col.cost'), t('deliveries:quick.receiptUnload'), t('deliveries:quick.status')].map((h) => (
+                                  <th key={h} className="px-3 py-2">{enumText(h)}</th>
                                 ))}
                               </tr>
                             </thead>
@@ -763,10 +767,10 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                                     <td className="px-3 py-2 font-sans">{rowDate(r)}</td>
                                     <td className="px-3 py-2">
                                       {dup
-                                        ? <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 font-bold">{tr('مسجّلة مسبقًا')}</span>
+                                        ? <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 font-bold">{t('deliveries:quick.already')}</span>
                                         : outside
-                                        ? <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 font-bold">{tr('خارج الفترة')}</span>
-                                        : <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 font-bold">{tr('جديدة')}</span>}
+                                        ? <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 font-bold">{t('deliveries:quick.outside')}</span>
+                                        : <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 font-bold">{t('deliveries:quick.new')}</span>}
                                     </td>
                                   </tr>
                                 );
@@ -785,14 +789,14 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                   <div className="flex items-center gap-1.5 text-xs font-black text-blue-800 dark:text-blue-400 mb-2 pb-1.5 border-b border-slate-100 dark:border-slate-800">
                     <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-sans font-bold">1</span>
                     <Building2 className="w-3.5 h-3.5" />
-                    <span className="text-xs">{tr('بيانات الجهات والناقل')}</span>
+                    <span className="text-xs">{t('deliveries:quick.partiesTitle')}</span>
                   </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                   {/* 1. اسم المجهز (الشخص/الوكيل) */}
                   <div className="space-y-1">
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
-                      {tr('اسم المجهز')}
+                      {t('deliveries:col.supplier')}
                     </label>
                     <div className="relative">
                       <User className={`w-4.5 h-4.5 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-3.5' : 'left-3.5'} text-slate-400`} />
@@ -801,7 +805,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                         list="inbound-supplier-names"
                         value={deliverySupplierName}
                         onChange={(e) => setDeliverySupplierName(e.target.value)}
-                        placeholder={tr('اسم المجهز')}
+                        placeholder={t('deliveries:col.supplier')}
                         className={`w-full h-11 sm:h-12 ${isRTL ? 'pr-10 pl-3.5' : 'pl-10 pr-3.5'} py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 outline-none font-bold transition-all`}
                       />
                       <datalist id="inbound-supplier-names">
@@ -814,7 +818,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                        {tr('الشركة المجهزة')}
+                        {t('deliveries:col.company')}
                       </label>
                       <button
                         type="button"
@@ -822,7 +826,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                         className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-0.5 cursor-pointer"
                       >
                         <Plus className="w-3 h-3" />
-                        <span>{isAddingSupplier ? tr('إلغاء') : tr('إضافة')}</span>
+                        <span>{isAddingSupplier ? t('common:actions.cancel') : t('deliveries:quick.add')}</span>
                       </button>
                     </div>
 
@@ -830,7 +834,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                       <div className="relative w-full h-11 sm:h-12 flex items-center">
                         <input
                           type="text"
-                          placeholder="اسم الشركة المجهزة الجديدة..."
+                          placeholder={t('deliveries:quick.newSupplierPh')}
                           value={newSupplierName}
                           onChange={(e) => setNewSupplierName(e.target.value)}
                           onKeyDown={(e) => {
@@ -851,7 +855,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                             onClick={handleAddNewSupplier}
                             className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs cursor-pointer"
                           >
-                            {tr('حفظ')}
+                            {t('common:actions.save')}
                           </button>
                           <button
                             type="button"
@@ -871,7 +875,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                         >
                           {suppliers.map((s) => (
                             <option key={s} value={s}>
-                              {tr(s)}
+                              {enumText(s)}
                             </option>
                           ))}
                         </select>
@@ -883,7 +887,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                   {/* 3. اسم السائق */}
                   <div className="space-y-1">
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
-                      {tr('اسم السائق')}
+                      {t('deliveries:col.driver')}
                     </label>
                     <div className="relative">
                       <User className={`w-4.5 h-4.5 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-3.5' : 'left-3.5'} text-slate-400`} />
@@ -892,7 +896,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                         value={deliveryDriver}
                         onChange={(e) => setDeliveryDriver(e.target.value)}
                         required
-                        placeholder="اسم السائق الثلاثي"
+                        placeholder={t('deliveries:quick.driverPh')}
                         className={`w-full h-11 sm:h-12 ${isRTL ? 'pr-10 pl-3.5' : 'pl-10 pr-3.5'} py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 outline-none font-bold transition-all`}
                       />
                     </div>
@@ -901,7 +905,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                   {/* 4. رقم العجلة */}
                   <div className="space-y-1">
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
-                      {tr('رقم العجلة')}
+                      {t('deliveries:col.truckNumber')}
                     </label>
                     <div className="relative">
                       <Truck className={`w-4.5 h-4.5 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-3.5' : 'left-3.5'} text-slate-400`} />
@@ -923,7 +927,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                 <div className="flex items-center gap-2 text-xs font-black text-indigo-800 dark:text-indigo-400 mb-2 pb-1.5 border-b border-slate-100 dark:border-slate-800">
                   <span className="w-4.5 h-4.5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px] font-sans font-bold">2</span>
                   <Fuel className="w-4 h-4" />
-                  <span className="text-xs sm:text-sm">{tr('مواصفات الفوجر والمنتج')}</span>
+                  <span className="text-xs sm:text-sm">{t('deliveries:quick.specsTitle')}</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
@@ -931,16 +935,16 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                        {tr('رقم الفوجر')}
+                        {t('deliveries:col.voucherNumber')}
                       </label>
                       <button
                         type="button"
                         onClick={handleGenerateVoucher}
                         className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-0.5 cursor-pointer"
-                        title="توليد رقم تسلسلي جديد"
+                        title={t('deliveries:quick.generateHint')}
                       >
                         <Sparkles className="w-3 h-3" />
-                        <span>{tr('توليد جديد')}</span>
+                        <span>{t('deliveries:quick.generate')}</span>
                       </button>
                     </div>
                     <div className="relative">
@@ -959,7 +963,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                   {/* 6. الكميه المستلمة (بفوارز) */}
                   <div className="space-y-1">
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
-                      {tr('الكميه المستلمة')}
+                      {t('deliveries:col.quantity')}
                     </label>
                     <div className="relative">
                       <input
@@ -971,7 +975,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                         className={`w-full h-11 sm:h-12 ${isRTL ? 'pr-3.5 pl-12' : 'pl-3.5 pr-12'} py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-900 outline-none font-sans font-semibold text-blue-600 dark:text-blue-400 transition-all`}
                       />
                       <span className={`text-xs font-black text-blue-600 dark:text-blue-400 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-3.5' : 'right-3.5'}`}>
-                        {tr('لتر')}
+                        {t('common:units.liter')}
                       </span>
                     </div>
                   </div>
@@ -979,7 +983,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                   {/* 7. كثافة المنتج */}
                   <div className="space-y-1">
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
-                      {tr('كثافة المنتج')}
+                      {t('deliveries:col.density')}
                     </label>
                     <div className="relative">
                       <Gauge className={`w-4.5 h-4.5 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-3.5' : 'left-3.5'} text-slate-400`} />
@@ -997,7 +1001,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                        {tr('لون المنتج')}
+                        {t('deliveries:col.color')}
                       </label>
                       <button
                         type="button"
@@ -1005,7 +1009,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                         className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-0.5 cursor-pointer"
                       >
                         <Plus className="w-3 h-3" />
-                        <span>{isAddingColor ? tr('إلغاء') : tr('إضافة')}</span>
+                        <span>{isAddingColor ? t('common:actions.cancel') : t('deliveries:quick.add')}</span>
                       </button>
                     </div>
 
@@ -1013,7 +1017,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                       <div className="relative w-full h-11 sm:h-12 flex items-center">
                         <input
                           type="text"
-                          placeholder="اسم اللون الجديد..."
+                          placeholder={t('deliveries:quick.newColorPh')}
                           value={newColorName}
                           onChange={(e) => setNewColorName(e.target.value)}
                           onKeyDown={(e) => {
@@ -1034,7 +1038,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                             onClick={handleAddNewColor}
                             className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs cursor-pointer"
                           >
-                            {tr('حفظ')}
+                            {t('common:actions.save')}
                           </button>
                           <button
                             type="button"
@@ -1054,7 +1058,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                         >
                           {colors.map((c) => (
                             <option key={c} value={c}>
-                              {c}
+                              {enumText(c)}
                             </option>
                           ))}
                         </select>
@@ -1070,14 +1074,14 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                 <div className="flex items-center gap-2 text-xs font-black text-emerald-800 dark:text-emerald-400 mb-2 pb-1.5 border-b border-slate-100 dark:border-slate-800">
                   <span className="w-4.5 h-4.5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-sans font-bold">3</span>
                   <DollarSign className="w-4 h-4" />
-                  <span className="text-xs sm:text-sm">{tr('التسعير المالي وتاريخ الاستلام')}</span>
+                  <span className="text-xs sm:text-sm">{t('deliveries:quick.pricingTitle')}</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                   {/* 9. سعر المنتج (بفوارز) */}
                   <div className="space-y-1">
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
-                      {tr('سعر المنتج (د.ع / لتر)')}
+                      {t('deliveries:quick.pricePerLiter')}
                     </label>
                     <div className="relative">
                       <input
@@ -1089,7 +1093,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                         className={`w-full h-11 sm:h-12 ${isRTL ? 'pr-3.5 pl-12' : 'pl-3.5 pr-12'} py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-900 outline-none font-sans font-black transition-all`}
                       />
                       <span className={`text-xs font-bold text-slate-400 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-3.5' : 'right-3.5'}`}>
-                        د.ع
+                        {t('common:units.iqd')}
                       </span>
                     </div>
                   </div>
@@ -1097,18 +1101,18 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                   {/* 10. تكلفة المنتج الإجمالية (تلقائياً بعد الضرب بالسعر) */}
                   <div className="space-y-1">
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
-                      {tr('تكلفة المنتج الإجمالية (تلقائي)')}
+                      {t('deliveries:quick.autoCost')}
                     </label>
                     <div className="w-full h-11 sm:h-12 px-3.5 py-2 rounded-xl border border-emerald-500/40 bg-emerald-50/80 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 font-sans font-black flex items-center justify-between shadow-2xs">
                       <span className="text-xs sm:text-sm font-black">{formatIQD(computedCost)}</span>
-                      <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 font-cairo">د.ع</span>
+                      <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 font-cairo">{t('common:units.iqd')}</span>
                     </div>
                   </div>
 
                   {/* 11. تاريخ الاستلام والتفريغ */}
                   <div className="space-y-1">
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
-                      {tr('تاريخ الاستلام والتفريغ')}
+                      {t('deliveries:quick.receiptUnload')}
                     </label>
                     <div className="relative">
                       <Calendar className={`w-4.5 h-4.5 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-3.5' : 'left-3.5'} text-slate-400`} />
@@ -1146,11 +1150,11 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                     </div>
 
                     <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
-                      {tr('اسحب وأفلت ملف الفوجر هنا أو')}
+                      {t('deliveries:quick.dropHint')}
                     </p>
 
                     <label className="cursor-pointer px-5 py-1.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-600/20 active:scale-95 transition-all mb-1.5">
-                      <span>{tr('تصفح الملفات')}</span>
+                      <span>{t('deliveries:quick.browse')}</span>
                       <input
                         type="file"
                         accept=".pdf,.jpg,.jpeg,.png,image/jpeg,image/png,application/pdf"
@@ -1160,7 +1164,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                     </label>
 
                     <span className="text-[10px] text-slate-400 font-sans">
-                      {tr('الصيغ المدعومة: PDF, JPG, PNG')}
+                      {t('deliveries:quick.formats')}
                     </span>
                   </div>
 
@@ -1171,18 +1175,18 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                         <div className="flex items-center gap-1.5">
                           <Paperclip className="w-4 h-4 text-slate-500" />
                           <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                            {tr('الملفات المرفقة')} ({attachments.length + uploadingFiles.length})
+                            {t('deliveries:quick.attachedFiles')} ({attachments.length + uploadingFiles.length})
                           </h4>
                         </div>
                         {attachments.length > 0 && (
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                            {attachments.length} {tr('جاهز للإرسال')}
+                            {t('deliveries:quick.ready', { count: attachments.length })}
                           </span>
                         )}
                       </div>
 
                       {(attachments.length > 0 || uploadingFiles.length > 0) ? (
-                        <div className="space-y-2 max-h-[130px] overflow-y-auto overflow-x-hidden pr-1.5 pl-0.5 custom-scrollbar">
+                        <div className="space-y-2 max-h-[130px] overflow-y-auto overflow-x-hidden pe-1.5 ps-0.5 custom-scrollbar">
                           {uploadingFiles.map((upFile) => (
                             <div
                               key={upFile.id}
@@ -1219,7 +1223,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                                   </p>
                                   <div className="flex items-center justify-between mt-1">
                                     <p className={`text-[10px] font-sans font-black transition-colors duration-200 ${upFile.progress === 100 ? 'text-emerald-500' : 'text-indigo-600 dark:text-indigo-400'}`}>
-                                      {upFile.progress === 100 ? tr('اكتمل الرفع') : tr('جاري الرفع...')}
+                                      {upFile.progress === 100 ? t('deliveries:quick.uploaded') : t('deliveries:quick.uploading')}
                                     </p>
                                     <span className={`text-[10px] font-bold font-sans transition-colors duration-200 ${upFile.progress === 100 ? 'text-emerald-500' : 'text-slate-400'}`}>
                                       {upFile.progress}%
@@ -1258,12 +1262,12 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-1 shrink-0 mr-1">
+                              <div className="flex items-center gap-1 shrink-0 ms-1">
                                 <button
                                   type="button"
                                   onClick={() => setPreviewFile(att)}
                                   className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer"
-                                  title={tr('معاينة المستند')}
+                                  title={t('deliveries:previewDoc')}
                                 >
                                   <Eye className="w-3.5 h-3.5" />
                                 </button>
@@ -1271,7 +1275,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                                   type="button"
                                   onClick={() => handleRemoveAttachment(att.id)}
                                   className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
-                                  title={tr('حذف')}
+                                  title={t('common:actions.delete')}
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -1283,7 +1287,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                         <div className="py-4 flex flex-col items-center justify-center text-center text-slate-400 space-y-1">
                           <FileText className="w-6 h-6 opacity-30 stroke-[1.5]" />
                           <p className="text-[11px] font-medium text-slate-400">
-                            {tr('لم يتم إرفاق أي ملفات حتى الآن')}
+                            {t('deliveries:quick.noFiles')}
                           </p>
                         </div>
                       )}
@@ -1293,7 +1297,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                       <div className="mt-2 pt-1.5 border-t border-slate-200/70 dark:border-slate-800 flex items-center justify-between text-[10px]">
                         <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          {tr('تم إرفاق')} {attachments.length} {tr('ملف بنجاح')}
+                          {t('deliveries:quick.attached', { count: attachments.length })}
                         </span>
                       </div>
                     )}
@@ -1310,14 +1314,14 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                 <div className="flex items-center gap-2 sm:gap-3 text-xs">
                   {computedCost > 0 && (
                     <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800/80 text-emerald-700 dark:text-emerald-300 font-bold shadow-2xs">
-                      <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-cairo">{tr('إجمالي التكلفة')}:</span>
-                      <span className="font-sans font-black text-xs">{formatIQD(computedCost)} د.ع</span>
+                      <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-cairo">{t('deliveries:quick.totalCost')}:</span>
+                      <span className="font-sans font-black text-xs">{formatIQD(computedCost)} {t('common:units.iqd')}</span>
                     </div>
                   )}
                   {attachments.length > 0 && (
                     <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-800/80 text-blue-700 dark:text-blue-300 font-bold shadow-2xs">
                       <Paperclip className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                      <span className="text-[11px]">{attachments.length} {tr('ملف مرفق')}</span>
+                      <span className="text-[11px]">{t('deliveries:quick.files', { count: attachments.length })}</span>
                     </div>
                   )}
                 </div>
@@ -1328,7 +1332,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                     onClick={onClose}
                     className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-95"
                   >
-                    {tr('إلغاء')}
+                    {t('common:actions.cancel')}
                   </button>
 
                   {entryMode === 'upload' ? (
@@ -1339,7 +1343,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                     className="px-6 sm:px-8 py-2.5 rounded-xl bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-800 hover:from-blue-800 hover:to-indigo-900 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-black shadow-lg shadow-blue-900/25 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer border border-blue-400/20"
                   >
                     <Upload className="w-4.5 h-4.5 stroke-[2.2]" />
-                    <span>{tr('استيراد')} {newImportRows.length} {tr('شحنة')}</span>
+                    <span>{t('deliveries:quick.import', { count: newImportRows.length })}</span>
                   </button>
                   ) : (
                   <button
@@ -1347,7 +1351,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                     className="px-6 sm:px-8 py-2.5 rounded-xl bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-800 hover:from-blue-800 hover:to-indigo-900 text-white text-xs sm:text-sm font-black shadow-lg shadow-blue-900/25 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer border border-blue-400/20"
                   >
                     <Truck className="w-4.5 h-4.5 stroke-[2.2]" />
-                    <span>{editData?.id ? tr('حفظ التعديلات') : tr('تأكيد استلام الوارد')}</span>
+                    <span>{editData?.id ? t('common:actions.saveChanges') : t('deliveries:quick.confirm')}</span>
                   </button>
                   )}
                 </div>
@@ -1389,13 +1393,13 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                   className="px-3.5 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all flex items-center gap-1.5"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>{tr('تحميل')}</span>
+                  <span>{t('deliveries:download')}</span>
                 </a>
                 <button
                   type="button"
                   onClick={() => setPreviewFile(null)}
                   className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                  title={tr('إغلاق')}
+                  title={t('common:actions.close')}
                 >
                   <X className="w-5 h-5 stroke-[2.5]" />
                 </button>

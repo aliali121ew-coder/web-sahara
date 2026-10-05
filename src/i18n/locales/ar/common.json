@@ -93,7 +93,9 @@
       "etihadGasoil": "كاز الاتحاد",
       "blackOil": "نفط الأسود",
       "gasoline": "بنزين",
-      "gasoil": "كاز"
+      "gasoil": "كاز",
+      "diesel": "ديزل",
+      "gasoilDiesel": "كاز / ديزل"
     },
     "category": {
       "all": "الكل",
@@ -119,6 +121,23 @@
     },
     "relative": {
       "today": "اليوم"
+    },
+    "color": {
+      "red": "احمر",
+      "yellow": "اصفر",
+      "honey": "عسلي",
+      "kerosene": "نفط ابيض",
+      "greenishYellow": "أصفر مخضر"
+    },
+    "shipment": {
+      "received": "تم الاستلام",
+      "enRoute": "في الطريق",
+      "inspection": "قيد الفحص",
+      "cancelled": "ملغي"
+    },
+    "supplier": {
+      "karbalaRefinery": "مصفى كربلاء الدولي",
+      "karbalaRefineryShort": "مصفى كربلاء"
     }
   },
   "calendar": {
