@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense, Activity } from 'react';
 import { Menu } from 'lucide-react';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { FuelDataProvider, useFuelData } from './context/FuelDataContext';
@@ -10,20 +10,30 @@ import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
 import { QuickActionModal } from './components/layout/QuickActionModal';
 import { CommandPalette } from './components/navigation/CommandPalette';
-import { MainDashboard } from './components/dashboard/MainDashboard';
-import { TanksOverview } from './components/tanks/TanksOverview';
-import { PricesView } from './components/prices/PricesView';
-import { InboundDeliveries } from './components/deliveries/InboundDeliveries';
-import { FinanceBalance } from './components/finance/FinanceBalance';
-import { SiteManagers } from './components/managers/SiteManagers';
-import { TasksLogistics } from './components/tasks/TasksLogistics';
-import { ReportsAnalytics } from './components/reports/ReportsAnalytics';
-import { ChatApp } from './components/chat/ChatApp';
-import { SettingsView } from './components/settings/SettingsView';
+import { lazyPage } from './lib/lazyPage';
 import { NoAccess } from './components/auth/NoAccess';
 import { ReadOnlyBanner } from './components/auth/ReadOnlyBanner';
 import { useCanOpenTab, TAB_SECTION } from './lib/usePermission';
 import type { NavTabId } from './types';
+
+// كل صفحة في ملف مستقل يُحمَّل عند أول زيارة، ويُجلب مسبقاً وقت الخمول بعد ظهور الصفحة الأولى
+const MainDashboard = lazyPage(() => import('./components/dashboard/MainDashboard'), 'MainDashboard');
+const TanksOverview = lazyPage(() => import('./components/tanks/TanksOverview'), 'TanksOverview');
+const PricesView = lazyPage(() => import('./components/prices/PricesView'), 'PricesView');
+const InboundDeliveries = lazyPage<{ onOpenModal: (data?: any) => void }>(() => import('./components/deliveries/InboundDeliveries'), 'InboundDeliveries');
+const FinanceBalance = lazyPage(() => import('./components/finance/FinanceBalance'), 'FinanceBalance');
+const SiteManagers = lazyPage(() => import('./components/managers/SiteManagers'), 'SiteManagers');
+const TasksLogistics = lazyPage(() => import('./components/tasks/TasksLogistics'), 'TasksLogistics');
+const ReportsAnalytics = lazyPage(() => import('./components/reports/ReportsAnalytics'), 'ReportsAnalytics');
+const ChatApp = lazyPage(() => import('./components/chat/ChatApp'), 'ChatApp');
+const SettingsView = lazyPage(() => import('./components/settings/SettingsView'), 'SettingsView');
+
+const PAGE_PRELOADERS: Record<string, { preload: () => void }> = {
+  dashboard: MainDashboard, tanks: TanksOverview, prices: PricesView,
+  deliveries: InboundDeliveries, 'deliveries-sahara': InboundDeliveries, 'deliveries-etihad': InboundDeliveries,
+  finance: FinanceBalance, 'finance-etihad': FinanceBalance, 'finance-sahara': FinanceBalance,
+  managers: SiteManagers, tasks: TasksLogistics, reports: ReportsAnalytics, chat: ChatApp, settings: SettingsView,
+};
 
 const AppContent: React.FC = () => {
   const { themeMode, bgGradient, gradientIntensity, shadeLevel } = useTheme();
@@ -36,6 +46,24 @@ const AppContent: React.FC = () => {
     if (!canOpenTab(activeTab) && firstAllowed) setActiveTab(firstAllowed);
   }, [activeTab, firstAllowed]); // eslint-disable-line react-hooks/exhaustive-deps
   const { tr, direction } = useLanguage();
+
+  // جلب باقي الصفحات في الخلفية وقت الخمول (صفحة المستخدم الحالية أولاً) فيصبح التنقل فورياً
+  useEffect(() => {
+    const ric: (cb: () => void) => any = (window as any).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 400));
+    const queue = [activeTab, ...Object.keys(PAGE_PRELOADERS)];
+    const seen = new Set<unknown>();
+    let cancelled = false;
+    const next = () => {
+      if (cancelled) return;
+      const k = queue.shift();
+      if (!k) return;
+      const p = PAGE_PRELOADERS[k];
+      if (p && !seen.has(p)) { seen.add(p); p.preload(); }
+      ric(next);
+    };
+    ric(next);
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(true);
   const toggleSidebarCollapsed = () => setSidebarCollapsed(prev => !prev);
@@ -94,7 +122,6 @@ const AppContent: React.FC = () => {
     setQuickActionOpen(true);
   };
 
-  const isRtl = direction === 'rtl';
 
   // Global Ctrl + K / Cmd + K Shortcut Listener
   useEffect(() => {
@@ -108,9 +135,17 @@ const AppContent: React.FC = () => {
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, []);
 
-  const renderActiveView = () => {
-    if (!canOpenTab(activeTab)) return <NoAccess hasAny={!!firstAllowed} />;
-    switch (activeTab) {
+  // الصفحات التي زارها المستخدم تبقى محفوظة (Activity): العودة إليها فورية بحالتها كما تركها،
+  // وتتوقف مؤثراتها وتتأجل تحديثاتها وهي مخفية فلا تستهلك المعالج
+  const [visited, setVisited] = useState<NavTabId[]>(() => [activeTab]);
+  useEffect(() => {
+    setVisited(prev => (prev.includes(activeTab) ? prev : [...prev, activeTab]));
+  }, [activeTab]);
+  const mountedTabs = visited.includes(activeTab) ? visited : [...visited, activeTab];
+
+  const renderTab = (tab: NavTabId) => {
+    if (!canOpenTab(tab)) return <NoAccess hasAny={!!firstAllowed} />;
+    switch (tab) {
       case 'dashboard':
         return <MainDashboard />;
       case 'tanks':
@@ -154,7 +189,7 @@ const AppContent: React.FC = () => {
     >
       
       {/* 🌟 Embedded In-Page Sidebar Navigation (Desktop embedded & sticky, Mobile drawer) */}
-      <div className="no-print shrink-0 lg:w-[54px]">
+      <div className="no-print shrink-0 md:w-[54px]">
         <Sidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
@@ -163,33 +198,11 @@ const AppContent: React.FC = () => {
         />
       </div>
 
-      {/* 🌟 Floating Visible Icon to Open Sidebar on Mobile (< lg) */}
-      {!sidebarOpen && (
-        <button
-          onClick={() => setSidebarOpen(true)}
-          title={tr('فتح القائمة الجانبية')}
-          aria-label={tr('فتح القائمة الجانبية')}
-          className={`no-print lg:hidden fixed top-24 z-40 flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-600 text-white shadow-xl cursor-pointer active:scale-95 group border-y border-white/20 ${
-            isRtl
-              ? 'right-0 rounded-l-2xl border-l'
-              : 'left-0 rounded-r-2xl border-r'
-          }`}
-        >
-          <div className="relative flex items-center justify-center">
-            <Menu className="w-[18px] h-[18px] text-white" />
-            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-blue-700 animate-pulse" />
-          </div>
-          <span className="text-xs font-bold tracking-tight">
-            {tr('القائمة')}
-          </span>
-        </button>
-      )}
-
       {/* Main Workspace Container - Expansive Full Width beside sidebar */}
       <div className="flex-1 flex flex-col min-w-0 w-full transition-all duration-300 print:p-0 print:m-0">
         
         {/* Mobile Header Bar & Hamburger */}
-        <div className="no-print lg:hidden p-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between sticky top-0 z-40">
+        <div className="no-print md:hidden p-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between sticky top-0 z-40">
           <button
             onClick={() => setSidebarOpen(true)}
             className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -207,7 +220,7 @@ const AppContent: React.FC = () => {
           <Header
             onOpenQuickAction={handleOpenQuickAction}
             onToggleSidebar={() => {
-              if (window.innerWidth >= 1024) {
+              if (window.innerWidth >= 768) {
                 toggleSidebarCollapsed();
               } else {
                 setSidebarOpen(prev => !prev);
@@ -224,7 +237,13 @@ const AppContent: React.FC = () => {
           <div className="flex-1 flex flex-col print:animate-none">
             <QuickActionContext.Provider value={handleOpenQuickAction}>
               {canOpenTab(activeTab) && TAB_SECTION[activeTab]?.section && <ReadOnlyBanner section={TAB_SECTION[activeTab].section!} />}
-              {renderActiveView()}
+              <Suspense fallback={null}>
+                {mountedTabs.map(tab => (
+                  <Activity key={tab} mode={tab === activeTab ? 'visible' : 'hidden'}>
+                    {renderTab(tab)}
+                  </Activity>
+                ))}
+              </Suspense>
             </QuickActionContext.Provider>
           </div>
         </main>

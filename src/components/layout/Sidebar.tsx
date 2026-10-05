@@ -219,10 +219,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   // Compact strip only exists on desktop; the mobile drawer always shows labels
   const [isDesktop, setIsDesktop] = useState<boolean>(() =>
-    typeof window !== 'undefined' ? window.matchMedia('(min-width: 1024px)').matches : true
+    typeof window !== 'undefined' ? window.matchMedia('(min-width: 768px)').matches : true
   );
   useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1024px)');
+    const mq = window.matchMedia('(min-width: 768px)');
     const onChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
@@ -376,12 +376,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
           setSearchQuery('');
         } else if (isOpen) {
           onClose();
+        } else if (isDesktop && !collapsedPref) {
+          handleToggleCollapse();
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose, searchQuery]);
+  }, [isOpen, onClose, searchQuery, isDesktop, collapsedPref]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // نقل التركيز لأول عنصر عند فتح الدرج، وإرجاعه لزر الفتح عند إغلاقه
+  const asideRef = useRef<HTMLElement>(null);
+  const lastFocusRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (isDesktop) return;
+    if (isOpen) {
+      lastFocusRef.current = document.activeElement as HTMLElement | null;
+      asideRef.current?.querySelector<HTMLElement>('input, nav button')?.focus();
+    } else if (lastFocusRef.current) {
+      lastFocusRef.current.focus?.();
+      lastFocusRef.current = null;
+    }
+  }, [isOpen, isDesktop]);
 
   // Auto-expand accordion if child is active
   useEffect(() => {
@@ -438,20 +454,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Sidebar: fixed (out of flow) so animating its width never reflows the page */}
       <aside
+        ref={asideRef}
+        inert={!isDesktop && !isOpen}
         id="main-sidebar"
         dir={direction}
         style={{ ...getSidebarInlineStyle(), contain: 'layout style', willChange: 'width, transform' }}
         aria-label={t('brandTitle')}
+        aria-modal={!isDesktop && isOpen ? true : undefined}
         className={`fixed top-0 bottom-0 z-50 flex flex-col shrink-0 select-none whitespace-nowrap transition-[width,transform] duration-200 ease-out motion-reduce:transition-none ${
           isRtl ? 'right-0 border-l' : 'left-0 border-r'
         } ${
           isOpen
             ? 'translate-x-0'
             : isRtl
-            ? 'translate-x-full lg:translate-x-0'
-            : '-translate-x-full lg:translate-x-0'
+            ? 'translate-x-full md:translate-x-0'
+            : '-translate-x-full md:translate-x-0'
         } ${
-          isCollapsed ? 'w-[54px]' : 'w-[260px] max-w-[85vw] lg:w-[238px]'
+          isCollapsed ? 'w-[54px]' : 'w-[260px] max-w-[85vw] md:w-[238px]'
         } ${tokens.bgClass}`}
       >
         {/* 🌟 Desktop Collapse/Expand Pin Button on Outer Border (Storeify-Style) */}
@@ -459,8 +478,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           type="button"
           onClick={handleToggleCollapse}
           title={isCollapsed ? (isRtl ? 'توسيع القائمة' : 'Expand sidebar') : (isRtl ? 'طي القائمة' : 'Collapse sidebar')}
-          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className={`no-print hidden lg:flex absolute top-[18px] z-40 w-[22px] h-[22px] rounded-full items-center justify-center transition-all duration-200 shadow-md border cursor-pointer active:scale-90 ${
+          aria-label={isCollapsed ? (isRtl ? 'توسيع القائمة' : 'Expand sidebar') : (isRtl ? 'طي القائمة' : 'Collapse sidebar')}
+          aria-expanded={!isCollapsed}
+          aria-controls="main-sidebar"
+          className={`no-print hidden md:flex absolute top-[18px] z-40 w-[22px] h-[22px] rounded-full items-center justify-center transition-all duration-200 shadow-md border cursor-pointer active:scale-90 ${
             isRtl ? '-left-2.5' : '-right-2.5'
           } ${
             tokens.isLightMode
@@ -492,6 +513,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={handleToggleCollapse}
               title={isRtl ? 'فتح القائمة الجانبية' : 'Open sidebar'}
               aria-label={isRtl ? 'فتح القائمة الجانبية' : 'Open sidebar'}
+              aria-expanded={false}
               className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 cursor-pointer active:scale-90 ${
                 tokens.isLightMode
                   ? 'text-slate-700 hover:text-blue-600 hover:bg-slate-100'
@@ -509,6 +531,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClick={() => handleItemClick('dashboard')}
                   role="button"
                   tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleItemClick('dashboard'); } }}
                   title={t('brandTitle')}
                   className="relative w-[34px] h-[34px] rounded-xl bg-gradient-to-tr from-blue-700 via-blue-600 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-600/30 ring-2 ring-blue-500/20 shrink-0 cursor-pointer transform transition-transform hover:scale-105 active:scale-95"
                 >
@@ -552,6 +575,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   type="button"
                   onClick={handleToggleCollapse}
                   title={isRtl ? 'طي القائمة' : 'Collapse sidebar'}
+                  aria-label={isRtl ? 'طي القائمة' : 'Collapse sidebar'}
+                  aria-expanded={true}
                   className={`p-1.5 rounded-lg transition-colors ${
                     tokens.isLightMode
                       ? 'text-slate-400 hover:text-slate-800 hover:bg-slate-200/60'
@@ -565,7 +590,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   onClick={onClose}
                   title={`${t('close')} (Esc)`}
-                  className={`p-1.5 rounded-lg transition-colors lg:hidden ${
+                  aria-label={t('close')}
+                  className={`p-1.5 rounded-lg transition-colors md:hidden ${
                     tokens.isLightMode
                       ? 'text-slate-400 hover:text-slate-800 hover:bg-slate-200/60'
                       : 'text-slate-400 hover:text-white hover:bg-white/10'
@@ -591,6 +617,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={tr('بحث في القائمة...')}
+                aria-label={tr('بحث في القائمة...')}
                 className={`w-full h-[34px] text-xs rounded-xl font-medium transition-all duration-150 border outline-none ${
                   isRtl ? 'pr-8 pl-7' : 'pl-8 pr-7'
                 } ${tokens.searchBg} ${tokens.searchBorder} ${tokens.searchFocusRing}`}
@@ -599,6 +626,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   onClick={() => setSearchQuery('')}
                   title={tr('مسح البحث')}
+                  aria-label={tr('مسح البحث')}
+                  type="button"
                   className={`absolute ${isRtl ? 'left-2.5' : 'right-2.5'} p-0.5 rounded text-slate-400 hover:text-slate-200`}
                 >
                   <X className="w-3.5 h-3.5" />
@@ -617,6 +646,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 setTimeout(() => searchInputRef.current?.focus(), 150);
               }}
               title={tr('بحث في القائمة...')}
+              aria-label={tr('بحث في القائمة...')}
               className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${
                 tokens.isLightMode ? 'text-slate-500 hover:bg-slate-100 hover:text-blue-600' : 'text-slate-400 hover:bg-white/10 hover:text-white'
               }`}
@@ -630,6 +660,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             NAVIGATION GROUPS & ITEMS
            ========================================================================== */}
         <nav
+          aria-label={isRtl ? 'التنقل الرئيسي' : 'Main navigation'}
           className="flex-1 px-2.5 py-2.5 space-y-4 overflow-y-auto overflow-x-hidden select-none"
           style={{
             scrollbarWidth: 'thin',
@@ -676,6 +707,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <div key={item.id} className="space-y-1">
                         <button
                           type="button"
+                          aria-expanded={isDropdownOpen}
+                          aria-controls={`submenu-${item.id}`}
                           onClick={() => {
                             setOpenDropdowns(prev => ({ ...prev, [item.id]: !prev[item.id] }));
                           }}
@@ -706,6 +739,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         {/* Child Submenu */}
                         {isDropdownOpen && (
                           <div
+                            id={`submenu-${item.id}`}
                             className={`space-y-1 pt-0.5 pb-1 animate-in fade-in duration-150 ${
                               isRtl
                                 ? 'pr-3 mr-3 border-r-2 border-blue-500/25'
@@ -717,6 +751,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                               return (
                                 <button
                                   key={child.id}
+                                  type="button"
+                                  aria-current={isSubActive ? 'page' : undefined}
                                   onClick={() => handleItemClick(child.id)}
                                   className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg font-bold text-xs transition-all duration-180 group relative ${
                                     isSubActive
@@ -766,6 +802,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     >
                       <button
                         type="button"
+                        aria-label={item.label}
+                        aria-current={isActive ? 'page' : undefined}
+                        onFocus={(e) => {
+                          if (isCollapsed) setHoveredItem({ id: item.id, label: item.label, rect: e.currentTarget.getBoundingClientRect() });
+                        }}
+                        onBlur={() => setHoveredItem(null)}
                         onClick={() => {
                           if (isCollapsed) {
                             handleToggleCollapse();
@@ -834,6 +876,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             onClick={() => setShowProfileMenu(prev => !prev)}
             role="button"
             tabIndex={0}
+            aria-haspopup="menu"
+            aria-expanded={showProfileMenu}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowProfileMenu(prev => !prev); } }}
             title={profile?.name || t('profile')}
             className={`flex items-center gap-2 p-1 rounded-xl cursor-pointer transition-colors group ${
               isCollapsed ? 'justify-center' : 'justify-between hover:bg-black/5 dark:hover:bg-white/5'
@@ -886,6 +931,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* User Profile Popover / Dropdown Menu */}
           {showProfileMenu && !isCollapsed && (
             <div
+              role="menu"
               className={`mt-2 p-1.5 rounded-xl border space-y-1 text-xs font-medium animate-in fade-in slide-in-from-bottom-2 duration-150 ${
                 tokens.isLightMode ? 'bg-white border-slate-200 shadow-lg' : 'bg-slate-900/95 border-slate-700/80 shadow-xl'
               }`}
@@ -895,6 +941,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   handleItemClick('settings');
                   setShowProfileMenu(false);
                 }}
+                role="menuitem"
                 className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-colors ${
                   tokens.isLightMode ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/10 text-slate-200'
                 }`}
@@ -907,6 +954,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   handleItemClick('settings');
                   setShowProfileMenu(false);
                 }}
+                role="menuitem"
                 className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-colors ${
                   tokens.isLightMode ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/10 text-slate-200'
                 }`}

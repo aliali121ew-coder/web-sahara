@@ -78,7 +78,7 @@ export function useChat() {
   const meNameRef = useRef('');
 
   const sinceRef = useRef(0);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const inflight = useRef<AbortController | null>(null);
   const activeRoomRef = useRef('');
   const soundRef = useRef(sound);

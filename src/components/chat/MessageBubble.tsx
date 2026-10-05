@@ -92,7 +92,7 @@ export const MessageBubble: React.FC<Props> = (p) => {
     setMenu(true);
   };
   const [copied, setCopied] = useState(false);
-  const pressTimer = useRef<ReturnType<typeof setTimeout>>();
+  const pressTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

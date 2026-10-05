@@ -508,3 +508,9 @@ body[data-glassmorphism="true"] .shadow-soft-card {
   background-color: rgba(17, 26, 46, 0.88);
   border-color: rgba(30, 41, 59, 0.7);
 }
+
+/* تركيز واضح عند التنقل بالكيبورد في الشريط الجانبي (لا يظهر مع الفأرة) */
+#main-sidebar :is(button, [role="button"], input, a):focus-visible {
+  outline: 2px solid #fbbf24;
+  outline-offset: 2px;
+}
