@@ -67,10 +67,10 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 transition-colors duration-200 px-3 sm:px-4 py-2">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-2 sm:gap-3">
         
         {/* Toggle Sidebar Button & Search Bar */}
-        <div className="flex items-center gap-2 flex-1 max-w-[13rem]">
+        <div className="flex items-center gap-2 flex-1 min-w-0 max-w-[13rem]">
           {onToggleSidebar && (
             <button
               onClick={onToggleSidebar}
@@ -82,7 +82,7 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           {/* Search Trigger (Command Palette) */}
-          <div className="flex-1 relative">
+          <div className="flex-1 min-w-0 relative">
             <button
               type="button"
               onClick={onOpenCommandPalette}
@@ -95,7 +95,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Center/Left Info & Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           
           {/* 🌐 Multi-Language Switcher (EN/AR & Other Languages) */}
           <div className="relative" ref={langRef}>
