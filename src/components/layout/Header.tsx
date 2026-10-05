@@ -258,9 +258,9 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="relative" ref={profileRef}>
             <button
               onClick={() => setShowProfileMenu(!showProfileMenu)}
-              className="flex items-center p-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-800 transition-all"
+              className="flex items-center p-0.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-800 transition-all"
             >
-              <div className="w-7 h-7 rounded-lg text-white font-black text-[11px] flex items-center justify-center shadow-xs overflow-hidden" style={{ background: profile?.color || '#4f46e5' }}>
+              <div className="w-10 h-10 rounded-[10px] text-white font-black text-sm flex items-center justify-center shadow-xs overflow-hidden" style={{ background: profile?.color || '#4f46e5' }}>
                 {profile?.avatar ? <img src={profile.avatar} alt="" className="w-full h-full object-cover" /> : initials(profile?.name)}
               </div>
             </button>
