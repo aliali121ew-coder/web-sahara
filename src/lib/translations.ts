@@ -1031,6 +1031,10 @@ export const PHRASE_MAP: Record<string, Record<SupportedLanguage, string>> = {
 
 // Sort phrase keys by length descending to match longest phrases first
 const SORTED_PHRASE_KEYS = Object.keys(PHRASE_MAP).sort((a, b) => b.length - a.length);
+// استبدال العبارة ككلمة كاملة فقط: لا تُستبدل داخل كلمة أخرى (كان «م» يتحول إلى m داخل «اليوم» و«وارد» داخل «الوارد»)
+const AR_LETTER = '\u0600-\u06FF';
+const escapeRe = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const PHRASE_RES = new Map(SORTED_PHRASE_KEYS.map(k => [k, new RegExp(`(?<![${AR_LETTER}])${escapeRe(k)}(?![${AR_LETTER}])`, 'g')]));
 
 /**
  * Universal text translator function that converts Arabic phrases to the selected language
@@ -1050,7 +1054,7 @@ export function trText(text: string, lang: SupportedLanguage): string {
   for (const key of SORTED_PHRASE_KEYS) {
     if (result.includes(key)) {
       const translated = PHRASE_MAP[key][lang];
-      result = result.split(key).join(translated);
+      if (translated) result = result.replace(PHRASE_RES.get(key)!, () => translated);
     }
   }
 
