@@ -388,7 +388,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     permittedGroups.forEach(group => {
       group.items.forEach(item => {
         if (item.children?.some(child => child.id === activeTab)) {
-          setOpenDropdowns(prev => ({ ...prev, [item.id]: true }));
+          // بدون تغيير إن كانت مفتوحة أصلًا (تجنّب إعادة رسم بلا داعٍ)
+          setOpenDropdowns(prev => (prev[item.id] ? prev : { ...prev, [item.id]: true }));
         }
       });
     });

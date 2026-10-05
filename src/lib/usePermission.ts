@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { groupLevel, levelOf, type Level } from './permCatalog';
 import { useSessionProfile } from './session';
 
@@ -9,16 +9,14 @@ import { useSessionProfile } from './session';
 export function usePermissions() {
   const profile = useSessionProfile();
   const isAdmin = !!profile?.is_admin;
-  const perms = profile?.perms || {};
+  // ثبات المراجع مهم: الدوال تُستخدم في اعتماديات useMemo/useEffect، ولو تغيّرت مع كل رسم تحدث حلقة رسم لا تنتهي
+  const permsKey = JSON.stringify(profile?.perms || {});
+  const perms = useMemo(() => JSON.parse(permsKey) as Record<string, Level>, [permsKey]);
   const level = useCallback((section: string): Level => levelOf(perms, isAdmin, section), [perms, isAdmin]);
   const group = useCallback((groupId: string): Level => groupLevel(perms, isAdmin, groupId), [perms, isAdmin]);
-  return {
-    isAdmin,
-    level,
-    group,
-    canView: (section: string) => level(section) >= 1,
-    canEdit: (section: string) => level(section) >= 2,
-  };
+  const canView = useCallback((section: string) => level(section) >= 1, [level]);
+  const canEdit = useCallback((section: string) => level(section) >= 2, [level]);
+  return useMemo(() => ({ isAdmin, level, group, canView, canEdit }), [isAdmin, level, group, canView, canEdit]);
 }
 
 /** درجة صلاحية قسم واحد */
@@ -45,10 +43,10 @@ export const TAB_SECTION: Record<string, { section?: string; group?: string }> =
 /** هل يستطيع الحساب فتح هذه الصفحة؟ */
 export const useCanOpenTab = () => {
   const p = usePermissions();
-  return (tab: string) => {
+  return useCallback((tab: string) => {
     const t = TAB_SECTION[tab];
     if (!t) return p.isAdmin;
     if (t.group === 'deliveries') return p.canView('deliveries-sahara') || p.canView('deliveries-etihad');
     return t.group ? p.group(t.group) >= 1 : p.canView(t.section!);
-  };
+  }, [p]);
 };
