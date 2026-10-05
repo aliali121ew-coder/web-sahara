@@ -128,7 +128,7 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
         dir={isRtl ? 'rtl' : 'ltr'}
         role="dialog"
         aria-label={profile?.name || tr('الملف الشخصي')}
-        className="fixed z-[71] rounded-[26px] bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700/70 shadow-[0_24px_60px_-12px_rgba(15,23,42,0.35)] overflow-hidden"
+        className="fixed z-[71] rounded-[26px] isolate"
         style={{
           ...style,
           transform: open ? 'translateY(0) scale(1)' : 'translateY(18px) scale(0.97)',
@@ -137,6 +137,20 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
           transition: 'transform 260ms cubic-bezier(0.2, 0.9, 0.25, 1.1), opacity 180ms ease-out',
         }}
       >
+        {/* توهّج ناعم بلون المستخدم خلف البطاقة */}
+        <div
+          aria-hidden="true"
+          className="absolute -inset-5 -z-10 rounded-[40px] blur-2xl opacity-60 dark:opacity-45 pointer-events-none"
+          style={{ background: `radial-gradient(60% 55% at 50% 30%, ${profile?.color || '#2563eb'}55, transparent 70%), radial-gradient(70% 60% at 50% 100%, rgba(15,23,42,0.35), transparent 70%)` }}
+        />
+        {/* إطار متدرّج رقيق + ظل متعدد الطبقات */}
+        <div
+          className="relative rounded-[26px] p-px bg-gradient-to-b from-white via-slate-200/80 to-slate-300/70 dark:from-slate-600/80 dark:via-slate-700/60 dark:to-slate-800"
+          style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.06), 0 8px 16px -4px rgba(15,23,42,0.10), 0 24px 48px -12px rgba(15,23,42,0.28), 0 48px 96px -24px rgba(15,23,42,0.30)' }}
+        >
+        <div className="relative rounded-[25px] bg-white dark:bg-slate-900 overflow-hidden">
+          {/* لمعة خفيفة أعلى البطاقة */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-80 z-10" />
         {/* الغلاف: سماء وجبال بطبقات، تتلاشى للأبيض من الأسفل */}
         <div className="relative h-[150px]">
           <svg className="absolute inset-0 w-full h-full" viewBox="0 0 330 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
@@ -266,6 +280,8 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
             {onSaveSelf ? <PenLine className="w-4 h-4" /> : <Settings className="w-4 h-4" />}{onSaveSelf ? tr('تحديث المعلومات') : actionLabel ?? tr('الملف الشخصي والحساب')}
           </button>
           )}
+        </div>
+        </div>
         </div>
       </div>
     </>,
