@@ -514,3 +514,23 @@ body[data-glassmorphism="true"] .shadow-soft-card {
   outline: 2px solid #fbbf24;
   outline-offset: 2px;
 }
+
+/* ===== شبكة المؤشرات المرنة: تتبدل حسب عرض الكارت نفسه (لا عرض الشاشة) ===== */
+.kpi-wrap { container-type: inline-size; }
+.kpi-grid { display: grid; grid-template-columns: minmax(0, 1fr); }
+.kpi-num { white-space: nowrap; font-size: 1.125rem; line-height: 1.2; }
+.kpi-sub { white-space: nowrap; font-size: 0.8125rem; }
+.kpi-label { line-height: 1.25; overflow-wrap: anywhere; }
+/* ثلاثة أعمدة متى اتسع الكارت، والخط يكبر ويصغر بسلاسة مع عرضه */
+@container (min-width: 30rem) {
+  .kpi-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .kpi-num { font-size: clamp(0.8rem, 2.7cqw, 1.05rem); }
+  .kpi-sub { font-size: clamp(0.62rem, 2.1cqw, 0.78rem); }
+}
+/* شرائح قصيرة (اسم + رقم): تبقى 3 أعمدة حتى العروض الضيقة وتصغر الخطوط */
+.kpi-grid-chips { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.kpi-grid-chips .kpi-num { font-size: clamp(0.7rem, 3.6cqw, 1rem); }
+.kpi-grid-chips .kpi-label { font-size: clamp(0.62rem, 2.9cqw, 0.78rem); }
+/* عمودان (كروت قصيرة): خط أكبر يتكيف مع عرض الكارت، بلا قطع للنص */
+.kpi-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.kpi-grid-2 .kpi-num { font-size: clamp(0.8rem, 4.2cqw, 1.05rem); }

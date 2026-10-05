@@ -320,17 +320,17 @@ export const EtihadGasSection: React.FC = () => {
 
           {/* 3 Internal Metrics: الوارد - الاستهلاك - المبيعات */}
           {/* 3 Internal Metrics: الوارد - الاستهلاك - المبيعات */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3.5 border-t border-slate-100 dark:border-slate-800">
+          <div className="kpi-wrap pt-3.5 border-t border-slate-100 dark:border-slate-800"><div className="kpi-grid kpi-grid-3 gap-3">
             
             {/* 1. الوارد */}
             <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors min-w-0">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
-                <span className="truncate">{tr('إجمالي الوارد')}</span>
+              <div className="flex items-center justify-between gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
+                <span className="kpi-label">{tr('إجمالي الوارد')}</span>
                 <div className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/40 shrink-0">
                   <ArrowDownLeft className="w-3.5 h-3.5" />
                 </div>
               </div>
-              <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white font-mono truncate">
+              <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
                 {formatNumber(totalInbound)} <span className="text-[10px] font-normal text-slate-400">{tr('لتر')}</span>
               </div>
               {buys.today ? (() => {
@@ -340,8 +340,8 @@ export const EtihadGasSection: React.FC = () => {
                 return (
                   <div className="mt-1.5 grid grid-cols-2 gap-1.5">
                     <div className="rounded-lg ring-1 min-w-0 bg-white dark:bg-slate-900/70 ring-slate-200 dark:ring-slate-700 px-1.5 py-1 text-center" title={`${tr('معدل سعر الشراء')} · ${buys.today.day}`}>
-                      <div className="text-[9px] font-bold leading-none text-slate-400 truncate">{tr('شراء اليوم')}</div>
-                      <div className="mt-0.5 font-mono font-black text-[11px] sm:text-xs tabular-nums truncate text-slate-700 dark:text-slate-200">
+                      <div className="text-[9px] font-bold leading-tight text-slate-400">{tr('شراء اليوم')}</div>
+                      <div className="mt-0.5 font-mono font-black kpi-sub tabular-nums text-slate-700 dark:text-slate-200">
                         {buys.today.price.toFixed(1)}<span className="text-[8.5px] font-bold text-slate-400"> {tr('د.ع')}</span>
                       </div>
                     </div>
@@ -349,11 +349,11 @@ export const EtihadGasSection: React.FC = () => {
                       className="rounded-lg ring-1 min-w-0 bg-white dark:bg-slate-900/70 ring-slate-200 dark:ring-slate-700 px-1.5 py-1 text-center"
                       title={buys.twoDayAvg !== null ? `${tr('معدل اليومين')}: ${buys.twoDayAvg.toFixed(1)} ${tr('د.ع')}` : tr('لا يوجد يوم سابق للمقارنة')}
                     >
-                      <div className="text-[9px] font-bold leading-none text-slate-400 truncate">{tr('نسبة التغير')}</div>
+                      <div className="text-[9px] font-bold leading-tight text-slate-400">{tr('نسبة التغير')}</div>
                       <div className={`mt-0.5 flex items-center justify-center gap-0.5 ${tone}`}>
                         {pct !== null && pct < 0 && <TrendingDown className="w-3 h-3 shrink-0" />}
                         {pct !== null && pct > 0 && <TrendingUp className="w-3 h-3 shrink-0" />}
-                        <span dir="ltr" className="font-mono font-black text-[11px] sm:text-xs tabular-nums leading-none truncate">
+                        <span dir="ltr" className="font-mono font-black kpi-sub tabular-nums leading-none">
                           {pct === null ? '—' : `${pct > 0 ? '+' : pct < 0 ? '−' : ''}${Math.abs(pct).toFixed(2)}%`}
                         </span>
                       </div>
@@ -361,61 +361,61 @@ export const EtihadGasSection: React.FC = () => {
                   </div>
                 );
               })() : (
-                <span className="text-[10px] text-slate-400 mt-1 block truncate">{tr('توريدات مستلمة')}</span>
+                <span className="text-[10px] text-slate-400 mt-1 block">{tr('توريدات مستلمة')}</span>
               )}
             </div>
 
             {/* 2. الاستهلاك + المبيعات */}
             <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-blue-300 dark:hover:border-blue-700 transition-colors min-w-0">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
-                <span className="truncate">{tr('الاستهلاك الفعلي  ')}</span>
+              <div className="flex items-center justify-between gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
+                <span className="kpi-label">{tr('الاستهلاك الفعلي  ')}</span>
                 <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-200/60 dark:border-blue-800/40 shrink-0">
                   <Activity className="w-3.5 h-3.5" />
                 </div>
               </div>
-              <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white font-mono truncate">
+              <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
                 {formatNumber(totalOutflow)} <span className="text-[10px] font-normal text-slate-400">{tr('لتر')}</span>
               </div>
-              <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-slate-400 min-w-0">
-                <span className="truncate">{tr('استهلاك')}: <strong className="font-mono text-slate-600 dark:text-slate-300">{formatNumber(totalConsumption)}</strong></span>
-                <span className="truncate">{tr('مبيعات')}: <strong className="font-mono text-slate-600 dark:text-slate-300">{formatNumber(totalSales)}</strong></span>
+              <div className="mt-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[10px] text-slate-400 min-w-0">
+                <span className="whitespace-nowrap">{tr('استهلاك')}: <strong className="font-mono text-slate-600 dark:text-slate-300">{formatNumber(totalConsumption)}</strong></span>
+                <span className="whitespace-nowrap">{tr('مبيعات')}: <strong className="font-mono text-slate-600 dark:text-slate-300">{formatNumber(totalSales)}</strong></span>
               </div>
             </div>
 
             {/* 3. فرق الاستهلاك الفعلي بين أمس واليوم (الاستهلاك + المبيعات) */}
             <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-teal-300 dark:hover:border-teal-700 transition-colors min-w-0">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
-                <span className="truncate">{tr('فرق الاستهلاك الفعلي')}</span>
+              <div className="flex items-center justify-between gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
+                <span className="kpi-label">{tr('فرق الاستهلاك الفعلي')}</span>
                 <div className="w-6 h-6 rounded-lg bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400 flex items-center justify-center border border-teal-200/60 dark:border-teal-800/40 shrink-0">
                   <TrendingUp className="w-3.5 h-3.5" />
                 </div>
               </div>
               {outflowDiff === null ? (
                 <>
-                  <div className="text-base sm:text-lg font-black text-slate-400 font-mono truncate">—</div>
-                  <span className="text-[10px] text-slate-400 mt-1 block truncate">{tr('لا يوجد يوم سابق للمقارنة')}</span>
+                  <div className="kpi-num font-black text-slate-400 font-mono">—</div>
+                  <span className="text-[10px] text-slate-400 mt-1 block">{tr('لا يوجد يوم سابق للمقارنة')}</span>
                 </>
               ) : (
                 <>
-                  <div className={`text-base sm:text-lg font-black font-mono truncate ${outflowDiff > 0 ? 'text-rose-600 dark:text-rose-400' : outflowDiff < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
+                  <div className={`kpi-num font-black font-mono ${outflowDiff > 0 ? 'text-rose-600 dark:text-rose-400' : outflowDiff < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
                     <span dir="ltr">{outflowDiff > 0 ? '▲ +' : outflowDiff < 0 ? '▼ −' : ''}{formatNumber(Math.abs(outflowDiff))}</span>{' '}
                     <span className="text-[10px] font-normal text-slate-400">{tr('لتر')}</span>
                   </div>
                   <div className="mt-1.5 grid grid-cols-2 gap-1.5">
                     <div className="rounded-lg bg-white dark:bg-slate-900/70 ring-1 ring-slate-200 dark:ring-slate-700 px-1.5 py-1 text-center min-w-0">
                       <div className="text-[9px] font-bold text-slate-400 leading-none">{tr('أمس')}</div>
-                      <div className="mt-0.5 font-mono font-black text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 tabular-nums truncate">{formatNumber(prevOutflow!)}</div>
+                      <div className="mt-0.5 font-mono font-black kpi-sub text-slate-600 dark:text-slate-300 tabular-nums">{formatNumber(prevOutflow!)}</div>
                     </div>
                     <div className="rounded-lg bg-teal-50 dark:bg-teal-950/50 ring-1 ring-teal-200 dark:ring-teal-800 px-1.5 py-1 text-center min-w-0">
                       <div className="text-[9px] font-bold text-teal-600 dark:text-teal-400 leading-none">{tr('اليوم')}</div>
-                      <div className="mt-0.5 font-mono font-black text-[11px] sm:text-xs text-teal-900 dark:text-teal-100 tabular-nums truncate">{formatNumber(totalOutflow)}</div>
+                      <div className="mt-0.5 font-mono font-black kpi-sub text-teal-900 dark:text-teal-100 tabular-nums">{formatNumber(totalOutflow)}</div>
                     </div>
                   </div>
                 </>
               )}
             </div>
 
-          </div>
+          </div></div>
 
         </div>
 
@@ -575,26 +575,26 @@ export const EtihadGasSection: React.FC = () => {
             </div>
 
             {/* 3 Metrics Chips: كاز التشغيلي - كاز نظيف - الرصيد الكلي */}
-            <div className="grid grid-cols-3 gap-2 sm:gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800 text-center">
+            <div className="kpi-wrap pt-3 border-t border-slate-100 dark:border-slate-800 text-center"><div className="kpi-grid kpi-grid-chips gap-2 sm:gap-2.5">
               <div className="p-2 sm:p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between overflow-hidden min-w-0">
-                <span className="text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 block truncate mb-1">{tr('كاز التشغيلي')}</span>
-                <div className="text-[11px] sm:text-xs xl:text-sm font-mono font-black text-slate-900 dark:text-white tracking-tight truncate">
+                <span className="kpi-label font-bold text-slate-500 dark:text-slate-400 block mb-1">{tr('كاز التشغيلي')}</span>
+                <div className="kpi-num font-mono font-black text-slate-900 dark:text-white tracking-tight">
                   {formatNumber(latest?.operationalGas ?? 0)} <span className="text-[9px] sm:text-[10px] font-normal text-slate-400">{tr('لتر')}</span>
                 </div>
               </div>
               <div className="p-2 sm:p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between overflow-hidden min-w-0">
-                <span className="text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 block truncate mb-1">{tr('كاز نظيف')}</span>
-                <div className="text-[11px] sm:text-xs xl:text-sm font-mono font-black text-slate-900 dark:text-white tracking-tight truncate">
+                <span className="kpi-label font-bold text-slate-500 dark:text-slate-400 block mb-1">{tr('كاز نظيف')}</span>
+                <div className="kpi-num font-mono font-black text-slate-900 dark:text-white tracking-tight">
                   {formatNumber(latest?.cleanGas ?? 0)} <span className="text-[9px] sm:text-[10px] font-normal text-slate-400">{tr('لتر')}</span>
                 </div>
               </div>
               <div className="p-2 sm:p-2.5 rounded-2xl bg-teal-50/90 dark:bg-teal-950/50 border border-teal-200/90 dark:border-teal-800/70 flex flex-col justify-between shadow-2xs overflow-hidden min-w-0">
-                <span className="text-[10px] sm:text-xs font-bold text-teal-700 dark:text-teal-300 block truncate mb-1">{tr('الرصيد الكلي')}</span>
-                <div className="text-[11px] sm:text-xs xl:text-sm font-mono font-black text-teal-900 dark:text-teal-100 tracking-tight truncate">
+                <span className="kpi-label font-bold text-teal-700 dark:text-teal-300 block mb-1">{tr('الرصيد الكلي')}</span>
+                <div className="kpi-num font-mono font-black text-teal-900 dark:text-teal-100 tracking-tight">
                   {formatNumber(etihadTotalBalance)} <span className="text-[9px] sm:text-[10px] font-normal text-teal-600 dark:text-teal-400">{tr('لتر')}</span>
                 </div>
               </div>
-            </div>
+            </div></div>
 
           </div>
 

@@ -350,37 +350,37 @@ export const PetrolStationsSection: React.FC = () => {
           </div>
 
           {/* Executive Metrics: الوارد - الاستهلاك (Matching Sahara Layout) */}
-          <div className="grid grid-cols-2 gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <div className="kpi-wrap pt-3 border-t border-slate-100 dark:border-slate-800"><div className="kpi-grid kpi-grid-2 gap-2.5">
             
             {/* 1. الوارد */}
             <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors min-w-0">
-              <div className="flex items-center justify-between text-[10.5px] font-bold text-slate-500 dark:text-slate-400 mb-1">
-                <span className="truncate">{tr('إجمالي الوارد')}</span>
+              <div className="flex items-center justify-between gap-1.5 text-[10.5px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                <span className="kpi-label">{tr('إجمالي الوارد')}</span>
                 <div className="w-5 h-5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/40 shrink-0">
                   <ArrowDownLeft className="w-3 h-3" />
                 </div>
               </div>
-              <div className="text-xs sm:text-sm font-black text-slate-900 dark:text-white font-mono truncate">
+              <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
                 {formatNumber(totalInbound)} <span className="text-[8.5px] font-normal text-slate-400">{tr('لتر')}</span>
               </div>
-              <span className="text-[9px] text-slate-400 mt-0.5 block truncate">{tr('توريدات مستلمة')}</span>
+              <span className="text-[10px] text-slate-400 mt-0.5 block">{tr('توريدات مستلمة')}</span>
             </div>
 
             {/* 2. الاستهلاك */}
             <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-orange-300 dark:hover:border-orange-700 transition-colors min-w-0">
-              <div className="flex items-center justify-between text-[10.5px] font-bold text-slate-500 dark:text-slate-400 mb-1">
-                <span className="truncate">{tr('الاستهلاك اليومي')}</span>
+              <div className="flex items-center justify-between gap-1.5 text-[10.5px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                <span className="kpi-label">{tr('الاستهلاك اليومي')}</span>
                 <div className="w-5 h-5 rounded-lg bg-orange-50 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400 flex items-center justify-center border border-orange-200/60 dark:border-orange-800/40 shrink-0">
                   <ArrowUpRight className="w-3 h-3" />
                 </div>
               </div>
-              <div className="text-xs sm:text-sm font-black text-slate-900 dark:text-white font-mono truncate">
+              <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
                 {formatNumber(totalConsumption)} <span className="text-[8.5px] font-normal text-slate-400">{tr('لتر')}</span>
               </div>
-              <span className="text-[9px] text-slate-400 mt-0.5 block truncate">{tr('صرف مباشر')}</span>
+              <span className="text-[10px] text-slate-400 mt-0.5 block">{tr('صرف مباشر')}</span>
             </div>
 
-          </div>
+          </div></div>
 
         </div>
 
@@ -429,35 +429,35 @@ export const PetrolStationsSection: React.FC = () => {
           </div>
 
           {/* 3. كروت الإمداد والتغطية الشاملة المستهدفة (الكمية المطلوب توفرها + يؤمن لغاية بعد التعزيز) */}
-          <div className="grid grid-cols-2 gap-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+          <div className="kpi-wrap pt-2.5 border-t border-slate-100 dark:border-slate-800"><div className="kpi-grid kpi-grid-2 gap-2.5">
             
             {/* كارت 1: الكمية المطلوب توفرها */}
             <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-teal-300 dark:hover:border-teal-700 transition-colors min-w-0">
-              <div className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-0.5 truncate">
+              <div className="kpi-label text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
                 {tr('الكمية المطلوب توفرها')}
               </div>
-              <div className="text-xs sm:text-sm font-black text-slate-900 dark:text-white font-mono truncate">
+              <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
                 {formatNumber(requiredQuantity)} <span className="text-[8.5px] font-normal text-slate-400">{tr('لتر')}</span>
               </div>
-              <span className="text-[8.5px] text-[#146f82] dark:text-teal-400 font-bold mt-0.5 block truncate">
+              <span className="text-[8.5px] text-[#146f82] dark:text-teal-400 font-bold mt-0.5 block">
                 {tr('تعزيز استراتيجي مستهدف')}
               </span>
             </div>
 
             {/* كارت 2: يؤمن لغاية (المتوفر + المطلوب توفرها) */}
             <div className="p-2.5 sm:p-3 rounded-2xl bg-[#146f82]/5 dark:bg-[#146f82]/20 border border-[#146f82]/25 dark:border-[#146f82]/40 flex flex-col justify-between hover:border-[#146f82] transition-colors min-w-0">
-              <div className="text-[10px] sm:text-[11px] font-bold text-[#146f82] dark:text-teal-300 mb-0.5 truncate">
+              <div className="kpi-label text-[10px] sm:text-[11px] font-bold text-[#146f82] dark:text-teal-300 mb-0.5">
                 {tr('يؤمن لغاية (الشامل)')}
               </div>
-              <div className="text-xs sm:text-sm font-black text-[#146f82] dark:text-[#2dd4bf] font-mono truncate">
-                {targetCoverageDays} {tr('يوماً')} <span className="text-[8.5px] font-normal text-slate-400">({targetCoverageDate})</span>
+              <div className="kpi-num !whitespace-normal font-black text-[#146f82] dark:text-[#2dd4bf] font-mono">
+                <span className="whitespace-nowrap">{targetCoverageDays} {tr('يوماً')}</span> <span className="text-[8.5px] font-normal text-slate-400 whitespace-nowrap">({targetCoverageDate})</span>
               </div>
-              <span className="text-[8.5px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5 block truncate">
+              <span className="text-[8.5px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5 block">
                 {tr('الرصيد:')} {formatNumber(targetTotalBalance)} {tr('لتر')}
               </span>
             </div>
 
-          </div>
+          </div></div>
 
 
         </div>
