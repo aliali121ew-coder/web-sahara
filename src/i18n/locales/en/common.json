@@ -222,5 +222,35 @@
       "title": "New fuel supply request",
       "message": "A supply request for {{qty}} L was sent for {{beneficiary}}."
     }
+  },
+  "fileImport": {
+    "field": {
+      "generators": "Generators",
+      "vehicles": "Vehicles",
+      "farms": "Farms",
+      "sentToFarms": "Sent to farms",
+      "inboundInternal": "Internal inbound",
+      "inboundEtihad": "Etihad inbound",
+      "inboundExternal": "External inbound",
+      "previousCarried": "Carried-over balance",
+      "currentInFile": "Current balance"
+    },
+    "saharaNoItems": "The statement items weren’t found in the file — make sure it’s the Sahara daily statement",
+    "missing": "Not found in the file: {{list}}",
+    "noSitesTable": "The site balances table (cumulative balance column) wasn’t found in the file",
+    "scannedPdf": "This PDF is a scanned image without text — upload an image instead",
+    "petrolNoItems": "The stations table or inbound items weren’t found in the file — make sure it’s the daily gasoline statement",
+    "stationsRead": "Read {{matched}} of {{count}} stations",
+    "noStationsTable": "The stations table wasn’t found",
+    "scannedPdfManual": "This PDF is a scanned image without text — use an Excel file or manual entry",
+    "excelPdfOnly": "Only Excel or PDF files are accepted",
+    "blackOilNoSites": "The sites (Al-Rayyan / Al-Sukkar) and their values weren’t found in the file",
+    "noHeaderRow": "The header row wasn’t found in the file (supplier name, voucher number, quantity received…)",
+    "noHeaderRowPdf": "The header row wasn’t found in the PDF (supplier name, voucher number, quantity received…)",
+    "sitesRead_one": "Read {{count}} site from the cumulative balance column",
+    "sitesRead_other": "Read {{count}} sites from the cumulative balance column",
+    "noNumbers_one": "Couldn’t read the numbers for {{count}} station (actual consumption and current balance columns)",
+    "noNumbers_other": "Couldn’t read the numbers for {{count}} stations (actual consumption and current balance columns)",
+    "alreadyUploaded": "Already uploaded for this day: {{list}}"
   }
 }

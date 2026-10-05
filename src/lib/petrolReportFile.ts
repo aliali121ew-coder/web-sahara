@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { normalizeArabic, matchStation, readPdfPages, pdfLineText, pdfNumbersIn, PdfItem } from './saharaReportFile';
 
 /**
@@ -59,13 +60,13 @@ const findByPriority = <T,>(cells: T[], labels: string[], text: (c: T) => unknow
 const finish = (result: PetrolReportExtraction): PetrolReportExtraction => {
   const matchedCount = result.stations.filter(s => s.matched).length;
   if (!result.stations.length && result.inboundQty === undefined) {
-    throw new Error('لم يُعثر على جدول المحطات أو بنود الوارد في الملف — تأكد أنه كشف البنزين اليومي');
+    throw new Error(i18n.t('common:fileImport.petrolNoItems'));
   }
   const noNumbers = result.stations.filter(s => s.consumption === undefined && s.balance === undefined).length;
   result.notes = [
-    result.stations.length ? `قُرئت ${matchedCount} محطة من ${result.stations.length}` : 'لم يُعثر على جدول المحطات',
-    noNumbers ? `لم تُقرأ أرقام ${noNumbers} محطة (عمودا المصروف الفعلي والرصيد الحالي)` : '',
-    result.inboundQty === undefined ? 'لم يُعثر على: وارد خارجي' : ''
+    result.stations.length ? i18n.t('common:fileImport.stationsRead', { matched: matchedCount, count: result.stations.length }) : i18n.t('common:fileImport.noStationsTable'),
+    noNumbers ? i18n.t('common:fileImport.noNumbers', { count: noNumbers }) : '',
+    result.inboundQty === undefined ? i18n.t('common:fileImport.missing', { list: i18n.t('common:fileImport.field.inboundExternal') }) : ''
   ].filter(Boolean).join(' — ');
   return result;
 };
@@ -89,7 +90,7 @@ const addStation = (
 // ───────────── PDF ─────────────
 const readPdf = async (file: File, stationNames: string[]): Promise<PetrolReportExtraction> => {
   const { pages, anyText } = await readPdfPages(file);
-  if (!anyText) throw new Error('ملف PDF هذا صورة ممسوحة بلا نص — استخدم ملف Excel أو الإدخال اليدوي');
+  if (!anyText) throw new Error(i18n.t('common:fileImport.scannedPdfManual'));
   const result: PetrolReportExtraction = { stations: [], notes: '' };
   const seen = new Set<string>();
   const center = (i: PdfItem) => i.x + i.w / 2;
@@ -230,6 +231,6 @@ const readExcel = async (file: File, stationNames: string[]): Promise<PetrolRepo
 
 export const readPetrolReportFile = async (file: File, stationNames: string[]): Promise<PetrolReportExtraction> => {
   if (/\.pdf$/i.test(file.name)) return readPdf(file, stationNames);
-  if (!/\.(xlsx|xlsm|xls)$/i.test(file.name)) throw new Error('يُقبل ملف Excel أو PDF فقط');
+  if (!/\.(xlsx|xlsm|xls)$/i.test(file.name)) throw new Error(i18n.t('common:fileImport.excelPdfOnly'));
   return readExcel(file, stationNames);
 };

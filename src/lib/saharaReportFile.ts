@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+import { fmtList } from '../i18n/format';
 import type { SaharaReportExtraction } from './saharaReportUpload';
 
 /**
@@ -20,17 +22,8 @@ const LABELS: Record<NumberField, string> = {
   currentInFile: 'الرصيد الحالي'
 };
 
-const FIELD_NAMES: Record<NumberField, string> = {
-  generators: 'المولدات',
-  vehicles: 'الآليات',
-  farms: 'المزارع',
-  sentToFarms: 'المرسل للمزارع',
-  inboundInternal: 'الوارد الداخلي',
-  inboundEtihad: 'وارد الاتحاد',
-  inboundExternal: 'الوارد الخارجي',
-  previousCarried: 'المدوّر السابق',
-  currentInFile: 'الرصيد الحالي'
-};
+/** اسم البند بلغة الواجهة (لملاحظة البنود الناقصة) */
+const fieldName = (k: NumberField) => i18n.t(`common:fileImport.field.${k}`);
 
 /** توحيد الكتابة العربية للمقارنة: بدون مسافات وتشكيل، وأ/إ/آ → ا، ة → ه، ى → ي (NFKC يفكّ أشكال العرض مثل ﻻ) */
 export const normalizeArabic = (s: string) =>
@@ -86,7 +79,7 @@ const finish = (
 ): SaharaReportExtraction => {
   const missing = (Object.keys(LABELS) as NumberField[]).filter(k => values[k] === undefined);
   if (missing.length === Object.keys(LABELS).length && stations.length === 0) {
-    throw new Error('لم يُعثر على بنود الكشف في الملف — تأكد أنه الكشف اليومي للصحاري');
+    throw new Error(i18n.t('common:fileImport.saharaNoItems'));
   }
   return {
     generators: values.generators ?? 0,
@@ -101,10 +94,10 @@ const finish = (
     tableTotal,
     stations: stations.map(s => ({ ...s, matchedStation: matchStation(s.nameInImage, stationNames) })),
     notes: [
-      missing.length ? `لم تُعثر في الملف على: ${missing.map(k => FIELD_NAMES[k]).join('، ')}` : '',
+      missing.length ? i18n.t('common:fileImport.missing', { list: fmtList(missing.map(fieldName)) }) : '',
       stations.length
-        ? `قُرئ ${stations.length} موقع من عمود الرصيد التراكمي`
-        : 'لم يُعثر على جدول أرصدة المواقع (عمود الرصيد التراكمي) في الملف'
+        ? i18n.t('common:fileImport.sitesRead', { count: stations.length })
+        : i18n.t('common:fileImport.noSitesTable')
     ].filter(Boolean).join(' — ')
   };
 };
@@ -284,7 +277,7 @@ const readPdf = async (file: File, stationNames: string[]) => {
     }
   }
 
-  if (!anyText) throw new Error('ملف PDF هذا صورة ممسوحة بلا نص — استخدم رفع الصورة بدلاً منه');
+  if (!anyText) throw new Error(i18n.t('common:fileImport.scannedPdf'));
   return finish(values, stations, stationNames, tableTotal);
 };
 
