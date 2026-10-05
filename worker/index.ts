@@ -8,7 +8,7 @@ import { extractSaharaReport } from './extractSaharaReport';
 import { audit, handleChat, verifySession, type Session } from './chat';
 import { canReadKey, canWriteKey, isServerForbiddenKey, keySectionLabel, levelOf } from '../src/lib/permCatalog';
 
-import { loadFile, removeFile, storeFile } from './storage/files';
+import { ensureFileColumns, loadFile, removeFile, storeFile } from './storage/files';
 import { applyCollectionOps, clearCollection, ensureCollections, isCollectionKey, readCollection, replaceCollection, type CollectionOps } from './storage/collections';
 import { COLLECTION_KEYS } from '../src/lib/permCatalog';
 import type { D1Database, D1PreparedStatement, Env, ExecutionContext, R2Bucket, ScheduledController } from './types';
@@ -65,6 +65,7 @@ let filesTableReady = false;
 const ensureFilesTables = async (db: D1Database) => {
   if (filesTableReady) return;
   await db.exec('CREATE TABLE IF NOT EXISTS sahara_files (id TEXT PRIMARY KEY, record_id TEXT NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL, size INTEGER NOT NULL, created_at INTEGER NOT NULL)');
+  await ensureFileColumns(db);
   filesTableReady = true;
 };
 
@@ -99,9 +100,9 @@ const handleFiles = async (request: Request, url: URL, db: D1Database, bucket: R
 
     const row: FileRow = { id: crypto.randomUUID(), record_id: recordId, name, type, size: bytes.length, created_at: Date.now() };
     // المحتوى أولًا في R2، ثم السجل في D1 (لو فشل السجل يبقى ملف يتيم تنظفه الصيانة الشهرية)
-    await storeFile(bucket, 'sahara', row.id, bytes, type, { name, record: recordId, owner: session.id });
-    await db.prepare('INSERT INTO sahara_files (id, record_id, name, type, size, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-      .bind(row.id, row.record_id, row.name, row.type, row.size, row.created_at).run();
+    const sha256 = await storeFile(bucket, 'sahara', row.id, bytes, type, { name, record: recordId, owner: session.id });
+    await db.prepare('INSERT INTO sahara_files (id, record_id, name, type, size, created_at, sha256) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .bind(row.id, row.record_id, row.name, row.type, row.size, row.created_at, sha256).run();
     await audit(db, request, session.id, 'file.upload', name);
     return json({ ok: true, item: row });
   }
@@ -127,8 +128,9 @@ const handleFiles = async (request: Request, url: URL, db: D1Database, bucket: R
 
   // حذف الملف
   if (request.method === 'DELETE') {
-    const { results: gone } = await db.prepare('SELECT name FROM sahara_files WHERE id = ?').bind(id).all<{ name: string }>();
-    await removeFile(bucket, db, 'sahara', id);
+    const { results: gone } = await db.prepare('SELECT name, record_id, type, created_at FROM sahara_files WHERE id = ?').bind(id).all<{ name: string; record_id: string; type: string; created_at: number }>();
+    // إلى سلة المحذوفات (قابل للاسترجاع 30 يومًا من لوحة إدارة النظام)
+    await removeFile(bucket, db, 'sahara', id, { by: session.id, name: gone[0]?.name, record: gone[0]?.record_id, type: gone[0]?.type, createdAt: gone[0]?.created_at });
     await db.prepare('DELETE FROM sahara_files WHERE id = ?').bind(id).run();
     await audit(db, request, session.id, 'file.delete', gone[0]?.name || id);
     return json({ ok: true });

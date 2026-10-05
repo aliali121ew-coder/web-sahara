@@ -24,7 +24,9 @@ export interface TablePage {
   total: number; offset: number; limit: number;
   rows: Record<string, unknown>[];
 }
-export interface R2File { key: string; size: number; uploaded: string; type: string; name: string | null }
+export interface R2File { key: string; size: number; uploaded: string; type: string; name: string | null; sha256?: string }
+export interface TrashItem { key: string; scope: 'sahara' | 'chat'; id: string; size: number; name: string; record: string; type: string; deletedBy: string; deletedAt: number; sha256: string }
+export interface VerifyResult { checked: number; ok: number; backfilled: number; missing: string[]; corrupt: string[] }
 
 export class SystemApiError extends Error {
   constructor(message: string, public status: number) { super(message); }
@@ -67,6 +69,10 @@ export const systemApi = {
   migrateFiles: () => post<{ moved: number; bytes: number }>('/files/migrate'),
   orphans: () => call<{ items: string[] }>('/files/orphans'),
   deleteOrphans: () => call<{ deleted: number }>('/files/orphans', { method: 'DELETE' }),
+  verifyFiles: () => post<VerifyResult>('/files/verify'),
+  trash: () => call<{ items: TrashItem[] }>('/files/trash'),
+  restoreTrash: (key: string) => post<{ id: string; name: string }>('/files/trash/restore', { key }),
+  purgeTrash: (key?: string) => call<{ deleted: number }>(`/files/trash${key ? `?key=${encodeURIComponent(key)}` : ''}`, { method: 'DELETE' }),
   jobs: () => call<{ items: JobRow[]; nextRun: number }>('/jobs'),
   runJob: (job: 'daily' | 'monthly' | 'cleanup', month?: string) => post<{ result: unknown }>('/maintenance/run', { job, month }),
   setMaintenance: (on: boolean, reason?: string) => post<{ maintenance: Overview['maintenance'] }>('/maintenance/mode', { on, reason }),

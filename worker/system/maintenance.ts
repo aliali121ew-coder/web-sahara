@@ -7,7 +7,7 @@
 import type { Env } from '../types';
 import { createBackup, ensureSystemTables } from './backup';
 import { gunzipText, gzipText, sha256Hex } from './compress';
-import { findOrphanFiles, migrateLegacyFiles } from '../storage/files';
+import { findOrphanFiles, migrateLegacyFiles, purgeTrash, verifyFiles } from '../storage/files';
 
 const DAY = 86400_000;
 const NOTIF_KEEP_MS = 90 * DAY;
@@ -114,8 +114,11 @@ export const monthlyJob = (env: Env, by = 'scheduler', month?: string) =>
       Object.assign(result, { archive: key, size: gz.length, dailies: dailies.length, notifications: oldNotifs.length, audit: oldAudit.length });
     }
 
-    // 4) تنظيف البيانات المؤقتة
+    // 4) تنظيف البيانات المؤقتة، ثم فحص سلامة الملفات
     result.cleanup = await cleanup(env, now);
+    const integrity = await verifyFiles(env.FILES, env.DB);
+    result.integrity = { checked: integrity.checked, ok: integrity.ok, backfilled: integrity.backfilled, missing: integrity.missing.length, corrupt: integrity.corrupt };
+    if (integrity.corrupt.length || integrity.missing.length) console.error('file integrity problems', integrity);
     return result;
   });
 
@@ -132,6 +135,7 @@ export const cleanup = async (env: Env, now = Date.now()) => {
   const orphans = await findOrphanFiles(env.FILES, env.DB).catch(() => [] as string[]);
   for (let i = 0; i < orphans.length; i += 1000) await env.FILES.delete(orphans.slice(i, i + 1000));
   out.orphanR2Files = orphans.length;
+  out.trashPurged = await purgeTrash(env.FILES).catch(() => 0);
   try { await env.DB.exec('PRAGMA optimize'); out.optimize = 'ok'; } catch { out.optimize = 'غير مدعوم'; }
   return out;
 };

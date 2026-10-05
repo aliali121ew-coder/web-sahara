@@ -2,10 +2,11 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Server, Gauge, Database, DatabaseBackup, FolderOpen, Wrench, HardDrive, Cloud, Clock, Activity, RefreshCw, Loader2,
   FileText, MessageSquare, Trash2, ArrowUpFromLine, Play, CalendarClock, Sparkles, Construction, ChevronDown,
+  ShieldCheck, Fingerprint, RotateCcw, Trash,
 } from 'lucide-react';
 import { SwipeTabs } from '../ui/SwipeTabs';
 import { chatApi } from '../chat/chatApi';
-import { systemApi, fmtBytes, fmtDuration, fmtNum, type BackupRow, type JobRow, type Overview, type R2File } from './systemApi';
+import { systemApi, fmtBytes, fmtDuration, fmtNum, type BackupRow, type JobRow, type Overview, type R2File, type TrashItem, type VerifyResult } from './systemApi';
 import { BarList, JOB_LABELS, PREFIX_LABELS, StatusPill, TABLE_LABELS } from './systemUi';
 import { DbBrowser } from './DbBrowser';
 import { BackupsPanel } from './BackupsPanel';
@@ -133,23 +134,31 @@ const OverviewTab: React.FC<{ ov: Overview | null }> = ({ ov }) => {
 };
 
 // ───── الملفات ─────
+type FilesView = 'sahara/' | 'chat/' | 'trash';
 const FilesTab: React.FC<{ legacy: number; onChanged: () => void }> = ({ legacy, onChanged }) => {
-  const [prefix, setPrefix] = useState<'sahara/' | 'chat/'>('sahara/');
+  const [prefix, setPrefix] = useState<FilesView>('sahara/');
   const [items, setItems] = useState<R2File[] | null>(null);
+  const [trash, setTrash] = useState<TrashItem[] | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState('');
   const [orphans, setOrphans] = useState<string[] | null>(null);
+  const [verify, setVerify] = useState<VerifyResult | null>(null);
 
   const load = useCallback(async (more?: string) => {
     setBusy('list');
     try {
-      const r = await systemApi.files(prefix, more);
-      setItems(prev => (more && prev ? [...prev, ...r.items] : r.items));
-      setCursor(r.cursor);
+      if (prefix === 'trash') {
+        setTrash((await systemApi.trash()).items);
+        setCursor(null);
+      } else {
+        const r = await systemApi.files(prefix, more);
+        setItems(prev => (more && prev ? [...prev, ...r.items] : r.items));
+        setCursor(r.cursor);
+      }
     } catch (e) { setMsg((e as Error).message); } finally { setBusy(''); }
   }, [prefix]);
-  useEffect(() => { setItems(null); load(); }, [load]);
+  useEffect(() => { setItems(null); setTrash(null); load(); }, [load]);
 
   const run = async (id: string, fn: () => Promise<string>) => {
     setBusy(id);
@@ -159,7 +168,21 @@ const FilesTab: React.FC<{ legacy: number; onChanged: () => void }> = ({ legacy,
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+        <div className={`${cardCls} p-4 flex items-center gap-3 ${verify && (verify.corrupt.length || verify.missing.length) ? 'ring-2 ring-rose-400' : ''}`}>
+          <span className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 flex items-center justify-center"><ShieldCheck className="w-5 h-5" /></span>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-bold text-slate-900 dark:text-white">سلامة الملفات (SHA-256)</div>
+            <div className="text-[11px] text-slate-500">
+              {!verify ? 'مقارنة بصمة كل ملف في R2 بالمسجّلة في D1'
+                : verify.corrupt.length || verify.missing.length ? `${verify.corrupt.length} تالف · ${verify.missing.length} مفقود من ${verify.checked}`
+                  : `${fmtNum(verify.ok + verify.backfilled)} من ${fmtNum(verify.checked)} سليم${verify.backfilled ? ` (سُجّلت ${verify.backfilled} بصمة جديدة)` : ''}`}
+            </div>
+          </div>
+          <button disabled={!!busy} onClick={() => run('verify', async () => { const r = await systemApi.verifyFiles(); setVerify(r); return r.corrupt.length || r.missing.length ? `مشاكل: ${[...r.corrupt, ...r.missing].join('، ')}` : 'كل الملفات سليمة'; })} className={`${btnCls} py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200`}>
+            {busy === 'verify' ? <Loader2 className="w-4 h-4 animate-spin" /> : null}فحص
+          </button>
+        </div>
         <div className={`${cardCls} p-4 flex items-center gap-3`}>
           <span className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-500/15 text-blue-600 flex items-center justify-center"><ArrowUpFromLine className="w-5 h-5" /></span>
           <div className="flex-1 min-w-0">
@@ -192,23 +215,31 @@ const FilesTab: React.FC<{ legacy: number; onChanged: () => void }> = ({ legacy,
       <div className={`${cardCls} overflow-hidden`}>
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
           <div className="flex gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800">
-            {([['sahara/', 'مرفقات الصحاري', FileText], ['chat/', 'مرفقات المحادثة', MessageSquare]] as const).map(([p, l, Icon]) => (
+            {([['sahara/', 'مرفقات الصحاري', FileText], ['chat/', 'مرفقات المحادثة', MessageSquare], ['trash', 'سلة المحذوفات', Trash]] as const).map(([p, l, Icon]) => (
               <button key={p} onClick={() => setPrefix(p)} className={`px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 ${prefix === p ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-300 shadow-sm' : 'text-slate-500'}`}>
                 <Icon className="w-3.5 h-3.5" />{l}
               </button>
             ))}
           </div>
-          <span className="text-[11px] text-slate-400 mr-auto font-mono" dir="ltr">etihad-files/{prefix}</span>
+          <span className="text-[11px] text-slate-400 mr-auto font-mono hidden sm:inline" dir="ltr">etihad-files/{prefix === 'trash' ? 'trash/' : prefix}</span>
         </div>
         <div className="p-4">
-          {!items ? <Skeleton rows={3} /> : !items.length ? <Empty icon={FolderOpen} title="لا توجد ملفات" /> : (
+          {prefix === 'trash' ? (
+            <TrashList items={trash} busy={busy}
+              onRestore={t => run('r' + t.key, async () => { const r = await systemApi.restoreTrash(t.key); return `استُرجع ${r.name}`; })}
+              onPurge={t => { if (window.confirm(`حذف «${t.name}» نهائيًا؟ لا يمكن التراجع.`)) run('p' + t.key, async () => { await systemApi.purgeTrash(t.key); return 'حُذف نهائيًا'; }); }} />
+          ) : !items ? <Skeleton rows={3} /> : !items.length ? <Empty icon={FolderOpen} title="لا توجد ملفات" /> : (
             <ul className="divide-y divide-slate-100 dark:divide-slate-800">
               {items.map(f => (
                 <li key={f.key} className="py-2.5 flex items-center gap-3 text-xs">
                   <FileText className="w-4 h-4 text-slate-400 shrink-0" />
                   <div className="min-w-0 flex-1">
                     <div className="font-bold text-slate-800 dark:text-slate-100 truncate">{f.name ?? <span className="text-amber-600">بلا سجل في D1</span>}</div>
-                    <div className="text-[10px] text-slate-400 font-mono truncate" dir="ltr">{f.key} · {f.type || '—'}</div>
+                    <div className="text-[10px] text-slate-400 font-mono truncate flex items-center gap-2" dir="ltr">
+                      <span className="truncate">{f.key} · {f.type || '—'}</span>
+                      {f.sha256 ? <span className="inline-flex items-center gap-0.5 shrink-0" title={`SHA-256: ${f.sha256}`}><Fingerprint className="w-3 h-3" />{f.sha256.slice(0, 8)}</span>
+                        : <span className="shrink-0 text-amber-500">بلا بصمة</span>}
+                    </div>
                   </div>
                   <span className="tabular-nums text-slate-600 dark:text-slate-300 shrink-0">{fmtBytes(f.size)}</span>
                   <span className="text-slate-400 shrink-0 hidden sm:inline" title={fullDate(new Date(f.uploaded).getTime())}>{timeAgo(new Date(f.uploaded).getTime())}</span>
@@ -224,6 +255,38 @@ const FilesTab: React.FC<{ legacy: number; onChanged: () => void }> = ({ legacy,
         </div>
       </div>
     </div>
+  );
+};
+
+/** سلة المحذوفات: تُحذف نهائيًا تلقائيًا بعد 30 يومًا */
+const TrashList: React.FC<{ items: TrashItem[] | null; busy: string; onRestore: (t: TrashItem) => void; onPurge: (t: TrashItem) => void }> = ({ items, busy, onRestore, onPurge }) => {
+  if (!items) return <Skeleton rows={3} />;
+  if (!items.length) return <Empty icon={Trash} title="السلة فارغة" hint="الملفات المحذوفة تبقى هنا 30 يومًا ويمكن استرجاعها" />;
+  return (
+    <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+      {items.map(t => {
+        const left = Math.max(0, 30 - Math.floor((Date.now() - t.deletedAt) / 86400_000));
+        return (
+          <li key={t.key} className="py-2.5 flex items-center gap-3 text-xs">
+            {t.scope === 'chat' ? <MessageSquare className="w-4 h-4 text-slate-400 shrink-0" /> : <FileText className="w-4 h-4 text-slate-400 shrink-0" />}
+            <div className="min-w-0 flex-1">
+              <div className="font-bold text-slate-800 dark:text-slate-100 truncate">{t.name}</div>
+              <div className="text-[10px] text-slate-400 truncate">
+                {t.scope === 'chat' ? 'مرفق محادثة' : 'مرفق رصيد الصحاري'} · {fmtBytes(t.size)} · حُذف {timeAgo(t.deletedAt)} · يُحذف نهائيًا بعد {left} يوم
+              </div>
+            </div>
+            {t.scope === 'sahara' && (
+              <button disabled={!!busy} onClick={() => onRestore(t)} className="h-8 px-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-bold inline-flex items-center gap-1">
+                {busy === 'r' + t.key ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}استرجاع
+              </button>
+            )}
+            <button disabled={!!busy} onClick={() => onPurge(t)} aria-label="حذف نهائي" title="حذف نهائي" className="h-8 w-8 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 inline-flex items-center justify-center">
+              {busy === 'p' + t.key ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+            </button>
+          </li>
+        );
+      })}
+    </ul>
   );
 };
 

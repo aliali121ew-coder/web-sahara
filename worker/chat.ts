@@ -9,7 +9,7 @@
  */
 
 import { checkPublicKey, parseClientData, randomChallenge, verifyAssertion } from './webauthn';
-import { loadFile, removeFile, storeFile } from './storage/files';
+import { ensureFileColumns, loadFile, removeFile, storeFile } from './storage/files';
 import type { D1Database, D1PreparedStatement, R2Bucket } from './types';
 import { levelOf, parsePerms, sanitizePerms, type Perms } from '../src/lib/permCatalog';
 
@@ -830,7 +830,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
         db.prepare("UPDATE chat_messages SET deleted = 1, text = '', attachments = '[]', reactions = '{}', updated_at = ? WHERE id = ?").bind(now, id),
         ...own.map(f => db.prepare('DELETE FROM chat_files WHERE id = ?').bind(f.id)),
       ]);
-      if (files) for (const f of own) await removeFile(files, db, 'chat', f.id);
+      if (files) for (const f of own) await removeFile(files, db, 'chat', f.id, { by: authId });
       return json({ ok: true });
     }
   }
@@ -845,8 +845,9 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     if (!files) return json({ error: 'تخزين الملفات غير مهيأ على الخادم' }, 503);
     const row: FileRow = { id: uid(), name, type, size: bytes.length, created_at: now };
     // المحتوى في R2، والسجل في D1 بعد نجاح الرفع
-    await storeFile(files, 'chat', row.id, bytes, type, { name, owner: authId });
-    await db.prepare('INSERT INTO chat_files (id, name, type, size, created_at, owner) VALUES (?, ?, ?, ?, ?, ?)').bind(row.id, row.name, row.type, row.size, row.created_at, authId).run();
+    const sha256 = await storeFile(files, 'chat', row.id, bytes, type, { name, owner: authId });
+    await ensureFileColumns(db);
+    await db.prepare('INSERT INTO chat_files (id, name, type, size, created_at, owner, sha256) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(row.id, row.name, row.type, row.size, row.created_at, authId, sha256).run();
     return json({ ok: true, item: row });
   }
 

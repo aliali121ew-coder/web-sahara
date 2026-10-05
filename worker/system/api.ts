@@ -6,7 +6,7 @@ import type { Session } from '../chat';
 import { audit } from '../chat';
 import { createBackup, ensureSystemTables, getMaintenance, restoreBackup, setMaintenance, userTables, userViews, type BackupRow } from './backup';
 import { cleanup, dailyJob, monthlyJob, nextRun } from './maintenance';
-import { findOrphanFiles, legacyFileCount, migrateLegacyFiles } from '../storage/files';
+import { findOrphanFiles, legacyFileCount, listTrash, migrateLegacyFiles, purgeTrash, restoreFromTrash, verifyFiles } from '../storage/files';
 import { collectionCounts } from '../storage/collections';
 
 const json = (data: unknown, status = 200) =>
@@ -158,15 +158,16 @@ export async function handleSystem(request: Request, url: URL, env: Env, session
     const table = prefix === 'chat/' ? 'chat_files' : 'sahara_files';
     const ids = page.objects.map(o => o.key.slice(prefix.length));
     const names: Record<string, string> = {};
+    const shas: Record<string, string> = {};
     if (ids.length) {
       for (let i = 0; i < ids.length; i += 90) {
         const part = ids.slice(i, i + 90);
-        const { results } = await db.prepare(`SELECT id, name FROM ${table} WHERE id IN (${part.map(() => '?').join(',')})`).bind(...part).all<{ id: string; name: string }>();
-        for (const r of results) names[r.id] = r.name;
+        const { results } = await db.prepare(`SELECT id, name, sha256 FROM ${table} WHERE id IN (${part.map(() => '?').join(',')})`).bind(...part).all<{ id: string; name: string; sha256: string }>().catch(() => ({ results: [] as { id: string; name: string; sha256: string }[] }));
+        for (const r of results) { names[r.id] = r.name; shas[r.id] = r.sha256 || ''; }
       }
     }
     return json({
-      items: page.objects.map(o => ({ key: o.key, size: o.size, uploaded: o.uploaded, type: o.httpMetadata?.contentType || '', name: names[o.key.slice(prefix.length)] ?? null })),
+      items: page.objects.map(o => ({ key: o.key, size: o.size, uploaded: o.uploaded, type: o.httpMetadata?.contentType || '', name: names[o.key.slice(prefix.length)] ?? null, sha256: shas[o.key.slice(prefix.length)] || '' })),
       cursor: page.truncated ? page.cursor : null,
     });
   }
@@ -176,6 +177,34 @@ export async function handleSystem(request: Request, url: URL, env: Env, session
     return json({ ok: true, ...r });
   }
   if (path === '/files/orphans' && method === 'GET') return json({ items: await findOrphanFiles(env.FILES, db) });
+  // فحص سلامة الملفات بمقارنة بصمة SHA-256 (ويُكمل بصمات الملفات القديمة)
+  if (path === '/files/verify' && method === 'POST') {
+    const r = await verifyFiles(env.FILES, db);
+    await audit(db, request, session.id, 'system.files', `فحص سلامة ${r.checked} ملف: ${r.ok} سليم، ${r.corrupt.length} تالف، ${r.missing.length} مفقود`);
+    return json(r);
+  }
+  // سلة المحذوفات
+  if (path === '/files/trash' && method === 'GET') return json({ items: await listTrash(env.FILES) });
+  if (path === '/files/trash/restore' && method === 'POST') {
+    const b = await request.json().catch(() => ({})) as { key?: string };
+    try {
+      const r = await restoreFromTrash(env.FILES, db, String(b.key || ''));
+      await audit(db, request, session.id, 'system.files', `استرجاع ${r.name} من سلة المحذوفات`);
+      return json({ ok: true, ...r });
+    } catch (e) {
+      return json({ error: (e as Error).message }, 400);
+    }
+  }
+  if (path === '/files/trash' && method === 'DELETE') {
+    const key = url.searchParams.get('key') || undefined;
+    try {
+      const n = await purgeTrash(env.FILES, key);
+      await audit(db, request, session.id, 'system.files', key ? `حذف نهائي: ${key}` : `تفريغ السلة: ${n} ملف أقدم من 30 يومًا`);
+      return json({ ok: true, deleted: n });
+    } catch (e) {
+      return json({ error: (e as Error).message }, 400);
+    }
+  }
   if (path === '/files/orphans' && method === 'DELETE') {
     const orphans = await findOrphanFiles(env.FILES, db);
     for (let i = 0; i < orphans.length; i += 1000) await env.FILES.delete(orphans.slice(i, i + 1000));
