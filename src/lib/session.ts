@@ -281,4 +281,4 @@ export function useSessionProfile() {
 }
 
 /** الحرف الأول من الاسم للصورة الرمزية */
-export const initials = (name?: string) => (name || '').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('') || '؟';
+export const initials = (name?: string) => (name || '').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('') || (document.documentElement.lang === 'ar' ? '؟' : '?');

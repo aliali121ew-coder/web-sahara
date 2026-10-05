@@ -264,7 +264,7 @@ export const CreateAccountWizard: React.FC<{
             <span className="absolute top-3 end-3 text-[10px] font-black tracking-wide text-white/80 bg-white/15 rounded-full px-2.5 py-1">{t('wizard.cardPreview')}</span>
           </div>
           <div className="relative z-10 px-6 -mt-12 flex flex-col items-center text-center">
-            <UserAvatar name={name || '؟'} src={avatar} size={96} className="!rounded-[28px] ring-4 ring-white dark:ring-slate-900 shadow-xl" />
+            <UserAvatar name={name} src={avatar} size={96} className="!rounded-[28px] ring-4 ring-white dark:ring-slate-900 shadow-xl" />
             <div className="mt-3 flex items-center justify-center gap-1.5 max-w-full">
               <span className="font-black text-lg text-slate-900 dark:text-white truncate">{name || t('wizard.employeeName')}</span>
               {isAdmin && <Crown className="w-5 h-5 text-amber-500 shrink-0" />}

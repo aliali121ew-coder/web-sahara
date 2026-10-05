@@ -95,7 +95,7 @@ export const AvatarPicker: React.FC<{ value: string; name: string; onChange: (v:
         onDragOver={e => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
         onDrop={e => { e.preventDefault(); setDrag(false); pick(e.dataTransfer.files[0]); }}
         className={`group relative rounded-3xl shrink-0 transition ${drag ? 'ring-4 ring-blue-500/40 scale-105' : ''}`} style={{ width: size, height: size }}>
-        {value ? <UserAvatar name={name || '؟'} src={value} size={size} className="!rounded-3xl" /> : (
+        {value ? <UserAvatar name={name} src={value} size={size} className="!rounded-3xl" /> : (
           <span className="w-full h-full rounded-3xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/60 flex flex-col items-center justify-center gap-1 text-slate-400 group-hover:border-blue-400 group-hover:text-blue-500 transition">
             <ImagePlus className="w-6 h-6" />
             <span className="text-[10px] font-bold">{t('ui.photo')}</span>
