@@ -351,7 +351,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Inline custom style for match-bg
   const getSidebarInlineStyle = (): React.CSSProperties => {
     if (sidebarStyle === 'match-bg' && bgGradient === 'none') {
-      // التلقائي: أبيض في الأعلى يتلاشى تدريجيًا إلى أزرق مُعتّم خفيف في الأسفل (وكحلي في الوضع الليلي)
+      // التلقائي: الشريط المطوي أبيض (أو كحلي ليلًا)، والمفتوح أبيض يتلاشى تدريجيًا إلى أزرق مُعتّم خفيف في الأسفل
+      if (isCollapsed) return { backgroundColor: themeMode === 'dark' ? '#0d1526' : '#ffffff', backgroundImage: 'none' };
       return themeMode === 'dark'
         ? { backgroundColor: '#0b1220', backgroundImage: 'linear-gradient(180deg, #111a2e 0%, #0d1526 40%, #0b1322 70%, #0a1a33 100%)' }
         : { backgroundColor: '#f8fafc', backgroundImage: 'linear-gradient(180deg, #ffffff 0%, #fbfcfe 30%, #eef3fa 65%, #dde6f3 100%)' };
