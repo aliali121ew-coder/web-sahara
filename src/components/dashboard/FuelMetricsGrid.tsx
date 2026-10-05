@@ -17,6 +17,7 @@ import { formatNumber } from '../../lib/utils';
 import { FuelProductMetric, InboundDelivery } from '../../types';
 import { usePetrolLedger } from '../../lib/petrolLedger';
 import { usePriceOverrides } from '../../lib/priceOverrides';
+import { useManualFuelCards } from '../../lib/manualFuelCard';
 import { useBlackOilLedger, type ComputedBlackOilRecord } from '../../lib/blackOilLedger';
 import { PriceEditPopover, type PriceDay } from './PriceEditPopover';
 
@@ -45,6 +46,9 @@ const fromDeliveries = (list: InboundDelivery[]): InboundPriceSource => {
   return { days, sig: `${priced.length}|${days[0]?.date ?? ''}|${total}` };
 };
 
+/** كارت يدوي بالكامل: غير مرتبط بالوارد، يُدخل سعره وكميته وتاريخه للعرض فقط */
+const MANUAL_ONLY_ID = 'fuel-muhassan';
+
 /** layout="side": بدون ترويسة وفي عمودين (للعمود الجانبي في صفحة المشتريات) */
 export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout = 'row' }) => {
   const isSide = layout === 'side';
@@ -54,6 +58,7 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
   const { computed: saharaBlackOilDays } = useBlackOilLedger('sahara');
   const { computed: etihadBlackOilDays } = useBlackOilLedger('etihad');
   const { overrides, setOverride, clearOverride } = usePriceOverrides();
+  const { cards: manualCards, saveCard } = useManualFuelCards();
 
   // ── السعر التلقائي من الوارد: كاز الصحاري وكاز الاتحاد من كشف الوارد، والبنزين من سجل البنزين ──
   const inboundSources = useMemo<Record<string, InboundPriceSource>>(() => {
@@ -108,6 +113,17 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
 
   // Dynamic mapping helper to get live price & trend from the supplier prices table
   const getLinkedSupplierData = (metric: FuelProductMetric) => {
+    // كاز محطات: قيم يدوية فقط (لا وارد ولا جدول موردين)
+    if (metric.id === MANUAL_ONLY_ID) {
+      const m = manualCards[metric.id];
+      const price = m?.price ?? metric.priceIqd;
+      const previous = m?.previousPrice ?? price;
+      return {
+        displayPrice: price, previousPrice: previous, trendPercent: pctChange(price, previous),
+        priceUpdatedAt: m?.date || '—', volume: m?.volume ?? metric.volumeLiters,
+        source: 'standalone' as const, auto: null, src: undefined, manual: null
+      };
+    }
     let matched = supplierPrices.find(s => {
       if (metric.id === 'fuel-1') return s.product.includes('بنزين');
       if (metric.id === 'fuel-2') return s.product.includes('Euro 5') || s.supplierName.includes('كربلاء الدولي');
@@ -121,11 +137,11 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
     const displayPrice = matched ? matched.priceIqd : metric.priceIqd;
     const previousPrice = matched?.previousPriceIqd ?? metric.priceIqd;
     const trendPercent = matched ? matched.changePercent : metric.trendPercent;
-    // تاريخ آخر تحديث للسعر (من جدول أسعار الموردين)
-    const priceUpdatedAt = matched?.lastUpdated || '—';
 
     const src = inboundSources[metric.id];
     const auto = src?.days[0] ?? null;
+    // مجموع الشراء = كمية آخر يوم وارد (وليس تراكميًا)
+    const volume = auto?.qty ?? 0;
     const ov = overrides[metric.id];
     // السعر اليدوي يسري فقط ما دام لم يحدث وارد جديد بعده (توقيع الوارد لم يتغيّر)
     const manual = ov && (!src || ov.baseSig === src.sig) ? ov : null;
@@ -133,17 +149,17 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
       const base = auto?.price ?? displayPrice;
       return {
         displayPrice: manual.price, previousPrice: base, trendPercent: pctChange(manual.price, base),
-        priceUpdatedAt: manual.setAt.slice(0, 10).replace(/-/g, '/'), source: 'manual' as const, auto, src, manual
+        priceUpdatedAt: auto?.date ?? manual.setAt.slice(0, 10).replace(/-/g, '/'), volume, source: 'manual' as const, auto, src, manual
       };
     }
     if (auto) {
       const prev = src!.days[1]?.price ?? auto.price;
       return {
         displayPrice: auto.price, previousPrice: prev, trendPercent: pctChange(auto.price, prev),
-        priceUpdatedAt: auto.date, source: 'auto' as const, auto, src, manual: null
+        priceUpdatedAt: auto.date, volume, source: 'auto' as const, auto, src, manual: null
       };
     }
-    return { displayPrice, previousPrice, trendPercent, priceUpdatedAt, source: 'supplier' as const, auto: null, src, manual: null };
+    return { displayPrice, previousPrice, trendPercent, priceUpdatedAt: '—', volume, source: 'supplier' as const, auto: null, src, manual: null };
   };
 
   const getCardPastelConfig = (metric: FuelProductMetric) => {
@@ -266,8 +282,8 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
         {fuelMetrics.map((item) => {
           const config = getCardPastelConfig(item);
           const Icon = config.icon;
-          const { displayPrice, previousPrice, trendPercent, priceUpdatedAt, source } = getLinkedSupplierData(item);
-          const percentage = Math.min(Math.round((item.volumeLiters / maxBenchmarkVolume) * 100), 100);
+          const { displayPrice, previousPrice, trendPercent, priceUpdatedAt, volume, source } = getLinkedSupplierData(item);
+          const percentage = Math.min(Math.round((volume / maxBenchmarkVolume) * 100), 100);
 
           const isPriceDown = trendPercent < 0;
 
@@ -462,9 +478,9 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
                   className="flex items-center justify-between"
                   style={{ fontSize: 'clamp(10px, 5.2cqw, 11.5px)' }}
                 >
-                  <span className="font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">{tr('مجموع الشراء')}</span>
+                  <span className="font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">{tr(source === 'standalone' ? 'الكمية' : 'مجموع الشراء')}</span>
                   <span className="font-mono font-black text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                    {formatNumber(item.volumeLiters)} <span className="text-[9px] font-normal text-slate-400">{tr('لتر')}</span>
+                    {formatNumber(volume)} <span className="text-[9px] font-normal text-slate-400">{tr('لتر')}</span>
                   </span>
                 </div>
 
@@ -472,7 +488,7 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
                 <div className="w-full h-1.5 bg-slate-200/80 dark:bg-slate-800 rounded-full overflow-hidden">
                   <div
                     className={`h-full ${config.progressBar} rounded-full transition-all duration-500`}
-                    style={{ width: `${Math.max(percentage, item.volumeLiters > 0 ? 8 : 0)}%` }}
+                    style={{ width: `${Math.max(percentage, volume > 0 ? 8 : 0)}%` }}
                   />
                 </div>
 
@@ -482,7 +498,7 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
                   style={{ fontSize: 'clamp(9.5px, 4.8cqw, 10.5px)' }}
                 >
                   <span className={`font-bold ${config.statusColor} whitespace-nowrap`}>
-                    ● {tr('آخر تحديث للسعر')}
+                    ● {tr(source === 'standalone' ? 'آخر تحديث' : 'آخر تحديث للسعر')}
                   </span>
                   {/* تاريخ آخر تحديث للسعر في مكان الوقت */}
                   <div className="flex items-center gap-1 font-mono whitespace-nowrap">
@@ -516,6 +532,7 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
             autoDate={d.auto?.date ?? null}
             days={d.src?.days ?? []}
             manual={d.manual ? { price: d.manual.price, setAt: d.manual.setAt } : null}
+            standalone={item.id === MANUAL_ONLY_ID ? { volume: d.volume, date: d.priceUpdatedAt, onSave: v => saveCard(item.id, v, item.priceIqd) } : undefined}
             onSave={price => setOverride(item.id, price, d.src?.sig ?? '')}
             onReset={() => clearOverride(item.id)}
             onClose={() => setOpenCard(null)}

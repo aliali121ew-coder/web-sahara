@@ -26,6 +26,8 @@ interface Props {
   days: PriceDay[];
   /** السعر اليدوي الساري (null = تلقائي) */
   manual: { price: number; setAt: string } | null;
+  /** كارت يدوي بالكامل (غير مرتبط بالوارد): يعدّل السعر والكمية والتاريخ معًا */
+  standalone?: { volume: number; date: string; onSave: (v: { price: number; volume: number; date: string }) => void };
   onSave: (price: number) => void;
   onReset: () => void;
   onClose: () => void;
@@ -33,14 +35,27 @@ interface Props {
 
 const WIDTH = 360;
 const EST_HEIGHT = 470;
+const toInputDate = (d: string) => (/^\d{4}\/\d{2}\/\d{2}$/.test(d) ? d.replace(/\//g, '-') : '');
 
 /** نافذة سعر المنتج: تنفتح في مكان الكارت بحركة تكبير، وفيها تعديل السعر يدويًا أو إرجاعه للتلقائي */
-export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon: Icon, iconClass, price, autoPrice, autoDate, days, manual, onSave, onReset, onClose }) => {
+export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon: Icon, iconClass, price, autoPrice, autoDate, days, manual, standalone, onSave, onReset, onClose }) => {
   const { tr } = useLanguage();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(String(price));
   const inputRef = useRef<HTMLInputElement>(null);
+  // نموذج الكارت اليدوي
+  const [fPrice, setFPrice] = useState(String(price || ''));
+  const [fVolume, setFVolume] = useState(String(standalone?.volume || ''));
+  const [fDate, setFDate] = useState(toInputDate(standalone?.date ?? '') || new Date().toISOString().slice(0, 10));
+  const fPriceNum = Number(fPrice.replace(/[^\d.]/g, ''));
+  const fVolumeNum = Number(fVolume.replace(/[^\d.]/g, ''));
+  const fValid = fPriceNum >= 0 && fVolumeNum >= 0 && fDate !== '';
+  const saveStandalone = () => {
+    if (!standalone || !fValid) return;
+    standalone.onSave({ price: Math.round(fPriceNum * 100) / 100, volume: Math.round(fVolumeNum), date: fDate.replace(/-/g, '/') });
+    close();
+  };
 
   // الموضع: متمركز على الكارت أفقيًا، ويبدأ من أعلاه، ومحصور داخل الشاشة
   const vw = window.innerWidth, vh = window.innerHeight;
@@ -112,6 +127,38 @@ export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon
           </button>
         </div>
 
+        {standalone ? (
+          <>
+            <div className="mx-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 p-3.5 space-y-3">
+              <label className="block">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{tr('سعر اللتر')} ({tr('د.ع')})</span>
+                <input inputMode="decimal" dir="ltr" value={fPrice} onChange={e => setFPrice(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveStandalone(); }}
+                  className="mt-1 w-full h-11 px-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-teal-500 bg-white dark:bg-slate-900 text-xl font-black font-mono text-slate-900 dark:text-white outline-none" />
+              </label>
+              <label className="block">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{tr('الكمية')} ({tr('لتر')})</span>
+                <input inputMode="numeric" dir="ltr" value={fVolume} onChange={e => setFVolume(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveStandalone(); }}
+                  className="mt-1 w-full h-11 px-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-teal-500 bg-white dark:bg-slate-900 text-xl font-black font-mono text-slate-900 dark:text-white outline-none" />
+              </label>
+              <label className="block">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{tr('تاريخ آخر تحديث')}</span>
+                <input type="date" dir="ltr" value={fDate} onChange={e => setFDate(e.target.value)}
+                  className="mt-1 w-full h-11 px-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-teal-500 bg-white dark:bg-slate-900 text-base font-bold font-mono text-slate-900 dark:text-white outline-none" />
+              </label>
+            </div>
+            <div className="mx-4 mt-2.5 flex items-start gap-1.5 text-[10.5px] leading-relaxed text-slate-500 dark:text-slate-400">
+              <Info className="w-3.5 h-3.5 shrink-0 mt-px" />
+              <span>{tr('هذا الكارت غير مرتبط بأي وارد أو سجل: القيم تُدخل يدويًا وتُعرض كما هي.')}</span>
+            </div>
+            <div className="mt-3.5 px-4 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+              <button type="button" onClick={close} className="px-3 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">{tr('إلغاء')}</button>
+              <button type="button" onClick={saveStandalone} disabled={!fValid} className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-40 text-white text-xs font-bold cursor-pointer active:scale-95 transition-all inline-flex items-center gap-1.5">
+                <Check className="w-4 h-4" />{tr('حفظ')}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
         {/* السعر الحالي ومصدره */}
         <div className="mx-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 p-3.5">
           <div className="flex items-center justify-between gap-2">
@@ -226,6 +273,8 @@ export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon
             {tr('تم')}
           </button>
         </div>
+          </>
+        )}
       </div>
     </>,
     document.body
