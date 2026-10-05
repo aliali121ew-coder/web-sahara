@@ -463,12 +463,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         inert={!isDesktop && !isOpen}
         id="main-sidebar"
         dir={direction}
-        style={{ ...(softPanel ? { boxShadow: softShadow } : null), ...getSidebarInlineStyle(), contain: 'layout style', willChange: 'width, transform' }}
+        style={{ ...(softPanel ? { boxShadow: softShadow, top: 8, bottom: 8, [isRtl ? 'right' : 'left']: 8 } : null), ...getSidebarInlineStyle(), contain: 'layout style', willChange: 'width, transform' }}
         aria-label={t('brandTitle')}
         aria-modal={!isDesktop && isOpen ? true : undefined}
         className={`fixed top-0 bottom-0 z-50 flex flex-col shrink-0 select-none whitespace-nowrap transition-[width,transform] duration-200 ease-out motion-reduce:transition-none ${
           isRtl ? 'right-0 border-l' : 'left-0 border-r'
-        } ${softPanel ? `!border-transparent ${isRtl ? 'rounded-l-[28px]' : 'rounded-r-[28px]'}` : ''} ${
+        } ${softPanel ? '!border-transparent rounded-[24px]' : ''} ${
           isOpen
             ? 'translate-x-0'
             : isRtl
@@ -891,7 +891,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <div className="flex items-center gap-3 min-w-0">
               <div
-                className="relative rounded-2xl text-white font-black text-base flex items-center justify-center shadow-xs overflow-hidden shrink-0 ring-1 ring-white/20"
+                className="relative rounded-2xl text-white font-black text-base flex items-center justify-center shadow-xs overflow-hidden shrink-0 ring-[1.5px] ring-emerald-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900"
+                title={t('online')}
                 style={{
                   background: profile?.color || '#2563eb',
                   width: isCollapsed ? '38px' : '60px',
@@ -912,7 +913,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 ) : (
                   initials(profile?.name)
                 )}
-                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
               </div>
 
               {!isCollapsed && (
