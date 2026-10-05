@@ -80,7 +80,7 @@ async function post<T>(path: string, body: unknown, headers: Record<string, stri
     throw new AuthError('لا يوجد اتصال بالخادم. تحقّق من الإنترنت وحاول مجددًا', 'offline');
   }
   const data = (await res.json().catch(() => ({}))) as T & { error?: string; code?: string; retryAt?: number };
-  if (!res.ok) throw new AuthError(data.error || 'تعذّر الاتصال بالخادم', data.code, data.retryAt);
+  if (!res.ok) throw new AuthError(data.error || 'تعذّر الاتصال بالخادم', data.code || (data.error ? undefined : 'network'), data.retryAt);
   return data;
 }
 
@@ -95,7 +95,7 @@ const store = (r: { id: string; key: string }, remember: boolean) => {
 /** هل النظام بحاجة لإعداد أول (لا توجد حسابات بعد)؟ */
 export async function authStatus(): Promise<{ setup: boolean }> {
   const res = await fetch('/api/chat/auth/status', { cache: 'no-store' });
-  if (!res.ok) throw new AuthError('تعذّر الاتصال بالخادم');
+  if (!res.ok) throw new AuthError('تعذّر الاتصال بالخادم', 'network');
   return res.json();
 }
 
@@ -172,7 +172,7 @@ const bioError = (e: unknown) => {
   const name = (e as Error)?.name;
   if (name === 'NotAllowedError' || name === 'AbortError') return new AuthError('تم إلغاء التحقق بالبصمة', 'cancelled');
   if (name === 'InvalidStateError') return new AuthError('البصمة مفعّلة مسبقًا على هذا الجهاز', 'exists');
-  return e instanceof AuthError ? e : new AuthError('تعذّر استخدام البصمة على هذا الجهاز');
+  return e instanceof AuthError ? e : new AuthError('تعذّر استخدام البصمة على هذا الجهاز', 'bio_device');
 };
 
 /** هل يدعم الجهاز البصمة أو بصمة الوجه (مستشعر مدمج)؟ */
@@ -213,7 +213,7 @@ export async function enableBiometric() {
   }
   const res = cred.response as AuthenticatorAttestationResponse;
   const spki = res.getPublicKey?.();
-  if (!spki) throw new AuthError('هذا المتصفح لا يدعم الدخول بالبصمة، حدّثه وحاول مجددًا');
+  if (!spki) throw new AuthError('هذا المتصفح لا يدعم الدخول بالبصمة، حدّثه وحاول مجددًا', 'bio_unsupported');
   await post('/api/chat/auth/webauthn/register', {
     id: cred.id,
     clientDataJSON: toB64url(res.clientDataJSON),
