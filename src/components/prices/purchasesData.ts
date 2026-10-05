@@ -1,16 +1,16 @@
 /** بيانات صفحة المشتريات: الأقسام، صف المشتريات، ودوال الأسعار والتواريخ (مشتركة بين الجدول والرسم البياني) */
 
-/** أقسام المشتريات (كروت منزلقة): كل قسم = جهة مستلمة + منتج */
+/** أقسام المشتريات (كروت منزلقة): كل قسم = جهة مستلمة + منتج، وعنوانه في prices:category.<key> */
 export type CategoryKey = 'station-gas' | 'sahara-gas' | 'etihad-gas' | 'sahara-black-oil' | 'etihad-black-oil' | 'sahara-petrol';
 
 /** color: لون القسم في الرسم البياني (ثابت للقسم مهما تغيّر عدد الأقسام الظاهرة) */
-export const CATEGORIES: { key: CategoryKey; title: string; color: string }[] = [
-  { key: 'station-gas', title: 'كاز محطات', color: '#0891b2' },
-  { key: 'sahara-gas', title: 'كاز الصحاري', color: '#4f46e5' },
-  { key: 'etihad-gas', title: 'كاز الاتحاد', color: '#10b981' },
-  { key: 'sahara-black-oil', title: 'نفط أسود الصحاري', color: '#8b5cf6' },
-  { key: 'etihad-black-oil', title: 'نفط أسود الاتحاد', color: '#f43f5e' },
-  { key: 'sahara-petrol', title: 'بنزين الصحاري', color: '#f59e0b' }
+export const CATEGORIES: { key: CategoryKey; color: string }[] = [
+  { key: 'station-gas', color: '#0891b2' },
+  { key: 'sahara-gas', color: '#4f46e5' },
+  { key: 'etihad-gas', color: '#10b981' },
+  { key: 'sahara-black-oil', color: '#8b5cf6' },
+  { key: 'etihad-black-oil', color: '#f43f5e' },
+  { key: 'sahara-petrol', color: '#f59e0b' }
 ];
 
 /** "عرض الكل": يدمج كل الأقسام في الجدول والرسم البياني */

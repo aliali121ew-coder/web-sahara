@@ -8,19 +8,11 @@
 - تسجيل الدخول (الحاسوب والهاتف والدعم والشرائح) + زر اللغة.
 - الإعدادات، وإدارة المستخدمين كاملة.
 - لوحة القيادة.
-- الخزانات (الجزء الأول): `TanksOverview` (عدا `statusLabel`)، `AddTankModal`، `AddSectionModal` (جزئيًا)، `ReorderSectionsModal`.
+- الخزانات كاملة.
+- الأسعار (`prices`) والتقويم المشترك `ui/DateRangeCalendar.tsx` (مفاتيحه في `common.calendar`).
 
 ## ما بقي
 الرقم = عدد الأسطر التي فيها عربي (يشمل بيانات ومقارنات تبقى كما هي).
-
-### 1. إكمال الخزانات (namespace: `tanks`)
-- `src/components/tanks/Tank3DCard.tsx` (21) — تظهر في لوحة القيادة أيضًا.
-- `src/components/tanks/TanksOverview.tsx` — `statusLabel` (ممتاز/جيد/منخفض/حرج) فقط؛ أسماء الأقسام والخزانات الافتراضية بيانات.
-- `src/components/tanks/AddSectionModal.tsx` (12) — أسماء ألوان الأقسام، placeholder، aria-label.
-- `src/components/tanks/TankVisualGauge.tsx` (13).
-
-### 2. الأسعار (`prices`)
-`prices/PurchasesChart.tsx` (65)، `prices/PricesView.tsx` (28)، `prices/RangeNavigator.tsx` (2)، `ui/DateRangeCalendar.tsx` (12)
 
 ### 3. رصيد الصحاري (`finance`)
 `SaharaBalanceView.tsx` (120)، `SaharaPetrolView.tsx` (112)، `BlackOilDailyLedger.tsx` (95)، `SaharaPetrolArchive.tsx` (45)، `SaharaBalanceArchive.tsx` (43)، `SaharaFilePreview.tsx` (30)، `SaharaReportsCenter.tsx` (7)، `SaharaSiteFarmsView.tsx` (2)

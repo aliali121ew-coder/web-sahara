@@ -14,6 +14,7 @@ const SLUG: Record<string, string> = {
   // أصناف بطاقات المشتريات
   'بنزين الصحاري': 'product.saharaGasoline', 'كاز الصحاري': 'product.saharaGasoil', 'كاز محطات': 'product.stationGasoil',
   'كاز الاتحاد': 'product.etihadGasoil', 'نفط الأسود': 'product.blackOil', 'نفط أسود': 'product.blackOil',
+  'بنزين': 'product.gasoline', 'كاز': 'product.gasoil',
   // تصنيفات الموردين وحالة التوفر
   'الكل': 'category.all', 'تجاري': 'category.commercial', 'رسمي': 'category.official', 'حكومي': 'category.government',
   'متوفر': 'availability.available', 'محدود': 'availability.limited', 'غير متوفر': 'availability.unavailable',

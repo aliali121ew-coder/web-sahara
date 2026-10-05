@@ -91,7 +91,9 @@
       "saharaGasoil": "كاز الصحاري",
       "stationGasoil": "كاز محطات",
       "etihadGasoil": "كاز الاتحاد",
-      "blackOil": "نفط الأسود"
+      "blackOil": "نفط الأسود",
+      "gasoline": "بنزين",
+      "gasoil": "كاز"
     },
     "category": {
       "all": "الكل",
@@ -109,6 +111,30 @@
       "surplus": "فائض",
       "draw": "سحب من الرصيد",
       "balanced": "متوازن"
+    }
+  },
+  "calendar": {
+    "lastDays_zero": "اليوم فقط",
+    "lastDays_one": "آخر يوم",
+    "lastDays_two": "آخر يومين",
+    "lastDays_few": "آخر {{count}} أيام",
+    "lastDays_many": "آخر {{count}} يومًا",
+    "lastDays_other": "آخر {{count}} يوم",
+    "prevMonth": "الشهر السابق",
+    "nextMonth": "الشهر التالي",
+    "from": "من",
+    "to": "إلى",
+    "apply": "تطبيق",
+    "today": "اليوم",
+    "clear": "مسح",
+    "weekdays": {
+      "sat": "سبت",
+      "sun": "أحد",
+      "mon": "إثنين",
+      "tue": "ثلاثاء",
+      "wed": "أربعاء",
+      "thu": "خميس",
+      "fri": "جمعة"
     }
   }
 }

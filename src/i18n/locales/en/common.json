@@ -83,7 +83,9 @@
       "saharaGasoil": "Sahara gasoil",
       "stationGasoil": "Station gasoil",
       "etihadGasoil": "Etihad gasoil",
-      "blackOil": "Black oil"
+      "blackOil": "Black oil",
+      "gasoline": "Gasoline",
+      "gasoil": "Gasoil"
     },
     "category": {
       "all": "All",
@@ -101,6 +103,26 @@
       "surplus": "Surplus",
       "draw": "Drawn from balance",
       "balanced": "Balanced"
+    }
+  },
+  "calendar": {
+    "lastDays_one": "Last day",
+    "lastDays_other": "Last {{count}} days",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "from": "From",
+    "to": "To",
+    "apply": "Apply",
+    "today": "Today",
+    "clear": "Clear",
+    "weekdays": {
+      "sat": "Sa",
+      "sun": "Su",
+      "mon": "Mo",
+      "tue": "Tu",
+      "wed": "We",
+      "thu": "Th",
+      "fri": "Fr"
     }
   }
 }

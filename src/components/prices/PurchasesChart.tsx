@@ -5,7 +5,7 @@ import {
   Image as ImageIcon, FileSpreadsheet, Activity, GitCompareArrows, MousePointerClick
 } from 'lucide-react';
 import { ComposedChart, Area, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ReferenceDot, ResponsiveContainer } from 'recharts';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
 import { RangeNavigator } from './RangeNavigator';
 import { formatNumber } from '../../lib/utils';
 import {
@@ -48,9 +48,7 @@ interface Bucket {
   [k: string]: number | string | null;
 }
 
-const GRAN_LABEL: Record<GranChoice, string> = { auto: 'تلقائي', day: 'يومي', week: 'أسبوعي', month: 'شهري' };
 const MA_WINDOW: Record<Gran, number> = { day: 7, week: 4, month: 3 };
-const MA_LABEL: Record<Gran, string> = { day: 'متوسط متحرك 7 أيام', week: 'متوسط متحرك 4 أسابيع', month: 'متوسط متحرك 3 أشهر' };
 const r1 = (v: number) => Math.round(v * 10) / 10;
 const pct = (a: number | null | undefined, b: number | null | undefined) => (a && b ? ((a - b) / b) * 100 : null);
 const fmtQtyAxis = (v: number) => (v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : v >= 1000 ? `${Math.round(v / 1000)}k` : String(v));
@@ -68,7 +66,14 @@ const Delta: React.FC<{ v: number | null; upIsBad?: boolean; className?: string 
 };
 
 export const PurchasesChart: React.FC<Props> = ({ rows, prevRows, prevShift, isAll, title, onPickRange }) => {
-  const { tr } = useLanguage();
+  const { t, i18n } = useTranslation(['prices', 'common']);
+  const dir = i18n.dir();
+  const rtl = dir === 'rtl';
+  const granLabel = (g: GranChoice) => t(`prices:chart.gran.${g}`);
+  const maLabel = (g: Gran) => t(`prices:chart.ma.${g}`);
+  const catTitle = (k: CategoryKey) => t(`prices:category.${k}`);
+  const L = t('common:units.liter');
+  const IQD = t('common:units.iqd');
   const [granChoice, setGranChoice] = useState<GranChoice>('auto');
   const [showMA, setShowMA] = useState(true);
   const [compare, setCompare] = useState(false);
@@ -234,30 +239,30 @@ export const PurchasesChart: React.FC<Props> = ({ rows, prevRows, prevShift, isA
     const XLSX = await import('xlsx');
     const sheet = vis.map(d => {
       const row: Record<string, string | number> = {
-        [tr('الفترة')]: d.from === d.to ? d.from : `${d.from} — ${d.to}`,
-        [tr('الوارد (لتر)')]: d.inbound,
-        [tr('عدد الشحنات')]: d.count,
-        [tr('متوسط السعر')]: d.price ?? ''
+        [t('prices:export.period')]: d.from === d.to ? d.from : `${d.from} — ${d.to}`,
+        [t('prices:export.inboundLiters')]: d.inbound,
+        [t('prices:export.shipmentCount')]: d.count,
+        [t('prices:export.avgPrice')]: d.price ?? ''
       };
       if (gran !== 'day') {
-        row[tr('أدنى سعر')] = d.minP ?? '';
-        row[tr('أعلى سعر')] = d.maxP ?? '';
+        row[t('prices:export.minPrice')] = d.minP ?? '';
+        row[t('prices:export.maxPrice')] = d.maxP ?? '';
       }
       if (isAll) for (const c of visibleCats) {
-        row[`${tr(c.title)} — ${tr('الوارد')}`] = Number(d[c.key]) || 0;
-        row[`${tr(c.title)} — ${tr('السعر')}`] = (d[`p_${c.key}`] as number | null) ?? '';
+        row[t('prices:export.catInbound', { name: catTitle(c.key) })] = Number(d[c.key]) || 0;
+        row[t('prices:export.catPrice', { name: catTitle(c.key) })] = (d[`p_${c.key}`] as number | null) ?? '';
       }
       if (compare) {
-        row[tr('وارد الفترة السابقة')] = d.prevInbound ?? '';
-        row[tr('سعر الفترة السابقة')] = d.prevPrice ?? '';
+        row[t('prices:export.prevInbound')] = d.prevInbound ?? '';
+        row[t('prices:export.prevPrice')] = d.prevPrice ?? '';
       }
       return row;
     });
     const ws = XLSX.utils.json_to_sheet(sheet);
     const wb = XLSX.utils.book_new();
-    wb.Workbook = { Views: [{ RTL: true }] };
-    XLSX.utils.book_append_sheet(wb, ws, 'المشتريات');
-    XLSX.writeFile(wb, `مشتريات-${title}-${vis[0]?.from ?? ''}-${vis[vis.length - 1]?.to ?? ''}.xlsx`.replace(/\//g, '-'));
+    wb.Workbook = { Views: [{ RTL: rtl }] };
+    XLSX.utils.book_append_sheet(wb, ws, t('prices:export.sheet'));
+    XLSX.writeFile(wb, `${t('prices:export.file')}-${title}-${vis[0]?.from ?? ''}-${vis[vis.length - 1]?.to ?? ''}.xlsx`.replace(/\//g, '-'));
   };
 
   const exportPng = async () => {
@@ -275,14 +280,15 @@ export const PurchasesChart: React.FC<Props> = ({ rows, prevRows, prevShift, isA
     ctx.scale(scale, scale);
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, W, H);
-    ctx.direction = 'rtl';
-    ctx.textAlign = 'right';
+    ctx.direction = dir;
+    ctx.textAlign = rtl ? 'right' : 'left';
+    const tx = rtl ? W - pad : pad;
     ctx.fillStyle = '#0f172a';
     ctx.font = 'bold 18px Cairo, Tahoma, sans-serif';
-    ctx.fillText(`${tr('حركة الوارد والسعر')} — ${tr(title)}`, W - pad, 28);
+    ctx.fillText(`${t('prices:chart.title')} — ${title}`, tx, 28);
     ctx.fillStyle = '#64748b';
     ctx.font = '12px Cairo, Tahoma, sans-serif';
-    ctx.fillText(`${vis[0]?.from ?? ''} — ${vis[vis.length - 1]?.to ?? ''} · ${tr(GRAN_LABEL[gran])}`, W - pad, 46);
+    ctx.fillText(`${vis[0]?.from ?? ''} — ${vis[vis.length - 1]?.to ?? ''} · ${granLabel(gran)}`, tx, 46);
     let y = head;
     for (let i = 0; i < svgs.length; i++) {
       const clone = svgs[i].cloneNode(true) as SVGSVGElement;
@@ -297,7 +303,7 @@ export const PurchasesChart: React.FC<Props> = ({ rows, prevRows, prevShift, isA
     }
     const a = document.createElement('a');
     a.href = canvas.toDataURL('image/png');
-    a.download = `مشتريات-${title}.png`;
+    a.download = `${t('prices:export.file')}-${title}.png`;
     a.click();
   };
 
@@ -339,63 +345,63 @@ export const PurchasesChart: React.FC<Props> = ({ rows, prevRows, prevShift, isA
     const i = data.findIndex(x => x.key === d.key);
     const prev = i > 0 ? data[i - 1] : undefined; // النقطة الأقدم (السابقة)
     return (
-      <div dir="rtl" className="rounded-xl px-3 py-2.5 text-[11px] bg-white/95 dark:bg-slate-900/95 backdrop-blur ring-1 ring-slate-200 dark:ring-white/15 shadow-xl space-y-1.5 min-w-[210px]">
+      <div dir={dir} className="rounded-xl px-3 py-2.5 text-[11px] bg-white/95 dark:bg-slate-900/95 backdrop-blur ring-1 ring-slate-200 dark:ring-white/15 shadow-xl space-y-1.5 min-w-[210px]">
         <div className="flex items-center justify-between gap-3 pb-1 border-b border-slate-100 dark:border-slate-800">
           <span className="font-mono font-bold text-slate-600 dark:text-white/80">{d.from === d.to ? d.from : `${d.from} — ${d.to}`}</span>
-          <span className="text-[10px] text-slate-400">{d.count} {tr('شحنة')}{gran !== 'day' ? ` · ${d.days} ${tr('يوم')}` : ''}</span>
+          <span className="text-[10px] text-slate-400">{t('prices:shipments', { count: d.count })}{gran !== 'day' ? ` · ${t('common:units.days', { count: d.days })}` : ''}</span>
         </div>
         {isAll ? (
           visibleCats.filter(c => d[c.key]).map(c => (
             <div key={c.key} className="flex justify-between gap-3 text-slate-600 dark:text-slate-300">
-              <span className="flex items-center gap-1.5 font-bold"><span className="w-2 h-2 rounded-[2px]" style={{ background: c.color }} />{tr(c.title)}</span>
+              <span className="flex items-center gap-1.5 font-bold"><span className="w-2 h-2 rounded-[2px]" style={{ background: c.color }} />{catTitle(c.key)}</span>
               <span className="font-mono">{formatNumber(Number(d[c.key]))} · <b>{fmtPrice(Number(d[`p_${c.key}`]) || 0)}</b></span>
             </div>
           ))
         ) : (
           <>
             <div className="flex justify-between gap-3 font-bold text-slate-800 dark:text-slate-100">
-              <span className="flex items-center gap-1.5"><span className="w-3 border-t-2 border-blue-600" />{tr('متوسط السعر')}</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 border-t-2 border-blue-600" />{t('prices:chart.avgPrice')}</span>
               <span className="font-mono font-black">{fmtPrice(d.price ?? 0)}</span>
             </div>
             <div className="flex justify-between gap-3 text-[10.5px] text-slate-500 dark:text-slate-400">
-              <span>{tr(gran === 'day' ? 'عن اليوم السابق' : gran === 'week' ? 'عن الأسبوع السابق' : 'عن الشهر السابق')}</span>
+              <span>{t(`prices:chart.vsPrev.${gran}`)}</span>
               <Delta v={pct(d.price, prev?.price)} />
             </div>
             {kpi.price > 0 && (
               <div className="flex justify-between gap-3 text-[10.5px] text-slate-500 dark:text-slate-400">
-                <span>{tr('عن متوسط الفترة')}</span>
+                <span>{t('prices:chart.vsPeriodAvg')}</span>
                 <Delta v={pct(d.price, kpi.price)} />
               </div>
             )}
             {gran !== 'day' && d.minP !== null && (
               <div className="flex justify-between gap-3 text-[10.5px] text-slate-500 dark:text-slate-400">
-                <span>{tr('المدى اليومي')}</span>
+                <span>{t('prices:chart.dailyRange')}</span>
                 <span className="font-mono">{fmtPrice(d.minP)} – {fmtPrice(d.maxP ?? 0)}</span>
               </div>
             )}
             {showMA && d.ma !== null && (
               <div className="flex justify-between gap-3 text-[10.5px] text-amber-700 dark:text-amber-400">
-                <span>{tr(MA_LABEL[gran])}</span>
+                <span>{maLabel(gran)}</span>
                 <span className="font-mono font-bold">{fmtPrice(d.ma)}</span>
               </div>
             )}
           </>
         )}
         <div className="flex justify-between gap-3 font-black text-slate-900 dark:text-white pt-1 border-t border-slate-100 dark:border-slate-800">
-          <span>{tr(isAll ? 'إجمالي الوارد' : 'الوارد')}</span>
-          <span className="font-mono">{formatNumber(d.inbound)} <span className="text-[9.5px] font-bold text-slate-400">{tr('لتر')}</span></span>
+          <span>{t(isAll ? 'prices:chart.totalInbound' : 'prices:chart.inbound')}</span>
+          <span className="font-mono">{formatNumber(d.inbound)} <span className="text-[9.5px] font-bold text-slate-400">{L}</span></span>
         </div>
         <div className="flex justify-between gap-3 text-[10.5px] text-slate-500 dark:text-slate-400">
-          <span>{tr('تغيّر الوارد')}</span>
+          <span>{t('prices:chart.inboundChange')}</span>
           <Delta v={pct(d.inbound, prev?.inbound)} upIsBad={false} />
         </div>
         {compare && (
           <div className="pt-1 border-t border-dashed border-slate-200 dark:border-slate-700 space-y-1 text-[10.5px] text-slate-500 dark:text-slate-400">
-            <div className="flex justify-between gap-3"><span>{tr('الفترة السابقة — الوارد')}</span><span className="font-mono">{d.prevInbound ? formatNumber(d.prevInbound) : '—'}</span></div>
-            {!isAll && <div className="flex justify-between gap-3"><span>{tr('الفترة السابقة — السعر')}</span><span className="font-mono">{fmtPrice(d.prevPrice ?? 0)}</span></div>}
+            <div className="flex justify-between gap-3"><span>{t('prices:chart.prevPeriodInbound')}</span><span className="font-mono">{d.prevInbound ? formatNumber(d.prevInbound) : '—'}</span></div>
+            {!isAll && <div className="flex justify-between gap-3"><span>{t('prices:chart.prevPeriodPrice')}</span><span className="font-mono">{fmtPrice(d.prevPrice ?? 0)}</span></div>}
           </div>
         )}
-        <div className="flex items-center gap-1 text-[9.5px] text-slate-400 pt-0.5"><MousePointerClick className="w-3 h-3" />{tr('انقر لعرض هذه الفترة في الجدول')}</div>
+        <div className="flex items-center gap-1 text-[9.5px] text-slate-400 pt-0.5"><MousePointerClick className="w-3 h-3" />{t('prices:chart.clickHint')}</div>
       </div>
     );
   };
@@ -408,7 +414,7 @@ export const PurchasesChart: React.FC<Props> = ({ rows, prevRows, prevShift, isA
       className={`bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 overflow-hidden ${
         full ? 'fixed inset-3 sm:inset-6 z-[210] rounded-3xl shadow-2xl overflow-y-auto' : 'rounded-3xl shadow-soft-card'
       }`}
-      dir="rtl"
+      dir={dir}
     >
       {/* الترويسة + دليل الألوان القابل للنقر */}
       <div className="px-4 sm:px-5 pt-4 sm:pt-5 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
@@ -417,9 +423,9 @@ export const PurchasesChart: React.FC<Props> = ({ rows, prevRows, prevShift, isA
             <LineChartIcon className="w-4.5 h-4.5" />
           </div>
           <div>
-            <h2 className="text-base font-black text-slate-900 dark:text-white">{tr('حركة الوارد والسعر')}</h2>
+            <h2 className="text-base font-black text-slate-900 dark:text-white">{t('prices:chart.title')}</h2>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              {tr(title)} — {tr(GRAN_LABEL[gran])}
+              {title} — {granLabel(gran)}
               {vis.length > 0 && <span className="font-mono"> · {vis[0].from} — {vis[vis.length - 1].to}</span>}
             </p>
           </div>
@@ -433,13 +439,13 @@ export const PurchasesChart: React.FC<Props> = ({ rows, prevRows, prevShift, isA
                   key={c.key}
                   type="button"
                   onClick={() => toggleCat(c.key)}
-                  title={tr(off ? 'إظهار' : 'إخفاء')}
+                  title={t(off ? 'prices:chart.show' : 'prices:chart.hide')}
                   className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
                     off ? 'border-dashed border-slate-300 dark:border-slate-700 text-slate-400 line-through' : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
                   }`}
                 >
                   <span className="w-2.5 h-2.5 rounded-[3px]" style={{ background: off ? 'transparent' : c.color, boxShadow: off ? `inset 0 0 0 1.5px ${c.color}` : undefined }} />
-                  {tr(c.title)}
+                  {catTitle(c.key)}
                 </button>
               );
             })}
@@ -457,24 +463,24 @@ export const PurchasesChart: React.FC<Props> = ({ rows, prevRows, prevShift, isA
               onClick={() => setGranChoice(g)}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition-all ${granChoice === g ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
             >
-              {tr(GRAN_LABEL[g])}{g === 'auto' && granChoice === 'auto' ? ` (${tr(GRAN_LABEL[gran])})` : ''}
+              {granLabel(g)}{g === 'auto' && granChoice === 'auto' ? ` (${granLabel(gran)})` : ''}
             </button>
           ))}
         </div>
-        <button type="button" onClick={() => setShowMA(v => !v)} disabled={isAll} className={iconBtn(showMA && !isAll)} title={tr(MA_LABEL[gran])}>
-          <Activity className="w-3.5 h-3.5" />{tr('متوسط متحرك')}
+        <button type="button" onClick={() => setShowMA(v => !v)} disabled={isAll} className={iconBtn(showMA && !isAll)} title={maLabel(gran)}>
+          <Activity className="w-3.5 h-3.5" />{t('prices:chart.movingAvg')}
         </button>
-        <button type="button" onClick={() => setCompare(v => !v)} className={iconBtn(compare)} title={tr('مقارنة مع الفترة السابقة بنفس الطول')}>
-          <GitCompareArrows className="w-3.5 h-3.5" />{tr('مقارنة بالفترة السابقة')}
+        <button type="button" onClick={() => setCompare(v => !v)} className={iconBtn(compare)} title={t('prices:chart.compareHint')}>
+          <GitCompareArrows className="w-3.5 h-3.5" />{t('prices:chart.compare')}
         </button>
         <div className="flex items-center gap-1 ms-auto">
-          <button type="button" onClick={() => zoom(1)} disabled={vis.length <= 3} className={iconBtn()} title={tr('تكبير')}><ZoomIn className="w-3.5 h-3.5" /></button>
-          <button type="button" onClick={() => zoom(-1)} disabled={!zoomed} className={iconBtn()} title={tr('تصغير')}><ZoomOut className="w-3.5 h-3.5" /></button>
-          <button type="button" onClick={() => setWin(null)} disabled={!zoomed} className={iconBtn()} title={tr('عرض الفترة كاملة')}><RotateCcw className="w-3.5 h-3.5" /></button>
+          <button type="button" onClick={() => zoom(1)} disabled={vis.length <= 3} className={iconBtn()} title={t('prices:chart.zoomIn')}><ZoomIn className="w-3.5 h-3.5" /></button>
+          <button type="button" onClick={() => zoom(-1)} disabled={!zoomed} className={iconBtn()} title={t('prices:chart.zoomOut')}><ZoomOut className="w-3.5 h-3.5" /></button>
+          <button type="button" onClick={() => setWin(null)} disabled={!zoomed} className={iconBtn()} title={t('prices:chart.reset')}><RotateCcw className="w-3.5 h-3.5" /></button>
           <span className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-1" />
-          <button type="button" onClick={exportPng} disabled={!vis.length} className={iconBtn()} title={tr('تصدير صورة PNG')}><ImageIcon className="w-3.5 h-3.5" /></button>
-          <button type="button" onClick={exportExcel} disabled={!vis.length} className={iconBtn()} title={tr('تصدير Excel')}><FileSpreadsheet className="w-3.5 h-3.5" /></button>
-          <button type="button" onClick={() => setFull(v => !v)} className={iconBtn(full)} title={tr(full ? 'خروج من ملء الشاشة' : 'ملء الشاشة')}>
+          <button type="button" onClick={exportPng} disabled={!vis.length} className={iconBtn()} title={t('prices:chart.exportPng')}><ImageIcon className="w-3.5 h-3.5" /></button>
+          <button type="button" onClick={exportExcel} disabled={!vis.length} className={iconBtn()} title={t('prices:chart.exportExcel')}><FileSpreadsheet className="w-3.5 h-3.5" /></button>
+          <button type="button" onClick={() => setFull(v => !v)} className={iconBtn(full)} title={t(full ? 'prices:chart.exitFullscreen' : 'prices:chart.fullscreen')}>
             {full ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
         </div>
@@ -483,47 +489,47 @@ export const PurchasesChart: React.FC<Props> = ({ rows, prevRows, prevShift, isA
       {/* شريط المؤشرات (للنافذة الظاهرة) */}
       <div className="mx-4 sm:mx-5 mt-3 flex flex-wrap gap-px rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-200/90 dark:bg-slate-800 overflow-hidden">
         <div className="flex-1 min-w-[150px] px-3.5 py-3 bg-slate-50 dark:bg-slate-900">
-          <div className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">{tr('إجمالي الوارد')}</div>
+          <div className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">{t('prices:chart.totalInbound')}</div>
           <div className="mt-0.5 flex items-baseline gap-1">
             <span className="text-lg font-black font-mono tabular-nums text-slate-900 dark:text-white">{formatNumber(kpi.inbound)}</span>
-            <span className="text-[10px] font-bold text-slate-400">{tr('لتر')}</span>
+            <span className="text-[10px] font-bold text-slate-400">{L}</span>
           </div>
-          <div className="text-[10px] text-slate-400">{formatNumber(kpi.count)} {tr('شحنة')} · {vis.length} {tr(gran === 'day' ? 'يوم' : gran === 'week' ? 'أسبوع' : 'شهر')}</div>
+          <div className="text-[10px] text-slate-400">{t('prices:shipments', { count: kpi.count })} · {gran === 'day' ? t('common:units.days', { count: vis.length }) : t(gran === 'week' ? 'prices:weeks' : 'prices:months', { count: vis.length })}</div>
         </div>
         {isAll ? (
           kpi.perCat.map(c => (
             <div key={c.key} className="flex-1 min-w-[150px] px-3.5 py-3 bg-slate-50 dark:bg-slate-900">
               <div className="flex items-center gap-1.5 text-[10.5px] font-bold text-slate-500 dark:text-slate-400 truncate">
-                <span className="w-2 h-2 rounded-[2px] shrink-0" style={{ background: c.color }} />{tr(c.title)}
+                <span className="w-2 h-2 rounded-[2px] shrink-0" style={{ background: c.color }} />{catTitle(c.key)}
               </div>
               <div className="mt-0.5 flex items-baseline gap-1">
                 <span className="text-lg font-black font-mono tabular-nums text-slate-900 dark:text-white">{fmtPrice(c.price)}</span>
-                <span className="text-[10px] font-bold text-slate-400">{tr('د.ع')}</span>
+                <span className="text-[10px] font-bold text-slate-400">{IQD}</span>
               </div>
               <div className="text-[10px] flex items-center gap-1.5 text-slate-400">
                 <Delta v={pct(c.last, c.first)} />
-                <span className="font-mono truncate">{formatNumber(c.inbound)} {tr('لتر')}</span>
+                <span className="font-mono truncate">{formatNumber(c.inbound)} {L}</span>
               </div>
             </div>
           ))
         ) : (
           <>
             {[
-              { label: 'متوسط السعر الموزون', value: fmtPrice(kpi.price), sub: tr('حسب الكميات') },
-              { label: 'أعلى سعر', value: kpi.max ? fmtPrice(kpi.max.maxP ?? kpi.max.price ?? 0) : '—', sub: kpi.max ? (kpi.max.from === kpi.max.to ? kpi.max.from : `${kpi.max.from.slice(5)} — ${kpi.max.to.slice(5)}`) : '' },
-              { label: 'أدنى سعر', value: kpi.min ? fmtPrice(kpi.min.minP ?? kpi.min.price ?? 0) : '—', sub: kpi.min ? (kpi.min.from === kpi.min.to ? kpi.min.from : `${kpi.min.from.slice(5)} — ${kpi.min.to.slice(5)}`) : '' }
+              { label: t('prices:chart.weightedAvg'), value: fmtPrice(kpi.price), sub: t('prices:chart.byQuantity') },
+              { label: t('prices:chart.maxPrice'), value: kpi.max ? fmtPrice(kpi.max.maxP ?? kpi.max.price ?? 0) : '—', sub: kpi.max ? (kpi.max.from === kpi.max.to ? kpi.max.from : `${kpi.max.from.slice(5)} — ${kpi.max.to.slice(5)}`) : '' },
+              { label: t('prices:chart.minPrice'), value: kpi.min ? fmtPrice(kpi.min.minP ?? kpi.min.price ?? 0) : '—', sub: kpi.min ? (kpi.min.from === kpi.min.to ? kpi.min.from : `${kpi.min.from.slice(5)} — ${kpi.min.to.slice(5)}`) : '' }
             ].map(k => (
               <div key={k.label} className="flex-1 min-w-[150px] px-3.5 py-3 bg-slate-50 dark:bg-slate-900">
-                <div className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">{tr(k.label)}</div>
+                <div className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">{k.label}</div>
                 <div className="mt-0.5 flex items-baseline gap-1">
                   <span className="text-lg font-black font-mono tabular-nums text-slate-900 dark:text-white">{k.value}</span>
-                  <span className="text-[10px] font-bold text-slate-400">{tr('د.ع')}</span>
+                  <span className="text-[10px] font-bold text-slate-400">{IQD}</span>
                 </div>
                 <div className="text-[10px] font-mono text-slate-400 truncate">{k.sub}</div>
               </div>
             ))}
             <div className="flex-1 min-w-[150px] px-3.5 py-3 bg-slate-50 dark:bg-slate-900">
-              <div className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">{tr('اتجاه السعر')}</div>
+              <div className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">{t('prices:chart.trend')}</div>
               {kpi.first !== null && kpi.last !== null ? (
                 <>
                   <div className="mt-0.5 flex items-center gap-1 text-lg font-black">
@@ -533,7 +539,7 @@ export const PurchasesChart: React.FC<Props> = ({ rows, prevRows, prevShift, isA
                       return <><Icon className={`w-4 h-4 ${v > 0.05 ? 'text-rose-600' : v < -0.05 ? 'text-emerald-600' : 'text-slate-400'}`} /><Delta v={v} className="text-lg" /></>;
                     })()}
                   </div>
-                  <div className="text-[10px] text-slate-400 font-mono truncate">{fmtPrice(kpi.first)} ← {fmtPrice(kpi.last)}</div>
+                  <div className="text-[10px] text-slate-400 font-mono truncate">{fmtPrice(kpi.first)} {rtl ? '←' : '→'} {fmtPrice(kpi.last)}</div>
                 </>
               ) : (
                 <div className="mt-0.5 text-lg font-black text-slate-400">—</div>
@@ -544,18 +550,18 @@ export const PurchasesChart: React.FC<Props> = ({ rows, prevRows, prevShift, isA
       </div>
 
       {data.length === 0 ? (
-        <div className="h-72 flex items-center justify-center text-sm text-slate-400">{tr('لا توجد بيانات للرسم')}</div>
+        <div className="h-72 flex items-center justify-center text-sm text-slate-400">{t('prices:chart.noData')}</div>
       ) : (
         <div className="px-2 sm:px-3 pb-3 pt-2" dir="ltr">
           {/* اللوحة 1: السعر */}
-          <div className="flex flex-wrap items-center justify-between gap-2 px-3 pt-2" dir="rtl">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-3 pt-2" dir={dir}>
             <span className="text-[11px] font-black text-slate-700 dark:text-slate-200">
-              {tr(isAll ? 'سعر كل منتج' : 'متوسط سعر الشراء')} <span className="font-bold text-slate-400">({tr('د.ع / لتر')})</span>
+              {t(isAll ? 'prices:chart.pricePerProduct' : 'prices:chart.avgBuyPrice')} <span className="font-bold text-slate-400">({t('prices:chart.iqdPerLiter')})</span>
             </span>
             <div className="flex flex-wrap items-center gap-3 text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
-              {!isAll && kpi.price > 0 && <span className="flex items-center gap-1.5"><span className="w-4 border-t-2 border-dashed border-slate-400" />{tr('متوسط الفترة')} <span className="font-mono">{fmtPrice(kpi.price)}</span></span>}
-              {!isAll && showMA && <span className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400"><span className="w-4 border-t-2 border-amber-500" />{tr(MA_LABEL[gran])}</span>}
-              {compare && !isAll && <span className="flex items-center gap-1.5"><span className="w-4 border-t-2 border-dotted border-slate-400" />{tr('الفترة السابقة')}</span>}
+              {!isAll && kpi.price > 0 && <span className="flex items-center gap-1.5"><span className="w-4 border-t-2 border-dashed border-slate-400" />{t('prices:chart.periodAvg')} <span className="font-mono">{fmtPrice(kpi.price)}</span></span>}
+              {!isAll && showMA && <span className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400"><span className="w-4 border-t-2 border-amber-500" />{maLabel(gran)}</span>}
+              {compare && !isAll && <span className="flex items-center gap-1.5"><span className="w-4 border-t-2 border-dotted border-slate-400" />{t('prices:chart.prevPeriod')}</span>}
             </div>
           </div>
           <div className={hPrice}>
@@ -603,14 +609,14 @@ export const PurchasesChart: React.FC<Props> = ({ rows, prevRows, prevShift, isA
                 </ComposedChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-xs text-slate-400" dir="rtl">{tr('لا توجد أسعار مسجلة لهذه الفترة')}</div>
+              <div className="h-full flex items-center justify-center text-xs text-slate-400" dir={dir}>{t('prices:chart.noPrices')}</div>
             )}
           </div>
 
           {/* اللوحة 2: الوارد (مكدّس حسب القسم في "عرض الكل") + شريط التكبير والسحب */}
-          <div className="flex items-center justify-between px-3 pt-3 border-t border-slate-100 dark:border-slate-800 mt-1" dir="rtl">
-            <span className="text-[11px] font-black text-slate-700 dark:text-slate-200">{tr(gran === 'day' ? 'الوارد اليومي' : gran === 'week' ? 'الوارد الأسبوعي' : 'الوارد الشهري')} <span className="font-bold text-slate-400">({tr('لتر')})</span></span>
-            {compare && <span className="flex items-center gap-1.5 text-[10.5px] font-bold text-slate-500 dark:text-slate-400"><span className="w-4 border-t-2 border-dashed border-slate-400" />{tr('وارد الفترة السابقة')}</span>}
+          <div className="flex items-center justify-between px-3 pt-3 border-t border-slate-100 dark:border-slate-800 mt-1" dir={dir}>
+            <span className="text-[11px] font-black text-slate-700 dark:text-slate-200">{t(`prices:chart.inboundBy.${gran}`)} <span className="font-bold text-slate-400">({L})</span></span>
+            {compare && <span className="flex items-center gap-1.5 text-[10.5px] font-bold text-slate-500 dark:text-slate-400"><span className="w-4 border-t-2 border-dashed border-slate-400" />{t('prices:chart.prevInbound')}</span>}
           </div>
           <div className={hBars}>
             <ResponsiveContainer width="100%" height="100%">

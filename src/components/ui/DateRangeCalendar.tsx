@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { fmtDate } from '../../i18n/format';
 
 /**
  * تقويم لاختيار فترة (من / إلى): الضغطة الأولى بداية الفترة والثانية نهايتها.
  * التواريخ بصيغة YYYY/MM/DD مثل باقي المنظومة.
  */
-const MONTHS = ['كانون الثاني', 'شباط', 'آذار', 'نيسان', 'أيار', 'حزيران', 'تموز', 'آب', 'أيلول', 'تشرين الأول', 'تشرين الثاني', 'كانون الأول'];
-const WEEKDAYS = ['سبت', 'أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة']; // الأسبوع يبدأ السبت
+const WEEKDAYS = ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri']; // الأسبوع يبدأ السبت
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const fmt = (d: Date) => `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}`;
@@ -15,11 +16,8 @@ const parse = (s: string) => {
   return new Date(y, m - 1, d);
 };
 
-const PRESETS: { label: string; days: number }[] = [
-  { label: 'آخر 7 أيام', days: 6 },
-  { label: 'آخر 30 يومًا', days: 29 },
-  { label: 'آخر 90 يومًا', days: 89 }
-];
+/** فترات سريعة: آخر 7 / 30 / 90 يومًا (شاملة اليوم) */
+const PRESETS = [7, 30, 90];
 
 export const DateRangeCalendar: React.FC<{
   from: string;
@@ -31,6 +29,8 @@ export const DateRangeCalendar: React.FC<{
   /** أيام عليها علامة (مثل الأيام المسجّلة)؛ مع single لا يُختار إلا منها */
   marked?: Set<string>;
 }> = ({ from, to, onApply, onClear, single = false, marked }) => {
+  const { t, i18n } = useTranslation('common');
+  const rtl = i18n.dir() === 'rtl';
   const today = fmt(new Date());
   const [start, setStart] = useState(from);
   const [end, setEnd] = useState(to);
@@ -80,31 +80,31 @@ export const DateRangeCalendar: React.FC<{
   const shift = (m: number) => setView(v => new Date(v.getFullYear(), v.getMonth() + m, 1));
 
   return (
-    <div className="w-[300px] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden select-none" dir="rtl">
+    <div className="w-[300px] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden select-none" dir={i18n.dir()}>
       {/* فترات سريعة */}
       <div className={`flex gap-1.5 p-2.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 ${single ? 'hidden' : ''}`}>
-        {PRESETS.map(p => (
+        {PRESETS.map(days => (
           <button
-            key={p.label}
+            key={days}
             type="button"
-            onClick={() => applyPreset(p.days)}
+            onClick={() => applyPreset(days - 1)}
             className="flex-1 px-1.5 py-1 rounded-lg text-[10.5px] font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-purple-300 hover:text-purple-700 dark:hover:text-purple-300 cursor-pointer transition-colors"
           >
-            {p.label}
+            {t('calendar.lastDays', { count: days })}
           </button>
         ))}
       </div>
 
       {/* رأس الشهر */}
       <div className="flex items-center justify-between px-3 pt-3 pb-1">
-        <button type="button" onClick={() => shift(-1)} className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer" title="الشهر السابق">
-          <ChevronRight className="w-4 h-4" />
+        <button type="button" onClick={() => shift(-1)} className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer" title={t('calendar.prevMonth')}>
+          {rtl ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </button>
         <div className="text-sm font-black text-slate-900 dark:text-white">
-          {MONTHS[view.getMonth()]} <span className="font-mono text-slate-500">{view.getFullYear()}</span>
+          {fmtDate(view, { month: 'long' })} <span className="font-mono text-slate-500">{view.getFullYear()}</span>
         </div>
-        <button type="button" onClick={() => shift(1)} className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer" title="الشهر التالي">
-          <ChevronLeft className="w-4 h-4" />
+        <button type="button" onClick={() => shift(1)} className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer" title={t('calendar.nextMonth')}>
+          {rtl ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
         </button>
       </div>
 
@@ -112,7 +112,7 @@ export const DateRangeCalendar: React.FC<{
       <div className="px-3 pb-2">
         <div className="grid grid-cols-7 mb-1">
           {WEEKDAYS.map(w => (
-            <div key={w} className="text-center text-[10px] font-bold text-slate-400 py-1">{w}</div>
+            <div key={w} className="text-center text-[10px] font-bold text-slate-400 py-1">{t(`calendar.weekdays.${w}`)}</div>
           ))}
         </div>
         <div className="grid grid-cols-7 gap-y-0.5" onMouseLeave={() => setHover('')}>
@@ -127,8 +127,8 @@ export const DateRangeCalendar: React.FC<{
               <div
                 key={c.key}
                 className={`relative h-9 flex items-center justify-center ${band ? 'bg-purple-100 dark:bg-purple-900/40' : ''} ${
-                  isStart && rangeEnd ? 'bg-gradient-to-l from-transparent from-50% to-purple-100 to-50% dark:to-purple-900/40' : ''
-                } ${isEnd && start && rangeEnd !== start ? 'bg-gradient-to-r from-transparent from-50% to-purple-100 to-50% dark:to-purple-900/40' : ''}`}
+                  isStart && rangeEnd ? 'rtl:bg-gradient-to-l ltr:bg-gradient-to-r from-transparent from-50% to-purple-100 to-50% dark:to-purple-900/40' : ''
+                } ${isEnd && start && rangeEnd !== start ? 'rtl:bg-gradient-to-r ltr:bg-gradient-to-l from-transparent from-50% to-purple-100 to-50% dark:to-purple-900/40' : ''}`}
               >
                 <button
                   type="button"
@@ -157,7 +157,7 @@ export const DateRangeCalendar: React.FC<{
       {/* الفترة المختارة + الأزرار */}
       <div className={`px-3 py-2.5 border-t border-slate-100 dark:border-slate-800 space-y-2 ${single ? 'hidden' : ''}`}>
         <div className="grid grid-cols-2 gap-2 text-[10.5px]">
-          {[['من', start], ['إلى', end]].map(([l, v]) => (
+          {[[t('calendar.from'), start], [t('calendar.to'), end]].map(([l, v]) => (
             <div key={l} className="rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-1">
               <span className="text-slate-400 font-bold">{l} </span>
               <span className="font-mono font-black text-slate-800 dark:text-slate-100">{v || '—'}</span>
@@ -171,21 +171,21 @@ export const DateRangeCalendar: React.FC<{
             onClick={() => onApply(start, end || start)}
             className="flex-1 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white text-xs font-bold cursor-pointer"
           >
-            تطبيق
+            {t('calendar.apply')}
           </button>
           <button
             type="button"
             onClick={() => { setStart(today); setEnd(today); setView(new Date(new Date().getFullYear(), new Date().getMonth(), 1)); }}
             className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
           >
-            اليوم
+            {t('calendar.today')}
           </button>
           <button
             type="button"
             onClick={onClear}
             className="px-3 py-1.5 rounded-lg text-slate-500 hover:text-rose-600 text-xs font-bold cursor-pointer"
           >
-            مسح
+            {t('calendar.clear')}
           </button>
         </div>
       </div>
