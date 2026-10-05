@@ -1,5 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { Loader2, Check, Copy, CheckCircle2, Camera, Trash2, ImagePlus } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
+import { fmtDate, fmtRelative, fmtTime } from '../../i18n/format';
 import { initials } from '../../lib/session';
 
 /** أدوات وأنماط مشتركة لصفحات إدارة المستخدمين */
@@ -25,23 +28,19 @@ export const passwordScore = (p: string) => {
   if (/\d/.test(p) && /[^a-zA-Z0-9]/.test(p) || (/\d/.test(p) && p.length >= 14)) s++;
   return Math.min(4, s);
 };
-export const SCORE_LABEL = ['قصيرة جدًا', 'ضعيفة', 'متوسطة', 'جيدة', 'قوية'];
+/** تسمية قوة كلمة المرور بلغة الواجهة */
+export const scoreLabel = (score: number) => i18n.t(`admin:ui.score.${score}`);
 export const SCORE_TONE = ['bg-rose-500', 'bg-orange-500', 'bg-amber-500', 'bg-lime-500', 'bg-emerald-500'];
 
-const rtf = typeof Intl !== 'undefined' ? new Intl.RelativeTimeFormat('ar', { numeric: 'auto' }) : null;
-/** وقت نسبي بالعربية: «قبل 5 دقائق» */
+/** وقت نسبي بلغة الواجهة: «قبل 5 دقائق» / «5 minutes ago»، وتاريخ كامل بعد 30 يومًا */
 export const timeAgo = (ts: number) => {
-  const diff = (ts - Date.now()) / 1000;
-  const abs = Math.abs(diff);
-  if (!rtf) return new Date(ts).toLocaleString('ar-IQ');
-  if (abs < 45) return 'الآن';
-  if (abs < 3600) return rtf.format(Math.round(diff / 60), 'minute');
-  if (abs < 86400) return rtf.format(Math.round(diff / 3600), 'hour');
-  if (abs < 86400 * 30) return rtf.format(Math.round(diff / 86400), 'day');
-  return new Date(ts).toLocaleDateString('ar-IQ');
+  const abs = Math.abs(Date.now() - ts) / 1000;
+  if (abs < 45) return i18n.t('common:time.now');
+  if (abs < 86400 * 30) return fmtRelative(ts);
+  return fmtDate(ts, { dateStyle: 'medium' });
 };
-export const fullDate = (ts: number) => new Date(ts).toLocaleString('ar-IQ', { dateStyle: 'full', timeStyle: 'medium' });
-export const clock = (ts: number) => new Date(ts).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' });
+export const fullDate = (ts: number) => fmtDate(ts, { dateStyle: 'full', timeStyle: 'medium' });
+export const clock = (ts: number) => fmtTime(ts);
 
 export const UserAvatar: React.FC<{ name: string; color?: string; src?: string; size?: number; className?: string }> = ({ name, color, src, size = 42, className = '' }) => (
   src ? (
@@ -57,8 +56,8 @@ export const UserAvatar: React.FC<{ name: string; color?: string; src?: string; 
 const AVATAR_PX = 256;
 /** قص الصورة مربعًا من المنتصف وتصغيرها إلى 256×256 (WebP أو JPEG) حتى تبقى خفيفة (~20–40KB) */
 export const resizeAvatar = (file: File): Promise<string> => new Promise((resolve, reject) => {
-  if (!/^image\/(png|jpe?g|webp|gif|bmp|heic|heif)$/i.test(file.type)) return reject(new Error('اختر صورة (PNG أو JPEG أو WebP)'));
-  if (file.size > 15 * 1024 * 1024) return reject(new Error('حجم الصورة أكبر من 15MB'));
+  if (!/^image\/(png|jpe?g|webp|gif|bmp|heic|heif)$/i.test(file.type)) return reject(new Error(i18n.t('admin:ui.errors.imageType')));
+  if (file.size > 15 * 1024 * 1024) return reject(new Error(i18n.t('admin:ui.errors.imageSize')));
   const url = URL.createObjectURL(file);
   const img = new Image();
   img.onload = () => {
@@ -67,18 +66,19 @@ export const resizeAvatar = (file: File): Promise<string> => new Promise((resolv
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = AVATAR_PX;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return reject(new Error('تعذّر معالجة الصورة'));
+    if (!ctx) return reject(new Error(i18n.t('admin:ui.errors.imageProcess')));
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, AVATAR_PX, AVATAR_PX);
     const webp = canvas.toDataURL('image/webp', 0.85);
     resolve(webp.startsWith('data:image/webp') ? webp : canvas.toDataURL('image/jpeg', 0.85));
   };
-  img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('تعذّر قراءة الصورة')); };
+  img.onerror = () => { URL.revokeObjectURL(url); reject(new Error(i18n.t('admin:ui.errors.imageRead'))); };
   img.src = url;
 });
 
 /** اختيار صورة شخصية: ضغط أو سحب وإفلات، مع معاينة وإزالة */
 export const AvatarPicker: React.FC<{ value: string; name: string; onChange: (v: string) => void; size?: number }> = ({ value, name, onChange, size = 88 }) => {
+  const { t } = useTranslation('admin');
   const input = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -91,30 +91,30 @@ export const AvatarPicker: React.FC<{ value: string; name: string; onChange: (v:
   };
   return (
     <div className="flex items-center gap-4">
-      <button type="button" onClick={() => input.current?.click()} aria-label="اختيار صورة شخصية"
+      <button type="button" onClick={() => input.current?.click()} aria-label={t('ui.pickPhoto')}
         onDragOver={e => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
         onDrop={e => { e.preventDefault(); setDrag(false); pick(e.dataTransfer.files[0]); }}
         className={`group relative rounded-3xl shrink-0 transition ${drag ? 'ring-4 ring-blue-500/40 scale-105' : ''}`} style={{ width: size, height: size }}>
         {value ? <UserAvatar name={name || '؟'} src={value} size={size} className="!rounded-3xl" /> : (
           <span className="w-full h-full rounded-3xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/60 flex flex-col items-center justify-center gap-1 text-slate-400 group-hover:border-blue-400 group-hover:text-blue-500 transition">
             <ImagePlus className="w-6 h-6" />
-            <span className="text-[10px] font-bold">صورة</span>
+            <span className="text-[10px] font-bold">{t('ui.photo')}</span>
           </span>
         )}
-        <span className="absolute -bottom-1 -left-1 w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-lg ring-4 ring-white dark:ring-slate-900">
+        <span className="absolute -bottom-1 -end-1 w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-lg ring-4 ring-white dark:ring-slate-900">
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
         </span>
       </button>
       <div className="min-w-0 space-y-1.5">
-        <div className="text-xs font-bold text-slate-700 dark:text-slate-300">الصورة الشخصية <span className="font-normal text-slate-400">(اختياري)</span></div>
-        <p className="text-[11px] text-slate-400 leading-relaxed">اضغط أو اسحب صورة هنا. تُقص مربعًا وتُصغَّر تلقائيًا.</p>
+        <div className="text-xs font-bold text-slate-700 dark:text-slate-300">{t('ui.photoTitle')} <span className="font-normal text-slate-400">{t('ui.optional')}</span></div>
+        <p className="text-[11px] text-slate-400 leading-relaxed">{t('ui.photoHint')}</p>
         <div className="flex gap-1.5">
           <button type="button" onClick={() => input.current?.click()} className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200">
-            {value ? 'تغيير' : 'رفع صورة'}
+            {value ? t('ui.change') : t('ui.upload')}
           </button>
           {value && (
             <button type="button" onClick={() => onChange('')} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">
-              <Trash2 className="w-3.5 h-3.5" /> إزالة
+              <Trash2 className="w-3.5 h-3.5" /> {t('ui.remove')}
             </button>
           )}
         </div>
@@ -157,7 +157,7 @@ export const KpiCard: React.FC<{ label: string; value: React.ReactNode; icon: Re
   const Tag = onClick ? 'button' : 'div';
   return (
     <Tag onClick={onClick}
-      className={`text-right rounded-2xl border px-3.5 py-3 flex items-center gap-3 transition ${active ? 'border-blue-400 ring-4 ring-blue-500/10 bg-blue-50/50 dark:bg-blue-950/30' : 'border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900'} ${onClick ? 'hover:border-blue-300 dark:hover:border-blue-800' : ''}`}>
+      className={`text-start rounded-2xl border px-3.5 py-3 flex items-center gap-3 transition ${active ? 'border-blue-400 ring-4 ring-blue-500/10 bg-blue-50/50 dark:bg-blue-950/30' : 'border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900'} ${onClick ? 'hover:border-blue-300 dark:hover:border-blue-800' : ''}`}>
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${tone}`}><Icon className="w-5 h-5" /></div>
       <div className="min-w-0">
         <div className="text-[11px] font-bold text-slate-500 truncate">{label}</div>
@@ -170,19 +170,22 @@ export const KpiCard: React.FC<{ label: string; value: React.ReactNode; icon: Re
 
 /** زر نسخ صغير مع تأكيد بصري */
 export const CopyButton: React.FC<{ text: string; label?: string; className?: string }> = ({ text, label, className = '' }) => {
+  const { t } = useTranslation('admin');
   const [done, setDone] = useState(false);
   return (
-    <button type="button" title={label || 'نسخ'} aria-label={label || 'نسخ'}
+    <button type="button" title={label || t('ui.copy')} aria-label={label || t('ui.copy')}
       onClick={async () => { try { await navigator.clipboard.writeText(text); setDone(true); setTimeout(() => setDone(false), 1400); } catch { /* تجاهل */ } }}
       className={`inline-flex items-center justify-center gap-1.5 rounded-xl transition ${className}`}>
       {done ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-      {label && <span>{done ? 'تم النسخ' : label}</span>}
+      {label && <span>{done ? t('ui.copied') : label}</span>}
     </button>
   );
 };
 
 /** بيانات الدخول بعد الإصدار (تظهر مرة واحدة) */
-export const Issued: React.FC<{ name: string; username: string; password: string; onBack: () => void; backLabel?: string; extra?: React.ReactNode }> = ({ name, username, password, onBack, backLabel = 'تم', extra }) => (
+export const Issued: React.FC<{ name: string; username: string; password: string; onBack: () => void; backLabel?: string; extra?: React.ReactNode }> = ({ name, username, password, onBack, backLabel, extra }) => {
+  const { t } = useTranslation('admin');
+  return (
   <div className="space-y-5 max-w-md mx-auto text-center py-2">
     <div className="relative mx-auto w-16 h-16">
       <span className="absolute inset-0 rounded-full bg-emerald-400/30 animate-ping" />
@@ -191,11 +194,11 @@ export const Issued: React.FC<{ name: string; username: string; password: string
       </div>
     </div>
     <div>
-      <h4 className="font-black text-lg text-slate-900 dark:text-white">تم إصدار بيانات الدخول</h4>
-      <p className="text-sm text-slate-500 mt-1">سلّمها للموظف الآن. لن تظهر كلمة المرور مرة أخرى، ويستطيع تغييرها من «حسابي».</p>
+      <h4 className="font-black text-lg text-slate-900 dark:text-white">{t('ui.issuedTitle')}</h4>
+      <p className="text-sm text-slate-500 mt-1">{t('ui.issuedText')}</p>
     </div>
-    <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 divide-y divide-slate-200 dark:divide-slate-700 text-sm text-right">
-      {[['الاسم', name, false], ['اسم المستخدم', username, true], ['كلمة المرور', password, true]].map(([k, v, mono]) => (
+    <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 divide-y divide-slate-200 dark:divide-slate-700 text-sm text-start">
+      {[[t('ui.name'), name, false], [t('ui.username'), username, true], [t('ui.password'), password, true]].map(([k, v, mono]) => (
         <div key={k as string} className="flex items-center justify-between gap-3 px-4 py-3">
           <span className="text-slate-500">{k}</span>
           <span className="flex items-center gap-2">
@@ -205,11 +208,12 @@ export const Issued: React.FC<{ name: string; username: string; password: string
         </div>
       ))}
     </div>
-    <CopyButton text={`الاسم: ${name}\nاسم المستخدم: ${username}\nكلمة المرور: ${password}`} label="نسخ كل البيانات"
+    <CopyButton text={t('ui.copyAllText', { name, username, password })} label={t('ui.copyAll')}
       className={`${btnCls} w-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200`} />
     <div className="flex gap-2">
       {extra}
-      <button className={`${btnCls} flex-1 bg-blue-600 hover:bg-blue-700 text-white`} onClick={onBack}>{backLabel}</button>
+      <button className={`${btnCls} flex-1 bg-blue-600 hover:bg-blue-700 text-white`} onClick={onBack}>{backLabel ?? t('ui.done')}</button>
     </div>
   </div>
-);
+  );
+};

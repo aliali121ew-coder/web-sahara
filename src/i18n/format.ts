@@ -36,3 +36,15 @@ export const fmtList = (items: string[], type: Intl.ListFormatType = 'conjunctio
   new Intl.ListFormat(localeOf(), { style: 'long', type }).format(items);
 
 export const collator = () => new Intl.Collator(localeOf(), { numeric: true, sensitivity: 'base' });
+
+/** عنوان يوم لتجميع القوائم: «اليوم» / «أمس» / «الأحد، 5 تشرين الأول 2026» */
+export const fmtDayLabel = (ts: number | Date) => {
+  const d = new Date(ts);
+  const start = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((start(d) - start(new Date())) / 86400000);
+  if (days === 0 || days === -1) {
+    const s = new Intl.RelativeTimeFormat(localeOf(), { numeric: 'auto', ...NUM } as Intl.RelativeTimeFormatOptions).format(days, 'day');
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  return fmtDate(d, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+};

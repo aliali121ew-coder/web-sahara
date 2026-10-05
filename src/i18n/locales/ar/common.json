@@ -29,7 +29,8 @@
   "time": {
     "minutesShort": "{{count}} د",
     "hoursShort": "{{count}} س",
-    "hoursMinutesShort": "{{h}} س {{m}} د"
+    "hoursMinutesShort": "{{h}} س {{m}} د",
+    "now": "الآن"
   },
   "sync": {
     "saved": "محفوظ",

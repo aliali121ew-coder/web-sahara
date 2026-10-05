@@ -29,7 +29,8 @@
   "time": {
     "minutesShort": "{{count}} min",
     "hoursShort": "{{count}} h",
-    "hoursMinutesShort": "{{h}} h {{m}} min"
+    "hoursMinutesShort": "{{h}} h {{m}} min",
+    "now": "Just now"
   },
   "sync": {
     "saved": "Saved",
