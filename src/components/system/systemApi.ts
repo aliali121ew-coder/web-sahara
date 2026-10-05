@@ -1,3 +1,4 @@
+import i18n from '../../i18n';
 import { sessionHeaders } from '../../lib/session';
 
 /** واجهة لوحة إدارة النظام (/api/system/*) — لمدير النظام فقط */
@@ -39,7 +40,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers: { 'content-type': 'application/json', ...sessionHeaders(), ...(init.headers || {}) },
   });
   const data = (await res.json().catch(() => ({}))) as T & { error?: string };
-  if (!res.ok) throw new SystemApiError(data.error || 'تعذّر الاتصال بالخادم', res.status);
+  if (!res.ok) throw new SystemApiError(data.error || i18n.t('system:err.connect'), res.status);
   return data;
 }
 const post = <T>(path: string, body: unknown = {}) => call<T>(path, { method: 'POST', body: JSON.stringify(body) });
@@ -57,7 +58,7 @@ export const systemApi = {
   /** تنزيل نسخة كملف (عبر fetch لأن الطلب يحتاج ترويسات الجلسة) */
   download: async (row: BackupRow) => {
     const res = await fetch(`/api/system/backups/${encodeURIComponent(row.id)}/download`, { headers: sessionHeaders(), cache: 'no-store' });
-    if (!res.ok) throw new SystemApiError('تعذّر تنزيل النسخة', res.status);
+    if (!res.ok) throw new SystemApiError(i18n.t('system:err.download'), res.status);
     const url = URL.createObjectURL(await res.blob());
     const a = document.createElement('a');
     a.href = url;
@@ -88,4 +89,4 @@ export const fmtBytes = (n: number | null | undefined) => {
   return `${v.toFixed(v < 10 ? 1 : 0)} ${units[i]}`;
 };
 export const fmtNum = (n: number) => n.toLocaleString('en');
-export const fmtDuration = (ms: number) => (ms < 1000 ? `${ms} ms` : ms < 60_000 ? `${(ms / 1000).toFixed(1)} ث` : `${Math.round(ms / 60_000)} د`);
+export const fmtDuration = (ms: number) => (ms < 1000 ? `${ms} ms` : ms < 60_000 ? i18n.t('system:dur.sec', { v: (ms / 1000).toFixed(1) }) : i18n.t('common:time.minutesShort', { count: Math.round(ms / 60_000) }));
