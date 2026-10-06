@@ -81,9 +81,16 @@ export const PriceIndexTable: React.FC = () => {
                         <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">
                           <Building className="w-3.5 h-3.5" />
                         </div>
-                        <span className="font-bold text-slate-900 dark:text-white">
-                          {row.supplierName}
-                        </span>
+                        <div className="min-w-0">
+                          <span className="font-bold text-slate-900 dark:text-white">
+                            {row.supplierName}
+                          </span>
+                          {row.company && (
+                            <span className={`block text-[10.5px] font-semibold ${row.company === 'etihad' ? 'text-sky-600 dark:text-sky-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                              {t(`dashboard:priceIndex.receiver.${row.company}`)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
 

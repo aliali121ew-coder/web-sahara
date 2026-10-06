@@ -41,7 +41,13 @@ export const deliveriesOfSupplier = <T,>(items: T[], get: (x: T) => InboundDeliv
 const dateKey = (d: InboundDelivery) => (d.receiptUnloadDate || d.date || '').replace(/-/g, '/');
 const priceOf = (d: InboundDelivery) => d.productPrice || d.pricePerLiter || 0;
 
-export const buildArchiveSuppliers = (deliveries: InboundDelivery[]): SupplierPriceRecord[] => {
+/** موردو أرشيف شركة واحدة؛ المورد الذي ورد للشركتين يصبح سجلين منفصلين */
+export const buildArchiveSuppliers = (saharaDeliveries: InboundDelivery[], etihadDeliveries: InboundDelivery[]): SupplierPriceRecord[] => [
+  ...buildCompanySuppliers(saharaDeliveries, 'sahara'),
+  ...buildCompanySuppliers(etihadDeliveries, 'etihad'),
+].sort((a, b) => b.lastUpdated.localeCompare(a.lastUpdated));
+
+const buildCompanySuppliers = (deliveries: InboundDelivery[], company: 'sahara' | 'etihad'): SupplierPriceRecord[] => {
   const groups = new Map<string, InboundDelivery[]>();
   for (const d of deliveries) {
     const key = supplierKey(deliverySupplier(d));
@@ -67,7 +73,8 @@ export const buildArchiveSuppliers = (deliveries: InboundDelivery[]): SupplierPr
       if (history.length >= 30) break;
     }
     out.push({
-      id: `sup-a-${key.replace(/\s+/g, '-')}`,
+      id: `sup-a-${company}-${key.replace(/\s+/g, '-')}`,
+      company,
       supplierName: name,
       product: [...products].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '',
       priceIqd: price,
@@ -79,5 +86,5 @@ export const buildArchiveSuppliers = (deliveries: InboundDelivery[]): SupplierPr
       history,
     });
   }
-  return out.sort((a, b) => b.lastUpdated.localeCompare(a.lastUpdated));
+  return out;
 };

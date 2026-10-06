@@ -132,7 +132,7 @@ const shrinkImage = (file: File): Promise<string> => new Promise((resolve, rejec
 
 const EMPTY: SupplierPriceRecord = {
   id: '', supplierName: '', product: '', priceIqd: 0, previousPriceIqd: 0, changePercent: 0,
-  category: 'تجاري', availability: 'متوفر', lastUpdated: '',
+  category: 'تجاري', availability: 'متوفر', lastUpdated: '', company: 'sahara',
 };
 
 const SupplierModal: React.FC<{ initial: SupplierPriceRecord; isNew: boolean; onClose: () => void; onSave: (s: SupplierPriceRecord) => void; onDelete?: () => void }> = ({ initial, isNew, onClose, onSave, onDelete }) => {
@@ -197,11 +197,21 @@ const SupplierModal: React.FC<{ initial: SupplierPriceRecord; isNew: boolean; on
                 <p className="mt-1.5 text-[11px] text-teal-600 dark:text-teal-400">{t('modal.priceNote', { old: fmtPrice(initial.priceIqd) })}</p>
               )}
             </div>
-            <div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={label}>{t('table.receiver')}</label>
+                <select className={input} value={f.company ?? ''} onChange={e => set('company', (e.target.value || undefined) as SupplierPriceRecord['company'])}>
+                  {!f.company && <option value="">—</option>}
+                  <option value="sahara">{t('receiver.sahara')}</option>
+                  <option value="etihad">{t('receiver.etihad')}</option>
+                </select>
+              </div>
+              <div>
                 <label className={label}>{t('fields.category')}</label>
                 <select className={input} value={f.category} onChange={e => set('category', e.target.value as SupplierPriceRecord['category'])}>
                   {CATEGORIES.map(c => <option key={c} value={c}>{enumText(c)}</option>)}
                 </select>
+              </div>
             </div>
             <div>
               <label className={label}>{t('fields.phone')}</label>
@@ -282,7 +292,8 @@ export const SuppliersView: React.FC = () => {
     const cache = new Map<string, { last?: { d: InboundDelivery; tab: NavTabId }; count: number; lastDay: string; lastDayCount: number; lastDayQty: number; companies: Company[] }>();
     return (s: SupplierPriceRecord) => {
       if (!cache.has(s.id)) {
-        const hits = deliveriesOfSupplier(allDeliveries, x => x.d, s.supplierName);
+        const pool = s.company ? allDeliveries.filter(x => x.tab === (s.company === 'etihad' ? 'deliveries-etihad' : 'deliveries-sahara')) : allDeliveries;
+        const hits = deliveriesOfSupplier(pool, x => x.d, s.supplierName);
         hits.sort((a, b) => dateKey(b.d.receiptUnloadDate || b.d.date).localeCompare(dateKey(a.d.receiptUnloadDate || a.d.date)));
         // صهاريج آخر يوم وارد من المورد
         const lastDay = hits[0] ? dateKey(hits[0].d.receiptUnloadDate || hits[0].d.date) : '';

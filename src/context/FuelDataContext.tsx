@@ -23,9 +23,10 @@ import {
   INITIAL_MESSAGES,
   INITIAL_NOTIFICATIONS
 } from '../lib/mockData';
-import { buildArchiveSuppliers, sameSupplier } from '../lib/archiveSuppliers';
+import { buildArchiveSuppliers, sameSupplier, deliveriesOfSupplier } from '../lib/archiveSuppliers';
 
 const MOCK_SUPPLIERS_REMOVED_KEY = 'sahara_supplier_mock_removed';
+const SUPPLIER_NAMES_REPAIRED_KEY = 'sahara_supplier_names_repaired';
 
 interface FuelDataContextType {
   activeTab: NavTabId;
@@ -365,8 +366,7 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // الموردون الحقيقيون من أرشيف الوارد: يُحذف التجريبيون مرة واحدة (ما لم يعدّلهم المستخدم)،
   // ويُضاف أي مورد جديد يظهر في الوارد تلقائيًا بسعر آخر شحنة له
   useEffect(() => {
-    const all = [...saharaDeliveries, ...etihadDeliveries];
-    if (!all.length) return;
+    if (!saharaDeliveries.length && !etihadDeliveries.length) return;
     setSupplierPrices(prev => {
       let list = prev;
       if (!localStorage.getItem(MOCK_SUPPLIERS_REMOVED_KEY)) {
@@ -374,7 +374,31 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         list = list.filter(s => seed.get(s.id) !== s.supplierName);
         localStorage.setItem(MOCK_SUPPLIERS_REMOVED_KEY, '1');
       }
-      const missing = buildArchiveSuppliers(all).filter(a => !list.some(s => sameSupplier(s.supplierName, a.supplierName)));
+      // فصل الصحاري عن الاتحاد: السجلات المستخرجة قبل الفصل (بلا شركة) تُستبدل بسجل لكل شركة،
+      // مع نقل ما أدخله المستخدم (الهاتف، الموقع، المندوب، الشعار، التصنيف)
+      const legacy = list.filter(s => s.id.startsWith('sup-a-') && !s.company);
+      if (legacy.length) list = list.filter(s => !legacy.includes(s));
+      const missing = buildArchiveSuppliers(saharaDeliveries, etihadDeliveries)
+        .filter(a => !list.some(s => (!s.company || s.company === a.company) && sameSupplier(s.supplierName, a.supplierName)))
+        .map(a => {
+          const old = legacy.find(l => sameSupplier(l.supplierName, a.supplierName));
+          return old ? { ...a, phone: old.phone, location: old.location, contactName: old.contactName, contactRole: old.contactRole, logo: old.logo, category: old.category } : a;
+        });
+      // إصلاح لمرة واحدة: نقل الأسماء أثناء الفصل أعطى بعض السجلات اسم مورد قريب؛ يُعاد لكل سجل أرشيف اسمه الأصلي
+      if (!localStorage.getItem(SUPPLIER_NAMES_REPAIRED_KEY)) {
+        const built = new Map(buildArchiveSuppliers(saharaDeliveries, etihadDeliveries).map(b => [b.id, b.supplierName]));
+        list = list.map(x => (built.has(x.id) && built.get(x.id) !== x.supplierName ? { ...x, supplierName: built.get(x.id)! } : x));
+        localStorage.setItem(SUPPLIER_NAMES_REPAIRED_KEY, '1');
+      }
+      // مورد أُدخل يدويًا بلا شركة: يُنسب للشركة التي ورد إليها أكثر
+      if (list.some(x => !x.company)) {
+        list = list.map(x => {
+          if (x.company) return x;
+          const n = (ds: InboundDelivery[]) => deliveriesOfSupplier(ds, d => d, x.supplierName).length;
+          const sa = n(saharaDeliveries), et = n(etihadDeliveries);
+          return sa || et ? { ...x, company: et > sa ? 'etihad' : 'sahara' } : x;
+        });
+      }
       return missing.length || list !== prev ? [...list, ...missing] : prev;
     });
   }, [saharaDeliveries, etihadDeliveries]);

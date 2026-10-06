@@ -83,6 +83,8 @@ export interface SupplierPriceRecord {
   availability: 'متوفر' | 'محدود' | 'غير متوفر';
   lastUpdated: string;
   // بيانات صفحة الموردين (اختيارية)
+  /** الشركة المستلمة: كل مورد مفصول حسب أرشيف الوارد (الصحاري أو الاتحاد) */
+  company?: 'sahara' | 'etihad';
   phone?: string;
   location?: string;
   contactName?: string;

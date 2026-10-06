@@ -178,7 +178,11 @@
     "previous": "Previous price",
     "change": "Change (24h)",
     "availability": "Availability",
-    "empty": "No results match the current filters"
+    "empty": "No results match the current filters",
+    "receiver": {
+      "sahara": "Sahara inbound",
+      "etihad": "Etihad inbound"
+    }
   },
   "sahara": {
     "sectors": {
