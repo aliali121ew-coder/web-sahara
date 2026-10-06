@@ -93,8 +93,9 @@ const StatCard: React.FC<{
 
 /** رقم بإشارة ولون حسب الاتجاه (ارتفاع السعر أحمر، انخفاضه أخضر) */
 const Signed: React.FC<{ v: number; suffix?: string; text?: string }> = ({ v, suffix = '', text }) => (
-  <span dir="ltr" className={v > 0 ? 'text-rose-500' : v < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}>
-    {text ?? `${v > 0 ? '+' : ''}${v}${suffix}`}
+  <span className={`inline-flex items-center gap-1 ${v > 0 ? 'text-rose-500' : v < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+    {v > 0 ? <ArrowUp className="w-3.5 h-3.5" /> : v < 0 ? <ArrowDown className="w-3.5 h-3.5" /> : null}
+    <span dir="ltr">{text ?? `${v > 0 ? '+' : ''}${v}${suffix}`}</span>
   </span>
 );
 
