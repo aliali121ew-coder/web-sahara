@@ -53,8 +53,22 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
     const count = (c: Company) => rows.filter(r => r.co === c).length;
     const pq = priced.reduce((a, r) => a + qtyOf(r.d), 0);
     const avg = pq ? priced.reduce((a, r) => a + qtyOf(r.d) * priceOf(r.d), 0) / pq : 0;
-    // آخر 30 سعرًا بترتيب زمني للمسار المصغّر
-    const spark = priced.slice(0, 30).map(r => priceOf(r.d)).reverse();
+    // مسار السعر لكامل الفترة (نفس مدى أعلى/أدنى سعر): متوسط كل يوم زمنيًا،
+    // ثم تُطوى الأيام المتساوية المتتالية (يبقى أول وآخر يوم من كل سعر) فلا تختفي القفزات بين آلاف الشحنات
+    const daily = new Map<string, { sum: number; n: number }>();
+    priced.forEach(r => { const k = dayOf(r.d); const a = daily.get(k) ?? { sum: 0, n: 0 }; a.sum += priceOf(r.d); a.n++; daily.set(k, a); });
+    const series = [...daily].sort((a, b) => a[0].localeCompare(b[0])).map(([, a]) => Math.round((a.sum / a.n) * 10) / 10);
+    let spark = series.filter((v, i) => i === 0 || i === series.length - 1 || v !== series[i - 1] || v !== series[i + 1]);
+    // سقف 80 نقطة: تجميع متساوٍ مع حفظ أعلى وأدنى قيمة في كل مجموعة
+    if (spark.length > 80) {
+      const step = spark.length / 40, out: number[] = [];
+      for (let g = 0; g < 40; g++) {
+        const chunk = spark.slice(Math.floor(g * step), Math.floor((g + 1) * step));
+        const lo = Math.min(...chunk), hi = Math.max(...chunk);
+        out.push(...(chunk.indexOf(lo) < chunk.indexOf(hi) ? [lo, hi] : [hi, lo]).filter((v, k, a) => k === 0 || v !== a[0]));
+      }
+      spark = out;
+    }
     return { max, min, avg, spark, last: priced[0] ?? null, sahara: count('sahara'), etihad: count('etihad'), qty: rows.reduce((a, r) => a + qtyOf(r.d), 0) };
   }, [rows]);
 
