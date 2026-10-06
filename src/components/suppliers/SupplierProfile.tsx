@@ -8,6 +8,7 @@ import { deliveriesOfSupplier, sameSupplier, deliveryCompany, supplierKey } from
 import type { InboundDelivery } from '../../types';
 import { fmtPrice, CompanyBadges, Avatar, type Company } from './supplierUi';
 import { SupplierMonthlyChart } from './SupplierMonthlyChart';
+import { PriceSpark, ShareRing } from './ProfileMinis';
 
 /** الجهة التي ورد عبرها المورد: الشركة المجهزة، وإن لم تُذكر فالمورد نفسه (المورد صار المجهز أولًا) */
 // اختلاف الكتابة («السده» / «السدة» / مسافات زائدة) يُوحَّد على أول صيغة ظهرت، فلا يتكرر المجهز في القائمة
@@ -52,7 +53,9 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
     const count = (c: Company) => rows.filter(r => r.co === c).length;
     const pq = priced.reduce((a, r) => a + qtyOf(r.d), 0);
     const avg = pq ? priced.reduce((a, r) => a + qtyOf(r.d) * priceOf(r.d), 0) / pq : 0;
-    return { max, min, avg, last: priced[0] ?? null, sahara: count('sahara'), etihad: count('etihad'), qty: rows.reduce((a, r) => a + qtyOf(r.d), 0) };
+    // آخر 30 سعرًا بترتيب زمني للمسار المصغّر
+    const spark = priced.slice(0, 30).map(r => priceOf(r.d)).reverse();
+    return { max, min, avg, spark, last: priced[0] ?? null, sahara: count('sahara'), etihad: count('etihad'), qty: rows.reduce((a, r) => a + qtyOf(r.d), 0) };
   }, [rows]);
 
   // نسبة التغيّر الشهرية: آخر شهر فيه وارد مسعّر مقابل الشهر الذي فيه وارد قبله
@@ -144,13 +147,17 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
               </div>
             ))}
           </div>
-          {stats.max && stats.min && stats.last && priceOf(stats.max.d) > priceOf(stats.min.d) && (
+          {stats.last && stats.spark.length > 1 && (
             <div className="mt-auto pt-4">
-              <div className="relative h-1.5 rounded-full bg-gradient-to-l from-rose-400 via-amber-300 to-emerald-400 rtl:bg-gradient-to-r">
-                <span className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-slate-700 dark:border-white shadow"
-                  style={{ insetInlineStart: `calc(${Math.round(((priceOf(stats.last.d) - priceOf(stats.min.d)) / (priceOf(stats.max.d) - priceOf(stats.min.d))) * 100)}% - 6px)` }} />
+              <PriceSpark prices={stats.spark} avg={stats.avg} label={t('profile.priceRange')} />
+              <div className="mt-2 flex items-center justify-between gap-2 kpi-sub text-slate-400 tabular-nums">
+                <span>{t('profile.lastPrice', { price: fmtPrice(priceOf(stats.last.d)) })}</span>
+                {stats.avg > 0 && (
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-3 border-t border-dashed border-slate-400" />{t('profile.avgPrice')} {fmtPrice(Math.round(stats.avg * 10) / 10)}
+                  </span>
+                )}
               </div>
-              <div className="mt-1.5 kpi-sub text-slate-400 tabular-nums">{t('profile.lastPrice', { price: fmtPrice(priceOf(stats.last.d)) })}</div>
             </div>
           )}
         </div>
@@ -195,28 +202,28 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
             <span className="kpi-label text-slate-500 dark:text-slate-400">{t('profile.tankersByCompany')}</span>
             <span className="w-8 h-8 rounded-xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 flex items-center justify-center"><Truck className="w-4 h-4" /></span>
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {(['sahara', 'etihad'] as Company[]).map(c => {
-              const n = stats[c];
-              const on = company === c;
-              return (
-                <button key={c} type="button" disabled={!n} onClick={() => setCompany(on ? null : c)} aria-pressed={on}
-                  className={`rounded-xl px-3 py-2 text-start border transition-colors ${on ? 'border-teal-500 bg-teal-50 dark:bg-teal-950/40' : 'border-slate-200/80 dark:border-slate-700 hover:border-teal-400'} disabled:opacity-50 disabled:cursor-default cursor-pointer`}>
-                  <span className="flex items-center gap-1.5 text-[12px] text-slate-500 dark:text-slate-400">
-                    <span className={`w-2 h-2 rounded-full ${c === 'sahara' ? 'bg-amber-400' : 'bg-sky-500'}`} />{t(`receiver.${c}`)}
-                  </span>
-                  <span className="block kpi-num text-[22px] text-slate-900 dark:text-white">{formatNumber(n)}</span>
-                </button>
-              );
-            })}
-          </div>
-          <div className="mt-auto pt-4">
-            <div className="flex h-1.5 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-              <span className="bg-amber-400" style={{ width: `${rows.length ? (stats.sahara / rows.length) * 100 : 0}%` }} />
-              <span className="bg-sky-500" style={{ width: `${rows.length ? (stats.etihad / rows.length) * 100 : 0}%` }} />
+          {/* حلقة الحصص + بطاقتا الشركتين (الضغط يصفّي السجل) */}
+          <div className="mt-3 flex items-center gap-3">
+            <ShareRing counts={{ sahara: stats.sahara, etihad: stats.etihad }} active={company}
+              center={<><span className="kpi-num text-[18px] text-slate-900 dark:text-white">{formatNumber(rows.length)}</span><span className="text-[10px] text-slate-400">{t('profile.statTankers')}</span></>} />
+            <div className="flex-1 min-w-0 space-y-1.5">
+              {(['sahara', 'etihad'] as Company[]).map(c => {
+                const n = stats[c];
+                const on = company === c;
+                const share = rows.length ? Math.round((n / rows.length) * 100) : 0;
+                return (
+                  <button key={c} type="button" disabled={!n} onClick={() => setCompany(on ? null : c)} aria-pressed={on}
+                    className={`w-full rounded-xl px-2.5 py-1.5 flex items-center gap-2 text-start border transition-colors ${on ? 'border-teal-500 bg-teal-50 dark:bg-teal-950/40' : 'border-slate-200/80 dark:border-slate-700 hover:border-teal-400'} disabled:opacity-50 disabled:cursor-default cursor-pointer`}>
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${c === 'sahara' ? 'bg-amber-400' : 'bg-sky-500'}`} />
+                    <span className="text-[12px] text-slate-500 dark:text-slate-400 truncate">{t(`receiver.${c}`)}</span>
+                    <span className="ms-auto kpi-num text-[16px] text-slate-900 dark:text-white">{formatNumber(n)}</span>
+                    <span className="kpi-sub text-slate-400 tabular-nums w-9 text-end">{share}%</span>
+                  </button>
+                );
+              })}
             </div>
-            <div className="mt-1.5 kpi-sub text-slate-400">{t('profile.tapToFilter')}</div>
           </div>
+          <div className="mt-auto pt-3 kpi-sub text-slate-400">{t('profile.tapToFilter')}</div>
         </div>
 
         {/* الوارد الكلي: أبيض متدرج إلى أخضر فاتح */}
