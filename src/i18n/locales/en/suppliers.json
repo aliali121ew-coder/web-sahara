@@ -175,5 +175,61 @@
     "leaderShare": "Leader share",
     "clickMonth": "Click to open the month day by day",
     "rankingLabel": "Supplier ranking"
+  },
+  "log": {
+    "button": "Log",
+    "title": "Prices & purchases log",
+    "subtitle": "{{count}} recorded operations",
+    "search": "Search by name, product or user",
+    "empty": "No operations recorded yet",
+    "tab": {
+      "ops": "Operations",
+      "match": "Reconciliation"
+    },
+    "source": {
+      "all": "All",
+      "suppliers": "All suppliers",
+      "purchases": "Purchase prices"
+    },
+    "action": {
+      "create": "Added",
+      "update": "Edited",
+      "delete": "Deleted",
+      "reset": "Back to automatic",
+      "snapshot": "Pinned"
+    },
+    "field": {
+      "name": "Name",
+      "product": "Product",
+      "density": "Density",
+      "color": "Color",
+      "price": "Price",
+      "company": "Company",
+      "category": "Category",
+      "phone": "Phone",
+      "location": "Location",
+      "logo": "Logo"
+    },
+    "col": {
+      "when": "Date & time",
+      "section": "Section",
+      "action": "Operation",
+      "name": "Supplier / item",
+      "newPrice": "New price",
+      "by": "By",
+      "current": "Price in table",
+      "logged": "Last logged price",
+      "lastOp": "Last operation",
+      "status": "Status"
+    },
+    "status": {
+      "ok": "Matches",
+      "diff": "Different",
+      "none": "Not logged"
+    },
+    "matchHint": "{{count}} rows do not match the log (changed without a saved operation, or not logged yet)",
+    "allMatch": "Both tables match the log",
+    "snapshot": "Pin current state",
+    "statusHelp": "Matches: current price is the last logged one · Different: price changed without a save (e.g. automatic update from inbound) · Not logged: no operation yet. Total operations: {{n}}"
   }
 }

@@ -15,6 +15,7 @@ import { requestInboundFocus, focusFromDelivery } from '../../lib/inboundFocus';
 import { setSessionValue, useSessionState } from '../../lib/useSessionState';
 import { SupplierProfile } from './SupplierProfile';
 import { SuppliersCompare } from './SuppliersCompare';
+import { PriceLogModal } from './PriceLogModal';
 import type { InboundDelivery, NavTabId, SupplierPriceRecord } from '../../types';
 import { ChangePill, fmtPrice, CompanyBadges, Avatar, type Company } from './supplierUi';
 
@@ -299,6 +300,7 @@ export const SuppliersView: React.FC = () => {
   const [sort, setSort] = useState<SortKey>('updated');
   const [sortOpen, setSortOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
+  const [logOpen, setLogOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [editing, setEditing] = useState<{ rec: SupplierPriceRecord; isNew: boolean } | null>(null);
@@ -583,6 +585,12 @@ export const SuppliersView: React.FC = () => {
               <BarChart3 className="w-4 h-4" /> {t('compare.button')}
             </button>
             {compareOpen && <SuppliersCompare suppliers={archiveSuppliers} sahara={saharaDeliveries} etihad={etihadDeliveries} onClose={() => setCompareOpen(false)} />}
+            {/* السجل: كل عملية حفظ في الموردين وأسعار المشتريات، ومطابقتها مع الجدولين */}
+            <button type="button" onClick={() => setLogOpen(true)}
+              className="h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 text-[13px] text-slate-600 dark:text-slate-300 flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-teal-600 hover:border-teal-400 cursor-pointer">
+              <History className="w-4 h-4" /> {t('log.button')}
+            </button>
+            {logOpen && <PriceLogModal editable={editable} onClose={() => setLogOpen(false)} />}
             <div ref={menuRef} className="relative ms-auto">
               <button type="button" onClick={() => setMenuOpen(o => !o)} aria-expanded={menuOpen}
                 className="h-10 ps-4 pe-3 rounded-lg border border-teal-500 text-teal-600 dark:text-teal-400 text-[13px] font-medium flex items-center gap-2 hover:bg-teal-50 dark:hover:bg-teal-950/40 cursor-pointer">

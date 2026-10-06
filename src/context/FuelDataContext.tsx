@@ -23,6 +23,7 @@ import {
   INITIAL_MESSAGES,
   INITIAL_NOTIFICATIONS
 } from '../lib/mockData';
+import { logPrice } from '../lib/priceLog';
 import { buildArchiveSuppliers, sameSupplier, deliveriesOfSupplier, archiveValue, recordColor } from '../lib/archiveSuppliers';
 
 const MOCK_SUPPLIERS_REMOVED_KEY = 'sahara_supplier_mock_removed';
@@ -636,6 +637,17 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const saveSupplier = (supplier: SupplierPriceRecord) => {
+    // السجل: يُكتب خارج دالة التحديث (قد تُستدعى مرتين في وضع التطوير)
+    const before = supplierPrices.find(s => s.id === supplier.id);
+    const fields: [keyof SupplierPriceRecord, string][] = [['supplierName', 'name'], ['product', 'product'], ['density', 'density'], ['color', 'color'], ['priceIqd', 'price'], ['company', 'company'], ['category', 'category'], ['phone', 'phone'], ['location', 'location'], ['logo', 'logo']];
+    const changes = before ? fields.filter(([k]) => (before[k] ?? '') !== (supplier[k] ?? '')).map(([, n]) => n) : [];
+    if (!before || changes.length) {
+      logPrice({
+        source: 'suppliers', action: before ? 'update' : 'create', key: supplier.id, name: supplier.supplierName,
+        company: supplier.company, product: supplier.product, density: supplier.density, color: supplier.color,
+        prevPrice: before ? before.priceIqd : null, price: supplier.priceIqd, changes,
+      });
+    }
     const d = new Date();
     const today = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
     setSupplierPrices(prev => {
@@ -658,7 +670,16 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
   };
 
-  const deleteSupplier = (id: string) => setSupplierPrices(prev => prev.filter(s => s.id !== id));
+  const deleteSupplier = (id: string) => {
+    const before = supplierPrices.find(s => s.id === id);
+    if (before) {
+      logPrice({
+        source: 'suppliers', action: 'delete', key: id, name: before.supplierName, company: before.company,
+        product: before.product, density: before.density, color: before.color, prevPrice: before.priceIqd, price: null,
+      });
+    }
+    setSupplierPrices(prev => prev.filter(s => s.id !== id));
+  };
 
   const refreshAllData = () => {
     setTanks([...INITIAL_TANKS]);
