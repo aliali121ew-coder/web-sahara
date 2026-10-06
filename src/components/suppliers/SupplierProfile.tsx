@@ -55,13 +55,11 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
     return { max, min, avg, last: priced[0] ?? null, sahara: count('sahara'), etihad: count('etihad'), qty: rows.reduce((a, r) => a + qtyOf(r.d), 0) };
   }, [rows]);
 
-  // نسبة التغيّر الأسبوعية: آخر أسبوع فيه وارد مسعّر مقابل الأسبوع الذي فيه وارد قبله (الأسبوع يبدأ السبت)
+  // نسبة التغيّر الشهرية: آخر شهر فيه وارد مسعّر مقابل الشهر الذي فيه وارد قبله
   const weekly = useMemo(() => {
     const weekOf = (day: string) => {
-      const [y, m, d] = day.split('/').map(Number);
-      const dt = new Date(y, m - 1, d);
-      dt.setDate(dt.getDate() - ((dt.getDay() + 1) % 7));
-      return dt;
+      const [y, m] = day.split('/').map(Number);
+      return new Date(y, m - 1, 1);
     };
     const acc = new Map<number, { cost: number; q: number; n: number; start: Date }>();
     rows.forEach(({ d }) => {
@@ -157,17 +155,17 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
           )}
         </div>
 
-        {/* نسبة التغيّر الأسبوعية: سعر آخر أسبوع مقابل الأسبوع السابق؛ الارتفاع أحمر والانخفاض أخضر */}
+        {/* نسبة التغيّر الشهرية: سعر آخر شهر مقابل الشهر السابق؛ الارتفاع أحمر والانخفاض أخضر */}
         {(() => {
           const pct = weekly?.pct ?? null;
           const up = pct !== null && pct > 0, down = pct !== null && pct < 0;
           const tone = up ? 'text-rose-500' : down ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500';
           const badge = up ? 'bg-rose-500/10 text-rose-500' : down ? 'bg-emerald-500/10 text-emerald-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-500';
-          const range = (w?: { start: Date }) => (w ? `${fmtDate(w.start, { day: 'numeric', month: 'short' })} – ${fmtDate(new Date(w.start.getTime() + 6 * 86400000), { day: 'numeric', month: 'short' })}` : '—');
+          const range = (w?: { start: Date }) => (w ? fmtDate(w.start, { month: 'long', year: 'numeric' }) : '—');
           return (
             <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-4 sm:p-5 flex flex-col">
               <div className="flex items-center justify-between gap-2">
-                <span className="kpi-label text-slate-500 dark:text-slate-400">{t('profile.weeklyChange')}</span>
+                <span className="kpi-label text-slate-500 dark:text-slate-400">{t('profile.monthlyChange')}</span>
                 <span className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 flex items-center justify-center"><Percent className="w-4 h-4" /></span>
               </div>
               <div className="mt-2.5 flex items-center gap-2.5">
@@ -178,14 +176,14 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
               </div>
               <dl className="mt-auto pt-3 space-y-1.5 text-[12px]">
                 <div className="flex items-center justify-between gap-2">
-                  <dt className="text-slate-400">{t('profile.thisWeek')} <span className="kpi-sub">({range(weekly?.cur)})</span></dt>
+                  <dt className="text-slate-500 dark:text-slate-400">{range(weekly?.cur)}</dt>
                   <dd className="kpi-num text-[13px] text-slate-800 dark:text-slate-100">{weekly ? fmtPrice(Math.round(weekly.curP * 10) / 10) : '—'}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-100 dark:border-slate-800">
-                  <dt className="text-slate-400">{t('profile.prevWeek')} <span className="kpi-sub">({range(weekly?.prev)})</span></dt>
+                  <dt className="text-slate-500 dark:text-slate-400">{range(weekly?.prev)}</dt>
                   <dd className="kpi-num text-[13px] text-slate-800 dark:text-slate-100">{weekly?.prev ? fmtPrice(Math.round(weekly.prevP * 10) / 10) : '—'}</dd>
                 </div>
-                {weekly && !weekly.prev && <div className="kpi-sub text-slate-400">{t('profile.noPrevWeek')}</div>}
+                {weekly && !weekly.prev && <div className="kpi-sub text-slate-400">{t('profile.noPrevMonth')}</div>}
               </dl>
             </div>
           );

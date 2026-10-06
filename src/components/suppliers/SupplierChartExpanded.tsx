@@ -134,8 +134,8 @@ const RangeBar: React.FC<{ count: number; value: [number, number]; onChange: (v:
           onChange={ev => onChange([s, Math.max(Number(ev.target.value), s + 1)])} />
       </div>
       <div className="mt-0.5 flex justify-between text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">
-        <span>{startLabel}</span>
-        <span>{endLabel}</span>
+        <span dir="auto">{startLabel}</span>
+        <span dir="auto">{endLabel}</span>
       </div>
     </div>
   );
@@ -212,7 +212,7 @@ const ChartView = React.memo(({ points, mode, metric, shown, companies, avgLine,
           {axis}{yAxis}
           {!live && <Tooltip content={tooltip} cursor={{ stroke: '#0d9488', strokeWidth: 1.5, strokeDasharray: '3 3' }} wrapperStyle={{ outline: 'none', zIndex: 20 }} isAnimationActive={false} />}
           {shown.map(c => (
-            <Area key={c} type={dense ? 'linear' : 'monotone'} dataKey={c} stroke={COMPANY_COLOR[c]} strokeWidth={dense ? 1.75 : 2.5} fill={`url(#exp-fill-${c})`}
+            <Area key={c} type="monotone" dataKey={c} stroke={COMPANY_COLOR[c]} strokeWidth={dense ? 1.75 : 2.5} fill={`url(#exp-fill-${c})`}
               filter={dense || live ? undefined : `url(#exp-glow-${c})`} isAnimationActive={anim}
               connectNulls dot={dense ? false : { r: points.length > 40 ? 2 : 3.5, fill: '#fff', stroke: COMPANY_COLOR[c], strokeWidth: 2 }} activeDot={live ? false : { r: 5, stroke: COMPANY_COLOR[c], strokeWidth: 2.5, fill: '#fff' }} />
           ))}

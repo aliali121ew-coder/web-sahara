@@ -162,10 +162,7 @@
       "day": "يومي",
       "shipment": "كل شحنة"
     },
-    "weeklyChange": "نسبة التغيّر الأسبوعية",
-    "thisWeek": "آخر أسبوع",
-    "prevWeek": "الأسبوع السابق",
-    "qtyChange": "الكمية",
-    "noPrevWeek": "لا وارد قبل هذا الأسبوع"
+    "monthlyChange": "نسبة التغيّر الشهرية",
+    "noPrevMonth": "لا وارد قبل هذا الشهر"
   }
 }
