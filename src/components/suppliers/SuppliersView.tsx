@@ -10,7 +10,7 @@ import { usePermissions } from '../../lib/usePermission';
 import { enumText } from '../../i18n/enums';
 import { collator } from '../../i18n/format';
 import { formatNumber } from '../../lib/utils';
-import { deliveriesOfSupplier, sameSupplier } from '../../lib/archiveSuppliers';
+import { deliveriesOfSupplier, sameSupplier, archiveIdentity, buildArchiveSuppliers } from '../../lib/archiveSuppliers';
 import { requestInboundFocus, focusFromDelivery } from '../../lib/inboundFocus';
 import { setSessionValue, useSessionState } from '../../lib/useSessionState';
 import { SupplierProfile } from './SupplierProfile';
@@ -305,8 +305,9 @@ export const SuppliersView: React.FC = () => {
   const { t } = useTranslation(['suppliers', 'common']);
   const { supplierPrices, saharaDeliveries, etihadDeliveries, saveSupplier, deleteSupplier, setActiveTab } = useFuelData();
   const editable = usePermissions().canEdit('suppliers');
-  // صفحة المورد الكاملة (تبقى مفتوحة بعد تحديث الصفحة)
-  const [profile, setProfile] = useSessionState<string | null>('supplier_profile', null);
+  // صفحة المورد الكاملة (تبقى مفتوحة بعد تحديث الصفحة): اسمه في الأرشيف وشركة السجل الذي فُتحت منه
+  const [profileState, setProfile] = useSessionState<{ name: string; company?: Company } | string | null>('supplier_profile', null);
+  const profile = typeof profileState === 'string' ? { name: profileState } : profileState;
 
   // يُعرض أولًا آخر مورد تحدّث سعره (نفس ترتيب الجدول الافتراضي)
   const [selectedId, setSelectedId] = useState<string | undefined>(() =>
@@ -322,6 +323,11 @@ export const SuppliersView: React.FC = () => {
   const menuRef = useOutside(menuOpen, () => setMenuOpen(false));
 
   const selected = supplierPrices.find(s => s.id === selectedId) ?? supplierPrices[0];
+  // المقارنة تُبنى من الأرشيف وحده (أسماء وشركات وأرقام)؛ من سجلات الأسعار يُؤخذ الشعار فقط
+  const archiveSuppliers = useMemo(() => buildArchiveSuppliers(saharaDeliveries, etihadDeliveries).map(a => {
+    const rec = supplierPrices.find(s => s.id === a.id) ?? supplierPrices.find(s => s.company === a.company && sameSupplier(s.supplierName, a.supplierName));
+    return rec?.logo ? { ...a, logo: rec.logo } : a;
+  }), [saharaDeliveries, etihadDeliveries, supplierPrices]);
 
   const allDeliveries = useMemo(
     () => [...saharaDeliveries.map(d => ({ d, tab: 'deliveries-sahara' as NavTabId })), ...etihadDeliveries.map(d => ({ d, tab: 'deliveries-etihad' as NavTabId }))],
@@ -436,7 +442,7 @@ export const SuppliersView: React.FC = () => {
   const th = 'px-3 xl:px-4 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap';
   const td = 'px-3 xl:px-4 py-3 text-[13px] text-slate-700 dark:text-slate-300 whitespace-nowrap';
 
-  if (profile) return <SupplierProfile name={profile} onBack={() => setProfile(null)} />;
+  if (profile) return <SupplierProfile name={profile.name} initialCompany={profile.company} onBack={() => setProfile(null)} />;
 
   return (
     <div className="space-y-5 pb-10">
@@ -469,7 +475,7 @@ export const SuppliersView: React.FC = () => {
             </div>
           </div>
           {/* بطاقة ملف المورد: تفتح صفحة المورد الكاملة (وارد الشركتين والمجهزون) */}
-          <button type="button" onClick={() => setProfile(selected.supplierName)}
+          <button type="button" onClick={() => setProfile({ name: archiveIdentity(selected, saharaDeliveries, etihadDeliveries) ?? selected.supplierName, company: selected.company })}
             className="group lg:w-72 shrink-0 rounded-2xl p-4 text-start bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 hover:border-teal-400 hover:bg-teal-50/60 dark:hover:bg-teal-950/30 transition-colors cursor-pointer">
             <div className="flex items-center gap-3">
               <span className="p-0.5 rounded-xl bg-white dark:bg-slate-900 shadow-sm shrink-0"><Avatar s={selected} size="w-11 h-11" text="text-base" /></span>
@@ -593,7 +599,7 @@ export const SuppliersView: React.FC = () => {
               className="h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 text-[13px] text-slate-600 dark:text-slate-300 flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-teal-600 hover:border-teal-400 cursor-pointer">
               <BarChart3 className="w-4 h-4" /> {t('compare.button')}
             </button>
-            {compareOpen && <SuppliersCompare suppliers={supplierPrices} sahara={saharaDeliveries} etihad={etihadDeliveries} onClose={() => setCompareOpen(false)} />}
+            {compareOpen && <SuppliersCompare suppliers={archiveSuppliers} sahara={saharaDeliveries} etihad={etihadDeliveries} onClose={() => setCompareOpen(false)} />}
             <div ref={menuRef} className="relative ms-auto">
               <button type="button" onClick={() => setMenuOpen(o => !o)} aria-expanded={menuOpen}
                 className="h-10 ps-4 pe-3 rounded-lg border border-teal-500 text-teal-600 dark:text-teal-400 text-[13px] font-medium flex items-center gap-2 hover:bg-teal-50 dark:hover:bg-teal-950/40 cursor-pointer">

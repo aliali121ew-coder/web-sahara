@@ -66,6 +66,23 @@ export const deliveriesFromIndex = (idx: Map<string, InboundDelivery[]>, name: s
   return out;
 };
 
+/**
+ * اسم المورد كما في أرشيف شركة السجل: المطابقة التامة أولًا، ثم التقريبية (الأكثر شحنات).
+ * يُستخدم لفتح ملف المورد من سجل السعر دون الاعتماد على اسم السجل المعدَّل؛ null إن لم يكن له وارد.
+ */
+export const archiveIdentity = (rec: { supplierName: string; company?: 'sahara' | 'etihad' }, sahara: InboundDelivery[], etihad: InboundDelivery[]): string | null => {
+  const pool = rec.company === 'etihad' ? etihad : rec.company === 'sahara' ? sahara : [...sahara, ...etihad];
+  const groups = indexDeliveries(pool);
+  let list = groups.get(supplierKey(rec.supplierName));
+  if (!list?.length) {
+    for (const [k, l] of groups) if (sameSupplier(k, rec.supplierName) && l.length > (list?.length ?? 0)) list = l;
+  }
+  if (!list?.length) return null;
+  const freq = new Map<string, number>();
+  list.forEach(d => { const n = cleanName(deliverySupplier(d)); freq.set(n, (freq.get(n) ?? 0) + 1); });
+  return [...freq].sort((a, b) => b[1] - a[1])[0][0];
+};
+
 /** قيمة فعلية في حقل نصي من الأرشيف («_» و«-» و«0» تعني فارغ) */
 export const archiveValue = (v: unknown): string | undefined => {
   const s = String(v ?? '').replace(/\s+/g, ' ').trim();

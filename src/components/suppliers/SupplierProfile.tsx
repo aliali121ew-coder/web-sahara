@@ -28,29 +28,39 @@ const priceOf = (d: InboundDelivery) => d.productPrice || d.pricePerLiter || 0;
 
 interface Row { d: InboundDelivery; co: Company }
 
-export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = ({ name, onBack }) => {
+export const SupplierProfile: React.FC<{ name: string; initialCompany?: Company; onBack: () => void }> = ({ name, initialCompany, onBack }) => {
   const { t } = useTranslation(['suppliers', 'common']);
   const { saharaDeliveries, etihadDeliveries, supplierPrices } = useFuelData();
-  const [company, setCompany] = useState<Company | null>(null);
+  // يُفتح على شركة السجل الذي فُتح منه (يمكن إلغاء التصفية لرؤية الشركتين)
+  const [company, setCompany] = useState<Company | null>(initialCompany ?? null);
   const [equipper, setEquipper] = useState<string | null>(null);
   const [page, setPage] = useState(0);
 
   useEffect(() => { window.scrollTo({ top: 0 }); document.querySelector('main')?.scrollTo?.({ top: 0 }); }, [name]);
 
   // كل شحنات المورد من أرشيفي الصحاري والاتحاد، الأحدث أولًا
-  const rows = useMemo<Row[]>(() => {
+  const allRows = useMemo<Row[]>(() => {
     const items: Row[] = [...saharaDeliveries.map(d => ({ d, co: 'sahara' as Company })), ...etihadDeliveries.map(d => ({ d, co: 'etihad' as Company }))];
     return deliveriesOfSupplier(items, x => x.d, name).sort((a, b) => dayOf(b.d).localeCompare(dayOf(a.d)));
   }, [saharaDeliveries, etihadDeliveries, name]);
+  // الشركة المختارة تحدد نطاق الصفحة كلها (البطاقات والرسم والسجل)؛ حلقة الشركتين وحدها تبقى على الكل للتبديل
+  const rows = useMemo(() => (company ? allRows.filter(r => r.co === company) : allRows), [allRows, company]);
 
-  const record = supplierPrices.find(s => sameSupplier(s.supplierName, name));
+  // من سجلات الأسعار يُؤخذ الشعار فقط؛ كل ما عداه من الأرشيف
+  const record = supplierPrices.find(s => (!initialCompany || s.company === initialCompany) && sameSupplier(s.supplierName, name))
+    ?? supplierPrices.find(s => sameSupplier(s.supplierName, name));
   const avatarRec = { id: record?.id ?? name, supplierName: name, logo: record?.logo };
+  const product = useMemo(() => {
+    const freq = new Map<string, number>();
+    rows.forEach(({ d }) => { const p = (d.product || '').trim(); if (p) freq.set(p, (freq.get(p) ?? 0) + 1); });
+    return [...freq].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
+  }, [rows, allRows]);
 
   const stats = useMemo(() => {
     const priced = rows.filter(r => priceOf(r.d) > 0);
     const max = priced.reduce<Row | null>((m, r) => (!m || priceOf(r.d) > priceOf(m.d) ? r : m), null);
     const min = priced.reduce<Row | null>((m, r) => (!m || priceOf(r.d) < priceOf(m.d) ? r : m), null);
-    const count = (c: Company) => rows.filter(r => r.co === c).length;
+    const count = (c: Company) => allRows.filter(r => r.co === c).length;
     const pq = priced.reduce((a, r) => a + qtyOf(r.d), 0);
     const avg = pq ? priced.reduce((a, r) => a + qtyOf(r.d) * priceOf(r.d), 0) / pq : 0;
     // مسار السعر لكامل الفترة (نفس مدى أعلى/أدنى سعر): متوسط كل يوم زمنيًا،
@@ -70,7 +80,7 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
       spark = out;
     }
     return { max, min, avg, spark, last: priced[0] ?? null, sahara: count('sahara'), etihad: count('etihad'), qty: rows.reduce((a, r) => a + qtyOf(r.d), 0) };
-  }, [rows]);
+  }, [rows, allRows]);
 
   // نسبة التغيّر الشهرية: آخر شهر فيه وارد مسعّر مقابل الشهر الذي فيه وارد قبله
   const weekly = useMemo(() => {
@@ -95,7 +105,7 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
     const pct = prevP ? Math.round(((curP - prevP) / prevP) * 1000) / 10 : null;
     const qtyPct = prev && prev.q ? Math.round(((cur.q - prev.q) / prev.q) * 1000) / 10 : null;
     return { cur, prev, curP, prevP, pct, qtyPct };
-  }, [rows]);
+  }, [rows, allRows]);
 
   // المجهزون لكل شركة مستلمة: عدد الصهاريج والكمية، الأكثر توريدًا أولًا
   const equippers = useMemo(() => {
@@ -219,12 +229,12 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
           {/* حلقة الحصص + بطاقتا الشركتين (الضغط يصفّي السجل) */}
           <div className="mt-3 flex items-center gap-3">
             <ShareRing counts={{ sahara: stats.sahara, etihad: stats.etihad }} active={company}
-              center={<><span className="kpi-num text-[18px] text-slate-900 dark:text-white">{formatNumber(rows.length)}</span><span className="text-[10px] text-slate-400">{t('profile.statTankers')}</span></>} />
+              center={<><span className="kpi-num text-[18px] text-slate-900 dark:text-white">{formatNumber(allRows.length)}</span><span className="text-[10px] text-slate-400">{t('profile.statTankers')}</span></>} />
             <div className="flex-1 min-w-0 space-y-1.5">
               {(['sahara', 'etihad'] as Company[]).map(c => {
                 const n = stats[c];
                 const on = company === c;
-                const share = rows.length ? Math.round((n / rows.length) * 100) : 0;
+                const share = allRows.length ? Math.round((n / allRows.length) * 100) : 0;
                 return (
                   <button key={c} type="button" disabled={!n} onClick={() => setCompany(on ? null : c)} aria-pressed={on}
                     className={`w-full rounded-xl px-2.5 py-1.5 flex items-center gap-2 text-start border transition-colors ${on ? 'border-teal-500 bg-teal-50 dark:bg-teal-950/40' : 'border-slate-200/80 dark:border-slate-700 hover:border-teal-400'} disabled:opacity-50 disabled:cursor-default cursor-pointer`}>
@@ -360,7 +370,7 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
               <span className="p-0.5 rounded-xl bg-white/30 shrink-0"><Avatar s={avatarRec} size="w-14 h-14" text="text-xl" /></span>
               <div className="min-w-0">
                 <div className="text-lg font-bold leading-tight truncate">{name}</div>
-                <div className="text-xs text-white/80 truncate">{record?.product || t('profile.subtitle')}</div>
+                <div className="text-xs text-white/80 truncate">{product || t('profile.subtitle')}</div>
               </div>
             </div>
             <div className="mt-4 grid grid-cols-3 gap-2 text-center">
