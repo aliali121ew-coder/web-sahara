@@ -13,7 +13,9 @@
     "product": "Product",
     "phone": "Phone number",
     "location": "Location",
-    "category": "Category"
+    "category": "Category",
+    "density": "Density",
+    "color": "Color"
   },
   "cards": {
     "current": "Current price",
@@ -66,7 +68,10 @@
     "view": "View",
     "inbound": "Inbound",
     "tankers": "Tankers",
-    "receiver": "Receiving company"
+    "receiver": "Receiving company",
+    "product": "Product",
+    "density": "Density",
+    "color": "Color"
   },
   "modal": {
     "addTitle": "Add supplier",

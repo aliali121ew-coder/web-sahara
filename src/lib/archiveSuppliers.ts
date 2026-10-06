@@ -66,6 +66,12 @@ export const deliveriesFromIndex = (idx: Map<string, InboundDelivery[]>, name: s
   return out;
 };
 
+/** قيمة فعلية في حقل نصي من الأرشيف («_» و«-» و«0» تعني فارغ) */
+export const archiveValue = (v: unknown): string | undefined => {
+  const s = String(v ?? '').replace(/\s+/g, ' ').trim();
+  return !s || s === '_' || s === '-' || s === '0' ? undefined : s;
+};
+
 const dateKey = (d: InboundDelivery) => (d.receiptUnloadDate || d.date || '').replace(/-/g, '/');
 const priceOf = (d: InboundDelivery) => d.productPrice || d.pricePerLiter || 0;
 
@@ -100,8 +106,12 @@ const buildCompanySuppliers = (deliveries: InboundDelivery[], company: 'sahara' 
       if (!history.length || history[history.length - 1].price !== priceOf(d)) history.push({ date: dateKey(d), price: priceOf(d) });
       if (history.length >= 30) break;
     }
+    const density = list.map(d => archiveValue(d.productDensity)).find(Boolean);
+    const color = list.map(d => archiveValue(d.productColor)).find(Boolean);
     out.push({
       id: `sup-a-${company}-${key.replace(/\s+/g, '-')}`,
+      density,
+      color,
       company,
       supplierName: name,
       product: [...products].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '',

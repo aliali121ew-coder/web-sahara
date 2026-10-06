@@ -131,7 +131,7 @@ const SupplierModal: React.FC<{ initial: SupplierPriceRecord; isNew: boolean; on
     return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
   }, [onClose]);
 
-  const save = () => valid && onSave({ ...f, supplierName: f.supplierName.trim(), product: f.product.trim(), priceIqd: priceNum, id: f.id || `sup-${Date.now()}` });
+  const save = () => valid && onSave({ ...f, supplierName: f.supplierName.trim(), product: f.product.trim(), density: (f.density ?? '').trim(), color: (f.color ?? '').trim(), priceIqd: priceNum, id: f.id || `sup-${Date.now()}` });
   const input = 'w-full h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/60 text-sm text-slate-900 dark:text-white outline-none transition-colors placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-800 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10';
   const label = 'block text-[12.5px] font-medium text-slate-600 dark:text-slate-300 mb-1.5';
   const section = 'text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-3';
@@ -186,6 +186,17 @@ const SupplierModal: React.FC<{ initial: SupplierPriceRecord; isNew: boolean; on
               <div>
                 <label className={label}>{t('fields.product')}</label>
                 <input className={`${input} px-3.5`} value={f.product} onChange={e => set('product', e.target.value)} />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className={label}>{t('fields.density')}</label>
+                  <input className={`${input} px-3.5 tabular-nums`} dir="ltr" style={{ textAlign: 'start' }} inputMode="decimal" placeholder="0.840"
+                    value={f.density ?? ''} onChange={e => set('density', e.target.value.replace(/[^\d.,]/g, ''))} />
+                </div>
+                <div>
+                  <label className={label}>{t('fields.color')}</label>
+                  <input className={`${input} px-3.5`} value={f.color ?? ''} onChange={e => set('color', e.target.value)} />
+                </div>
               </div>
             </div>
           </section>
@@ -623,10 +634,12 @@ export const SuppliersView: React.FC = () => {
                   <CompanyBadges companies={inb.companies} />
                   <ChangePill pct={s.changePercent} />
                 </div>
-                <dl className="mt-3 grid grid-cols-2 gap-2 text-center">
+                <dl className="mt-3 grid grid-cols-2 min-[480px]:grid-cols-4 sm:grid-cols-2 gap-2 text-center">
                   {[
                     { k: t('table.current'), v: fmtPrice(s.priceIqd), strong: true },
                     { k: t('table.previous'), v: fmtPrice(s.previousPriceIqd) },
+                    { k: t('table.density'), v: s.density || '—' },
+                    { k: t('table.color'), v: s.color || '—' },
                   ].map(({ k, v, strong }) => (
                     <div key={k} className="rounded-xl bg-slate-50 dark:bg-slate-800/60 px-1.5 py-2 min-w-0">
                       <dt className="text-[10.5px] text-slate-400 truncate">{k}</dt>
@@ -654,6 +667,9 @@ export const SuppliersView: React.FC = () => {
                 <tr>
                   <th className={th}>{t('table.receiver')}</th>
                   <th className={th}>{t('table.supplier')}</th>
+                  <th className={th}>{t('table.product')}</th>
+                  <th className={th}>{t('table.density')}</th>
+                  <th className={th}>{t('table.color')}</th>
                   <th className={th}>{t('table.current')}</th>
                   <th className={th}>{t('table.previous')}</th>
                   <th className={th}>{t('table.change')}</th>
@@ -663,7 +679,7 @@ export const SuppliersView: React.FC = () => {
               </thead>
               <tbody>
                 {rows.length === 0 && (
-                  <tr><td colSpan={7} className="py-12 text-center text-sm text-slate-400">{t('empty')}</td></tr>
+                  <tr><td colSpan={10} className="py-12 text-center text-sm text-slate-400">{t('empty')}</td></tr>
                 )}
                 {pageRows.map(s => {
                   const active = s.id === selected?.id;
@@ -678,6 +694,9 @@ export const SuppliersView: React.FC = () => {
                           <span className="text-[13px] font-medium text-slate-800 dark:text-slate-100 truncate max-w-[200px] xl:max-w-[280px]">{s.supplierName}</span>
                         </div>
                       </td>
+                      <td className={td}><span className="block truncate max-w-[160px]">{s.product || '—'}</span></td>
+                      <td className={`${td} tabular-nums`} dir="ltr" style={{ textAlign: 'start' }}>{s.density || '—'}</td>
+                      <td className={td}><span className="block truncate max-w-[120px]">{s.color || '—'}</span></td>
                       <td className={`${td} font-semibold text-slate-900 dark:text-white tabular-nums`}>{fmtPrice(s.priceIqd)}</td>
                       <td className={`${td} tabular-nums`}>{fmtPrice(s.previousPriceIqd)}</td>
                       <td className={td}><ChangePill pct={s.changePercent} /></td>

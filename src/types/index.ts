@@ -91,6 +91,9 @@ export interface SupplierPriceRecord {
   contactRole?: string;
   /** شعار المورد مصغّرًا (data URL) */
   logo?: string;
+  /** كثافة المنتج ولونه (تُعدَّل من نافذة المورد؛ تبدأ بقيمة آخر شحنة في الأرشيف) */
+  density?: string;
+  color?: string;
   /** سجل تغيّر السعر، الأحدث أولًا */
   history?: { date: string; price: number }[];
 }

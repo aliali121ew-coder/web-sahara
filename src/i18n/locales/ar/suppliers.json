@@ -13,7 +13,9 @@
     "product": "المنتج",
     "phone": "رقم الهاتف",
     "location": "الموقع",
-    "category": "التصنيف"
+    "category": "التصنيف",
+    "density": "الكثافة",
+    "color": "اللون"
   },
   "cards": {
     "current": "السعر الحالي",
@@ -66,7 +68,10 @@
     "view": "عرض",
     "inbound": "الوارد",
     "tankers": "عدد الصهاريج",
-    "receiver": "الشركة المستلمة"
+    "receiver": "الشركة المستلمة",
+    "product": "نوع المنتج",
+    "density": "الكثافة",
+    "color": "اللون"
   },
   "modal": {
     "addTitle": "إضافة مورد",

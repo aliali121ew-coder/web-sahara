@@ -23,7 +23,7 @@ import {
   INITIAL_MESSAGES,
   INITIAL_NOTIFICATIONS
 } from '../lib/mockData';
-import { buildArchiveSuppliers, sameSupplier, deliveriesOfSupplier } from '../lib/archiveSuppliers';
+import { buildArchiveSuppliers, sameSupplier, deliveriesOfSupplier, archiveValue } from '../lib/archiveSuppliers';
 
 const MOCK_SUPPLIERS_REMOVED_KEY = 'sahara_supplier_mock_removed';
 const SUPPLIER_NAMES_REPAIRED_KEY = 'sahara_supplier_names_repaired';
@@ -414,6 +414,23 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           const sa = n(saharaDeliveries), et = n(etihadDeliveries);
           return sa || et ? { ...x, company: et > sa ? 'etihad' : 'sahara' } : x;
         });
+      }
+      // الكثافة واللون: تُملأ مرة من الأرشيف للسجلات التي لم تُضبط فيها بعد
+      // (قيم الأرشيف الفارغة «_»/«0» التي نُسخت سابقًا تُعامل كغير مضبوطة)
+      const unset = (v?: string) => v === undefined || (v !== '' && !archiveValue(v));
+      if (list.some(x => unset(x.density) || unset(x.color))) {
+        const built = buildArchiveSuppliers(saharaDeliveries, etihadDeliveries);
+        let touched = false;
+        const filled = list.map(x => {
+          if (!unset(x.density) && !unset(x.color)) return x;
+          const b = built.find(a => a.id === x.id) ?? built.find(a => a.company === x.company && sameSupplier(a.supplierName, x.supplierName));
+          if (!b) return x;
+          const density = unset(x.density) ? b.density : x.density, color = unset(x.color) ? b.color : x.color;
+          if (density === x.density && color === x.color) return x;
+          touched = true;
+          return { ...x, density, color };
+        });
+        if (touched) list = filled;
       }
       return missing.length || list !== prev ? [...list, ...missing] : prev;
     });
