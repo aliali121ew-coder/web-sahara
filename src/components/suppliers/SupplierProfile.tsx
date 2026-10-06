@@ -6,6 +6,7 @@ import { formatNumber } from '../../lib/utils';
 import { deliveriesOfSupplier, sameSupplier, deliveryCompany } from '../../lib/archiveSuppliers';
 import type { InboundDelivery } from '../../types';
 import { fmtPrice, CompanyBadges, Avatar, type Company } from './supplierUi';
+import { SupplierMonthlyChart } from './SupplierMonthlyChart';
 
 /** الجهة التي ورد عبرها المورد: الشركة المجهزة، وإن لم تُذكر فالمورد نفسه (المورد صار المجهز أولًا) */
 const equipperOf = (d: InboundDelivery) => deliveryCompany(d);
@@ -174,8 +175,8 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
       </div>
 
       {/* القسم الثاني: جدول الوارد 60% + بطاقة المورد 40% */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:items-stretch">
-        <section className="lg:col-span-3 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-[0_1px_3px_rgba(15,23,42,0.05)] overflow-hidden min-w-0 flex flex-col">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:items-stretch lg:h-[700px]">
+        <section className="lg:col-span-3 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-[0_1px_3px_rgba(15,23,42,0.05)] overflow-hidden min-w-0 flex flex-col lg:h-full lg:min-h-0">
           <div className="px-4 sm:px-5 py-4 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800">
             <div>
               <h2 className="text-[15px] font-semibold text-slate-900 dark:text-white">{t('profile.archiveTitle')}</h2>
@@ -196,7 +197,7 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
           </div>
 
           {/* الهاتف والتابلت: بطاقات */}
-          <div className="md:hidden p-3 space-y-2.5">
+          <div className="md:hidden p-3 space-y-2.5 lg:overflow-y-auto lg:flex-1 lg:min-h-0">
             {pageRows.length === 0 && <p className="py-10 text-center text-sm text-slate-400">{t('profile.empty')}</p>}
             {pageRows.map(({ d, co }, i) => (
               <article key={d.id ?? i} className="rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3">
@@ -213,7 +214,7 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
             ))}
           </div>
 
-          <div className="hidden md:block overflow-x-auto flex-1">
+          <div className="hidden md:block overflow-auto flex-1 min-h-0">
             <table className="w-full">
               <thead className="bg-slate-50 dark:bg-slate-800/60">
                 <tr>
@@ -264,8 +265,8 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
         </section>
 
         {/* بطاقة المورد والمجهزين */}
-        <aside className="order-first lg:order-none lg:col-span-2 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-[0_1px_3px_rgba(15,23,42,0.05)] overflow-hidden flex flex-col">
-          <div className="p-5 text-white bg-gradient-to-br from-teal-600 via-teal-500 to-[#5fb8a3]">
+        <aside className="order-first lg:order-none lg:col-span-2 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-[0_1px_3px_rgba(15,23,42,0.05)] overflow-hidden flex flex-col lg:h-full lg:min-h-0">
+          <div className="shrink-0 p-5 text-white bg-gradient-to-br from-teal-600 via-teal-500 to-[#5fb8a3]">
             <div className="flex items-center gap-3">
               <span className="p-0.5 rounded-xl bg-white/30 shrink-0"><Avatar s={avatarRec} size="w-14 h-14" text="text-xl" /></span>
               <div className="min-w-0">
@@ -287,7 +288,9 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
             </div>
           </div>
 
-          <div className="p-3 sm:p-4 space-y-4 flex-1 flex flex-col">
+          <div className="p-3 sm:p-4 flex-1 min-h-0 flex flex-col gap-3">
+            {/* قائمة الشركات المجهزة: تمرير عند كثرتها */}
+            <div className="space-y-4 overflow-y-auto max-h-[300px] lg:max-h-none lg:flex-1 lg:min-h-0 pe-1 -me-1">
             {equippers.length === 0 && <p className="py-8 text-center text-sm text-slate-400">{t('profile.empty')}</p>}
             {equippers.map(g => (
               <div key={g.co}>
@@ -322,12 +325,17 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
                 </ul>
               </div>
             ))}
+            </div>
             {(company || equipper) && (
               <button type="button" onClick={() => { setCompany(null); setEquipper(null); }}
-                className="mt-auto w-full h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer">
+                className="shrink-0 w-full h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer">
                 {t('profile.showAll')}
               </button>
             )}
+            {/* الرسم البياني: الوارد الشهري حسب الشركة، بارتفاع ثابت أسفل البطاقة */}
+            <div className="shrink-0 h-[220px] pt-3 border-t border-slate-100 dark:border-slate-800">
+              <SupplierMonthlyChart rows={rows} />
+            </div>
           </div>
         </aside>
       </div>

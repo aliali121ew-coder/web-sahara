@@ -129,6 +129,8 @@
     "priceRange": "نطاق السعر",
     "tankersByCompany": "الصهاريج حسب الشركة",
     "lastPrice": "آخر سعر: {{price}}",
-    "avgPrice": "متوسط السعر"
+    "avgPrice": "متوسط السعر",
+    "chartTitle": "الوارد الشهري",
+    "chartLegend": "الكمية (لتر)"
   }
 }

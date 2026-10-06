@@ -121,6 +121,8 @@
     "priceRange": "Price range",
     "tankersByCompany": "Tankers by company",
     "lastPrice": "Last price: {{price}}",
-    "avgPrice": "Average price"
+    "avgPrice": "Average price",
+    "chartTitle": "Monthly inbound",
+    "chartLegend": "Quantity (L)"
   }
 }
