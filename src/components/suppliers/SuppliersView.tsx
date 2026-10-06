@@ -586,10 +586,7 @@ export const SuppliersView: React.FC = () => {
                       <td className={`${td} tabular-nums`}>{s.lastUpdated}</td>
                       <td className={td}>
                         {inb.count ? (
-                          <div className="tabular-nums">
-                            <div className="font-semibold text-slate-900 dark:text-white">{formatNumber(inb.lastDayQty)} <span className="text-[11px] font-normal text-slate-400">{t('common:units.liter')}</span></div>
-                            <div className="text-[11px] text-slate-400">{inb.lastDay}</div>
-                          </div>
+                          <span className="tabular-nums font-semibold text-slate-900 dark:text-white">{formatNumber(inb.lastDayQty)} <span className="text-[11px] font-normal text-slate-400">{t('common:units.liter')}</span></span>
                         ) : '—'}
                       </td>
                       <td className={`${td} tabular-nums`}>{inb.count ? formatNumber(inb.lastDayCount) : '—'}</td>
