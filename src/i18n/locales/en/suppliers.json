@@ -144,6 +144,15 @@
     "peakDay": "Peak day",
     "peakMonth": "Peak month",
     "avgLine": "Average line",
-    "toggleSeries": "Show or hide"
+    "toggleSeries": "Show or hide",
+    "zoomIn": "Zoom in (more detail)",
+    "zoomOut": "Zoom out (less detail)",
+    "allEquippers": "All equippers",
+    "gran": {
+      "month": "Monthly",
+      "week": "Weekly",
+      "day": "Daily",
+      "shipment": "Each shipment"
+    }
   }
 }

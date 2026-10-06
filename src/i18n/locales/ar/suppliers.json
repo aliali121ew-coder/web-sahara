@@ -152,6 +152,15 @@
     "peakDay": "أعلى يوم",
     "peakMonth": "أعلى شهر",
     "avgLine": "خط المتوسط",
-    "toggleSeries": "إظهار أو إخفاء"
+    "toggleSeries": "إظهار أو إخفاء",
+    "zoomIn": "تكبير (تفاصيل أدق)",
+    "zoomOut": "تصغير (تفاصيل أعم)",
+    "allEquippers": "كل المجهزين",
+    "gran": {
+      "month": "شهري",
+      "week": "أسبوعي",
+      "day": "يومي",
+      "shipment": "كل شحنة"
+    }
   }
 }

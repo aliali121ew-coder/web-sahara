@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from 'recharts';
-import { Activity, BarChart3, Waves, X, Droplets, Truck, Coins, CalendarRange } from 'lucide-react';
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, Brush } from 'recharts';
+import { Activity, BarChart3, Waves, X, Droplets, Truck, Coins, CalendarRange, ZoomIn, ZoomOut } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { fmtDate } from '../../i18n/format';
 import { formatNumber } from '../../lib/utils';
+import { deliveryCompany } from '../../lib/archiveSuppliers';
 import type { InboundDelivery } from '../../types';
 import { COMPANY_COLOR, type Company } from './supplierUi';
 
@@ -13,7 +14,7 @@ export type Period = 'd30' | 'd90' | 'm12' | 'all';
 type Metric = 'qty' | 'tankers' | 'price';
 type Mode = 'waves' | 'bars';
 
-interface Bucket { key: string; label: string; full: string; sahara: number | null; etihad: number | null; saharaQ: number; etihadQ: number; saharaN: number; etihadN: number; saharaP: number; etihadP: number }
+interface Bucket { key: string; label: string; full: string; sahara: number | null; etihad: number | null; saharaQ: number; etihadQ: number; saharaN: number; etihadN: number; saharaP: number; etihadP: number; ship?: Row }
 
 const DAY = 86400000;
 const priceOf = (d: InboundDelivery) => d.productPrice || d.pricePerLiter || 0;
@@ -22,48 +23,74 @@ const dayOf = (d: InboundDelivery) => (d.receiptUnloadDate || d.date || '').spli
 const toDate = (day: string) => { const [y, m, dd] = day.split('/').map(Number); return new Date(y, m - 1, dd || 1); };
 const compact = (v: number) => (v >= 1e6 ? `${Math.round(v / 1e5) / 10}M` : v >= 1e3 ? `${Math.round(v / 1e3)}k` : formatNumber(Math.round(v)));
 
+/** مستويات التكبير: من الأعم إلى الأدق؛ «shipment» تعرض كل شحنة واردة نقطةً مستقلة */
+export type Gran = 'month' | 'week' | 'day' | 'shipment';
+export const GRANS: Gran[] = ['month', 'week', 'day', 'shipment'];
+
+const ymd = (dt: Date) => `${dt.getFullYear()}/${String(dt.getMonth() + 1).padStart(2, '0')}/${String(dt.getDate()).padStart(2, '0')}`;
+/** بداية الأسبوع (السبت) */
+const weekStart = (day: string) => { const dt = toDate(day); dt.setDate(dt.getDate() - ((dt.getDay() + 1) % 7)); return ymd(dt); };
+
 /**
- * تجميع شحنات المورد حسب الفترة: يومي لآخر 30/90 يومًا، وشهري لآخر 12 شهرًا أو الكل.
- * الفترة تُحسب من آخر يوم وارد للمورد (لا من اليوم) حتى لا تظهر فارغة لمورد توقف وارده.
+ * تجميع شحنات المورد حسب الفترة ومستوى التكبير (شهري/أسبوعي/يومي/كل شحنة).
+ * الفترة تُحسب من آخر يوم وارد للمورد (لا من اليوم) حتى لا تظهر فارغة لمورد توقف وارده،
+ * وتُعرض فقط الفترات التي فيها وارد فيمتلئ الرسم بالبيانات الفعلية.
  */
-export const buildBuckets = (rows: Row[], period: Period, metric: Metric): Bucket[] => {
+export const buildBuckets = (rows: Row[], period: Period, metric: Metric, gran: Gran = 'month'): Bucket[] => {
   const valid = rows.filter(r => /^\d{4}\/\d{2}\/\d{2}$/.test(dayOf(r.d)));
   if (!valid.length) return [];
   const last = valid.reduce((m, r) => (dayOf(r.d) > m ? dayOf(r.d) : m), '');
   const lastTs = toDate(last).getTime();
-  const daily = period === 'd30' || period === 'd90';
-  const from = period === 'd30' ? lastTs - 29 * DAY : period === 'd90' ? lastTs - 89 * DAY : 0;
+  const from = period === 'd30' ? lastTs - 29 * DAY : period === 'd90' ? lastTs - 89 * DAY : period === 'm12' ? new Date(toDate(last).getFullYear(), toDate(last).getMonth() - 11, 1).getTime() : 0;
+  const inRange = valid.filter(r => toDate(dayOf(r.d)).getTime() >= from).sort((a, b) => dayOf(a.d).localeCompare(dayOf(b.d)));
+
+  // كل شحنة نقطة مستقلة
+  if (gran === 'shipment') {
+    return inRange.map(({ d, co }, i) => {
+      const day = dayOf(d);
+      const q = qtyOf(d), p = priceOf(d);
+      const v = metric === 'qty' ? q : metric === 'tankers' ? 1 : p || null;
+      return {
+        key: `${day}#${i}`, label: fmtDate(toDate(day), { day: 'numeric', month: 'short' }), full: fmtDate(toDate(day), { dateStyle: 'medium' }),
+        sahara: co === 'sahara' ? v : null, etihad: co === 'etihad' ? v : null,
+        saharaQ: co === 'sahara' ? q : 0, etihadQ: co === 'etihad' ? q : 0, saharaN: co === 'sahara' ? 1 : 0, etihadN: co === 'etihad' ? 1 : 0,
+        saharaP: co === 'sahara' ? p : 0, etihadP: co === 'etihad' ? p : 0, ship: { d, co },
+      };
+    });
+  }
+
+  const keyOf = (day: string) => (gran === 'month' ? day.slice(0, 7) : gran === 'week' ? weekStart(day) : day);
   const acc = new Map<string, { q: Record<Company, number>; n: Record<Company, number>; cost: Record<Company, number>; pq: Record<Company, number> }>();
-  valid.forEach(({ d, co }) => {
-    const day = dayOf(d);
-    if (daily && toDate(day).getTime() < from) return;
-    const key = daily ? day : day.slice(0, 7);
+  inRange.forEach(({ d, co }) => {
+    const key = keyOf(dayOf(d));
     const a = acc.get(key) ?? { q: { sahara: 0, etihad: 0 }, n: { sahara: 0, etihad: 0 }, cost: { sahara: 0, etihad: 0 }, pq: { sahara: 0, etihad: 0 } };
     a.q[co] += qtyOf(d); a.n[co] += 1;
     if (priceOf(d) > 0) { a.cost[co] += qtyOf(d) * priceOf(d); a.pq[co] += qtyOf(d); }
     acc.set(key, a);
   });
-  // تُعرض فقط الأيام/الأشهر التي فيها وارد داخل الفترة، فيملأ الرسم عرضه بالبيانات الفعلية بدل امتداد فارغ
-  let keys = [...acc.keys()].sort();
-  if (period === 'm12') keys = keys.slice(-12);
+  const keys = [...acc.keys()].sort();
   const multiYear = new Set(keys.map(k => k.slice(0, 4))).size > 1;
   return keys.map(key => {
-    const a = acc.get(key);
-    const price = (c: Company) => (a && a.pq[c] ? Math.round((a.cost[c] / a.pq[c]) * 10) / 10 : 0);
+    const a = acc.get(key)!;
+    const price = (c: Company) => (a.pq[c] ? Math.round((a.cost[c] / a.pq[c]) * 10) / 10 : 0);
     // شركة بلا وارد في هذه الفترة: لا نقطة لها (null) فيتصل خطها بنقاطها فقط دون الهبوط إلى الصفر
     const val = (c: Company): number | null => {
-      if (!a || !a.n[c]) return null;
+      if (!a.n[c]) return null;
       if (metric === 'qty') return a.q[c];
       if (metric === 'tankers') return a.n[c];
-      return a.pq[c] ? Math.round((a.cost[c] / a.pq[c]) * 10) / 10 : null;
+      return price(c) || null;
     };
     const date = toDate(key);
+    const label = gran === 'month'
+      ? fmtDate(date, multiYear ? { month: 'short', year: '2-digit' } : { month: 'short' })
+      : fmtDate(date, { day: 'numeric', month: 'short' });
+    const full = gran === 'month' ? fmtDate(date, { month: 'long', year: 'numeric' })
+      : gran === 'week' ? `${fmtDate(date, { day: 'numeric', month: 'short' })} – ${fmtDate(new Date(date.getTime() + 6 * DAY), { day: 'numeric', month: 'short', year: 'numeric' })}`
+      : fmtDate(date, { dateStyle: 'medium' });
     return {
-      key,
-      label: daily ? fmtDate(date, { day: 'numeric', month: 'short' }) : fmtDate(date, multiYear ? { month: 'short', year: '2-digit' } : { month: 'short' }),
-      full: daily ? fmtDate(date, { dateStyle: 'medium' }) : fmtDate(date, { month: 'long', year: 'numeric' }),
+      key, label, full,
       sahara: val('sahara'), etihad: val('etihad'),
-      saharaQ: a?.q.sahara ?? 0, etihadQ: a?.q.etihad ?? 0, saharaN: a?.n.sahara ?? 0, etihadN: a?.n.etihad ?? 0,
+      saharaQ: a.q.sahara, etihadQ: a.q.etihad, saharaN: a.n.sahara, etihadN: a.n.etihad,
       saharaP: price('sahara'), etihadP: price('etihad'),
     };
   });
@@ -86,6 +113,9 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
   const [period, setPeriod] = useState<Period>(initialPeriod);
   const [metric, setMetric] = useState<Metric>('qty');
   const [mode, setMode] = useState<Mode>('waves');
+  const [gran, setGran] = useState<Gran>('month');
+  // المجهز (الشركة المجهزة) داخل المورد: الكل أو مجهز واحد
+  const [equipper, setEquipper] = useState<string>('');
   const companies = useMemo(() => (['sahara', 'etihad'] as Company[]).filter(c => rows.some(r => r.co === c)), [rows]);
   const [hidden, setHidden] = useState<Set<Company>>(new Set());
   const shown = companies.filter(c => !hidden.has(c));
@@ -98,7 +128,18 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
     return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
   }, [onClose]);
 
-  const data = useMemo(() => buildBuckets(rows, period, metric), [rows, period, metric]);
+  const equippers = useMemo(() => {
+    const m = new Map<string, number>();
+    rows.forEach(r => { const e = deliveryCompany(r.d) || name; m.set(e, (m.get(e) ?? 0) + 1); });
+    return [...m].sort((a, b) => b[1] - a[1]);
+  }, [rows, name]);
+  const scoped = useMemo(() => (equipper ? rows.filter(r => (deliveryCompany(r.d) || name) === equipper) : rows), [rows, equipper, name]);
+  const data = useMemo(() => buildBuckets(scoped, period, metric, gran), [scoped, period, metric, gran]);
+  // نافذة العرض: عند كثرة النقاط يظهر شريط تنقّل (Brush) يبدأ بآخر 60 نقطة، ويمكن سحبه أو توسيعه
+  const WINDOW = 60;
+  const useBrush = data.length > WINDOW;
+  const brushKey = `${gran}-${period}-${metric}-${equipper}-${data.length}`;
+  const zoom = (dir: 1 | -1) => setGran(g => GRANS[Math.min(GRANS.length - 1, Math.max(0, GRANS.indexOf(g) + dir))]);
 
   // ملخص الفترة المعروضة (للشركات الظاهرة فقط)
   const summary = useMemo(() => {
@@ -111,11 +152,11 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
     }, null);
     // متوسط السعر الموزون للفترة
     const cut = data.length ? data[0].key : '';
-    const priced = rows.filter(r => shown.includes(r.co) && priceOf(r.d) > 0 && dayOf(r.d).slice(0, cut.length) >= cut);
+    const priced = scoped.filter(r => shown.includes(r.co) && priceOf(r.d) > 0 && dayOf(r.d) >= cut.slice(0, 10));
     const pq = priced.reduce((a, r) => a + qtyOf(r.d), 0);
     const avgPrice = pq ? priced.reduce((a, r) => a + qtyOf(r.d) * priceOf(r.d), 0) / pq : 0;
     return { qty, n, peak, avgPrice };
-  }, [data, rows, shown]);
+  }, [data, scoped, shown]);
 
   // خط المتوسط: متوسط القيمة لكل فترة (أو متوسط السعر)
   const avgLine = useMemo(() => {
@@ -126,11 +167,38 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
 
   const unit = metric === 'qty' ? t('common:units.liter') : metric === 'price' ? t('units.iqdPerLiter') : '';
   const fmtVal = (v: number) => (metric === 'price' ? formatNumber(v) : formatNumber(Math.round(v)));
-  const daily = period === 'd30' || period === 'd90';
+  const daily = gran !== 'month';
 
   const tooltip = ({ active, payload }: any) => {
     if (!active || !payload?.length) return null;
     const b = payload[0].payload as Bucket;
+    if (b.ship) {
+      const { d, co } = b.ship;
+      const f: [string, string][] = [
+        [t('table.receiver'), t(`receiver.${co}`)],
+        [t('profile.col.equipper'), deliveryCompany(d) || name],
+        [t('profile.col.driver'), d.driverName || '—'],
+        [t('profile.col.truck'), d.truckNumber || '—'],
+        [t('profile.metric.qty'), `${formatNumber(qtyOf(d))} ${t('common:units.liter')}`],
+        [t('profile.metric.price'), priceOf(d) ? `${formatNumber(priceOf(d))} ${t('units.iqdPerLiter')}` : '—'],
+      ];
+      return (
+        <div dir={i18n.dir()} className="w-[250px] rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur border border-slate-200/80 dark:border-slate-700 shadow-[0_12px_32px_-12px_rgba(15,23,42,0.35)] overflow-hidden text-start">
+          <div className="px-3.5 py-2.5 bg-teal-50/70 dark:bg-teal-950/30 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full" style={{ background: COMPANY_COLOR[co] }} />
+            <span className="text-[12px] font-semibold text-teal-700 dark:text-teal-300">{b.full}</span>
+          </div>
+          <dl className="px-3.5 py-2.5 space-y-1">
+            {f.map(([k, v]) => (
+              <div key={k} className="flex items-center justify-between gap-3 text-[12px]">
+                <dt className="text-slate-400">{k}</dt>
+                <dd className="font-medium text-slate-800 dark:text-slate-100 tabular-nums truncate max-w-[140px]">{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      );
+    }
     const parts = shown.filter(c => (c === 'sahara' ? b.saharaN : b.etihadN) > 0);
     const totalQ = parts.reduce((a, c) => a + (c === 'sahara' ? b.saharaQ : b.etihadQ), 0);
     const totalN = parts.reduce((a, c) => a + (c === 'sahara' ? b.saharaN : b.etihadN), 0);
@@ -168,7 +236,8 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
   const xTicks = { fill: '#64748b', fontSize: 11, fontWeight: 600 };
   const yTicks = { fill: '#64748b', fontSize: 11, fontWeight: 600 };
   // عدد تسميات المحور يتكيّف مع عدد النقاط (نحو 10 تسميات كحد أقصى)
-  const interval = Math.max(0, Math.ceil(data.length / 10) - 1);
+  // نحو 12 تسمية على المحور داخل النافذة المعروضة
+  const interval = Math.max(0, Math.ceil(Math.min(data.length, WINDOW) / 12) - 1);
 
   return createPortal(
     <div className="fixed inset-0 z-[100] bg-slate-900/45 backdrop-blur-md p-2 sm:p-5 flex animate-[overlayIn_.18s_ease]" onMouseDown={onClose}>
@@ -223,6 +292,25 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
           <Pills value={metric} onChange={setMetric} options={[
             { id: 'qty', label: t('profile.metric.qty') }, { id: 'tankers', label: t('profile.metric.tankers') }, { id: 'price', label: t('profile.metric.price') },
           ]} />
+          {equippers.length > 1 && (
+            <select value={equipper} onChange={e => setEquipper(e.target.value)} aria-label={t('profile.col.equipper')}
+              className="h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[12.5px] font-medium text-slate-700 dark:text-slate-200 outline-none focus:border-teal-500 cursor-pointer max-w-[220px]">
+              <option value="">{t('profile.allEquippers')}</option>
+              {equippers.map(([e, n]) => <option key={e} value={e}>{e} ({formatNumber(n)})</option>)}
+            </select>
+          )}
+          {/* التكبير والتصغير: شهري ← أسبوعي ← يومي ← كل شحنة */}
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/50">
+            <button type="button" onClick={() => zoom(-1)} disabled={gran === 'month'} aria-label={t('profile.zoomOut')} title={t('profile.zoomOut')}
+              className="w-8 h-7 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer">
+              <ZoomOut className="w-4 h-4" />
+            </button>
+            <span className="px-2 text-[12px] font-semibold text-teal-600 dark:text-teal-300 whitespace-nowrap min-w-[64px] text-center">{t(`profile.gran.${gran}`)}</span>
+            <button type="button" onClick={() => zoom(1)} disabled={gran === 'shipment'} aria-label={t('profile.zoomIn')} title={t('profile.zoomIn')}
+              className="w-8 h-7 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer">
+              <ZoomIn className="w-4 h-4" />
+            </button>
+          </div>
           <div className="ms-auto">
             <Pills value={mode} onChange={setMode} options={[
               { id: 'waves', label: <><Waves className="w-3.5 h-3.5" />{t('profile.mode.waves')}</> },
@@ -233,6 +321,7 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
 
         {/* الرسم */}
         <div className="relative flex-1 min-h-[260px] px-2 sm:px-4 pt-3" dir="ltr">
+          <div className="h-full">
           {data.length === 0 ? (
             <div className="h-full flex items-center justify-center text-sm text-slate-400">{t('profile.empty')}</div>
           ) : (
@@ -263,6 +352,7 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
                       connectNulls dot={{ r: data.length > 40 ? 2 : 3.5, fill: '#fff', stroke: COMPANY_COLOR[c], strokeWidth: 2 }} activeDot={{ r: 6, stroke: COMPANY_COLOR[c], strokeWidth: 3, fill: '#fff' }} />
                   ))}
                   {avgLine !== undefined && <ReferenceLine y={avgLine} stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={1.5} />}
+                  {useBrush && <Brush key={brushKey} dataKey="label" height={26} travellerWidth={10} startIndex={data.length - WINDOW} endIndex={data.length - 1} stroke="#0d9488" fill="transparent" tickFormatter={() => ''} />}
                 </AreaChart>
               ) : (
                 <BarChart data={data} margin={{ top: 16, right: 16, left: 4, bottom: 4 }} barGap={3}>
@@ -283,10 +373,12 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
                     <Bar key={c} dataKey={c} fill={`url(#exp-bar-${c})`} radius={[6, 6, 0, 0]} maxBarSize={daily ? 14 : 34} />
                   ))}
                   {avgLine !== undefined && <ReferenceLine y={avgLine} stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={1.5} />}
+                  {useBrush && <Brush key={brushKey} dataKey="label" height={26} travellerWidth={10} startIndex={data.length - WINDOW} endIndex={data.length - 1} stroke="#0d9488" fill="transparent" tickFormatter={() => ''} />}
                 </BarChart>
               )}
             </ResponsiveContainer>
           )}
+          </div>
         </div>
 
         {/* التذييل: إظهار/إخفاء كل شركة وشرح خط المتوسط */}
