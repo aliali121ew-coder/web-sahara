@@ -51,33 +51,53 @@ const decimate = (pts: Row[], ids: string[], max = MAX_DRAWN): Row[] => {
 };
 
 /** الرسم نفسه (React.memo): لا يُعاد رسمه إلا عند تغيّر نقاطه أو سلاسله */
-const WavesView = React.memo(({ points, series, metric, live, ticks, tickLabel, tooltip }: {
-  points: Row[]; series: Series[]; metric: Metric; live: boolean; ticks: string[]; tickLabel: (k: string) => string; tooltip: (p: any) => React.ReactNode;
-}) => (
-  <ResponsiveContainer width="100%" height="100%" debounce={60}>
-    <AreaChart data={points} margin={{ top: 16, right: 16, left: 4, bottom: 4 }}>
-      <defs>
-        {series.map(s => (
-          <linearGradient key={s.id} id={`cw-fill-${s.id}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={s.color} stopOpacity={s.id === OTHER ? 0.12 : 0.18} />
-            <stop offset="100%" stopColor={s.color} stopOpacity={0} />
-          </linearGradient>
-        ))}
-      </defs>
-      <CartesianGrid strokeDasharray="3 4" vertical={false} stroke="#94a3b8" strokeOpacity={0.15} />
-      <XAxis dataKey="key" axisLine={false} tickLine={false} ticks={ticks} interval={0} tickFormatter={tickLabel} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} dy={6} />
-      <YAxis axisLine={false} tickLine={false} width={48} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} tickFormatter={compact}
-        domain={metric === 'price' ? ['dataMin - 20', 'dataMax + 20'] : [0, 'auto']} />
-      {!live && <Tooltip isAnimationActive={false} content={tooltip} cursor={{ stroke: ACCENT, strokeWidth: 1.5, strokeDasharray: '3 3' }} wrapperStyle={{ outline: 'none', zIndex: 20 }} />}
-      {series.map(s => (
-        // أثناء السحب: خطوط فقط بلا تعبئة (التعبئة أثقل ما يُرسم)، وتعود عند الإفلات
-        <Area key={s.id} type={live ? 'linear' : 'monotone'} dataKey={s.id} name={s.name} stroke={s.color} strokeWidth={s.id === OTHER ? 1.75 : 2.25}
-          strokeDasharray={s.id === OTHER && !live ? '5 4' : undefined} fill={live ? 'none' : `url(#cw-fill-${s.id})`} connectNulls isAnimationActive={false}
-          dot={false} activeDot={live ? false : { r: 4.5, stroke: s.color, strokeWidth: 2.5, fill: '#fff' }} />
-      ))}
-    </AreaChart>
-  </ResponsiveContainer>
-));
+const WavesView = React.memo(({ points, series, metric, ticks, tickLabel, tooltip, spot, onPick }: {
+  points: Row[]; series: Series[]; metric: Metric; ticks: string[]; tickLabel: (k: string) => string; tooltip: (p: any) => React.ReactNode;
+  spot: string | null; onPick?: (key: string) => void;
+}) => {
+  // توهج ناعم للخطوط عندما تكون النقاط معقولة العدد (لا يُطبَّق على الكثيف حفاظًا على السرعة)
+  const glow = points.length <= 150;
+  return (
+    <ResponsiveContainer width="100%" height="100%" debounce={60}>
+      <AreaChart data={points} margin={{ top: 16, right: 16, left: 4, bottom: 4 }}
+        onClick={onPick ? (st: { activeLabel?: string | number }) => { if (st?.activeLabel != null) onPick(String(st.activeLabel)); } : undefined}
+        style={onPick ? { cursor: 'pointer' } : undefined}>
+        <defs>
+          {series.map(s => (
+            <React.Fragment key={s.id}>
+              <linearGradient id={`cw-fill-${s.id}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={s.color} stopOpacity={s.id === OTHER ? 0.1 : 0.24} />
+                <stop offset="60%" stopColor={s.color} stopOpacity={s.id === OTHER ? 0.03 : 0.06} />
+                <stop offset="100%" stopColor={s.color} stopOpacity={0} />
+              </linearGradient>
+              <filter id={`cw-glow-${s.id}`} x="-10%" y="-30%" width="120%" height="160%">
+                <feDropShadow dx="0" dy="3" stdDeviation="3.5" floodColor={s.color} floodOpacity="0.4" />
+              </filter>
+            </React.Fragment>
+          ))}
+        </defs>
+        <CartesianGrid strokeDasharray="3 4" vertical={false} stroke="#94a3b8" strokeOpacity={0.15} />
+        <XAxis dataKey="key" axisLine={false} tickLine={false} ticks={ticks} interval={0} tickFormatter={tickLabel} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} dy={6} />
+        <YAxis axisLine={false} tickLine={false} width={48} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} tickFormatter={compact}
+          domain={metric === 'price' ? ['dataMin - 20', 'dataMax + 20'] : [0, 'auto']} />
+        <Tooltip isAnimationActive={false} content={tooltip} cursor={{ stroke: ACCENT, strokeWidth: 1.5, strokeDasharray: '3 3' }} wrapperStyle={{ outline: 'none', zIndex: 20 }} />
+        {series.map(s => {
+          // تسليط الضوء: المورد المؤشَّر عليه يبقى ساطعًا والبقية تخفت
+          const dim = spot !== null && spot !== s.id;
+          const lit = spot === s.id;
+          return (
+            <Area key={s.id} type="monotone" dataKey={s.id} name={s.name} stroke={s.color}
+              strokeWidth={lit ? 3.25 : s.id === OTHER ? 1.75 : 2.25} strokeOpacity={dim ? 0.18 : 1}
+              strokeDasharray={s.id === OTHER ? '5 4' : undefined} fill={dim ? 'none' : `url(#cw-fill-${s.id})`}
+              filter={glow && !dim && s.id !== OTHER ? `url(#cw-glow-${s.id})` : undefined}
+              connectNulls isAnimationActive={false} dot={false}
+              activeDot={dim ? false : { r: lit ? 6 : 4.5, stroke: s.color, strokeWidth: 2.5, fill: '#fff' }} />
+          );
+        })}
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+});
 
 /**
  * أمواج المقارنة: الموردون المختارون (حتى 6) + «باقي الموردين» تجمع كل الكميات الأخرى،
@@ -91,6 +111,10 @@ export const CompareWaves: React.FC<{ suppliers: CompareSupplier[]; metric: Metr
   useEffect(() => { setSelected(ranked.slice(0, MAX_SELECTED).map(s => s.id)); }, [resetKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [spot, setSpot] = useState<string | null>(null);
+  // شهر مفتوح بالضغط في العرض الشهري: يُعرض يومًا بيوم لكل الموردين
+  const [focus, setFocus] = useState<string | null>(null);
+  const openMonth = useCallback((key: string) => { setFocus(key.slice(0, 7)); setGran('day'); }, []);
   const pickerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!pickerOpen) return;
@@ -146,7 +170,18 @@ export const CompareWaves: React.FC<{ suppliers: CompareSupplier[]; metric: Metr
   const dataKey = `${resetKey}-${gran}-${data.length}`;
   const [range, setRange] = useState<[number, number]>([0, 0]);
   const [live, setLive] = useState(false);
-  useEffect(() => { setRange([Math.max(0, data.length - WINDOW), Math.max(0, data.length - 1)]); }, [dataKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (focus) {
+      const first = data.findIndex(r => r.key.startsWith(focus));
+      if (first >= 0) {
+        let lastIdx = first;
+        while (lastIdx + 1 < data.length && data[lastIdx + 1].key.startsWith(focus)) lastIdx++;
+        setRange([first, Math.max(lastIdx, Math.min(first + 1, data.length - 1))]);
+        return;
+      }
+    }
+    setRange([Math.max(0, data.length - WINDOW), Math.max(0, data.length - 1)]);
+  }, [dataKey, focus]); // eslint-disable-line react-hooks/exhaustive-deps
   const view = useDeferredValue(range);
   const last = Math.max(0, data.length - 1);
   const vs = Math.min(view[0], last), ve = Math.min(Math.max(view[1], view[0]), last);
@@ -180,33 +215,53 @@ export const CompareWaves: React.FC<{ suppliers: CompareSupplier[]; metric: Metr
   }, [gran, dayTicks, multiYear]);
 
   const fmtVal = useCallback((v: number) => (metric === 'price' ? formatNumber(v) : formatNumber(Math.round(v))), [metric]);
+  const dataIndex = useMemo(() => new Map(data.map((r, i) => [r.key, i])), [data]);
   const tooltip = useCallback(({ active, payload }: any) => {
     if (!active || !payload?.length) return null;
     const row = payload[0].payload as Row;
+    const idx = dataIndex.get(row.key) ?? -1;
+    // القيمة السابقة لكل مورد (آخر فترة قبلها فيها قيمة) لحساب التغيّر
+    const prevOf = (id: string) => { for (let i = idx - 1; i >= 0; i--) { const v = data[i][id]; if (typeof v === 'number') return v; } return null; };
     const items = shownSeries.filter(s => row[s.id] != null).sort((a, b) => (row[b.id] as number) - (row[a.id] as number));
-    const total = metric === 'price' ? null : items.reduce((a, s) => a + (row[s.id] as number), 0);
+    const sum = items.reduce((a, s) => a + (row[s.id] as number), 0);
+    const top = items.length ? (row[items[0].id] as number) : 1;
     return (
-      <div dir={i18n.dir()} className="w-[250px] rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur border border-slate-200/80 dark:border-slate-700 shadow-[0_12px_32px_-12px_rgba(15,23,42,0.35)] overflow-hidden text-start">
-        <div className="px-3.5 py-2.5 bg-teal-50/70 dark:bg-teal-950/30 flex items-center justify-between gap-2">
-          <span className="text-[12px] font-semibold text-teal-700 dark:text-teal-300">{row.full}</span>
-          {total != null && <span className="kpi-num text-[12px] text-slate-600 dark:text-slate-300">{fmtVal(total)}</span>}
+      <div dir={i18n.dir()} className="w-[330px] rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/80 dark:border-slate-700 shadow-[0_18px_40px_-14px_rgba(15,23,42,0.45)] overflow-hidden text-start">
+        <div className="px-4 py-3 bg-gradient-to-l from-teal-500 to-cyan-600 text-white flex items-center justify-between gap-2">
+          <span className="text-[12.5px] font-semibold">{row.full}</span>
+          {metric !== 'price' && <span className="kpi-num text-[14px]">{fmtVal(sum)}</span>}
         </div>
-        <div className="px-3.5 py-2.5 space-y-1.5">
-          {items.map(s => (
-            <div key={s.id} className="flex items-center gap-2 text-[12px]">
-              <span className="w-2 h-2 rounded-full shrink-0" style={{ background: s.color }} />
-              <span className="truncate text-slate-700 dark:text-slate-200">{s.name}</span>
-              <span className="ms-auto kpi-num text-[12.5px] text-slate-900 dark:text-white">{fmtVal(row[s.id] as number)}</span>
-            </div>
-          ))}
+        <div className="px-3.5 py-2.5 space-y-2">
+          {items.map((s, i) => {
+            const v = row[s.id] as number;
+            const prev = prevOf(s.id);
+            const delta = prev ? Math.round(((v - prev) / prev) * 1000) / 10 : null;
+            return (
+              <div key={s.id}>
+                <div className="flex items-center gap-2 text-[12px]">
+                  <span className="w-4 text-[10px] font-bold text-slate-400 tabular-nums">{i + 1}</span>
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: s.color }} />
+                  <span className="truncate text-slate-700 dark:text-slate-200 font-medium">{s.name}</span>
+                  {delta !== null && delta !== 0 && (
+                    <span dir="ltr" className={`text-[10px] font-semibold tabular-nums ${(delta > 0) === (metric === 'price') ? 'text-rose-500' : 'text-emerald-600'}`}>{delta > 0 ? '▲' : '▼'} {Math.abs(delta)}%</span>
+                  )}
+                  <span className="ms-auto kpi-num text-[12.5px] text-slate-900 dark:text-white">{fmtVal(v)}</span>
+                </div>
+                <div className="ms-6 mt-1 h-1 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                  <span className="block h-full rounded-full" style={{ width: `${Math.max(3, (v / top) * 100)}%`, background: s.color }} />
+                </div>
+              </div>
+            );
+          })}
           {!items.length && <div className="text-[12px] text-slate-400">—</div>}
         </div>
+        {gran === 'month' && <div className="px-3.5 py-2 border-t border-slate-100 dark:border-slate-800 text-[10.5px] text-teal-600 dark:text-teal-400">{t('compare.clickMonth')}</div>}
       </div>
     );
-  }, [shownSeries, metric, fmtVal, i18n]);
+  }, [shownSeries, metric, fmtVal, i18n, data, dataIndex, gran, t]);
 
   const toggleSelect = (id: string) => setSelected(prev => (prev.includes(id) ? prev.filter(x => x !== id) : prev.length >= MAX_SELECTED ? prev : [...prev, id]));
-  const zoom = (dir: 1 | -1) => setGran(g => GRANS[Math.min(GRANS.length - 1, Math.max(0, GRANS.indexOf(g) + dir))]);
+  const zoom = (dir: 1 | -1) => { setFocus(null); setGran(g => GRANS[Math.min(GRANS.length - 1, Math.max(0, GRANS.indexOf(g) + dir))]); };
 
   return (
     <>
@@ -246,6 +301,7 @@ export const CompareWaves: React.FC<{ suppliers: CompareSupplier[]; metric: Metr
             const on = !hidden.has(s.id);
             return (
               <button key={s.id} type="button" aria-pressed={on}
+                onMouseEnter={() => setSpot(s.id)} onMouseLeave={() => setSpot(null)}
                 onClick={() => setHidden(prev => { const n = new Set(prev); if (n.has(s.id)) n.delete(s.id); else if (series.length - n.size > 1) n.add(s.id); return n; })}
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[12px] font-semibold transition-all cursor-pointer ${on ? 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 shadow-sm' : 'opacity-45 line-through bg-slate-100 dark:bg-slate-800 border-transparent text-slate-500'}`}>
                 <span className="w-2.5 h-2.5 rounded-full" style={{ background: s.color }} />{s.name}
@@ -263,7 +319,8 @@ export const CompareWaves: React.FC<{ suppliers: CompareSupplier[]; metric: Metr
             // أثناء السحب: رسم SVG خفيف جدًا (خطوط فقط)، والرسم الكامل يعود عند الإفلات
             <LiteLines points={points} series={liteSeries} ticks={ticks} tickLabel={tickLabel} yFrom={metric === 'price' ? 'data' : 'zero'} format={compact} />
           ) : (
-            <WavesView points={points} series={shownSeries} metric={metric} live={false} ticks={ticks} tickLabel={tickLabel} tooltip={tooltip} />
+            <WavesView points={points} series={shownSeries} metric={metric} ticks={ticks} tickLabel={tickLabel} tooltip={tooltip}
+              spot={spot} onPick={gran === 'month' ? openMonth : undefined} />
           )
         )}
       </div>

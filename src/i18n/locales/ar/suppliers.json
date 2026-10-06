@@ -176,6 +176,10 @@
     "subtitle_other": "{{count}} مورد في هذه الفترة",
     "allCompanies": "كل الشركات",
     "others": "باقي الموردين",
-    "pick": "الموردون ({{count}}/{{max}})"
+    "pick": "الموردون ({{count}}/{{max}})",
+    "total": "الإجمالي",
+    "suppliersCount": "الموردون",
+    "leaderShare": "حصة الأول",
+    "clickMonth": "اضغط لفتح الشهر يومًا بيوم"
   }
 }

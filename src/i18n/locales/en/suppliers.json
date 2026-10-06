@@ -164,6 +164,10 @@
     "subtitle_other": "{{count}} suppliers in this period",
     "allCompanies": "All companies",
     "others": "Other suppliers",
-    "pick": "Suppliers ({{count}}/{{max}})"
+    "pick": "Suppliers ({{count}}/{{max}})",
+    "total": "Total",
+    "suppliersCount": "Suppliers",
+    "leaderShare": "Leader share",
+    "clickMonth": "Click to open the month day by day"
   }
 }
