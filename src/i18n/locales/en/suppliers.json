@@ -96,7 +96,6 @@
     "subtitle": "Sahara and Etihad inbound from the archive",
     "highest": "Highest price",
     "lowest": "Lowest price",
-    "tankersOf": "{{company}} tankers",
     "tapToFilter": "Tap to filter",
     "totalInbound": "Total inbound",
     "tankersTotal_one": "{{count}} tanker",
@@ -118,6 +117,10 @@
     "equippersCount_one": "{{count}} supplying company",
     "equippersCount_other": "{{count}} supplying companies",
     "tankersShort": "tankers",
-    "showAll": "Show all inbound"
+    "showAll": "Show all inbound",
+    "priceRange": "Price range",
+    "tankersByCompany": "Tankers by company",
+    "lastPrice": "Last price: {{price}}",
+    "avgPrice": "Average price"
   }
 }

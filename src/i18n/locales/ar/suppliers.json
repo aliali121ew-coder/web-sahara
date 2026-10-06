@@ -96,7 +96,6 @@
     "subtitle": "وارد الصحاري والاتحاد من الأرشيف",
     "highest": "أعلى سعر",
     "lowest": "أدنى سعر",
-    "tankersOf": "صهاريج {{company}}",
     "tapToFilter": "اضغط للتصفية",
     "totalInbound": "الوارد الكلي",
     "tankersTotal_zero": "لا صهاريج",
@@ -126,6 +125,10 @@
     "equippersCount_many": "{{count}} شركة مجهزة",
     "equippersCount_other": "{{count}} شركة مجهزة",
     "tankersShort": "صهريج",
-    "showAll": "عرض كل الوارد"
+    "showAll": "عرض كل الوارد",
+    "priceRange": "نطاق السعر",
+    "tankersByCompany": "الصهاريج حسب الشركة",
+    "lastPrice": "آخر سعر: {{price}}",
+    "avgPrice": "متوسط السعر"
   }
 }

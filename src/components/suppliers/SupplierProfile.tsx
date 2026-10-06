@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, ArrowUpToLine, ArrowDownToLine, Truck, Droplets, ChevronLeft, ChevronRight, X, Users } from 'lucide-react';
+import { ArrowRight, ArrowUpToLine, ArrowDownToLine, ArrowUpDown, Truck, Droplets, ChevronLeft, ChevronRight, X, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useFuelData } from '../../context/FuelDataContext';
 import { formatNumber } from '../../lib/utils';
@@ -16,25 +16,6 @@ const qtyOf = (d: InboundDelivery) => d.receivedQuantity || d.volumeLiters || 0;
 const priceOf = (d: InboundDelivery) => d.productPrice || d.pricePerLiter || 0;
 
 interface Row { d: InboundDelivery; co: Company }
-
-/** بطاقة مؤشر صغيرة أعلى صفحة المورد */
-const Tile: React.FC<{ icon: React.ReactNode; tone: string; label: string; value: string; unit?: string; sub?: React.ReactNode; active?: boolean; onClick?: () => void }> = ({ icon, tone, label, value, unit, sub, active, onClick }) => {
-  const Tag = onClick ? 'button' : 'div';
-  return (
-    <Tag type={onClick ? 'button' : undefined} onClick={onClick}
-      className={`sup-stat h-full w-full text-start rounded-2xl bg-white dark:bg-slate-900 border shadow-[0_1px_3px_rgba(15,23,42,0.06)] flex flex-col min-w-0 ${onClick ? 'cursor-pointer hover:border-teal-400 transition-colors' : ''} ${active ? 'border-teal-500 ring-2 ring-teal-500/20' : 'border-slate-200/70 dark:border-slate-800'}`}>
-      <div className="sup-stat-pad pt-4 flex items-start justify-between gap-2">
-        <span className="sup-stat-title font-medium text-slate-500 dark:text-slate-400 leading-tight">{label}</span>
-        <span className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${tone}`}>{icon}</span>
-      </div>
-      <div className="sup-stat-pad mt-1 flex items-baseline gap-1.5 min-w-0">
-        <span dir="ltr" className="sup-stat-val font-bold tabular-nums text-slate-900 dark:text-white">{value}</span>
-        {unit && <span className="sup-stat-unit text-slate-400 font-medium whitespace-nowrap">{unit}</span>}
-      </div>
-      <div className="sup-stat-pad sup-stat-row mt-auto pt-2 pb-3.5 text-slate-400 tabular-nums">{sub ?? ' '}</div>
-    </Tag>
-  );
-};
 
 export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = ({ name, onBack }) => {
   const { t } = useTranslation(['suppliers', 'common']);
@@ -59,7 +40,9 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
     const max = priced.reduce<Row | null>((m, r) => (!m || priceOf(r.d) > priceOf(m.d) ? r : m), null);
     const min = priced.reduce<Row | null>((m, r) => (!m || priceOf(r.d) < priceOf(m.d) ? r : m), null);
     const count = (c: Company) => rows.filter(r => r.co === c).length;
-    return { max, min, sahara: count('sahara'), etihad: count('etihad'), qty: rows.reduce((a, r) => a + qtyOf(r.d), 0) };
+    const pq = priced.reduce((a, r) => a + qtyOf(r.d), 0);
+    const avg = pq ? priced.reduce((a, r) => a + qtyOf(r.d) * priceOf(r.d), 0) / pq : 0;
+    return { max, min, avg, last: priced[0] ?? null, sahara: count('sahara'), etihad: count('etihad'), qty: rows.reduce((a, r) => a + qtyOf(r.d), 0) };
   }, [rows]);
 
   // المجهزون لكل شركة مستلمة: عدد الصهاريج والكمية، الأكثر توريدًا أولًا
@@ -85,7 +68,6 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
   const filteredQty = filtered.reduce((a, r) => a + qtyOf(r.d), 0);
 
   const iqdL = t('units.iqdPerLiter');
-  const priceSub = (r: Row | null) => (r ? <span className="inline-flex items-center gap-1.5">{dayOf(r.d)} <CompanyBadges companies={[r.co]} /></span> : '—');
   const th = 'px-3 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap';
   const td = 'px-3 py-3 text-[13px] text-slate-700 dark:text-slate-300 whitespace-nowrap';
 
@@ -106,24 +88,88 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
         </div>
       </div>
 
-      {/* القسم الأول: المؤشرات */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 xl:gap-4">
-        <Tile icon={<ArrowUpToLine className="w-4 h-4 text-rose-500" />} tone="bg-rose-50 dark:bg-rose-950/50"
-          label={t('profile.highest')} value={stats.max ? fmtPrice(priceOf(stats.max.d)) : '—'} unit={stats.max ? iqdL : undefined} sub={priceSub(stats.max)} />
-        <Tile icon={<ArrowDownToLine className="w-4 h-4 text-emerald-600" />} tone="bg-emerald-50 dark:bg-emerald-950/50"
-          label={t('profile.lowest')} value={stats.min ? fmtPrice(priceOf(stats.min.d)) : '—'} unit={stats.min ? iqdL : undefined} sub={priceSub(stats.min)} />
-        <Tile icon={<Truck className="w-4 h-4 text-sky-600" />} tone="bg-sky-50 dark:bg-sky-950/50"
-          label={t('profile.tankersOf', { company: t('receiver.etihad') })} value={formatNumber(stats.etihad)}
-          sub={stats.etihad ? t('profile.tapToFilter') : undefined}
-          active={company === 'etihad'} onClick={stats.etihad ? () => setCompany(company === 'etihad' ? null : 'etihad') : undefined} />
-        <Tile icon={<Truck className="w-4 h-4 text-amber-600" />} tone="bg-amber-50 dark:bg-amber-950/40"
-          label={t('profile.tankersOf', { company: t('receiver.sahara') })} value={formatNumber(stats.sahara)}
-          sub={stats.sahara ? t('profile.tapToFilter') : undefined}
-          active={company === 'sahara'} onClick={stats.sahara ? () => setCompany(company === 'sahara' ? null : 'sahara') : undefined} />
-        <div className="col-span-2 sm:col-span-1">
-          <Tile icon={<Droplets className="w-4 h-4 text-white" />} tone="bg-teal-500"
-            label={t('profile.totalInbound')} value={formatNumber(stats.qty)} unit={t('common:units.liter')}
-            sub={t('profile.tankersTotal', { count: rows.length })} />
+      {/* القسم الأول: ثلاث بطاقات متوازنة (نطاق السعر، الصهاريج حسب الشركة، الوارد الكلي) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 xl:gap-4">
+        {/* نطاق السعر: أعلى وأدنى سعر مع شريط يبيّن موضع آخر سعر بينهما */}
+        <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-4 sm:p-5 flex flex-col">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('profile.priceRange')}</span>
+            <span className="w-8 h-8 rounded-xl bg-violet-50 dark:bg-violet-950/50 text-violet-600 flex items-center justify-center"><ArrowUpDown className="w-4 h-4" /></span>
+          </div>
+          <div className="mt-3 space-y-2.5">
+            {[
+              { r: stats.max, label: t('profile.highest'), icon: <ArrowUpToLine className="w-3.5 h-3.5" />, tone: 'text-rose-500 bg-rose-500/10' },
+              { r: stats.min, label: t('profile.lowest'), icon: <ArrowDownToLine className="w-3.5 h-3.5" />, tone: 'text-emerald-600 bg-emerald-500/10' },
+            ].map(({ r, label, icon, tone }) => (
+              <div key={label} className="flex items-center gap-2.5 min-w-0">
+                <span className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${tone}`}>{icon}</span>
+                <span className="text-[13px] text-slate-500 dark:text-slate-400 w-16 shrink-0">{label}</span>
+                <span dir="ltr" className="text-xl font-bold tabular-nums text-slate-900 dark:text-white">{r ? fmtPrice(priceOf(r.d)) : '—'}</span>
+                <span className="text-[11px] text-slate-400 tabular-nums ms-auto truncate">{r ? dayOf(r.d) : ''}</span>
+              </div>
+            ))}
+          </div>
+          {stats.max && stats.min && stats.last && priceOf(stats.max.d) > priceOf(stats.min.d) && (
+            <div className="mt-auto pt-4">
+              <div className="relative h-1.5 rounded-full bg-gradient-to-l from-rose-400 via-amber-300 to-emerald-400 rtl:bg-gradient-to-r">
+                <span className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-slate-700 dark:border-white shadow"
+                  style={{ insetInlineStart: `calc(${Math.round(((priceOf(stats.last.d) - priceOf(stats.min.d)) / (priceOf(stats.max.d) - priceOf(stats.min.d))) * 100)}% - 6px)` }} />
+              </div>
+              <div className="mt-1.5 text-[11px] text-slate-400 tabular-nums">{t('profile.lastPrice', { price: fmtPrice(priceOf(stats.last.d)) })}</div>
+            </div>
+          )}
+        </div>
+
+        {/* الصهاريج حسب الشركة المستلمة: شريط نسبة، والضغط على شركة يصفّي السجل */}
+        <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-4 sm:p-5 flex flex-col">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('profile.tankersByCompany')}</span>
+            <span className="w-8 h-8 rounded-xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 flex items-center justify-center"><Truck className="w-4 h-4" /></span>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {(['sahara', 'etihad'] as Company[]).map(c => {
+              const n = stats[c];
+              const on = company === c;
+              return (
+                <button key={c} type="button" disabled={!n} onClick={() => setCompany(on ? null : c)} aria-pressed={on}
+                  className={`rounded-xl px-3 py-2 text-start border transition-colors ${on ? 'border-teal-500 bg-teal-50 dark:bg-teal-950/40' : 'border-slate-200/80 dark:border-slate-700 hover:border-teal-400'} disabled:opacity-50 disabled:cursor-default cursor-pointer`}>
+                  <span className="flex items-center gap-1.5 text-[12px] text-slate-500 dark:text-slate-400">
+                    <span className={`w-2 h-2 rounded-full ${c === 'sahara' ? 'bg-amber-400' : 'bg-sky-500'}`} />{t(`receiver.${c}`)}
+                  </span>
+                  <span className="block text-xl font-bold tabular-nums text-slate-900 dark:text-white">{formatNumber(n)}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-auto pt-4">
+            <div className="flex h-1.5 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+              <span className="bg-amber-400" style={{ width: `${rows.length ? (stats.sahara / rows.length) * 100 : 0}%` }} />
+              <span className="bg-sky-500" style={{ width: `${rows.length ? (stats.etihad / rows.length) * 100 : 0}%` }} />
+            </div>
+            <div className="mt-1.5 text-[11px] text-slate-400">{t('profile.tapToFilter')}</div>
+          </div>
+        </div>
+
+        {/* الوارد الكلي (بطاقة مميزة) */}
+        <div className="sm:col-span-2 lg:col-span-1 rounded-2xl p-4 sm:p-5 text-white bg-gradient-to-br from-teal-600 via-teal-500 to-[#5fb8a3] shadow-[0_8px_24px_-10px_rgba(13,148,136,0.6)] flex flex-col">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-medium text-white/85">{t('profile.totalInbound')}</span>
+            <span className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center"><Droplets className="w-4 h-4" /></span>
+          </div>
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span dir="ltr" className="text-[clamp(1.5rem,3vw,2rem)] font-bold tabular-nums leading-tight">{formatNumber(stats.qty)}</span>
+            <span className="text-sm text-white/80">{t('common:units.liter')}</span>
+          </div>
+          <div className="mt-auto pt-4 grid grid-cols-2 gap-2 text-[12px]">
+            <div className="rounded-xl bg-white/15 px-3 py-2">
+              <div className="text-white/75">{t('profile.statTankers')}</div>
+              <div className="text-[15px] font-bold tabular-nums">{formatNumber(rows.length)}</div>
+            </div>
+            <div className="rounded-xl bg-white/15 px-3 py-2">
+              <div className="text-white/75">{t('profile.avgPrice')}</div>
+              <div className="text-[15px] font-bold tabular-nums">{stats.avg ? fmtPrice(Math.round(stats.avg * 10) / 10) : '—'}</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -218,7 +264,7 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
         </section>
 
         {/* بطاقة المورد والمجهزين */}
-        <aside className="lg:col-span-2 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-[0_1px_3px_rgba(15,23,42,0.05)] overflow-hidden flex flex-col">
+        <aside className="order-first lg:order-none lg:col-span-2 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-[0_1px_3px_rgba(15,23,42,0.05)] overflow-hidden flex flex-col">
           <div className="p-5 text-white bg-gradient-to-br from-teal-600 via-teal-500 to-[#5fb8a3]">
             <div className="flex items-center gap-3">
               <span className="p-0.5 rounded-xl bg-white/30 shrink-0"><Avatar s={avatarRec} size="w-14 h-14" text="text-xl" /></span>
