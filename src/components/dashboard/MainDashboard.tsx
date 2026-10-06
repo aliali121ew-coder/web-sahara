@@ -22,11 +22,11 @@ export const MainDashboard: React.FC = () => {
       {/* Section 4: منظومة بنزين المحطات (الأرصدة + الوارد والصادر) */}
       <PetrolStationsSection />
 
-      {/* Section 5: قسم مشتريات الوقود والمشتقات (5 بطاقات) */}
-      <FuelMetricsGrid />
-
-      {/* Section 6: تفاصيل خزانات الشركة (مستطيلات بيانية + أسطوانات ثلاثية الأبعاد) */}
+      {/* Section 5: تفاصيل خزانات الشركة (مستطيلات بيانية + أسطوانات ثلاثية الأبعاد) */}
       <CompanyTanksSection />
+
+      {/* Section 6: قسم مشتريات الوقود والمشتقات (5 بطاقات) */}
+      <FuelMetricsGrid />
 
       {/* Section 7: مؤشرات أسعار الشركات والموردين */}
       <PriceIndexTable />
