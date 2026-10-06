@@ -623,12 +623,10 @@ export const SuppliersView: React.FC = () => {
                   <CompanyBadges companies={inb.companies} />
                   <ChangePill pct={s.changePercent} />
                 </div>
-                <dl className="mt-3 grid grid-cols-2 min-[480px]:grid-cols-4 sm:grid-cols-2 gap-2 text-center">
+                <dl className="mt-3 grid grid-cols-2 gap-2 text-center">
                   {[
                     { k: t('table.current'), v: fmtPrice(s.priceIqd), strong: true },
                     { k: t('table.previous'), v: fmtPrice(s.previousPriceIqd) },
-                    { k: t('table.inbound'), v: inb.count ? formatNumber(inb.lastDayQty) : '—' },
-                    { k: t('table.tankers'), v: inb.count ? formatNumber(inb.lastDayCount) : '—' },
                   ].map(({ k, v, strong }) => (
                     <div key={k} className="rounded-xl bg-slate-50 dark:bg-slate-800/60 px-1.5 py-2 min-w-0">
                       <dt className="text-[10.5px] text-slate-400 truncate">{k}</dt>
@@ -660,14 +658,12 @@ export const SuppliersView: React.FC = () => {
                   <th className={th}>{t('table.previous')}</th>
                   <th className={th}>{t('table.change')}</th>
                   <th className={th}>{t('table.updated')}</th>
-                  <th className={th}>{t('table.inbound')}</th>
-                  <th className={`${th} !text-center`}>{t('table.tankers')}</th>
                   <th className={th}>{t('table.action')}</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.length === 0 && (
-                  <tr><td colSpan={9} className="py-12 text-center text-sm text-slate-400">{t('empty')}</td></tr>
+                  <tr><td colSpan={7} className="py-12 text-center text-sm text-slate-400">{t('empty')}</td></tr>
                 )}
                 {pageRows.map(s => {
                   const active = s.id === selected?.id;
@@ -686,12 +682,6 @@ export const SuppliersView: React.FC = () => {
                       <td className={`${td} tabular-nums`}>{fmtPrice(s.previousPriceIqd)}</td>
                       <td className={td}><ChangePill pct={s.changePercent} /></td>
                       <td className={`${td} tabular-nums`}>{s.lastUpdated}</td>
-                      <td className={td}>
-                        {inb.count ? (
-                          <span className="tabular-nums font-semibold text-slate-900 dark:text-white">{formatNumber(inb.lastDayQty)} <span className="text-[11px] font-normal text-slate-400">{t('common:units.liter')}</span></span>
-                        ) : '—'}
-                      </td>
-                      <td className={`${td} tabular-nums text-center`}>{inb.count ? formatNumber(inb.lastDayCount) : '—'}</td>
                       <td className={td} onClick={e => e.stopPropagation()}>
                         {editable ? (
                           <button type="button" onClick={() => setEditing({ rec: s, isNew: false })} aria-label={t('common:actions.edit')} title={t('common:actions.edit')}
