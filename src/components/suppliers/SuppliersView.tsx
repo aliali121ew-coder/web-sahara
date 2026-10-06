@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search, ArrowDownUp, ChevronDown, ChevronLeft, ChevronRight, Pencil, Plus, Download, Coins, History, TrendingUp, TrendingDown,
-  Minus, X, Trash2, ImagePlus, Truck, Check, Phone, MapPin,
+  Minus, X, Trash2, ImagePlus, Truck, Check, Phone, MapPin, BarChart3,
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +14,7 @@ import { deliveriesOfSupplier, sameSupplier } from '../../lib/archiveSuppliers';
 import { requestInboundFocus, focusFromDelivery } from '../../lib/inboundFocus';
 import { setSessionValue, useSessionState } from '../../lib/useSessionState';
 import { SupplierProfile } from './SupplierProfile';
+import { SuppliersCompare } from './SuppliersCompare';
 import type { InboundDelivery, NavTabId, SupplierPriceRecord } from '../../types';
 import { fmtPrice, CompanyBadges, Avatar, type Company } from './supplierUi';
 
@@ -302,6 +303,7 @@ export const SuppliersView: React.FC = () => {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortKey>('updated');
   const [sortOpen, setSortOpen] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [editing, setEditing] = useState<{ rec: SupplierPriceRecord; isNew: boolean } | null>(null);
@@ -575,6 +577,12 @@ export const SuppliersView: React.FC = () => {
                 </div>
               )}
             </div>
+            {/* مقارنة كل الموردين بيانيًا */}
+            <button type="button" onClick={() => setCompareOpen(true)}
+              className="h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 text-[13px] text-slate-600 dark:text-slate-300 flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-teal-600 hover:border-teal-400 cursor-pointer">
+              <BarChart3 className="w-4 h-4" /> {t('compare.button')}
+            </button>
+            {compareOpen && <SuppliersCompare suppliers={supplierPrices} sahara={saharaDeliveries} etihad={etihadDeliveries} onClose={() => setCompareOpen(false)} />}
             <div ref={menuRef} className="relative ms-auto">
               <button type="button" onClick={() => setMenuOpen(o => !o)} aria-expanded={menuOpen}
                 className="h-10 ps-4 pe-3 rounded-lg border border-teal-500 text-teal-600 dark:text-teal-400 text-[13px] font-medium flex items-center gap-2 hover:bg-teal-50 dark:hover:bg-teal-950/40 cursor-pointer">
