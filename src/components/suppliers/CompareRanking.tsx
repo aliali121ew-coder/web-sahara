@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { motion, MotionConfig, type Variants } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { Crown, Trophy, Users, ChevronLeft } from 'lucide-react';
@@ -25,6 +25,12 @@ const rowV: Variants = {
   show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 260, damping: 24, mass: 0.7 } },
 };
 
+// موجة المرور: الكارت المؤشَّر عليه يبرز بوضوح وجيرانه يرتفعون أقل فأقل،
+// وعند ترك الماوس يعود كل كارت بنابض مرن يتأرجح قليلًا كموج البحر بدل الرجوع الفوري
+const LIFT = [-10, -4, -1.5];
+const waveIn = (d: number) => ({ type: 'spring' as const, stiffness: 420, damping: 24, delay: d * 0.03 });
+const waveOut = (d: number) => ({ type: 'spring' as const, stiffness: 90, damping: 6, mass: 0.9, delay: d * 0.06 });
+
 /**
  * لوحة ترتيب الموردين (بديل الأعمدة المائلة): دونات الحصص في الأعلى، ثم صف لكل مورد
  * بشارة ترتيب وشعار وشريط متدرج بقيمته وحصته؛ الضغط على مورد يفتح تحليل وارده.
@@ -48,6 +54,10 @@ export const CompareRanking: React.FC<{
     return rest > 0 ? [...top, { id: '__rest', name: t('compare.others'), value: rest, color: OTHER_COLOR }] : top;
   }, [items, palette, t]);
   const focus = donut.find(d => d.id === hover) ?? null;
+  const hoverIdx = hover ? items.findIndex(x => x.id === hover) : -1;
+  // آخر كارت تُرك: مركز موجة الرجوع
+  const lastIdx = useRef(-1);
+  if (hoverIdx >= 0) lastIdx.current = hoverIdx;
 
   return (
     <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 px-4 sm:px-6 pt-3 pb-4">
@@ -98,7 +108,7 @@ export const CompareRanking: React.FC<{
       {/* لوحة الترتيب */}
       <MotionConfig reducedMotion="user">
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pe-1" aria-label={t('compare.rankingLabel')}>
-        <motion.ol key={waveKey} className="space-y-1.5" variants={listV} initial="hidden" animate="show">
+        <motion.ol key={waveKey} className="space-y-1.5 pt-3 pb-2 px-1" variants={listV} initial="hidden" animate="show">
           {items.map((b, i) => {
             const rec = recordOf.get(b.id);
             const pct = (b.value / max) * 100;
@@ -107,8 +117,14 @@ export const CompareRanking: React.FC<{
             const on = hover === b.id;
             return (
               <motion.li key={b.id} variants={rowV}>
-                <button type="button" onClick={() => onOpen(b.id)} onMouseEnter={() => setHover(b.id)} onMouseLeave={() => setHover(null)}
-                  className={`group w-full text-start rounded-2xl px-3 py-2.5 flex items-center gap-3 border transition-all cursor-pointer ${on ? 'bg-teal-50/70 dark:bg-teal-950/30 border-teal-200 dark:border-teal-800 shadow-sm' : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
+                <motion.button type="button" onClick={() => onOpen(b.id)} onMouseEnter={() => setHover(b.id)} onMouseLeave={() => setHover(null)}
+                  animate={{
+                    y: hoverIdx >= 0 ? (LIFT[Math.abs(i - hoverIdx)] ?? 0) : 0,
+                    scale: on ? 1.025 : 1,
+                    boxShadow: on ? '0 14px 30px -12px rgba(13,148,136,0.45)' : '0 0 0 0 rgba(13,148,136,0)',
+                  }}
+                  transition={hoverIdx >= 0 ? waveIn(Math.abs(i - hoverIdx)) : waveOut(Math.abs(i - lastIdx.current))}
+                  className={`group relative w-full text-start rounded-2xl px-3 py-2.5 flex items-center gap-3 border transition-colors cursor-pointer ${on ? 'z-10 bg-teal-50/80 dark:bg-teal-950/40 border-teal-300 dark:border-teal-700' : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
                   <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${MEDAL[i] ?? 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>
                     {i === 0 ? <Trophy className="w-3.5 h-3.5" /> : i + 1}
                   </span>
@@ -135,7 +151,7 @@ export const CompareRanking: React.FC<{
                     <div className="text-[10.5px] text-slate-400">{showShare ? `${share}% · ${unit}` : unit}</div>
                   </div>
                   <ChevronLeft className={`w-4 h-4 text-teal-500 shrink-0 ltr:rotate-180 transition-opacity ${on ? 'opacity-100' : 'opacity-0'}`} />
-                </button>
+                </motion.button>
               </motion.li>
             );
           })}
