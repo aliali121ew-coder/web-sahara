@@ -9,7 +9,7 @@ import { usePermissions } from '../../lib/usePermission';
 import { enumText } from '../../i18n/enums';
 import { collator } from '../../i18n/format';
 import { formatNumber } from '../../lib/utils';
-import { deliveriesOfSupplier, sameSupplier, equipperOf } from '../../lib/archiveSuppliers';
+import { deliveriesOfSupplier, sameSupplier } from '../../lib/archiveSuppliers';
 import { requestInboundFocus, focusFromDelivery } from '../../lib/inboundFocus';
 import { setSessionValue, useSessionState } from '../../lib/useSessionState';
 import { SupplierProfile } from './SupplierProfile';
@@ -55,8 +55,9 @@ const StatCard: React.FC<{
       {unit && <span className="sup-stat-unit text-slate-400 font-medium whitespace-nowrap">{unit}</span>}
     </div>
     <dl className="sup-stat-pad mt-auto pt-3 pb-3.5 space-y-1.5">
-      {rows.map(r => (
-        <div key={r.label} className="sup-stat-row flex items-center justify-between gap-2 pt-1.5 border-t border-slate-100 dark:border-slate-800 first:border-t-0 first:pt-0">
+      {/* المفتاح بالترتيب لا بالنص: قبل تحميل ملف الترجمة قد يتطابق نصّا سطرين فيبقى سطر قديم معلّقًا */}
+      {rows.map((r, i) => (
+        <div key={i} className="sup-stat-row flex items-center justify-between gap-2 pt-1.5 border-t border-slate-100 dark:border-slate-800 first:border-t-0 first:pt-0">
           <dt className="text-slate-400 leading-tight">{r.label}</dt>
           <dd className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums whitespace-nowrap">{r.value}</dd>
         </div>
@@ -336,13 +337,6 @@ export const SuppliersView: React.FC = () => {
 
   const iqdL = t('units.iqdPerLiter');
   const sel = selected ? inboundOf(selected) : undefined;
-  // ملخص بطاقة ملف المورد: كل صهاريجه في الشركتين وعدد مجهزيه
-  const profileStats = useMemo(() => {
-    if (!selected) return { tankers: 0, equippers: 0 };
-    const hits = deliveriesOfSupplier(allDeliveries, x => x.d, selected.supplierName);
-    const eq = new Set(hits.map(({ d, tab }) => `${tab}|${equipperOf(d) || selected.supplierName}`));
-    return { tankers: hits.length, equippers: eq.size };
-  }, [selected, allDeliveries]);
   const last = sel?.last;
   /** «عرض التفاصيل»: أرشيف وارد الشركة (التقارير ← الوارد) مصفّى على المورد وآخر يوم وارد له */
   const openArchive = () => {
@@ -413,24 +407,16 @@ export const SuppliersView: React.FC = () => {
           </div>
           {/* بطاقة ملف المورد: تفتح صفحة المورد الكاملة (وارد الشركتين والمجهزون) */}
           <button type="button" onClick={() => setProfile(selected.supplierName)}
-            className="group lg:w-72 shrink-0 rounded-2xl p-4 text-start text-white bg-gradient-to-br from-teal-600 via-teal-500 to-[#5fb8a3] shadow-[0_8px_24px_-10px_rgba(13,148,136,0.6)] hover:shadow-[0_10px_28px_-8px_rgba(13,148,136,0.7)] transition-shadow cursor-pointer">
+            className="group lg:w-72 shrink-0 rounded-2xl p-4 text-start bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 hover:border-teal-400 hover:bg-teal-50/60 dark:hover:bg-teal-950/30 transition-colors cursor-pointer">
             <div className="flex items-center gap-3">
-              <span className="p-0.5 rounded-xl bg-white/30 shrink-0"><Avatar s={selected} size="w-11 h-11" text="text-base" /></span>
+              <span className="p-0.5 rounded-xl bg-white dark:bg-slate-900 shadow-sm shrink-0"><Avatar s={selected} size="w-11 h-11" text="text-base" /></span>
               <div className="min-w-0 flex-1">
-                <div className="text-[11.5px] text-white/80">{t('profile.cardLabel')}</div>
-                <div className="text-[15px] font-semibold truncate">{selected.supplierName}</div>
+                <div className="text-[11.5px] text-slate-500 dark:text-slate-400">{t('profile.cardLabel')}</div>
+                <div className="text-[15px] font-semibold text-slate-900 dark:text-white truncate">{selected.supplierName}</div>
               </div>
-              <ChevronLeft className="w-5 h-5 text-white/80 ltr:rotate-180 transition-transform group-hover:-translate-x-0.5 ltr:group-hover:translate-x-0.5" />
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <div className="rounded-xl bg-white/15 px-3 py-2">
-                <div className="text-[15px] font-bold tabular-nums">{formatNumber(profileStats.tankers)}</div>
-                <div className="text-[11px] text-white/80">{t('profile.statTankers')}</div>
-              </div>
-              <div className="rounded-xl bg-white/15 px-3 py-2">
-                <div className="text-[15px] font-bold tabular-nums">{formatNumber(profileStats.equippers)}</div>
-                <div className="text-[11px] text-white/80">{t('profile.statEquippers')}</div>
-              </div>
+              <span className="w-8 h-8 rounded-full bg-teal-500 text-white flex items-center justify-center shrink-0 transition-transform group-hover:-translate-x-0.5 ltr:group-hover:translate-x-0.5">
+                <ChevronLeft className="w-4 h-4 ltr:rotate-180" />
+              </span>
             </div>
           </button>
         </section>
