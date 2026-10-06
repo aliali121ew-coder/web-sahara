@@ -310,7 +310,8 @@ export const SuppliersView: React.FC = () => {
   const iqdL = t('units.iqdPerLiter');
   const sel = selected ? inboundOf(selected) : undefined;
   const last = sel?.last;
-  const lastQty = last ? (last.d.receivedQuantity || last.d.volumeLiters || 0) : 0;
+  // مجموع آخر يوم وارد (كل صهاريجه) كما في الجدول
+  const lastQty = sel?.lastDayQty ?? 0;
   const lastPrice = last ? (last.d.productPrice || last.d.pricePerLiter || 0) : 0;
   const diff = selected ? selected.priceIqd - selected.previousPriceIqd : 0;
   const vsMarket = selected && marketAvg ? Math.round(((selected.priceIqd - marketAvg) / marketAvg) * 1000) / 10 : 0;
@@ -416,7 +417,7 @@ export const SuppliersView: React.FC = () => {
             {last ? (
               <>
                 <div className="mt-1.5 text-2xl font-bold leading-tight tabular-nums">{formatNumber(lastQty)} <span className="text-sm font-semibold">{t('common:units.liter')}</span></div>
-                <div className="mt-1 text-[11.5px] text-white/80 tabular-nums">{last.d.receiptUnloadDate || last.d.date}{lastPrice ? ` · ${fmtPrice(lastPrice)} ${iqdL}` : ''}</div>
+                <div className="mt-1 text-[11.5px] text-white/80 tabular-nums">{sel?.lastDay} · {t('cards.tankerCount', { count: sel?.lastDayCount ?? 0 })}{lastPrice ? ` · ${fmtPrice(lastPrice)} ${iqdL}` : ''}</div>
                 <button type="button" onClick={() => setActiveTab(last.tab)} className="mt-3 w-full max-w-[150px] h-8 rounded-full bg-white/20 hover:bg-white/30 text-[12.5px] font-medium transition-colors cursor-pointer">
                   {t('cards.viewDetails')}
                 </button>
