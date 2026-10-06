@@ -619,7 +619,10 @@ export const SuppliersView: React.FC = () => {
                       className={`border-t border-slate-100 dark:border-slate-800 cursor-pointer transition-colors ${active ? 'bg-teal-50/70 dark:bg-teal-950/30' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'}`}>
                       <td className={td}><CompanyBadges companies={inb.companies} /></td>
                       <td className={td}>
-                        <div className="text-[13px] font-medium text-slate-800 dark:text-slate-100 truncate max-w-[220px] xl:max-w-[300px]">{s.supplierName}</div>
+                        <div className="flex items-center gap-2.5">
+                          <Avatar s={s} size="w-8 h-8" text="text-xs" />
+                          <span className="text-[13px] font-medium text-slate-800 dark:text-slate-100 truncate max-w-[200px] xl:max-w-[280px]">{s.supplierName}</span>
+                        </div>
                       </td>
                       <td className={`${td} font-semibold text-slate-900 dark:text-white tabular-nums`}>{fmtPrice(s.priceIqd)}</td>
                       <td className={`${td} tabular-nums`}>{fmtPrice(s.previousPriceIqd)}</td>
