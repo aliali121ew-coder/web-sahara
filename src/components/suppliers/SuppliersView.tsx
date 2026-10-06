@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Search, ArrowDownUp, ChevronDown, ChevronLeft, ChevronRight, Pencil, Plus, Download, Coins, History, TrendingUp, TrendingDown,
+  Search, ArrowDownUp, ChevronDown, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, Pencil, Plus, Download, Coins, History, TrendingUp, TrendingDown,
   Minus, X, Trash2, ImagePlus, Truck, Check,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -415,8 +415,16 @@ export const SuppliersView: React.FC = () => {
             title={t('cards.previous')}
             value={fmtPrice(selected.previousPriceIqd)} unit={iqdL}
             rows={[
-              { label: t('cards.difference'), value: <Signed v={diff} text={`${diff > 0 ? '+' : ''}${fmtPrice(diff)}`} /> },
               { label: t('cards.lastChange'), value: selected.history?.[1]?.date || selected.lastUpdated || '—' },
+              {
+                label: t('cards.diffFromCurrent'),
+                value: (
+                  <span className={`inline-flex items-center gap-1 ${diff > 0 ? 'text-rose-500' : diff < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                    {diff > 0 ? <ArrowUp className="w-3.5 h-3.5" /> : diff < 0 ? <ArrowDown className="w-3.5 h-3.5" /> : <Minus className="w-3.5 h-3.5" />}
+                    <span className="tabular-nums">{fmtPrice(Math.abs(diff))}</span> {t('common:units.iqd')}
+                  </span>
+                ),
+              },
             ]}
           />
           <StatCard
