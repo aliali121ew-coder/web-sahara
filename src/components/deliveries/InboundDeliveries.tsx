@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Truck,
@@ -224,6 +224,29 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
 
   const [isColumnDropdownOpen, setIsColumnDropdownOpen] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  // التقويم يُعرض فوق الصفحة (portal) بموضع ثابت محسوب من الزر، فلا يقصّه حدّ الجدول عندما تكون الصفوف قليلة،
+  // ويُفتح للأعلى إن لم تكفِ المساحة تحت الزر
+  const dateBtnRef = useRef<HTMLButtonElement>(null);
+  const datePopRef = useRef<HTMLDivElement>(null);
+  const [datePopStyle, setDatePopStyle] = useState<React.CSSProperties>({ visibility: 'hidden' });
+  useLayoutEffect(() => {
+    if (!isDatePickerOpen) return;
+    const place = () => {
+      const b = dateBtnRef.current?.getBoundingClientRect();
+      const pop = datePopRef.current;
+      if (!b || !pop) return;
+      const h = pop.offsetHeight, w = pop.offsetWidth, gap = 8, vw = window.innerWidth, vh = window.innerHeight;
+      const below = vh - b.bottom - gap, above = b.top - gap;
+      const top = h <= below || below >= above ? b.bottom + gap : Math.max(gap, b.top - gap - h);
+      const start = isRTL ? b.right - w : b.left;
+      const left = Math.min(Math.max(gap, start), vw - w - gap);
+      setDatePopStyle({ position: 'fixed', top, left, maxHeight: vh - gap * 2, overflowY: 'auto' });
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => { window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true); };
+  }, [isDatePickerOpen, isRTL]);
   const [viewAllAttachmentsId, setViewAllAttachmentsId] = useState<string | null>(null);
 
   // الأيام التي فيها شحنات (علامة في التقويم)
@@ -758,8 +781,9 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
             {/* Date Filter: تقويم لاختيار فترة (من / إلى) مع فترات سريعة، والأيام التي فيها وارد عليها علامة */}
             <div className="relative">
               <button
+                ref={dateBtnRef}
                 type="button"
-                onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
+                onClick={() => { setDatePopStyle({ visibility: 'hidden' }); setIsDatePickerOpen(!isDatePickerOpen); }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-colors font-cairo cursor-pointer ${
                   dateFrom
                     ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300'
@@ -782,10 +806,10 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                 )}
               </button>
 
-              {isDatePickerOpen && (
+              {isDatePickerOpen && typeof document !== 'undefined' && createPortal(
                 <>
-                  <div className="fixed inset-0 z-30" onClick={() => setIsDatePickerOpen(false)} />
-                  <div className={`absolute top-full mt-2 ${isRTL ? 'right-0' : 'left-0'} z-40 animate-in zoom-in-95 font-cairo`}>
+                  <div className="fixed inset-0 z-[90]" onClick={() => setIsDatePickerOpen(false)} />
+                  <div ref={datePopRef} style={datePopStyle} className="z-[91] animate-in zoom-in-95 font-cairo" dir={isRTL ? 'rtl' : 'ltr'}>
                     <DateRangeCalendar
                       from={dateFrom}
                       to={dateTo}
@@ -794,7 +818,8 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                       onClear={() => { setDateFrom(''); setDateTo(''); setIsDatePickerOpen(false); }}
                     />
                   </div>
-                </>
+                </>,
+                document.body
               )}
             </div>
 
