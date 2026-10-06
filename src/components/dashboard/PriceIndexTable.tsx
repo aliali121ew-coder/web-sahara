@@ -16,9 +16,10 @@ export const PriceIndexTable: React.FC = () => {
     .sort((a, b) => b.lastUpdated.replace(/-/g, '/').localeCompare(a.lastUpdated.replace(/-/g, '/')))
     .slice(0, 7);
 
-  // العمود الأول (المجهز) بمحاذاة البداية، والباقي في الوسط
-  const th = 'px-3 xl:px-4 py-3 text-center text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap';
-  const td = 'px-3 xl:px-4 py-3 text-center text-[13px] text-slate-700 dark:text-slate-300 whitespace-nowrap';
+  // كل العناوين في الوسط؛ خلية المجهز (الشعار والاسم) بمحاذاة البداية
+  const th = 'px-3 xl:px-4 pt-3 pb-1 text-center text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap';
+  // كل صف كارت مستقل: خلفية وحدود أعلى/أسفل للخلايا، والطرفان بحد جانبي وزوايا دائرية
+  const td = 'px-3 xl:px-4 py-3 text-center text-[13px] text-slate-700 dark:text-slate-300 whitespace-nowrap bg-white dark:bg-slate-900 border-y border-slate-200/80 dark:border-slate-800 transition-colors group-hover:bg-teal-50/50 group-hover:border-teal-200 dark:group-hover:bg-teal-950/20 dark:group-hover:border-teal-900 first:border-s first:rounded-s-2xl last:border-e last:rounded-e-2xl';
   const open = () => setActiveTab('suppliers');
 
   return (
@@ -38,11 +39,11 @@ export const PriceIndexTable: React.FC = () => {
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-slate-50 dark:bg-slate-800/60">
+      <div className="overflow-x-auto px-3 sm:px-4 pb-4 bg-slate-50/70 dark:bg-slate-950/30 border-t border-slate-100 dark:border-slate-800">
+        <table className="w-full border-separate border-spacing-y-1.5">
+          <thead>
             <tr>
-              <th className={`${th} !text-start`}>{t('dashboard:priceIndex.supplier')}</th>
+              <th className={th}>{t('dashboard:priceIndex.supplier')}</th>
               <th className={th}>{t('dashboard:priceIndex.product')}</th>
               <th className={th}>{t('dashboard:priceIndex.density')}</th>
               <th className={th}>{t('dashboard:priceIndex.color')}</th>
@@ -56,7 +57,7 @@ export const PriceIndexTable: React.FC = () => {
               <tr><td colSpan={7} className="py-10 text-center text-sm text-slate-400">{t('dashboard:priceIndex.empty')}</td></tr>
             )}
             {rows.map(s => (
-              <tr key={s.id} onClick={open} className="border-t border-slate-100 dark:border-slate-800 cursor-pointer transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+              <tr key={s.id} onClick={open} className="group cursor-pointer">
                 <td className={`${td} !text-start`}>
                   <div className="flex items-center gap-2.5">
                     <Avatar s={s} size="w-8 h-8" text="text-xs" />
