@@ -523,6 +523,10 @@ body[data-glassmorphism="true"] .shadow-soft-card {
 .kpi-wrap { container-type: inline-size; }
 /* بطاقات صفحة الموردين: الأحجام تتبع عرض البطاقة نفسها فلا يُقصّ نص عند تصغير الشاشة */
 .sup-stat { container-type: inline-size; min-height: 150px; }
+/* أرقام كروت صفحة المورد: خط Inter بأرقام متساوية العرض، أوضح وأرشق من الخط العربي للأرقام */
+.kpi-num { font-family: 'Inter Variable', 'Inter', system-ui, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; font-weight: 700; line-height: 1.1; }
+.kpi-label { font-size: 0.8125rem; font-weight: 600; }
+.kpi-sub { font-size: 0.7rem; }
 .sup-stat-pad { padding-inline: clamp(0.75rem, 7cqi, 1.125rem); }
 .sup-stat-title { font-size: clamp(0.78rem, 6.2cqi, 0.875rem); }
 .sup-stat-val { font-size: clamp(1.35rem, 13cqi, 1.875rem); line-height: 1.15; white-space: nowrap; }

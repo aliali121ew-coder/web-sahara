@@ -1,15 +1,24 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, ArrowUpToLine, ArrowDownToLine, ArrowUpDown, Truck, Droplets, ChevronLeft, ChevronRight, X, Users } from 'lucide-react';
+import { ArrowRight, ArrowUpToLine, ArrowDownToLine, ArrowUpDown, Truck, Droplets, TrendingUp, TrendingDown, Minus, Percent, ChevronLeft, ChevronRight, X, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useFuelData } from '../../context/FuelDataContext';
 import { formatNumber } from '../../lib/utils';
-import { deliveriesOfSupplier, sameSupplier, deliveryCompany } from '../../lib/archiveSuppliers';
+import { fmtDate } from '../../i18n/format';
+import { deliveriesOfSupplier, sameSupplier, deliveryCompany, supplierKey } from '../../lib/archiveSuppliers';
 import type { InboundDelivery } from '../../types';
 import { fmtPrice, CompanyBadges, Avatar, type Company } from './supplierUi';
 import { SupplierMonthlyChart } from './SupplierMonthlyChart';
 
 /** الجهة التي ورد عبرها المورد: الشركة المجهزة، وإن لم تُذكر فالمورد نفسه (المورد صار المجهز أولًا) */
-const equipperOf = (d: InboundDelivery) => deliveryCompany(d);
+// اختلاف الكتابة («السده» / «السدة» / مسافات زائدة) يُوحَّد على أول صيغة ظهرت، فلا يتكرر المجهز في القائمة
+const canonical = new Map<string, string>();
+const equipperOf = (d: InboundDelivery) => {
+  const raw = deliveryCompany(d);
+  if (!raw) return raw;
+  const key = supplierKey(raw);
+  if (!canonical.has(key)) canonical.set(key, raw);
+  return canonical.get(key)!;
+};
 
 const PAGE_SIZE = 10;
 const dayOf = (d: InboundDelivery) => (d.receiptUnloadDate || d.date || '').split(' ')[0].replace(/-/g, '/');
@@ -44,6 +53,33 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
     const pq = priced.reduce((a, r) => a + qtyOf(r.d), 0);
     const avg = pq ? priced.reduce((a, r) => a + qtyOf(r.d) * priceOf(r.d), 0) / pq : 0;
     return { max, min, avg, last: priced[0] ?? null, sahara: count('sahara'), etihad: count('etihad'), qty: rows.reduce((a, r) => a + qtyOf(r.d), 0) };
+  }, [rows]);
+
+  // نسبة التغيّر الأسبوعية: آخر أسبوع فيه وارد مسعّر مقابل الأسبوع الذي فيه وارد قبله (الأسبوع يبدأ السبت)
+  const weekly = useMemo(() => {
+    const weekOf = (day: string) => {
+      const [y, m, d] = day.split('/').map(Number);
+      const dt = new Date(y, m - 1, d);
+      dt.setDate(dt.getDate() - ((dt.getDay() + 1) % 7));
+      return dt;
+    };
+    const acc = new Map<number, { cost: number; q: number; n: number; start: Date }>();
+    rows.forEach(({ d }) => {
+      const day = dayOf(d);
+      if (!/^\d{4}\/\d{2}\/\d{2}$/.test(day) || priceOf(d) <= 0) return;
+      const w = weekOf(day);
+      const a = acc.get(w.getTime()) ?? { cost: 0, q: 0, n: 0, start: w };
+      a.cost += qtyOf(d) * priceOf(d); a.q += qtyOf(d); a.n += 1;
+      acc.set(w.getTime(), a);
+    });
+    const weeks = [...acc.values()].sort((a, b) => b.start.getTime() - a.start.getTime());
+    const [cur, prev] = weeks;
+    if (!cur) return null;
+    const curP = cur.cost / cur.q;
+    const prevP = prev ? prev.cost / prev.q : 0;
+    const pct = prevP ? Math.round(((curP - prevP) / prevP) * 1000) / 10 : null;
+    const qtyPct = prev && prev.q ? Math.round(((cur.q - prev.q) / prev.q) * 1000) / 10 : null;
+    return { cur, prev, curP, prevP, pct, qtyPct };
   }, [rows]);
 
   // المجهزون لكل شركة مستلمة: عدد الصهاريج والكمية، الأكثر توريدًا أولًا
@@ -89,12 +125,12 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
         </div>
       </div>
 
-      {/* القسم الأول: ثلاث بطاقات متوازنة (نطاق السعر، الصهاريج حسب الشركة، الوارد الكلي) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 xl:gap-4">
+      {/* القسم الأول: أربع بطاقات بخط موحّد (Inter للأرقام): نطاق السعر، التغيّر الأسبوعي، الصهاريج حسب الشركة، الوارد الكلي */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 xl:gap-4">
         {/* نطاق السعر: أعلى وأدنى سعر مع شريط يبيّن موضع آخر سعر بينهما */}
         <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-4 sm:p-5 flex flex-col">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('profile.priceRange')}</span>
+            <span className="kpi-label text-slate-500 dark:text-slate-400">{t('profile.priceRange')}</span>
             <span className="w-8 h-8 rounded-xl bg-violet-50 dark:bg-violet-950/50 text-violet-600 flex items-center justify-center"><ArrowUpDown className="w-4 h-4" /></span>
           </div>
           <div className="mt-3 space-y-2.5">
@@ -105,8 +141,8 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
               <div key={label} className="flex items-center gap-2.5 min-w-0">
                 <span className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${tone}`}>{icon}</span>
                 <span className="text-[13px] text-slate-500 dark:text-slate-400 w-16 shrink-0">{label}</span>
-                <span dir="ltr" className="text-xl font-bold tabular-nums text-slate-900 dark:text-white">{r ? fmtPrice(priceOf(r.d)) : '—'}</span>
-                <span className="text-[11px] text-slate-400 tabular-nums ms-auto truncate">{r ? dayOf(r.d) : ''}</span>
+                <span dir="ltr" className="kpi-num text-[22px] text-slate-900 dark:text-white">{r ? fmtPrice(priceOf(r.d)) : '—'}</span>
+                <span className="kpi-sub text-slate-400 tabular-nums ms-auto truncate">{r ? dayOf(r.d) : ''}</span>
               </div>
             ))}
           </div>
@@ -116,15 +152,49 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
                 <span className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-slate-700 dark:border-white shadow"
                   style={{ insetInlineStart: `calc(${Math.round(((priceOf(stats.last.d) - priceOf(stats.min.d)) / (priceOf(stats.max.d) - priceOf(stats.min.d))) * 100)}% - 6px)` }} />
               </div>
-              <div className="mt-1.5 text-[11px] text-slate-400 tabular-nums">{t('profile.lastPrice', { price: fmtPrice(priceOf(stats.last.d)) })}</div>
+              <div className="mt-1.5 kpi-sub text-slate-400 tabular-nums">{t('profile.lastPrice', { price: fmtPrice(priceOf(stats.last.d)) })}</div>
             </div>
           )}
         </div>
 
+        {/* نسبة التغيّر الأسبوعية: سعر آخر أسبوع مقابل الأسبوع السابق؛ الارتفاع أحمر والانخفاض أخضر */}
+        {(() => {
+          const pct = weekly?.pct ?? null;
+          const up = pct !== null && pct > 0, down = pct !== null && pct < 0;
+          const tone = up ? 'text-rose-500' : down ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500';
+          const badge = up ? 'bg-rose-500/10 text-rose-500' : down ? 'bg-emerald-500/10 text-emerald-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-500';
+          const range = (w?: { start: Date }) => (w ? `${fmtDate(w.start, { day: 'numeric', month: 'short' })} – ${fmtDate(new Date(w.start.getTime() + 6 * 86400000), { day: 'numeric', month: 'short' })}` : '—');
+          return (
+            <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-4 sm:p-5 flex flex-col">
+              <div className="flex items-center justify-between gap-2">
+                <span className="kpi-label text-slate-500 dark:text-slate-400">{t('profile.weeklyChange')}</span>
+                <span className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 flex items-center justify-center"><Percent className="w-4 h-4" /></span>
+              </div>
+              <div className="mt-2.5 flex items-center gap-2.5">
+                <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${badge}`}>
+                  {up ? <TrendingUp className="w-5 h-5" strokeWidth={2.5} /> : down ? <TrendingDown className="w-5 h-5" strokeWidth={2.5} /> : <Minus className="w-5 h-5" />}
+                </span>
+                <span dir="ltr" className={`kpi-num text-[28px] ${tone}`}>{pct === null ? '—' : `${pct > 0 ? '+' : ''}${pct}%`}</span>
+              </div>
+              <dl className="mt-auto pt-3 space-y-1.5 text-[12px]">
+                <div className="flex items-center justify-between gap-2">
+                  <dt className="text-slate-400">{t('profile.thisWeek')} <span className="kpi-sub">({range(weekly?.cur)})</span></dt>
+                  <dd className="kpi-num text-[13px] text-slate-800 dark:text-slate-100">{weekly ? fmtPrice(Math.round(weekly.curP * 10) / 10) : '—'}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-100 dark:border-slate-800">
+                  <dt className="text-slate-400">{t('profile.prevWeek')} <span className="kpi-sub">({range(weekly?.prev)})</span></dt>
+                  <dd className="kpi-num text-[13px] text-slate-800 dark:text-slate-100">{weekly?.prev ? fmtPrice(Math.round(weekly.prevP * 10) / 10) : '—'}</dd>
+                </div>
+                {weekly && !weekly.prev && <div className="kpi-sub text-slate-400">{t('profile.noPrevWeek')}</div>}
+              </dl>
+            </div>
+          );
+        })()}
+
         {/* الصهاريج حسب الشركة المستلمة: شريط نسبة، والضغط على شركة يصفّي السجل */}
         <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-4 sm:p-5 flex flex-col">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('profile.tankersByCompany')}</span>
+            <span className="kpi-label text-slate-500 dark:text-slate-400">{t('profile.tankersByCompany')}</span>
             <span className="w-8 h-8 rounded-xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 flex items-center justify-center"><Truck className="w-4 h-4" /></span>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -137,7 +207,7 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
                   <span className="flex items-center gap-1.5 text-[12px] text-slate-500 dark:text-slate-400">
                     <span className={`w-2 h-2 rounded-full ${c === 'sahara' ? 'bg-amber-400' : 'bg-sky-500'}`} />{t(`receiver.${c}`)}
                   </span>
-                  <span className="block text-xl font-bold tabular-nums text-slate-900 dark:text-white">{formatNumber(n)}</span>
+                  <span className="block kpi-num text-[22px] text-slate-900 dark:text-white">{formatNumber(n)}</span>
                 </button>
               );
             })}
@@ -147,28 +217,28 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
               <span className="bg-amber-400" style={{ width: `${rows.length ? (stats.sahara / rows.length) * 100 : 0}%` }} />
               <span className="bg-sky-500" style={{ width: `${rows.length ? (stats.etihad / rows.length) * 100 : 0}%` }} />
             </div>
-            <div className="mt-1.5 text-[11px] text-slate-400">{t('profile.tapToFilter')}</div>
+            <div className="mt-1.5 kpi-sub text-slate-400">{t('profile.tapToFilter')}</div>
           </div>
         </div>
 
-        {/* الوارد الكلي (بطاقة مميزة) */}
-        <div className="sm:col-span-2 lg:col-span-1 rounded-2xl p-4 sm:p-5 text-white bg-gradient-to-br from-teal-600 via-teal-500 to-[#5fb8a3] shadow-[0_8px_24px_-10px_rgba(13,148,136,0.6)] flex flex-col">
+        {/* الوارد الكلي: أبيض متدرج إلى أخضر فاتح */}
+        <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-white via-emerald-50/70 to-teal-100/80 dark:from-slate-900 dark:via-emerald-950/30 dark:to-teal-900/40 border border-emerald-200/70 dark:border-emerald-900/50 shadow-[0_6px_20px_-10px_rgba(16,185,129,0.45)] flex flex-col">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-medium text-white/85">{t('profile.totalInbound')}</span>
-            <span className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center"><Droplets className="w-4 h-4" /></span>
+            <span className="kpi-label text-emerald-800/80 dark:text-emerald-200/80">{t('profile.totalInbound')}</span>
+            <span className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 flex items-center justify-center"><Droplets className="w-4 h-4" /></span>
           </div>
-          <div className="mt-2 flex items-baseline gap-1.5">
-            <span dir="ltr" className="text-[clamp(1.5rem,3vw,2rem)] font-bold tabular-nums leading-tight">{formatNumber(stats.qty)}</span>
-            <span className="text-sm text-white/80">{t('common:units.liter')}</span>
+          <div className="mt-2 flex items-baseline gap-1.5 min-w-0">
+            <span dir="ltr" className="kpi-num text-[clamp(1.5rem,2.4vw,2rem)] text-slate-900 dark:text-white truncate">{formatNumber(stats.qty)}</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400">{t('common:units.liter')}</span>
           </div>
           <div className="mt-auto pt-4 grid grid-cols-2 gap-2 text-[12px]">
-            <div className="rounded-xl bg-white/15 px-3 py-2">
-              <div className="text-white/75">{t('profile.statTankers')}</div>
-              <div className="text-[15px] font-bold tabular-nums">{formatNumber(rows.length)}</div>
+            <div className="rounded-xl bg-white/70 dark:bg-slate-900/50 border border-emerald-100 dark:border-emerald-900/40 px-3 py-2">
+              <div className="text-slate-500 dark:text-slate-400">{t('profile.statTankers')}</div>
+              <div className="kpi-num text-[16px] text-slate-900 dark:text-white">{formatNumber(rows.length)}</div>
             </div>
-            <div className="rounded-xl bg-white/15 px-3 py-2">
-              <div className="text-white/75">{t('profile.avgPrice')}</div>
-              <div className="text-[15px] font-bold tabular-nums">{stats.avg ? fmtPrice(Math.round(stats.avg * 10) / 10) : '—'}</div>
+            <div className="rounded-xl bg-white/70 dark:bg-slate-900/50 border border-emerald-100 dark:border-emerald-900/40 px-3 py-2">
+              <div className="text-slate-500 dark:text-slate-400">{t('profile.avgPrice')}</div>
+              <div className="kpi-num text-[16px] text-slate-900 dark:text-white">{stats.avg ? fmtPrice(Math.round(stats.avg * 10) / 10) : '—'}</div>
             </div>
           </div>
         </div>

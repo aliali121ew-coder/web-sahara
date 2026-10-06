@@ -153,6 +153,11 @@
       "week": "Weekly",
       "day": "Daily",
       "shipment": "Each shipment"
-    }
+    },
+    "weeklyChange": "Weekly change",
+    "thisWeek": "Latest week",
+    "prevWeek": "Previous week",
+    "qtyChange": "Quantity",
+    "noPrevWeek": "No inbound before this week"
   }
 }
