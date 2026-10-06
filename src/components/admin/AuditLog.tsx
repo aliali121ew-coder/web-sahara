@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  History, LogIn, LogOut, ShieldAlert, Lock, KeyRound, UserPlus, UserCog, Inbox, Save, FileUp, FileX, Search, RefreshCw,
+  History, LogIn, LogOut, ShieldAlert, Lock, KeyRound, Fingerprint, UserPlus, UserCog, Inbox, Save, FileUp, FileX, Search, RefreshCw,
   Download, Users, Loader2, ChevronDown, Activity, Globe, Clock, Hash, X,
 } from 'lucide-react';
 import { chatApi, type Account, type AuditEntry } from '../chat/chatApi';
@@ -18,6 +18,8 @@ const ACTIONS: Record<string, { icon: React.ComponentType<{ className?: string }
   'auth.failed': { icon: ShieldAlert, sev: 'warn' },
   'auth.locked': { icon: Lock, sev: 'danger' },
   'auth.password': { icon: KeyRound, sev: 'info' },
+  'auth.passkey_add': { icon: Fingerprint, sev: 'warn' },
+  'auth.passkey_remove': { icon: Fingerprint, sev: 'info' },
   'admin.create': { icon: UserPlus, sev: 'success' },
   'admin.update': { icon: UserCog, sev: 'info' },
   'admin.support': { icon: Inbox, sev: 'info' },

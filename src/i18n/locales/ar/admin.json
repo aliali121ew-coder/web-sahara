@@ -237,6 +237,8 @@
       "auth.failed": "محاولة دخول فاشلة",
       "auth.locked": "قفل الحساب مؤقتًا",
       "auth.password": "تغيير كلمة المرور",
+      "auth.passkey_add": "إضافة بصمة دخول",
+      "auth.passkey_remove": "حذف بصمة دخول",
       "admin.create": "إنشاء حساب",
       "admin.update": "تعديل حساب",
       "admin.support": "معالجة طلب دعم",

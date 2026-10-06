@@ -16,8 +16,16 @@ export interface BackupRow {
 }
 interface Snapshot { format: 'etihad-backup'; version: 1; createdAt: number; kind: BackupKind; counts: Record<string, number>; tables: Record<string, Record<string, unknown>[]> }
 
-/** جداول لا تُعاد عند الاسترجاع: سجل النسخ والمهام، الجلسات المؤقتة، وسجل العمليات (سجل أمني يبقى كما هو) */
-const SKIP_ON_RESTORE = new Set(['backups', 'system_jobs', 'system_meta', 'chat_sessions', 'webauthn_challenges', 'audit_log', 'sahara_file_chunks', 'chat_file_chunks']);
+/**
+ * سياسة الاسترجاع حسب نوع البيانات:
+ * - بيانات التطبيق: تُعاد كاملة من النسخة.
+ * - الحالة الأمنية ومفاتيح الهوية (الجلسات، التحديات، بصمات الدخول) وسجل العمليات: لا تُعاد أبدًا،
+ *   حتى لا يعود مفتاح أو جلسة سُحبت لأسباب أمنية.
+ * - الحسابات (IDENTITY_MERGE): الحساب الموجود الآن يحتفظ بحالته الحالية كاملة (كلمة المرور، الإدارة، الإيقاف، الصلاحيات)،
+ *   ويُضاف فقط حساب موجود في النسخة ومفقود الآن (لا يوجد حذف حسابات في التطبيق، فغيابه يعني فقدان بيانات).
+ */
+const SKIP_ON_RESTORE = new Set(['backups', 'system_jobs', 'system_meta', 'chat_sessions', 'webauthn_challenges', 'webauthn_credentials', 'audit_log', 'sahara_file_chunks', 'chat_file_chunks']);
+const IDENTITY_MERGE = new Set(['chat_users']);
 /** جداول لا تُنسخ أصلًا: أجزاء الملفات القديمة (المحتوى في R2) */
 const SKIP_ON_BACKUP = new Set(['sahara_file_chunks', 'chat_file_chunks']);
 const PAGE = 500;
@@ -159,13 +167,14 @@ export const restoreBackup = async (env: Env, backupId: string, by: string) => {
       if (SKIP_ON_RESTORE.has(table) || !existing.has(table)) continue;
       const { results: cols } = await env.DB.prepare(`PRAGMA table_info(${quote(table)})`).all<{ name: string }>();
       const colNames = cols.map(c => c.name);
-      const stmts = [env.DB.prepare(`DELETE FROM ${quote(table)}`)];
+      const merge = IDENTITY_MERGE.has(table);
+      const stmts = merge ? [] : [env.DB.prepare(`DELETE FROM ${quote(table)}`)];
       const perStmt = Math.max(1, Math.floor(MAX_PARAMS / Math.max(1, colNames.length)));
       for (let i = 0; i < rows.length; i += perStmt) {
         const chunk = rows.slice(i, i + perStmt);
         const placeholders = chunk.map(() => `(${colNames.map(() => '?').join(', ')})`).join(', ');
         const values = chunk.flatMap(r => colNames.map(c => (r[c] === undefined ? null : r[c])));
-        stmts.push(env.DB.prepare(`INSERT INTO ${quote(table)} (${colNames.map(quote).join(', ')}) VALUES ${placeholders}`).bind(...values));
+        stmts.push(env.DB.prepare(`INSERT${merge ? ' OR IGNORE' : ''} INTO ${quote(table)} (${colNames.map(quote).join(', ')}) VALUES ${placeholders}`).bind(...values));
       }
       // كل جدول في دفعة واحدة (معاملة) حتى لا يبقى جدول نصف مُعاد
       for (let i = 0; i < stmts.length; i += 200) await env.DB.batch(stmts.slice(i, i + 200));

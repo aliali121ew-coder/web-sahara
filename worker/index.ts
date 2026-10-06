@@ -6,10 +6,10 @@
 
 import { extractSaharaReport } from './extractSaharaReport';
 import { audit, handleChat, verifySession, type Session } from './chat';
-import { canReadKey, canWriteKey, isServerForbiddenKey, keySectionLabel, levelOf } from '../src/lib/permCatalog';
+import { canCreateItems, canMarkRead, canReadKey, canWriteKey, canWriteSome, isServerForbiddenKey, keySectionLabel, levelOf } from '../src/lib/permCatalog';
 
 import { ensureFileColumns, loadFile, removeFile, storeFile } from './storage/files';
-import { applyCollectionOps, clearCollection, ensureCollections, isCollectionKey, readCollection, replaceCollection, type CollectionOps } from './storage/collections';
+import { applyCollectionOps, clearCollection, ensureCollections, isCollectionKey, limitedOpsAllowed, readCollection, replaceCollection, type CollectionOps } from './storage/collections';
 import { COLLECTION_KEYS } from '../src/lib/permCatalog';
 import type { D1Database, D1PreparedStatement, Env, ExecutionContext, R2Bucket, ScheduledController } from './types';
 import { handleSystem } from './system/api';
@@ -181,7 +181,8 @@ export default {
         items,
         admin: session.admin,
         collections: COLLECTION_KEYS,
-        readOnly: Object.keys(items).filter(k => !canWriteKey(session.perms, session.admin, k)),
+        // قراءة فقط = لا يملك أي نوع كتابة (الإضافة فقط أو تعليم المقروء يُرسلان ويتحقق منهما الخادم)
+        readOnly: Object.keys(items).filter(k => !canWriteSome(session.perms, session.admin, k)),
       });
     }
 
@@ -201,7 +202,11 @@ export default {
       // فروق المجموعات (الطريقة الحديثة: عناصر جديدة/معدّلة ومحذوفة فقط)
       for (const [key, ops] of Object.entries(body.collections || {})) {
         if (!isCollectionKey(key) || !ops || typeof ops !== 'object') continue;
-        if (!canWriteKey(session.perms, session.admin, key)) { rejected.push(key); continue; }
+        if (!canWriteKey(session.perms, session.admin, key)) {
+          // بلا كتابة كاملة: تُقبل الإضافة فقط أو تعليم المقروء فقط إن سمحت بهما القاعدة، وإلا تُرفض كل عمليات المفتاح
+          const allow = { create: canCreateItems(session.perms, session.admin, key), markRead: canMarkRead(session.perms, session.admin, key) };
+          if (!(allow.create || allow.markRead) || !(await limitedOpsAllowed(env.DB, key, ops, allow))) { rejected.push(key); continue; }
+        }
         const r = await applyCollectionOps(env.DB, key, ops, session.id, now);
         if (typeof r === 'string') return json({ error: r, code: 'invalid_data' }, 400);
         collectionOps += r;

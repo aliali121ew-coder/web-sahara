@@ -188,14 +188,17 @@ export async function biometricAvailable() {
 /** اسم المستخدم المفعّل له الدخول بالبصمة على هذا الجهاز */
 export const biometricUser = () => { try { return localStorage.getItem(BIO_USER_KEY) || ''; } catch { return ''; } };
 
-/** تفعيل البصمة لحسابي على هذا الجهاز (يتطلب جلسة) */
-export async function enableBiometric() {
+/**
+ * تفعيل البصمة لحسابي على هذا الجهاز (يتطلب جلسة).
+ * الخادم يشترط دخولًا بكلمة المرور خلال آخر 10 دقائق، وإلا تُمرَّر كلمة المرور هنا (رمز الخطأ reauth_required)
+ */
+export async function enableBiometric(password?: string) {
   const headers = sessionHeaders();
   const o = await post<{
     challenge: string; rp: { id: string; name: string }; user: { id: string; name: string; displayName: string };
     pubKeyCredParams: PublicKeyCredentialParameters[]; authenticatorSelection: AuthenticatorSelectionCriteria;
     excludeCredentials: { type: 'public-key'; id: string }[]; timeout: number;
-  }>('/api/chat/auth/webauthn/register-options', {}, headers);
+  }>('/api/chat/auth/webauthn/register-options', password ? { password } : {}, headers);
   let cred: PublicKeyCredential;
   try {
     cred = (await navigator.credentials.create({

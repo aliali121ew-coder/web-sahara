@@ -19,7 +19,7 @@ type UserRow = { id: string; name: string; role: string; bio: string; avatar: st
 type RoomRow = { id: string; type: string; name: string; description: string; avatar: string; created_by: string; created_at: number; updated_at: number; pinned_msg: string };
 type MemberRow = { room_id: string; user_id: string; role: string; last_read: number; muted: number; pinned: number; joined_at: number };
 type MessageRow = { id: string; room_id: string; user_id: string; kind: string; text: string; reply_to: string; attachments: string; reactions: string; urgent: number; edited: number; deleted: number; created_at: number; updated_at: number };
-type FileRow = { id: string; name: string; type: string; size: number; created_at: number };
+type FileRow = { id: string; name: string; type: string; size: number; created_at: number; owner?: string };
 
 const GENERAL_ROOM = 'general';
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
@@ -68,6 +68,8 @@ const ensureTables = async (db: ChatDB) => {
   // جلسة لكل جهاز: يُحفظ على الخادم بصمة الرمز فقط
   await db.exec('CREATE TABLE IF NOT EXISTS chat_sessions (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL, created_at INTEGER NOT NULL, last_used INTEGER NOT NULL)');
   await db.exec('CREATE INDEX IF NOT EXISTS chat_sessions_user ON chat_sessions (user_id)');
+  // وقت آخر تحقق بكلمة المرور في هذه الجلسة (0 = دخلت بالبصمة): شرط لإضافة بصمة جديدة
+  try { await db.exec('ALTER TABLE chat_sessions ADD COLUMN pw_at INTEGER NOT NULL DEFAULT 0'); } catch { /* موجود */ }
   // مفاتيح الدخول بالبصمة / بصمة الوجه (المفتاح العام فقط) والتحديات المؤقتة
   await db.exec("CREATE TABLE IF NOT EXISTS webauthn_credentials (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, public_key TEXT NOT NULL, alg INTEGER NOT NULL, sign_count INTEGER NOT NULL DEFAULT 0, label TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, last_used INTEGER NOT NULL DEFAULT 0)");
   await db.exec('CREATE INDEX IF NOT EXISTS webauthn_credentials_user ON webauthn_credentials (user_id)');
@@ -141,7 +143,17 @@ const isMember = async (db: ChatDB, room: string, user: string) => {
   return results.length > 0;
 };
 
-const systemMessage = (db: ChatDB, room: string, user: string, text: string, now: number) =>
+/** هل الملف مرفق برسالة غير محذوفة في غرفة المستخدم عضو فيها الآن؟ (إزالة العضوية تسحب الوصول فورًا) */
+const canSeeChatFile = async (db: ChatDB, fileId: string, user: string) => {
+  const { results } = await db.prepare(
+    `SELECT 1 FROM chat_messages m JOIN chat_members cm ON cm.room_id = m.room_id AND cm.user_id = ?1
+     WHERE m.deleted = 0 AND instr(m.attachments, ?2) > 0
+       AND EXISTS (SELECT 1 FROM json_each(m.attachments) a WHERE json_extract(a.value, '$.fileId') = ?2) LIMIT 1`,
+  ).bind(user, fileId).all();
+  return results.length > 0;
+};
+
+const systemMessage =(db: ChatDB, room: string, user: string, text: string, now: number) =>
   db.prepare("INSERT INTO chat_messages (id, room_id, user_id, kind, text, created_at, updated_at) VALUES (?, ?, ?, 'system', ?, ?, ?)")
     .bind(uid(), room, user, text, now, now);
 
@@ -192,6 +204,8 @@ const MAX_FAILS = 5;
 /** مدة الجلسة القصوى: يُطلب تسجيل الدخول من جديد كل 24 ساعة */
 const SESSION_MAX_MS = 24 * 3600_000;
 const LOCK_MS = 5 * 60_000;
+/** إضافة بصمة جديدة تتطلب تحققًا بكلمة المرور خلال آخر 10 دقائق (لا يكفي رمز جلسة مسروق) */
+const STEP_UP_MS = 10 * 60_000;
 const normUser = (v: unknown) => str(v, 40).trim().toLowerCase();
 /** صورة شخصية: data URL لصورة PNG/JPEG/WebP فقط وضمن الحجم المسموح، وإلا تُرفض ('' = بلا صورة) */
 const AVATAR_RE = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
@@ -207,10 +221,10 @@ type AccountRow = { id: string; username: string; name: string; role: string; av
 const ACCOUNT_COLS = 'id, username, name, role, avatar, color, is_admin, disabled, last_seen, updated_at, perms';
 const withPerms = (a: AccountRow | undefined) => a && { ...a, perms: parsePerms(a.perms) };
 
-/** جلسة جديدة لهذا الجهاز: الرمز يُعاد للعميل مرة واحدة ويُحفظ على الخادم كبصمة */
-const newSession = async (db: ChatDB, userId: string, now: number) => {
+/** جلسة جديدة لهذا الجهاز: الرمز يُعاد للعميل مرة واحدة ويُحفظ على الخادم كبصمة. pwAt = وقت التحقق بكلمة المرور (0 للبصمة) */
+const newSession = async (db: ChatDB, userId: string, now: number, pwAt = 0) => {
   const key = newKey();
-  await db.prepare('INSERT INTO chat_sessions (token_hash, user_id, created_at, last_used) VALUES (?, ?, ?, ?)').bind(await hashKey(key), userId, now, now).run();
+  await db.prepare('INSERT INTO chat_sessions (token_hash, user_id, created_at, last_used, pw_at) VALUES (?, ?, ?, ?, ?)').bind(await hashKey(key), userId, now, now, pwAt).run();
   return key;
 };
 
@@ -219,9 +233,9 @@ const authUser = async (request: Request, db: ChatDB) => {
   const key = str(request.headers.get('x-chat-key'), 128);
   if (!id || !key) return null;
   const { results } = await db.prepare(
-    `SELECT u.id, u.is_admin, u.perms, s.token_hash, s.created_at, s.last_used FROM chat_sessions s JOIN chat_users u ON u.id = s.user_id
+    `SELECT u.id, u.is_admin, u.perms, s.token_hash, s.created_at, s.last_used, s.pw_at FROM chat_sessions s JOIN chat_users u ON u.id = s.user_id
      WHERE s.token_hash = ? AND u.disabled = 0 AND u.pass_hash != ''`,
-  ).bind(await hashKey(key)).all<{ id: string; is_admin: number; perms: string; token_hash: string; created_at: number; last_used: number }>();
+  ).bind(await hashKey(key)).all<{ id: string; is_admin: number; perms: string; token_hash: string; created_at: number; last_used: number; pw_at: number }>();
   const s = results[0];
   if (!s || s.id !== id) return null;
   if (Date.now() - s.created_at > SESSION_MAX_MS) {
@@ -230,7 +244,7 @@ const authUser = async (request: Request, db: ChatDB) => {
   }
   // تحديث آخر استخدام للجلسة مرة كل ساعة على الأكثر
   if (Date.now() - s.last_used > 3600_000) await db.prepare('UPDATE chat_sessions SET last_used = ? WHERE token_hash = ?').bind(Date.now(), s.token_hash).run();
-  return { id: s.id, admin: !!s.is_admin, perms: parsePerms(s.perms) as Perms, tokenHash: s.token_hash };
+  return { id: s.id, admin: !!s.is_admin, perms: parsePerms(s.perms) as Perms, tokenHash: s.token_hash, pwAt: s.pw_at || 0 };
 };
 export type Session = NonNullable<Awaited<ReturnType<typeof authUser>>>;
 /** التحقق من جلسة حساب (يستخدمه worker/index.ts لحماية كل واجهات البرنامج) */
@@ -292,7 +306,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
         .bind(id, name, now, username, await hashPassword(password)),
       db.prepare("INSERT OR IGNORE INTO chat_members (room_id, user_id, role, last_read, joined_at) VALUES (?, ?, 'admin', 0, ?)").bind(GENERAL_ROOM, id, now),
     ]);
-    return json({ ok: true, id, key: await newSession(db, id, now) });
+    return json({ ok: true, id, key: await newSession(db, id, now, now) });
   }
 
   // تسجيل الدخول: اسم المستخدم + كلمة المرور، مع قفل مؤقت بعد محاولات فاشلة متتالية
@@ -328,7 +342,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     await db.prepare('UPDATE chat_users SET fail_count = 0, lock_until = 0, last_seen = ? WHERE id = ?').bind(now, u.id).run();
     await db.prepare("INSERT OR IGNORE INTO chat_members (room_id, user_id, role, last_read, joined_at) VALUES (?, ?, 'member', 0, ?)").bind(GENERAL_ROOM, u.id, now).run();
     await audit(db, request, u.id, 'auth.login', 'كلمة المرور', { username });
-    return json({ ok: true, id: u.id, key: await newSession(db, u.id, now) });
+    return json({ ok: true, id: u.id, key: await newSession(db, u.id, now, now) });
   }
 
   // ───── الدخول بالبصمة / بصمة الوجه ─────
@@ -426,6 +440,26 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
 
   // تسجيل بصمة هذا الجهاز لحسابي
   if (path === '/auth/webauthn/register-options' && method === 'POST') {
+    // تحقق إضافي (step-up): دخول بكلمة المرور خلال آخر 10 دقائق في هذه الجلسة، أو إعادة إدخالها الآن
+    if (now - session.pwAt > STEP_UP_MS) {
+      const password = str((await readBody<{ password?: string }>(request))?.password, 200);
+      if (!password) return json({ error: 'أعد إدخال كلمة المرور لتفعيل البصمة', code: 'reauth_required' }, 403);
+      const { results: me } = await db.prepare('SELECT pass_hash, fail_count, lock_until FROM chat_users WHERE id = ?').bind(authId).all<{ pass_hash: string; fail_count: number; lock_until: number }>();
+      const u = me[0];
+      if (!u || u.lock_until > now) return json({ error: 'تم إيقاف الدخول مؤقتًا بسبب محاولات خاطئة متكررة', code: 'locked', retryAt: u?.lock_until }, 429);
+      if (!(await verifyPassword(password, u.pass_hash))) {
+        // نفس عدّاد محاولات الدخول حتى لا تصبح هذه النقطة طريقًا لتخمين كلمة المرور بجلسة مسروقة
+        const fails = u.fail_count + 1;
+        const locked = fails >= MAX_FAILS;
+        await db.prepare('UPDATE chat_users SET fail_count = ?, lock_until = ? WHERE id = ?').bind(locked ? 0 : fails, locked ? now + LOCK_MS : 0, authId).run();
+        await audit(db, request, authId, locked ? 'auth.locked' : 'auth.failed', 'تحقق قبل إضافة بصمة');
+        return json({ error: 'كلمة المرور غير صحيحة', code: 'wrong_password' }, 403);
+      }
+      await db.batch([
+        db.prepare('UPDATE chat_users SET fail_count = 0, lock_until = 0 WHERE id = ?').bind(authId),
+        db.prepare('UPDATE chat_sessions SET pw_at = ? WHERE token_hash = ?').bind(now, session.tokenHash),
+      ]);
+    }
     const { results } = await db.prepare('SELECT username, name FROM chat_users WHERE id = ?').bind(authId).all<{ username: string; name: string }>();
     const { results: creds } = await db.prepare('SELECT id FROM webauthn_credentials WHERE user_id = ?').bind(authId).all<{ id: string }>();
     const challenge = randomChallenge();
@@ -456,6 +490,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     if (existing[0] && existing[0].user_id !== authId) return json({ error: 'هذه البصمة مسجّلة مسبقًا', code: 'passkey_exists' }, 409);
     await db.prepare('INSERT OR REPLACE INTO webauthn_credentials (id, user_id, public_key, alg, sign_count, label, created_at) VALUES (?, ?, ?, ?, 0, ?, ?)')
       .bind(credId, authId, publicKey, alg, str(b.label, 80), now).run();
+    await audit(db, request, authId, 'auth.passkey_add', str(b.label, 80));
     return json({ ok: true });
   }
   if (path === '/auth/webauthn/credentials' && method === 'GET') {
@@ -464,7 +499,8 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
   }
   const credMatch = path.match(/^\/auth\/webauthn\/credentials\/(.+)$/);
   if (credMatch && method === 'DELETE') {
-    await db.prepare('DELETE FROM webauthn_credentials WHERE id = ? AND user_id = ?').bind(decodeURIComponent(credMatch[1]), authId).run();
+    const r = await db.prepare('DELETE FROM webauthn_credentials WHERE id = ? AND user_id = ?').bind(decodeURIComponent(credMatch[1]), authId).run();
+    if (r.meta?.changes) await audit(db, request, authId, 'auth.passkey_remove');
     return json({ ok: true });
   }
 
@@ -888,7 +924,9 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
   if (fileMatch && method === 'GET') {
     const id = decodeURIComponent(fileMatch[1]);
     const { results: meta } = await db.prepare('SELECT * FROM chat_files WHERE id = ?').bind(id).all<FileRow>();
-    if (!meta.length) return json({ error: 'الملف غير موجود', code: 'file_not_found' }, 404);
+    // معرّف الملف وحده لا يكفي: يُسمح لصاحبه، أو لعضو حالي في غرفة فيها رسالة غير محذوفة تحمل هذا الملف.
+    // الرد 404 في كل حالات الرفض حتى لا يُكشف وجود الملف
+    if (!meta.length || !(meta[0].owner === authId || (await canSeeChatFile(db, id, authId)))) return json({ error: 'الملف غير موجود', code: 'file_not_found' }, 404);
     if (!files) return json({ error: 'تخزين الملفات غير مهيأ على الخادم', code: 'storage_unconfigured' }, 503);
     const body = await loadFile(files, db, 'chat', id);
     if (!body) return json({ error: 'محتوى الملف غير موجود', code: 'file_content_missing' }, 404);

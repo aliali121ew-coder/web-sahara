@@ -84,6 +84,7 @@
     "trash_record_unknown": "The record this file belongs to is unknown",
     "upload_failed": "Couldn’t upload the file",
     "username_taken": "This username is already taken",
-    "wrong_password": "The current password is incorrect"
+    "wrong_password": "The current password is incorrect",
+    "reauth_required": "Re-enter your password to enable biometric sign-in"
   }
 }

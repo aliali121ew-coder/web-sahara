@@ -125,6 +125,44 @@ export const applyCollectionOps = async (db: D1Database, key: string, ops: Colle
   return stmts.length;
 };
 
+/** نص JSON بمفاتيح مرتبة (للمقارنة بغض النظر عن ترتيب الحقول) */
+const stable = (v: unknown): string =>
+  Array.isArray(v) ? `[${v.map(stable).join(',')}]`
+    : v && typeof v === 'object' ? `{${Object.keys(v).sort().map(k => `${JSON.stringify(k)}:${stable((v as Record<string, unknown>)[k])}`).join(',')}}`
+      : JSON.stringify(v);
+
+/** هل العنصر الجديد هو نفس القديم مع تغيير حقل read إلى true فقط؟ */
+const onlyMarkedRead = (oldData: string, newData: string) => {
+  try {
+    const a = JSON.parse(oldData), b = JSON.parse(newData);
+    if (!a || !b || typeof a !== 'object' || typeof b !== 'object' || Array.isArray(b) || b.read !== true) return false;
+    return stable({ ...a, read: true }) === stable(b);
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * عمليات محدودة لحساب لا يملك الكتابة الكاملة على المجموعة:
+ * create = إضافة عناصر بمعرّفات جديدة فقط، markRead = تعليم عنصر موجود كمقروء فقط. أي حذف أو تعديل آخر يُرفض بالكامل.
+ */
+export const limitedOpsAllowed = async (db: D1Database, key: string, ops: CollectionOps, allow: { create: boolean; markRead: boolean }) => {
+  if (Array.isArray(ops.remove) && ops.remove.length) return false;
+  const upsert = Array.isArray(ops.upsert) ? ops.upsert : [];
+  if (upsert.some(u => !u || typeof u.id !== 'string' || !u.id || typeof u.data !== 'string')) return false;
+  const existing = new Map<string, string>();
+  const ids = upsert.map(u => u.id);
+  for (let i = 0; i < ids.length; i += 90) {
+    const part = ids.slice(i, i + 90);
+    const { results } = await db.prepare(`SELECT id, data FROM collection_items WHERE key = ? AND id IN (${part.map(() => '?').join(',')})`).bind(key, ...part).all<{ id: string; data: string }>();
+    for (const r of results) existing.set(r.id, r.data);
+  }
+  return upsert.every(u => {
+    const old = existing.get(u.id);
+    return old === undefined ? allow.create : allow.markRead && onlyMarkedRead(old, u.data);
+  });
+};
+
 /** استبدال المجموعة كاملة (للتوافق مع نسخ قديمة من التطبيق ترسل القيمة كاملة) */
 export const replaceCollection = async (db: D1Database, key: string, value: string, userId: string, now: number): Promise<number | string> => {
   let items: unknown;

@@ -77,7 +77,12 @@ export const groupLevel = (perms: Perms, isAdmin: boolean, groupId: string): Lev
 
 // ───── ربط مفاتيح البيانات بالأقسام ─────
 const COMMON = 'common';
-type Rule = { match: (k: string) => boolean; read: string[]; write?: string[] };
+/**
+ * read: من يقرأ. write: من يعدّل ويحذف بالكامل (بدونه = نفس أقسام القراءة، ما عدا COMMON التي لا تمنح كتابة إلا إن ذُكرت صراحة).
+ * create: (للمجموعات) من يضيف عناصر جديدة فقط دون تعديل الموجود أو حذفه.
+ * markRead: (للمجموعات) كل من يقرأ يستطيع تعليم عنصر موجود كمقروء (تغيير حقل read إلى true فقط).
+ */
+type Rule = { match: (k: string) => boolean; read: string[]; write?: string[]; create?: string[]; markRead?: boolean };
 
 const eq = (...keys: string[]) => (k: string) => keys.includes(k);
 const pre = (...prefixes: string[]) => (k: string) => prefixes.some(p => k.startsWith(p));
@@ -103,12 +108,20 @@ const KEY_RULES: Rule[] = [
   { match: eq('sahara_price_log_v1'), read: ['prices', 'suppliers', 'dashboard'], write: ['prices', 'suppliers'] },
   { match: eq('sahara_tasks', 'sahara_supply_requests'), read: ['tasks', 'dashboard'], write: ['tasks'] },
   { match: eq('sahara_fuel_metrics'), read: ['dashboard', 'reports'], write: ['dashboard'] },
-  // قوائم مرجعية وإشعارات وتفضيلات عرض: لكل حساب مفعّل
+  // الإشعارات: يقرؤها الجميع ويعلّمونها كمقروءة؛ ينشئها من يسجّل واردًا أو طلب تجهيز؛ تعديلها وحذفها لمدير النظام
+  { match: eq('sahara_notifications'), read: [COMMON], write: [], create: ['deliveries-sahara', 'deliveries-etihad', 'tasks'], markRead: true },
+  // رسائل التوجيه القديمة: قراءة للجميع، والكتابة لمدير النظام
+  { match: eq('sahara_messages'), read: [COMMON], write: [] },
+  // القوائم المرجعية المشتركة (الشركات، الموردون، الألوان، المحطات): يعدّلها من يدخل الواردات أو الأسعار أو الطلبات
   {
-    match: k => ['sahara_notifications', 'sahara_messages', 'sahara_suppliers_list', 'sahara_companies_list', 'sahara_colors_list', 'sahara_stations_list',
-      'sahara_subtab', 'etihad_subtab', 'sahara_reports_tab', 'etihad_reports_tab', 'sahara_tanks_section', 'etihad_tanks_section'].includes(k)
+    match: eq('sahara_suppliers_list', 'sahara_companies_list', 'sahara_colors_list', 'sahara_stations_list'),
+    read: [COMMON], write: ['deliveries-sahara', 'deliveries-etihad', 'prices', 'suppliers', 'tasks'],
+  },
+  // تفضيلات العرض (التبويب المفتوح، رفض عرض البصمة): بلا أثر على البيانات، يكتبها أي حساب مفعّل
+  {
+    match: k => ['sahara_subtab', 'etihad_subtab', 'sahara_reports_tab', 'etihad_reports_tab', 'sahara_tanks_section', 'etihad_tanks_section'].includes(k)
       || k.startsWith('sahara_view_') || k.startsWith('sahara_bio_declined_'),
-    read: [COMMON],
+    read: [COMMON], write: [COMMON],
   },
 ];
 
@@ -149,12 +162,29 @@ export const canReadKey = (perms: Perms, isAdmin: boolean, key: string) => {
   return !!r && anyAtLeast(perms, false, r.read, 1);
 };
 
+/** صلاحية الكتابة الكاملة (إضافة وتعديل وحذف واستبدال) */
 export const canWriteKey = (perms: Perms, isAdmin: boolean, key: string) => {
   if (isServerForbiddenKey(key)) return false;
   if (isAdmin) return true;
   const r = ruleFor(key);
-  return !!r && anyAtLeast(perms, false, r.write || r.read, 2);
+  // أقسام القراءة العامة (COMMON) لا تمنح كتابة ضمنيًا: لا بد أن تُذكر في write صراحة
+  return !!r && anyAtLeast(perms, false, r.write || r.read.filter(s => s !== COMMON), 2);
 };
+
+/** إضافة عناصر جديدة فقط إلى مجموعة (دون تعديل الموجود أو حذفه) */
+export const canCreateItems = (perms: Perms, isAdmin: boolean, key: string) => {
+  if (canWriteKey(perms, isAdmin, key)) return true;
+  const r = ruleFor(key);
+  return !!r?.create && anyAtLeast(perms, false, r.create, 2);
+};
+
+/** تعليم عناصر المجموعة كمقروءة (تغيير حقل read إلى true فقط) */
+export const canMarkRead = (perms: Perms, isAdmin: boolean, key: string) =>
+  !!ruleFor(key)?.markRead && canReadKey(perms, isAdmin, key);
+
+/** هل يملك الحساب أي نوع من الكتابة على المفتاح (وإلا يُعامل كقراءة فقط في التطبيق) */
+export const canWriteSome = (perms: Perms, isAdmin: boolean, key: string) =>
+  canWriteKey(perms, isAdmin, key) || canCreateItems(perms, isAdmin, key) || canMarkRead(perms, isAdmin, key);
 
 const SECTION_LABEL: Record<string, string> = Object.fromEntries(
   PERM_GROUPS.flatMap(g => g.sections.map(s => [s.id, g.id === 'pages' ? s.label : `${g.label} ← ${s.label}`])),
@@ -163,6 +193,7 @@ const SECTION_LABEL: Record<string, string> = Object.fromEntries(
 /** اسم القسم المسؤول عن مفتاح بيانات (لسجل العمليات) */
 export const keySectionLabel = (key: string) => {
   const r = ruleFor(key);
-  const id = r && (r.write || r.read).find(x => x !== COMMON);
+  // المفاتيح العامة (قوائم، إشعارات، تفضيلات) تبقى «بيانات عامة» ولا تُنسب لقسم
+  const id = r && !r.read.includes(COMMON) && (r.write || r.read).find(x => x !== COMMON);
   return id ? SECTION_LABEL[id] : 'بيانات عامة';
 };

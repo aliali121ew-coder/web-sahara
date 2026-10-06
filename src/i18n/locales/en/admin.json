@@ -229,6 +229,8 @@
       "auth.failed": "Failed sign-in",
       "auth.locked": "Account temporarily locked",
       "auth.password": "Password changed",
+      "auth.passkey_add": "Passkey added",
+      "auth.passkey_remove": "Passkey removed",
       "admin.create": "Account created",
       "admin.update": "Account updated",
       "admin.support": "Support request handled",
