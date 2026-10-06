@@ -9,7 +9,7 @@ import { PriceIndexTable } from './PriceIndexTable';
 
 export const MainDashboard: React.FC = () => {
   return (
-    <div className="space-y-7 sm:space-y-8 animate-in fade-in duration-300 pb-6">
+    <div className="space-y-12 sm:space-y-16 animate-in fade-in duration-300 pb-6">
       {/* Section 1: كاز - صحاري كربلاء 2026 */}
       <SaharaGasSection />
 
