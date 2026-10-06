@@ -25,7 +25,9 @@
     "directOutflow": "Direct outflow",
     "totalInboundAll": "Total inbound",
     "totalConsumption": "Total consumption",
-    "daily": "Daily consumption"
+    "daily": "Daily consumption",
+    "actualDiffShort": "Consumption change",
+    "actualShort": "Consumption"
   },
   "compare": {
     "prevDay": "vs. previous day",
@@ -135,7 +137,9 @@
     "toggleInbound": "Click to show or hide inbound",
     "inboundLegend": "Inbound",
     "toggleConsumption": "Click to show or hide consumption",
-    "consumptionLegend": "Consumption"
+    "consumptionLegend": "Consumption",
+    "requiredShort": "Needed",
+    "coverageFullShort": "Covers"
   },
   "range": {
     "d7": "7 days",

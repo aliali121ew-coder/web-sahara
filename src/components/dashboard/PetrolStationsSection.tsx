@@ -409,8 +409,8 @@ export const PetrolStationsSection: React.FC = () => {
             
             {/* كارت 1: الكمية المطلوب توفرها */}
             <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-teal-300 dark:hover:border-teal-700 transition-colors min-w-0">
-              <div className="kpi-label text-slate-500 dark:text-slate-400 mb-0.5">
-                {t('dashboard:petrol.required')}
+              <div className="kpi-label text-slate-500 dark:text-slate-400 mb-0.5" title={t('dashboard:petrol.required')}>
+                <span className="lbl-full">{t('dashboard:petrol.required')}</span><span className="lbl-short">{t('dashboard:petrol.requiredShort')}</span>
               </div>
               <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
                 {formatNumber(requiredQuantity)} <span className="text-[8.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
@@ -422,8 +422,8 @@ export const PetrolStationsSection: React.FC = () => {
 
             {/* كارت 2: يؤمن لغاية (المتوفر + المطلوب توفرها) */}
             <div className="p-2.5 sm:p-3 rounded-2xl bg-[#146f82]/5 dark:bg-[#146f82]/20 border border-[#146f82]/25 dark:border-[#146f82]/40 flex flex-col justify-between hover:border-[#146f82] transition-colors min-w-0">
-              <div className="kpi-label text-[#146f82] dark:text-teal-300 mb-0.5">
-                {t('dashboard:petrol.coverageFull')}
+              <div className="kpi-label text-[#146f82] dark:text-teal-300 mb-0.5" title={t('dashboard:petrol.coverageFull')}>
+                <span className="lbl-full">{t('dashboard:petrol.coverageFull')}</span><span className="lbl-short">{t('dashboard:petrol.coverageFullShort')}</span>
               </div>
               <div className="kpi-num !whitespace-normal font-black text-[#146f82] dark:text-[#2dd4bf] font-mono">
                 <span className="whitespace-nowrap">{t('common:units.days', { count: targetCoverageDays })}</span> <span className="text-[8.5px] font-normal text-slate-400 whitespace-nowrap">({targetCoverageDate})</span>

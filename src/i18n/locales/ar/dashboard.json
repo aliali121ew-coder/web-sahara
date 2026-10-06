@@ -25,7 +25,9 @@
     "directOutflow": "صرف مباشر",
     "totalInboundAll": "الوارد الكلي",
     "totalConsumption": "الاستهلاك الكلي",
-    "daily": "الاستهلاك اليومي"
+    "daily": "الاستهلاك اليومي",
+    "actualDiffShort": "فرق الاستهلاك",
+    "actualShort": "الاستهلاك"
   },
   "compare": {
     "prevDay": "مقارنة باليوم السابق",
@@ -147,7 +149,9 @@
     "toggleInbound": "انقر لإظهار الوارد أو إخفائه",
     "inboundLegend": "الوارد",
     "toggleConsumption": "انقر لإظهار الاستهلاك أو إخفائه",
-    "consumptionLegend": "الاستهلاك"
+    "consumptionLegend": "الاستهلاك",
+    "requiredShort": "المطلوب توفيره",
+    "coverageFullShort": "يؤمّن لغاية"
   },
   "range": {
     "d7": "7 أيام",

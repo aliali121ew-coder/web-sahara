@@ -346,7 +346,7 @@ export const EtihadGasSection: React.FC = () => {
             {/* 2. الاستهلاك + المبيعات */}
             <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-blue-300 dark:hover:border-blue-700 transition-colors min-w-0">
               <div className="flex items-center justify-between gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
-                <span className="kpi-label">{t('dashboard:flow.actual')}</span>
+                <span className="kpi-label" title={t('dashboard:flow.actual')}><span className="lbl-full">{t('dashboard:flow.actual')}</span><span className="lbl-short">{t('dashboard:flow.actualShort')}</span></span>
                 <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-200/60 dark:border-blue-800/40 shrink-0">
                   <Activity className="w-3.5 h-3.5" />
                 </div>
@@ -363,7 +363,7 @@ export const EtihadGasSection: React.FC = () => {
             {/* 3. فرق الاستهلاك الفعلي بين أمس واليوم (الاستهلاك + المبيعات) */}
             <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-teal-300 dark:hover:border-teal-700 transition-colors min-w-0">
               <div className="flex items-center justify-between gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
-                <span className="kpi-label">{t('dashboard:flow.actualDiff')}</span>
+                <span className="kpi-label" title={t('dashboard:flow.actualDiff')}><span className="lbl-full">{t('dashboard:flow.actualDiff')}</span><span className="lbl-short">{t('dashboard:flow.actualDiffShort')}</span></span>
                 <div className="w-6 h-6 rounded-lg bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400 flex items-center justify-center border border-teal-200/60 dark:border-teal-800/40 shrink-0">
                   <TrendingUp className="w-3.5 h-3.5" />
                 </div>

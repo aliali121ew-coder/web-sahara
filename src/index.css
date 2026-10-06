@@ -551,6 +551,14 @@ body[data-glassmorphism="true"] .shadow-soft-card {
 .kpi-grid-2 .kpi-num { font-size: clamp(0.8rem, 4.2cqw, 1.05rem); }
 /* الرئيسية: أرقام الكروت الصغيرة بنفس خط «الرصيد الفعلي الحالي» (font-mono = Noto Kufi) حتى لا يظهر أكثر من نوع خط */
 .dash-root .kpi-num { font-family: theme('fontFamily.mono'); font-weight: 900; letter-spacing: normal; font-size: 14px !important; }
+/* عناوين الكروت الصغيرة بسطر واحد: تصغر قليلًا مع عرض الكارت، ونقاط في الحالات الضيقة جدًا */
+.dash-root .kpi-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* الحجم من عرض صف الكروت (حد أدنى 12px)، والعنوان الطويل يُستبدل بصيغته المختصرة حين يضيق الصف */
+@container (min-width: 26rem) { .dash-root .kpi-grid-3 .kpi-label { font-size: clamp(0.75rem, calc(2.2cqw + 1px), 0.8125rem); } }
+.dash-root .kpi-grid-2 .kpi-label { font-size: clamp(0.75rem, calc(4.4cqw - 3px), 0.8125rem); }
+.dash-root .lbl-short { display: none; }
+@container (max-width: 38rem) { .dash-root .kpi-grid-3 .lbl-full { display: none; } .dash-root .kpi-grid-3 .lbl-short { display: inline; } }
+@container (max-width: 22rem) { .dash-root .kpi-grid-2 .lbl-full { display: none; } .dash-root .kpi-grid-2 .lbl-short { display: inline; } }
 
 /* ===== الخطوط حسب اللغة =====
    الإنجليزية: Inter، مع الرجوع لخط عربي للبيانات العربية التي يدخلها المستخدمون (أسماء المحطات وغيرها).
