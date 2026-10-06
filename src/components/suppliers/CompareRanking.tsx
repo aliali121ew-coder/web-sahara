@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { Crown, Trophy, Users, ChevronLeft } from 'lucide-react';
+import { Crown, Trophy, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatNumber } from '../../lib/utils';
 import type { SupplierPriceRecord } from '../../types';
@@ -27,6 +27,42 @@ export const CompareRanking: React.FC<{
 }> = ({ items, records, palette, unit, showShare, fmtVal, onOpen }) => {
   const { t } = useTranslation(['suppliers', 'common']);
   const [hover, setHover] = useState<string | null>(null);
+  // تنقّل بالصفحات (10 موردين): عجلة الماوس تقلب صفحة واحدة بتهدئة، والأسهم ↑↓ كذلك، مع انتقال ناعم
+  // عدد الصفوف في الصفحة يتكيّف مع ارتفاع اللوحة (≈ 74px للصف) فلا يُقص صف على الشاشات الصغيرة
+  const listRef = useRef<HTMLDivElement>(null);
+  const [PAGE, setPAGE] = useState(10);
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const fit = () => setPAGE(Math.max(4, Math.min(12, Math.floor((el.clientHeight - 56) / 74))));
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const pages = Math.max(1, Math.ceil(items.length / PAGE));
+  const [page, setPage] = useState(0);
+  const [dir, setDir] = useState<1 | -1>(1);
+  useEffect(() => { setPage(0); }, [items.length, PAGE]);
+  const go = (next: number) => {
+    const p = Math.min(pages - 1, Math.max(0, next));
+    if (p === page) return;
+    setDir(p > page ? 1 : -1);
+    setPage(p);
+  };
+  const lastWheel = useRef(0);
+  const onWheel = (e: React.WheelEvent) => {
+    if (Math.abs(e.deltaY) < 8) return;
+    const now = Date.now();
+    if (now - lastWheel.current < 420) return;
+    lastWheel.current = now;
+    go(page + (e.deltaY > 0 ? 1 : -1));
+  };
+  const onKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown' || e.key === 'PageDown') { e.preventDefault(); go(page + 1); }
+    if (e.key === 'ArrowUp' || e.key === 'PageUp') { e.preventDefault(); go(page - 1); }
+  };
+  const pageItems = items.slice(page * PAGE, page * PAGE + PAGE);
   const total = items.reduce((a, b) => a + b.value, 0);
   const max = items[0]?.value || 1;
   const recordOf = useMemo(() => new Map(records.map(r => [r.id, r])), [records]);
@@ -86,9 +122,10 @@ export const CompareRanking: React.FC<{
       </div>
 
       {/* لوحة الترتيب */}
-      <div className="flex-1 min-h-0 overflow-y-auto pe-1 -me-1">
-        <ol className="space-y-1.5">
-          {items.map((b, i) => {
+      <div ref={listRef} className="flex-1 min-h-0 flex flex-col outline-none" onWheel={onWheel} onKeyDown={onKey} tabIndex={0} aria-label={t('compare.rankingLabel')}>
+        <ol key={page} className={`flex-1 space-y-1.5 overflow-hidden ${dir > 0 ? 'animate-[rankUp_.32s_cubic-bezier(.2,.8,.2,1)]' : 'animate-[rankDown_.32s_cubic-bezier(.2,.8,.2,1)]'}`}>
+          {pageItems.map((b, j) => {
+            const i = page * PAGE + j;
             const rec = recordOf.get(b.id);
             const pct = (b.value / max) * 100;
             const share = total ? Math.round((b.value / total) * 1000) / 10 : 0;
@@ -129,6 +166,28 @@ export const CompareRanking: React.FC<{
             );
           })}
         </ol>
+        {/* شريط التنقّل: السابق/التالي، مؤشرات الصفحات، والنطاق */}
+        {pages > 1 && (
+          <div className="shrink-0 pt-3 mt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
+            <span className="text-[11.5px] text-slate-400 tabular-nums">{t('pager.range', { from: page * PAGE + 1, to: page * PAGE + pageItems.length, total: items.length })}</span>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => go(page - 1)} disabled={page === 0} aria-label={t('pager.prev')}
+                className="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center hover:border-teal-400 hover:text-teal-600 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors">
+                <ChevronRight className="w-4 h-4 ltr:rotate-180" />
+              </button>
+              <div className="flex items-center gap-1.5">
+                {Array.from({ length: pages }, (_, p) => (
+                  <button key={p} type="button" onClick={() => go(p)} aria-label={`${p + 1}`} aria-current={p === page ? 'page' : undefined}
+                    className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${p === page ? 'w-7 bg-gradient-to-l from-teal-400 to-teal-600' : 'w-2 bg-slate-300 dark:bg-slate-600 hover:bg-teal-300'}`} />
+                ))}
+              </div>
+              <button type="button" onClick={() => go(page + 1)} disabled={page >= pages - 1} aria-label={t('pager.next')}
+                className="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center hover:border-teal-400 hover:text-teal-600 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors">
+                <ChevronLeft className="w-4 h-4 ltr:rotate-180" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

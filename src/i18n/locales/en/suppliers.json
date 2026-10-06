@@ -168,6 +168,7 @@
     "total": "Total",
     "suppliersCount": "Suppliers",
     "leaderShare": "Leader share",
-    "clickMonth": "Click to open the month day by day"
+    "clickMonth": "Click to open the month day by day",
+    "rankingLabel": "Supplier ranking"
   }
 }
