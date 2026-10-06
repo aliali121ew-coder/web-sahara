@@ -1,12 +1,11 @@
 import React from 'react';
-import { ChevronLeft } from 'lucide-react';
 import { useFuelData } from '../../context/FuelDataContext';
 import { useTranslation } from 'react-i18next';
 import { Avatar, ChangePill, fmtPrice } from '../suppliers/supplierUi';
 
 /**
  * مؤشرات الأسعار في الرئيسية: نفس أعمدة جدول «كل الموردين» (بلا الشركة المستلمة وآخر تحديث والإجراء)،
- * ومصدرها سجلات الأسعار نفسها؛ الضغط على صف أو «كل الموردين» يفتح صفحة الموردين.
+ * ومصدرها سجلات الأسعار نفسها؛ الضغط على صف يفتح صفحة الموردين.
  */
 export const PriceIndexTable: React.FC = () => {
   const { supplierPrices, searchQuery, setActiveTab } = useFuelData();
@@ -37,10 +36,6 @@ export const PriceIndexTable: React.FC = () => {
             <p className="text-xs text-slate-500">{t('dashboard:priceIndex.text')}</p>
           </div>
         </div>
-        <button type="button" onClick={open}
-          className="h-9 ps-3.5 pe-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-[13px] font-medium text-slate-600 dark:text-slate-300 flex items-center gap-1.5 hover:border-teal-400 hover:text-teal-600 cursor-pointer transition-colors">
-          {t('dashboard:priceIndex.viewAll')} <ChevronLeft className="w-4 h-4 ltr:rotate-180" />
-        </button>
       </div>
 
       <div className="overflow-x-auto">

@@ -184,8 +184,7 @@
       "etihad": "Etihad inbound"
     },
     "density": "Density",
-    "color": "Color",
-    "viewAll": "All suppliers"
+    "color": "Color"
   },
   "sahara": {
     "sectors": {
