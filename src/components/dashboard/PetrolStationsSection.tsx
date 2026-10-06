@@ -271,10 +271,10 @@ export const PetrolStationsSection: React.FC = () => {
                   title={`${t('dashboard:capacity.centralTanks')}: ${fillLabel} (${formatNumber(totalBalance)} ${t('common:units.liter')})`}
                 >
                   <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/20 to-transparent opacity-60 pointer-events-none" />
-                  <span className="relative z-10 text-[9px] sm:text-[10px] font-bold text-white px-2 truncate drop-shadow-sm flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-teal-300"></span>
-                    <span>{t('dashboard:capacity.centralTanks')}</span>
-                    <strong className="font-mono font-black text-teal-100">{fillLabel}</strong>
+                  <span className="relative z-10 min-w-0 max-w-full text-[9px] sm:text-[10px] font-bold text-white px-2 drop-shadow-sm flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-teal-300 shrink-0"></span>
+                    <span className="truncate min-w-0">{t('dashboard:capacity.centralTanks')}</span>
+                    <strong className="shrink-0 font-mono font-black text-teal-100">{fillLabel}</strong>
                   </span>
                 </div>
 
@@ -409,7 +409,7 @@ export const PetrolStationsSection: React.FC = () => {
             
             {/* كارت 1: الكمية المطلوب توفرها */}
             <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-teal-300 dark:hover:border-teal-700 transition-colors min-w-0">
-              <div className="kpi-label text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
+              <div className="kpi-label text-slate-500 dark:text-slate-400 mb-0.5">
                 {t('dashboard:petrol.required')}
               </div>
               <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
@@ -422,7 +422,7 @@ export const PetrolStationsSection: React.FC = () => {
 
             {/* كارت 2: يؤمن لغاية (المتوفر + المطلوب توفرها) */}
             <div className="p-2.5 sm:p-3 rounded-2xl bg-[#146f82]/5 dark:bg-[#146f82]/20 border border-[#146f82]/25 dark:border-[#146f82]/40 flex flex-col justify-between hover:border-[#146f82] transition-colors min-w-0">
-              <div className="kpi-label text-[10px] sm:text-[11px] font-bold text-[#146f82] dark:text-teal-300 mb-0.5">
+              <div className="kpi-label text-[#146f82] dark:text-teal-300 mb-0.5">
                 {t('dashboard:petrol.coverageFull')}
               </div>
               <div className="kpi-num !whitespace-normal font-black text-[#146f82] dark:text-[#2dd4bf] font-mono">

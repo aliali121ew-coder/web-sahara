@@ -242,10 +242,10 @@ export const EtihadGasSection: React.FC = () => {
                   title={`${t('dashboard:etihad.tanks')}: ${fillLabel} (${formatNumber(etihadTotalBalance)} ${t('common:units.liter')})`}
                 >
                   <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/20 to-transparent opacity-60 pointer-events-none" />
-                  <span className="relative z-10 text-[9px] sm:text-[10px] font-bold text-white px-2 truncate drop-shadow-sm flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-teal-300"></span>
-                    <span>{t('dashboard:capacity.current')}</span>
-                    <strong className="font-mono font-black text-teal-100">{fillLabel}</strong>
+                  <span className="relative z-10 min-w-0 max-w-full text-[9px] sm:text-[10px] font-bold text-white px-2 drop-shadow-sm flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-teal-300 shrink-0"></span>
+                    <span className="truncate min-w-0">{t('dashboard:capacity.current')}</span>
+                    <strong className="shrink-0 font-mono font-black text-teal-100">{fillLabel}</strong>
                   </span>
                 </div>
 

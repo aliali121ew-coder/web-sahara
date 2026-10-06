@@ -544,11 +544,13 @@ body[data-glassmorphism="true"] .shadow-soft-card {
 }
 /* شرائح قصيرة (اسم + رقم): تبقى 3 أعمدة حتى العروض الضيقة وتصغر الخطوط */
 .kpi-grid-chips { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.kpi-grid-chips .kpi-num { font-size: clamp(0.7rem, 3.6cqw, 1rem); }
-.kpi-grid-chips .kpi-label { font-size: clamp(0.62rem, 2.9cqw, 0.78rem); }
+.kpi-grid-chips .kpi-num { font-size: clamp(0.7rem, 3.6cqw, 1.05rem); }
+.kpi-grid-chips .kpi-label { font-size: clamp(0.62rem, 2.9cqw, 0.8125rem); }
 /* عمودان (كروت قصيرة): خط أكبر يتكيف مع عرض الكارت، بلا قطع للنص */
 .kpi-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .kpi-grid-2 .kpi-num { font-size: clamp(0.8rem, 4.2cqw, 1.05rem); }
+/* الرئيسية: أرقام الكروت الصغيرة بنفس خط «الرصيد الفعلي الحالي» (font-mono = Noto Kufi) حتى لا يظهر أكثر من نوع خط */
+.dash-root .kpi-num { font-family: theme('fontFamily.mono'); font-weight: 900; letter-spacing: normal; }
 
 /* ===== الخطوط حسب اللغة =====
    الإنجليزية: Inter، مع الرجوع لخط عربي للبيانات العربية التي يدخلها المستخدمون (أسماء المحطات وغيرها).
