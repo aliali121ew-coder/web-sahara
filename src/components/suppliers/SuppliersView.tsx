@@ -267,16 +267,17 @@ export const SuppliersView: React.FC = () => {
     () => [...saharaDeliveries.map(d => ({ d, tab: 'deliveries-sahara' as NavTabId })), ...etihadDeliveries.map(d => ({ d, tab: 'deliveries-etihad' as NavTabId }))],
     [saharaDeliveries, etihadDeliveries]
   );
-  /** آخر شحنة واردة من المورد (من سجلات وارد الشركتين) */
-  const lastInboundOf = useMemo(() => {
-    const cache = new Map<string, { d: InboundDelivery; tab: NavTabId } | undefined>();
+  /** شحنات المورد في أرشيف الوارد (الشركتين): الأحدث أولًا، مع مجموع الكمية */
+  const inboundOf = useMemo(() => {
+    const cache = new Map<string, { last?: { d: InboundDelivery; tab: NavTabId }; total: number; count: number }>();
     return (s: SupplierPriceRecord) => {
       if (!cache.has(s.id)) {
         const hits = allDeliveries.filter(({ d }) => sameSupplier(d.supplierCompany, s.supplierName) || sameSupplier(d.supplierName, s.supplierName));
         hits.sort((a, b) => dateKey(b.d.receiptUnloadDate || b.d.date).localeCompare(dateKey(a.d.receiptUnloadDate || a.d.date)));
-        cache.set(s.id, hits[0]);
+        const total = hits.reduce((a, { d }) => a + (d.receivedQuantity || d.volumeLiters || 0), 0);
+        cache.set(s.id, { last: hits[0], total, count: hits.length });
       }
-      return cache.get(s.id);
+      return cache.get(s.id)!;
     };
   }, [allDeliveries]);
 
@@ -312,7 +313,7 @@ export const SuppliersView: React.FC = () => {
   };
 
   const iqdL = t('units.iqdPerLiter');
-  const last = selected ? lastInboundOf(selected) : undefined;
+  const last = selected ? inboundOf(selected).last : undefined;
   const lastQty = last ? (last.d.receivedQuantity || last.d.volumeLiters || 0) : 0;
   const lastPrice = last ? (last.d.productPrice || last.d.pricePerLiter || 0) : 0;
   const diff = selected ? selected.priceIqd - selected.previousPriceIqd : 0;
@@ -486,7 +487,7 @@ export const SuppliersView: React.FC = () => {
                   <th className={th}>{t('table.previous')}</th>
                   <th className={th}>{t('table.change')}</th>
                   <th className={th}>{t('table.updated')}</th>
-                  <th className={th}>{t('cards.lastInbound')}</th>
+                  <th className={th}>{t('table.inbound')}</th>
                   <th className={th}>{t('table.action')}</th>
                 </tr>
               </thead>
@@ -496,7 +497,7 @@ export const SuppliersView: React.FC = () => {
                 )}
                 {rows.map((s, i) => {
                   const active = s.id === selected?.id;
-                  const li = lastInboundOf(s);
+                  const inb = inboundOf(s);
                   return (
                     <tr key={s.id} onClick={() => setSelectedId(s.id)} aria-selected={active}
                       className={`border-t border-slate-100 dark:border-slate-800 cursor-pointer transition-colors ${active ? 'bg-teal-50/70 dark:bg-teal-950/30' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'}`}>
@@ -519,7 +520,14 @@ export const SuppliersView: React.FC = () => {
                       <td className={`${td} tabular-nums`}>{fmtPrice(s.previousPriceIqd)}</td>
                       <td className={td}><ChangePill pct={s.changePercent} /></td>
                       <td className={`${td} tabular-nums`}>{s.lastUpdated}</td>
-                      <td className={`${td} tabular-nums`}>{li ? (li.d.receiptUnloadDate || li.d.date) : '—'}</td>
+                      <td className={td}>
+                        {inb.count ? (
+                          <div className="tabular-nums">
+                            <div className="font-semibold text-slate-900 dark:text-white">{formatNumber(inb.total)} <span className="text-[11px] font-normal text-slate-400">{t('common:units.liter')}</span></div>
+                            <div className="text-[11px] text-slate-400">{t('table.shipments', { count: inb.count })}</div>
+                          </div>
+                        ) : '—'}
+                      </td>
                       <td className={td} onClick={e => e.stopPropagation()}>
                         {editable ? (
                           <button type="button" onClick={() => setEditing({ rec: s, isNew: false })}
