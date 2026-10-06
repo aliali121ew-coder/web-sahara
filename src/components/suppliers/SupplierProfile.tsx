@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, ArrowUpToLine, ArrowDownToLine, ArrowUpDown, Truck, Droplets, TrendingUp, TrendingDown, Minus, Percent, ChevronLeft, ChevronRight, X, Users } from 'lucide-react';
+import { ArrowRight, ArrowUpToLine, ArrowDownToLine, ArrowUpDown, Truck, Droplets, TrendingUp, TrendingDown, Minus, Percent, ChevronLeft, ChevronRight, X, Users, ArrowUp, ArrowDown, ClipboardList } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useFuelData } from '../../context/FuelDataContext';
 import { formatNumber } from '../../lib/utils';
@@ -104,6 +104,20 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
   const safePage = Math.min(page, pageCount - 1);
   const pageRows = filtered.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
   const filteredQty = filtered.reduce((a, r) => a + qtyOf(r.d), 0);
+  // للسجل: السعر السابق لكل شحنة (أقدم شحنة مسعّرة بعدها)، وملخص كل شهر، وأكبر كمية لشريط الكمية
+  const log = useMemo(() => {
+    const prev = new Map<Row, number>();
+    let older = 0;
+    for (let k = filtered.length - 1; k >= 0; k--) {
+      const p = priceOf(filtered[k].d);
+      if (older) prev.set(filtered[k], older);
+      if (p) older = p;
+    }
+    const months = new Map<string, { n: number; qty: number }>();
+    filtered.forEach(r => { const m = dayOf(r.d).slice(0, 7); const a = months.get(m) ?? { n: 0, qty: 0 }; a.n++; a.qty += qtyOf(r.d); months.set(m, a); });
+    const maxQty = filtered.reduce((a, r) => Math.max(a, qtyOf(r.d)), 0) || 1;
+    return { prev, months, maxQty };
+  }, [filtered]);
 
   const iqdL = t('units.iqdPerLiter');
   const th = 'px-3 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap';
@@ -253,9 +267,12 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:items-stretch lg:h-[700px]">
         <section className="lg:col-span-3 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-[0_1px_3px_rgba(15,23,42,0.05)] overflow-hidden min-w-0 flex flex-col lg:h-full lg:min-h-0">
           <div className="px-4 sm:px-5 py-4 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800">
-            <div>
-              <h2 className="text-[15px] font-semibold text-slate-900 dark:text-white">{t('profile.archiveTitle')}</h2>
-              <p className="text-xs text-slate-400 tabular-nums">{t('profile.archiveSummary', { count: filtered.length, qty: formatNumber(filteredQty) })}</p>
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-300 flex items-center justify-center shrink-0"><ClipboardList className="w-4.5 h-4.5" /></span>
+              <div className="min-w-0">
+                <h2 className="text-[15px] font-semibold text-slate-900 dark:text-white">{t('profile.archiveTitle')}</h2>
+                <p className="text-xs text-slate-400 tabular-nums">{t('profile.archiveSummary', { count: filtered.length, qty: formatNumber(filteredQty) })}</p>
+              </div>
             </div>
             <div className="flex flex-wrap gap-1.5">
               {company && (
@@ -289,32 +306,91 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
             ))}
           </div>
 
+          {/* سطح المكتب: مجمّع حسب الشهر؛ السعر ثم الكمية بعد الشركة المجهزة */}
           <div className="hidden md:block overflow-auto flex-1 min-h-0">
-            <table className="w-full">
-              <thead className="bg-slate-50 dark:bg-slate-800/60">
+            <table className="w-full border-separate border-spacing-0">
+              <thead className="sticky top-0 z-10 bg-slate-50/95 dark:bg-slate-800/95 backdrop-blur">
                 <tr>
                   <th className={th}>{t('profile.col.date')}</th>
                   <th className={th}>{t('table.receiver')}</th>
                   <th className={th}>{t('profile.col.equipper')}</th>
+                  <th className={th}>{t('profile.col.price')}</th>
+                  <th className={th}>{t('profile.col.qty')}</th>
                   <th className={th}>{t('profile.col.driver')}</th>
                   <th className={th}>{t('profile.col.truck')}</th>
-                  <th className={th}>{t('profile.col.qty')}</th>
-                  <th className={th}>{t('profile.col.price')}</th>
                 </tr>
               </thead>
               <tbody>
                 {pageRows.length === 0 && <tr><td colSpan={7} className="py-12 text-center text-sm text-slate-400">{t('profile.empty')}</td></tr>}
-                {pageRows.map(({ d, co }, i) => (
-                  <tr key={d.id ?? i} className="border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                    <td className={`${td} tabular-nums`}>{dayOf(d)}</td>
-                    <td className={td}><CompanyBadges companies={[co]} /></td>
-                    <td className={td}><span className="block truncate max-w-[160px]">{equipperOf(d) || name}</span></td>
-                    <td className={td}><span className="block truncate max-w-[140px]">{d.driverName || '—'}</span></td>
-                    <td className={`${td} tabular-nums`} dir="ltr" style={{ textAlign: 'start' }}>{d.truckNumber || '—'}</td>
-                    <td className={`${td} tabular-nums font-semibold text-slate-900 dark:text-white`}>{formatNumber(qtyOf(d))} <span className="text-[11px] font-normal text-slate-400">{t('common:units.liter')}</span></td>
-                    <td className={`${td} tabular-nums`}>{priceOf(d) ? fmtPrice(priceOf(d)) : '—'}</td>
-                  </tr>
-                ))}
+                {pageRows.map((r, i) => {
+                  const { d, co } = r;
+                  const day = dayOf(d);
+                  const month = day.slice(0, 7);
+                  const newMonth = i === 0 || dayOf(pageRows[i - 1].d).slice(0, 7) !== month;
+                  const mAgg = log.months.get(month);
+                  const [y, m, dd] = day.split('/').map(Number);
+                  const date = y ? new Date(y, (m || 1) - 1, dd || 1) : null;
+                  const price = priceOf(d), before = log.prev.get(r) ?? 0;
+                  const delta = price && before ? price - before : 0;
+                  const plate = (d.truckNumber || '').trim();
+                  const noPlate = !plate || plate === 'غير محدد';
+                  const driver = (d.driverName || '').trim();
+                  return (
+                    <React.Fragment key={d.id ?? i}>
+                      {newMonth && (
+                        <tr>
+                          <td colSpan={7} className="px-4 pt-4 pb-1.5">
+                            <div className="flex items-center gap-2 text-[12px]">
+                              <span className="font-semibold text-slate-700 dark:text-slate-200">{date ? fmtDate(date, { month: 'long', year: 'numeric' }) : month}</span>
+                              <span className="flex-1 border-t border-dashed border-slate-200 dark:border-slate-700" />
+                              {mAgg && <span className="text-slate-400 tabular-nums">{t('profile.archiveSummary', { count: mAgg.n, qty: formatNumber(mAgg.qty) })}</span>}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      <tr className="hover:bg-teal-50/40 dark:hover:bg-teal-950/20 transition-colors">
+                        <td className={`${td} border-b border-slate-100 dark:border-slate-800`}>
+                          <div className="tabular-nums font-medium text-slate-800 dark:text-slate-100">{day}</div>
+                          {date && <div className="text-[11px] text-slate-400">{fmtDate(date, { weekday: 'long' })}</div>}
+                        </td>
+                        <td className={`${td} border-b border-slate-100 dark:border-slate-800`}><CompanyBadges companies={[co]} /></td>
+                        <td className={`${td} border-b border-slate-100 dark:border-slate-800`}><span className="block truncate max-w-[130px]">{equipperOf(d) || name}</span></td>
+                        <td className={`${td} border-b border-slate-100 dark:border-slate-800`}>
+                          {price ? (
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="text-[13.5px] font-bold tabular-nums text-slate-900 dark:text-white">{fmtPrice(price)}</span>
+                              {delta !== 0 && (
+                                <span title={t('profile.lastPrice', { price: fmtPrice(before) })}
+                                  className={`inline-flex items-center gap-0.5 rounded-md px-1 py-0.5 text-[10.5px] font-semibold tabular-nums ${delta > 0 ? 'bg-rose-500/10 text-rose-500' : 'bg-emerald-500/10 text-emerald-600'}`}>
+                                  {delta > 0 ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}{fmtPrice(Math.abs(delta))}
+                                </span>
+                              )}
+                            </span>
+                          ) : <span className="text-slate-300 dark:text-slate-600">—</span>}
+                        </td>
+                        <td className={`${td} border-b border-slate-100 dark:border-slate-800`}>
+                          <div className="tabular-nums"><b className="font-semibold text-slate-900 dark:text-white">{formatNumber(qtyOf(d))}</b> <span className="text-[11px] text-slate-400">{t('common:units.liter')}</span></div>
+                          <div className="mt-1 h-1 w-20 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                            <span className="block h-full rounded-full bg-teal-400/80" style={{ width: `${(qtyOf(d) / log.maxQty) * 100}%` }} />
+                          </div>
+                        </td>
+                        <td className={`${td} border-b border-slate-100 dark:border-slate-800`}>
+                          {driver ? (
+                            <span className="inline-flex items-center gap-2 max-w-[130px]">
+                              <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300 text-[11px] font-bold flex items-center justify-center shrink-0">{driver[0]}</span>
+                              <span className="truncate">{driver}</span>
+                            </span>
+                          ) : <span className="text-slate-300 dark:text-slate-600">—</span>}
+                        </td>
+                        <td className={`${td} border-b border-slate-100 dark:border-slate-800`}>
+                          {noPlate ? <span className="text-[12px] text-slate-400 dark:text-slate-500">{plate || '—'}</span> : (
+                            <span dir="ltr" className="inline-block rounded-md border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 px-2 py-0.5 font-mono text-[12px] text-slate-700 dark:text-slate-200 tracking-wide">{plate}</span>
+                          )}
+                        </td>
+                      </tr>
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
