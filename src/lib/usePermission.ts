@@ -27,6 +27,7 @@ export const TAB_SECTION: Record<string, { section?: string; group?: string }> =
   dashboard: { section: 'dashboard' },
   tanks: { section: 'tanks' },
   prices: { section: 'prices' },
+  suppliers: { section: 'suppliers' },
   deliveries: { group: 'deliveries' },
   'deliveries-sahara': { section: 'deliveries-sahara' },
   'deliveries-etihad': { section: 'deliveries-etihad' },

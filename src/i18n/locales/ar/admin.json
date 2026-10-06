@@ -193,7 +193,8 @@
       "sahara.black-oil": "النفط الأسود",
       "sahara.reserves": "الاحتياطي",
       "sahara.petrol": "البنزين",
-      "sahara.reports": "التقارير"
+      "sahara.reports": "التقارير",
+      "suppliers": "الموردين"
     },
     "ofSections_zero": "من دون أقسام",
     "ofSections_one": "من قسم واحد",

@@ -18,6 +18,7 @@ import type { NavTabId } from './types';
 const MainDashboard = lazyPage(() => import('./components/dashboard/MainDashboard'), 'MainDashboard');
 const TanksOverview = lazyPage(() => import('./components/tanks/TanksOverview'), 'TanksOverview');
 const PricesView = lazyPage(() => import('./components/prices/PricesView'), 'PricesView');
+const SuppliersView = lazyPage(() => import('./components/suppliers/SuppliersView'), 'SuppliersView');
 const InboundDeliveries = lazyPage<{ onOpenModal: (data?: any) => void }>(() => import('./components/deliveries/InboundDeliveries'), 'InboundDeliveries');
 const FinanceBalance = lazyPage(() => import('./components/finance/FinanceBalance'), 'FinanceBalance');
 const SiteManagers = lazyPage(() => import('./components/managers/SiteManagers'), 'SiteManagers');
@@ -27,7 +28,7 @@ const ChatApp = lazyPage(() => import('./components/chat/ChatApp'), 'ChatApp');
 const SettingsView = lazyPage(() => import('./components/settings/SettingsView'), 'SettingsView');
 
 const PAGE_PRELOADERS: Record<string, { preload: () => void }> = {
-  dashboard: MainDashboard, tanks: TanksOverview, prices: PricesView,
+  dashboard: MainDashboard, tanks: TanksOverview, prices: PricesView, suppliers: SuppliersView,
   deliveries: InboundDeliveries, 'deliveries-sahara': InboundDeliveries, 'deliveries-etihad': InboundDeliveries,
   finance: FinanceBalance, 'finance-etihad': FinanceBalance, 'finance-sahara': FinanceBalance,
   managers: SiteManagers, tasks: TasksLogistics, reports: ReportsAnalytics, chat: ChatApp, settings: SettingsView,
@@ -150,6 +151,8 @@ const AppContent: React.FC = () => {
         return <TanksOverview />;
       case 'prices':
         return <PricesView />;
+      case 'suppliers':
+        return <SuppliersView />;
       case 'deliveries':
       case 'deliveries-sahara':
       case 'deliveries-etihad':

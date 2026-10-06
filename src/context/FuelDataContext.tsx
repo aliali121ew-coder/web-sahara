@@ -56,12 +56,16 @@ interface FuelDataContextType {
   markAllNotificationsRead: () => void;
   updateTankLevel: (tankId: string, deltaLiters: number) => void;
   refreshAllData: () => void;
+  /** إضافة مورد أو تعديله؛ تغيير السعر يحدّث السعر السابق ونسبة التغير وسجل الأسعار فيظهر فورًا في مؤشر الأسعار */
+  saveSupplier: (supplier: SupplierPriceRecord) => void;
+  deleteSupplier: (id: string) => void;
 }
 
 const VALID_TABS: NavTabId[] = [
   'dashboard',
   'tanks',
   'prices',
+  'suppliers',
   'deliveries',
   'deliveries-sahara',
   'deliveries-etihad',
@@ -547,6 +551,31 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
   };
 
+  const saveSupplier = (supplier: SupplierPriceRecord) => {
+    const d = new Date();
+    const today = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+    setSupplierPrices(prev => {
+      const old = prev.find(s => s.id === supplier.id);
+      if (!old) {
+        const rec = { ...supplier, previousPriceIqd: supplier.previousPriceIqd || supplier.priceIqd, changePercent: 0, lastUpdated: today, history: [{ date: today, price: supplier.priceIqd }] };
+        return [...prev, rec];
+      }
+      const priceChanged = old.priceIqd !== supplier.priceIqd;
+      const next: SupplierPriceRecord = priceChanged
+        ? {
+            ...supplier,
+            previousPriceIqd: old.priceIqd,
+            changePercent: old.priceIqd ? Math.round(((supplier.priceIqd - old.priceIqd) / old.priceIqd) * 10000) / 100 : 0,
+            lastUpdated: today,
+            history: [{ date: today, price: supplier.priceIqd }, ...(old.history ?? [{ date: old.lastUpdated, price: old.priceIqd }])].slice(0, 60),
+          }
+        : { ...supplier, history: old.history };
+      return prev.map(s => (s.id === supplier.id ? next : s));
+    });
+  };
+
+  const deleteSupplier = (id: string) => setSupplierPrices(prev => prev.filter(s => s.id !== id));
+
   const refreshAllData = () => {
     setTanks([...INITIAL_TANKS]);
     setFuelMetrics([...INITIAL_FUEL_METRICS]);
@@ -591,6 +620,8 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         markAllNotificationsRead,
         updateTankLevel,
         refreshAllData,
+        saveSupplier,
+        deleteSupplier,
       }}
     >
       {children}

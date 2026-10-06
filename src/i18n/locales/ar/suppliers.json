@@ -1,0 +1,79 @@
+{
+  "csvFile": "الموردين",
+  "empty": "لا يوجد موردون مطابقون",
+  "units": {
+    "iqdPerLiter": "د.ع / لتر"
+  },
+  "header": {
+    "representative": "المندوب",
+    "noContact": "لم يُحدَّد"
+  },
+  "fields": {
+    "name": "اسم المورد",
+    "product": "المنتج",
+    "price": "السعر الحالي (د.ع / لتر)",
+    "category": "التصنيف",
+    "availability": "التوفر",
+    "phone": "رقم الهاتف",
+    "location": "الموقع",
+    "contactName": "اسم المندوب",
+    "contactRole": "صفة المندوب"
+  },
+  "cards": {
+    "current": "السعر الحالي",
+    "previous": "السعر السابق",
+    "change": "نسبة التغيّر",
+    "lastInbound": "آخر وارد",
+    "updatedOn": "آخر تحديث",
+    "difference": "الفرق",
+    "marketAvg": "متوسط السوق",
+    "vsPrevious": "عن السعر السابق",
+    "lastChange": "آخر تغيير",
+    "vsMarket": "عن متوسط السوق",
+    "viewDetails": "عرض التفاصيل",
+    "noInbound": "لا توجد شحنات واردة مسجلة"
+  },
+  "change": {
+    "up": "ارتفاع",
+    "down": "انخفاض",
+    "stable": "ثابت"
+  },
+  "tabs": {
+    "all": "كل الموردين ({{count}})"
+  },
+  "toolbar": {
+    "search": "ابحث عن مورد",
+    "sortBy": "ترتيب حسب",
+    "actions": "إجراءات",
+    "add": "إضافة مورد",
+    "export": "تصدير CSV",
+    "exportSelected": "تصدير المحدد ({{count}})"
+  },
+  "sort": {
+    "name": "الاسم",
+    "priceDesc": "السعر: الأعلى أولًا",
+    "priceAsc": "السعر: الأقل أولًا",
+    "change": "نسبة التغيّر",
+    "updated": "آخر تحديث"
+  },
+  "table": {
+    "code": "الرمز",
+    "supplier": "المورد",
+    "current": "السعر الحالي",
+    "previous": "السعر السابق",
+    "change": "التغيّر",
+    "updated": "آخر تحديث",
+    "action": "إجراء",
+    "view": "عرض",
+    "selectAll": "تحديد الكل",
+    "select": "تحديد {{name}}"
+  },
+  "modal": {
+    "addTitle": "إضافة مورد",
+    "editTitle": "تعديل بيانات المورد",
+    "logo": "رفع شعار",
+    "removeLogo": "إزالة الشعار",
+    "priceNote": "سيصبح {{old}} السعر السابق، ويتحدّث مؤشر الأسعار في الرئيسية مباشرة",
+    "deleteConfirm": "حذف المورد «{{name}}»؟ سيختفي من مؤشر الأسعار أيضًا."
+  }
+}

@@ -12,7 +12,8 @@
     "financeEtihad": "Etihad Company",
     "financeSahara": "Sahara Company",
     "chat": "Chat & operations",
-    "settings": "Settings"
+    "settings": "Settings",
+    "suppliers": "Suppliers"
   },
   "sidebar": {
     "label": "Main navigation",

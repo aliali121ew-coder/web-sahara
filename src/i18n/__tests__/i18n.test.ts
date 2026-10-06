@@ -6,7 +6,7 @@ import { fmtNumber, fmtDate } from '../format';
 import { enumText } from '../enums';
 import { serverText } from '../errors';
 
-const NS = ['common', 'server', 'finance', 'chat', 'deliveries', 'system', 'prices', 'tanks', 'dashboard', 'settings', 'admin', 'nav', 'auth', 'pages'];
+const NS = ['common', 'server', 'finance', 'chat', 'deliveries', 'system', 'prices', 'suppliers', 'tanks', 'dashboard', 'settings', 'admin', 'nav', 'auth', 'pages'];
 const ARABIC_DIGITS = /[٠-٩۰-۹]/;
 
 beforeAll(async () => {

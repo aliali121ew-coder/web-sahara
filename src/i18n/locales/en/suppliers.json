@@ -1,0 +1,79 @@
+{
+  "csvFile": "suppliers",
+  "empty": "No matching suppliers",
+  "units": {
+    "iqdPerLiter": "IQD / L"
+  },
+  "header": {
+    "representative": "Representative",
+    "noContact": "Not set"
+  },
+  "fields": {
+    "name": "Supplier name",
+    "product": "Product",
+    "price": "Current price (IQD / L)",
+    "category": "Category",
+    "availability": "Availability",
+    "phone": "Phone number",
+    "location": "Location",
+    "contactName": "Representative name",
+    "contactRole": "Representative title"
+  },
+  "cards": {
+    "current": "Current price",
+    "previous": "Previous price",
+    "change": "Price change",
+    "lastInbound": "Last inbound",
+    "updatedOn": "Last updated",
+    "difference": "Difference",
+    "marketAvg": "Market average",
+    "vsPrevious": "vs previous price",
+    "lastChange": "Last change",
+    "vsMarket": "vs market average",
+    "viewDetails": "View details",
+    "noInbound": "No inbound shipments recorded"
+  },
+  "change": {
+    "up": "Up",
+    "down": "Down",
+    "stable": "Stable"
+  },
+  "tabs": {
+    "all": "All suppliers ({{count}})"
+  },
+  "toolbar": {
+    "search": "Search supplier",
+    "sortBy": "Sort by",
+    "actions": "Actions",
+    "add": "Add supplier",
+    "export": "Export CSV",
+    "exportSelected": "Export selected ({{count}})"
+  },
+  "sort": {
+    "name": "Name",
+    "priceDesc": "Price: high to low",
+    "priceAsc": "Price: low to high",
+    "change": "Price change",
+    "updated": "Last updated"
+  },
+  "table": {
+    "code": "Code",
+    "supplier": "Supplier",
+    "current": "Current price",
+    "previous": "Previous price",
+    "change": "Change",
+    "updated": "Last updated",
+    "action": "Action",
+    "view": "View",
+    "selectAll": "Select all",
+    "select": "Select {{name}}"
+  },
+  "modal": {
+    "addTitle": "Add supplier",
+    "editTitle": "Edit supplier",
+    "logo": "Upload logo",
+    "removeLogo": "Remove logo",
+    "priceNote": "{{old}} becomes the previous price, and the dashboard price index updates right away",
+    "deleteConfirm": "Delete supplier “{{name}}”? It will also be removed from the price index."
+  }
+}

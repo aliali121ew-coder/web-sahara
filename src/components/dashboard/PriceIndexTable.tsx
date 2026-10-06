@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   ArrowUpRight,
   ArrowDownRight,
@@ -14,17 +14,11 @@ export const PriceIndexTable: React.FC = () => {
   const { supplierPrices, searchQuery } = useFuelData();
   const { isRTL } = useLanguage();
   const { t } = useTranslation(['dashboard', 'common']);
-  const [selectedCategory, setSelectedCategory] = useState<string>('الكل');
-
-  const categories = ['الكل', 'تجاري', 'رسمي', 'حكومي'];
-
   const filteredPrices = supplierPrices.filter((item) => {
-    const matchesCategory =
-      selectedCategory === 'الكل' || item.category === selectedCategory;
     const matchesSearch =
       item.supplierName.includes(searchQuery) ||
       item.product.includes(searchQuery);
-    return matchesCategory && matchesSearch;
+    return matchesSearch;
   });
 
   return (
@@ -46,22 +40,6 @@ export const PriceIndexTable: React.FC = () => {
           </div>
         </div>
 
-        {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl self-start sm:self-auto">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                selectedCategory === cat
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              {enumText(cat)}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Responsive Table */}
@@ -74,14 +52,13 @@ export const PriceIndexTable: React.FC = () => {
               <th className="pb-3 px-3">{t('dashboard:priceIndex.category')}</th>
               <th className="pb-3 px-3">{t('dashboard:priceIndex.current')}</th>
               <th className="pb-3 px-3">{t('dashboard:priceIndex.previous')}</th>
-              <th className="pb-3 px-3">{t('dashboard:priceIndex.change')}</th>
-              <th className="pb-3 pl-2">{t('dashboard:priceIndex.availability')}</th>
+              <th className="pb-3 pl-2">{t('dashboard:priceIndex.change')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
             {filteredPrices.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-slate-400">
+                <td colSpan={6} className="py-8 text-center text-slate-400">
                   {t('dashboard:priceIndex.empty')}
                 </td>
               </tr>
@@ -129,16 +106,16 @@ export const PriceIndexTable: React.FC = () => {
 
                     {/* Current Price */}
                     <td className="py-3.5 px-3 font-mono font-bold text-slate-900 dark:text-white">
-                      {formatIQD(row.priceIqd)} {t('common:units.iqd')}
+                      {formatIQD(row.priceIqd)}
                     </td>
 
                     {/* Previous Price */}
                     <td className="py-3.5 px-3 font-mono text-slate-400">
-                      {formatIQD(row.previousPriceIqd)} {t('common:units.iqd')}
+                      {formatIQD(row.previousPriceIqd)}
                     </td>
 
                     {/* Change % */}
-                    <td className="py-3.5 px-3">
+                    <td className="py-3.5 pl-2">
                       {isPriceUp && (
                         <span className="inline-flex items-center gap-0.5 text-rose-600 dark:text-rose-400 font-mono font-bold text-xs bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded-md">
                           <ArrowUpRight className="w-3 h-3" />
@@ -154,24 +131,6 @@ export const PriceIndexTable: React.FC = () => {
                       {!isPriceUp && !isPriceDown && (
                         <span className="text-slate-400 font-mono text-xs px-2 py-0.5">0.0%</span>
                       )}
-                    </td>
-
-                    {/* Availability */}
-                    <td className="py-3.5 pl-2">
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`w-2 h-2 rounded-full ${
-                            row.availability === 'متوفر'
-                              ? 'bg-emerald-500'
-                              : row.availability === 'محدود'
-                              ? 'bg-amber-500'
-                              : 'bg-rose-500'
-                          }`}
-                        />
-                        <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                          {enumText(row.availability)}
-                        </span>
-                      </div>
                     </td>
                   </tr>
                 );

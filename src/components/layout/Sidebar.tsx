@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Building2,
   Tags,
+  Truck,
   LogOut,
   Loader2,
   Search
@@ -279,6 +280,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: 'dashboard', label: t('nav:items.dashboard'), icon: LayoutDashboard },
         { id: 'tanks', label: t('nav:items.tanks'), icon: Database },
         { id: 'prices', label: t('nav:items.prices'), icon: Tags },
+        { id: 'suppliers', label: t('nav:items.suppliers'), icon: Truck },
       ]
     },
     {

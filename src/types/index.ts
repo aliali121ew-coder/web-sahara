@@ -22,6 +22,7 @@ export type NavTabId =
   | 'dashboard'
   | 'tanks'
   | 'prices'
+  | 'suppliers'
   | 'deliveries'
   | 'deliveries-sahara'
   | 'deliveries-etihad'
@@ -81,6 +82,15 @@ export interface SupplierPriceRecord {
   category: 'الكل' | 'تجاري' | 'رسمي' | 'حكومي';
   availability: 'متوفر' | 'محدود' | 'غير متوفر';
   lastUpdated: string;
+  // بيانات صفحة الموردين (اختيارية)
+  phone?: string;
+  location?: string;
+  contactName?: string;
+  contactRole?: string;
+  /** شعار المورد مصغّرًا (data URL) */
+  logo?: string;
+  /** سجل تغيّر السعر، الأحدث أولًا */
+  history?: { date: string; price: number }[];
 }
 
 export interface InboundDelivery {
