@@ -66,46 +66,36 @@ const ChangePill: React.FC<{ pct: number }> = ({ pct }) => {
   return <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap ${cls}`}>{label}{pct !== 0 && <span dir="ltr">{pct > 0 ? '+' : ''}{pct}%</span>}</span>;
 };
 
-interface KpiValue { value: string; label: string; tone: 'green' | 'orange'; small?: boolean }
-const KpiCard: React.FC<{
-  icon: React.ReactNode; iconBg: string; title: string; a: KpiValue; b: KpiValue;
-  trend?: { pct: number; text: string }; note?: string; action?: { label: string; onClick: () => void }; className?: string;
-}> = ({ icon, iconBg, title, a, b, trend, note, action, className = '' }) => (
-  <div className={`${className} sup-kpi rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-[0_1px_3px_rgba(15,23,42,0.06)] flex flex-col min-w-0`}>
-    <div className="sup-kpi-body pt-4 pb-3 flex-1">
-      <div className="flex items-center gap-2.5">
-        <span className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${iconBg}`}>{icon}</span>
-        <span className="sup-kpi-title font-medium text-slate-600 dark:text-slate-300 leading-tight">{title}</span>
-      </div>
-      <div className="mt-3.5 grid grid-cols-2 gap-2">
-        {[a, b].map((v, i) => (
-          <div key={i} className="min-w-0">
-            <div className={`sup-kpi-val ${v.small ? 'is-small' : ''} font-bold text-slate-900 dark:text-white tabular-nums`} title={v.value}>{v.value}</div>
-            <div className="sup-kpi-lbl mt-1.5 flex items-start gap-1.5 font-medium uppercase text-slate-500 dark:text-slate-400">
-              <span className={`mt-[2px] w-2.5 h-2.5 rounded-full border-2 shrink-0 ${v.tone === 'green' ? 'border-emerald-500' : 'border-orange-400'}`} />
-              {v.label}
-            </div>
-          </div>
-        ))}
-      </div>
+/** بطاقة مؤشر: رقم رئيسي واحد واضح، وتحته سطران هادئان (اسم ← قيمة) بدل أرقام متجاورة */
+const StatCard: React.FC<{
+  icon: React.ReactNode; iconBg: string; title: string; value: string; unit?: string; valueClass?: string;
+  rows: { label: string; value: React.ReactNode }[];
+}> = ({ icon, iconBg, title, value, unit, valueClass = 'text-slate-900 dark:text-white', rows }) => (
+  <div className="sup-stat rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-[0_1px_3px_rgba(15,23,42,0.06)] flex flex-col min-w-0">
+    <div className="sup-stat-pad pt-4 flex items-start justify-between gap-2">
+      <span className="sup-stat-title font-medium text-slate-500 dark:text-slate-400 leading-tight">{title}</span>
+      <span className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>{icon}</span>
     </div>
-    <div className="sup-kpi-foot py-2.5 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-      {trend ? (
-        <span className="flex flex-wrap items-center gap-x-1.5 min-w-0">
-          {trend.pct >= 0
-            ? <TrendingUp className={`w-3.5 h-3.5 shrink-0 ${trend.pct > 0 ? 'text-rose-500' : 'text-slate-400'}`} />
-            : <TrendingDown className="w-3.5 h-3.5 shrink-0 text-emerald-500" />}
-          <span dir="ltr" className={`font-semibold ${trend.pct > 0 ? 'text-rose-500' : trend.pct < 0 ? 'text-emerald-500' : 'text-slate-400'}`}>{trend.pct > 0 ? '+' : ''}{trend.pct}%</span>
-          <span className="text-slate-400 leading-tight">{trend.text}</span>
-        </span>
-      ) : note ? <span className="text-slate-400 leading-tight tabular-nums">{note}</span> : <span />}
-      {action && (
-        <button type="button" onClick={action.onClick} className="font-medium text-slate-700 dark:text-slate-200 hover:text-teal-600 dark:hover:text-teal-400 whitespace-nowrap cursor-pointer">
-          {action.label}
-        </button>
-      )}
+    <div className="sup-stat-pad mt-1 flex items-baseline gap-1.5 min-w-0">
+      <span className={`sup-stat-val font-bold tabular-nums ${valueClass}`}>{value}</span>
+      {unit && <span className="sup-stat-unit text-slate-400 font-medium whitespace-nowrap">{unit}</span>}
     </div>
+    <dl className="sup-stat-pad mt-auto pt-3 pb-3.5 space-y-1.5">
+      {rows.map(r => (
+        <div key={r.label} className="sup-stat-row flex items-center justify-between gap-2 pt-1.5 border-t border-slate-100 dark:border-slate-800 first:border-t-0 first:pt-0">
+          <dt className="text-slate-400 leading-tight">{r.label}</dt>
+          <dd className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums whitespace-nowrap">{r.value}</dd>
+        </div>
+      ))}
+    </dl>
   </div>
+);
+
+/** رقم بإشارة ولون حسب الاتجاه (ارتفاع السعر أحمر، انخفاضه أخضر) */
+const Signed: React.FC<{ v: number; suffix?: string; text?: string }> = ({ v, suffix = '', text }) => (
+  <span dir="ltr" className={v > 0 ? 'text-rose-500' : v < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}>
+    {text ?? `${v > 0 ? '+' : ''}${v}${suffix}`}
+  </span>
 );
 
 /** تصغير الشعار المرفوع إلى 160px قبل حفظه حتى لا يثقل التخزين */
@@ -420,34 +410,44 @@ export const SuppliersView: React.FC = () => {
       {/* ── البطاقات ── */}
       {selected && (
         <div key={`k-${selected.id}`} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 xl:gap-4 animate-[fadeIn_.25s_ease]">
-          <KpiCard
+          <StatCard
             icon={<Coins className="w-4 h-4 text-white" />} iconBg="bg-amber-400"
             title={t('cards.current')}
-            a={{ value: fmtPrice(selected.priceIqd), label: iqdL, tone: 'green' }}
-            b={{ value: selected.lastUpdated || '—', label: t('cards.updatedOn'), tone: 'orange', small: true }}
-            trend={{ pct: selected.changePercent, text: t('cards.vsPrevious') }}
+            value={fmtPrice(selected.priceIqd)} unit={iqdL}
+            rows={[
+              { label: t('cards.updatedOn'), value: selected.lastUpdated || '—' },
+              { label: t('cards.vsPrevious'), value: <Signed v={selected.changePercent} suffix="%" /> },
+            ]}
           />
-          <KpiCard
+          <StatCard
             icon={<History className="w-4 h-4 text-teal-600" />} iconBg="bg-teal-50 dark:bg-teal-950/60"
             title={t('cards.previous')}
-            a={{ value: fmtPrice(selected.previousPriceIqd), label: iqdL, tone: 'green' }}
-            b={{ value: `${diff > 0 ? '+' : ''}${fmtPrice(diff)}`, label: t('cards.difference'), tone: 'orange' }}
-            trend={{ pct: selected.changePercent, text: t('cards.lastChange') }}
+            value={fmtPrice(selected.previousPriceIqd)} unit={iqdL}
+            rows={[
+              { label: t('cards.difference'), value: <Signed v={diff} text={`${diff > 0 ? '+' : ''}${fmtPrice(diff)}`} /> },
+              { label: t('cards.lastChange'), value: selected.history?.[1]?.date || selected.lastUpdated || '—' },
+            ]}
           />
-          <KpiCard
+          <StatCard
             icon={selected.changePercent > 0 ? <TrendingUp className="w-4 h-4 text-rose-500" /> : selected.changePercent < 0 ? <TrendingDown className="w-4 h-4 text-emerald-600" /> : <Minus className="w-4 h-4 text-slate-500" />}
             iconBg={selected.changePercent > 0 ? 'bg-rose-50 dark:bg-rose-950/50' : selected.changePercent < 0 ? 'bg-emerald-50 dark:bg-emerald-950/50' : 'bg-slate-100 dark:bg-slate-800'}
             title={t('cards.change')}
-            a={{ value: `${selected.changePercent > 0 ? '+' : ''}${selected.changePercent}%`, label: selected.changePercent > 0 ? t('change.up') : selected.changePercent < 0 ? t('change.down') : t('change.stable'), tone: 'green' }}
-            b={{ value: fmtPrice(marketAvg), label: t('cards.marketAvg'), tone: 'orange' }}
-            trend={{ pct: vsMarket, text: t('cards.vsMarket') }}
+            value={`${selected.changePercent > 0 ? '+' : ''}${selected.changePercent}%`}
+            valueClass={selected.changePercent > 0 ? 'text-rose-500' : selected.changePercent < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}
+            unit={selected.changePercent > 0 ? t('change.up') : selected.changePercent < 0 ? t('change.down') : t('change.stable')}
+            rows={[
+              { label: t('cards.marketAvg'), value: fmtPrice(marketAvg) },
+              { label: t('cards.vsMarket'), value: <Signed v={vsMarket} suffix="%" /> },
+            ]}
           />
-          <KpiCard
+          <StatCard
             icon={<Truck className="w-4 h-4 text-sky-600" />} iconBg="bg-sky-50 dark:bg-sky-950/50"
             title={t('cards.tankers')}
-            a={{ value: sel?.lastDayCount ? formatNumber(sel.lastDayCount) : '—', label: t('cards.lastDay'), tone: 'green' }}
-            b={{ value: sel?.count ? formatNumber(sel.count) : '—', label: t('cards.totalTankers'), tone: 'orange' }}
-            note={sel?.lastDay ? t('cards.lastDayOn', { date: sel.lastDay }) : t('cards.noInbound')}
+            value={sel?.lastDayCount ? formatNumber(sel.lastDayCount) : '—'}
+            rows={[
+              { label: t('cards.lastDay'), value: sel?.lastDay || '—' },
+              { label: t('cards.totalTankers'), value: sel?.count ? formatNumber(sel.count) : '—' },
+            ]}
           />
           <div className="sm:col-span-2 lg:col-span-1 rounded-2xl p-4 flex flex-col items-center justify-center text-center text-white bg-gradient-to-br from-teal-600 via-teal-500 to-[#9dcf9f] shadow-[0_8px_24px_-8px_rgba(13,148,136,0.55)] min-h-[150px]">
             <div className="text-[13px] text-white/85 flex items-center gap-1.5"><Truck className="w-3.5 h-3.5" /> {t('cards.lastInbound')}</div>
