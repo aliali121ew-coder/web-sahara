@@ -139,6 +139,47 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
   const WINDOW = 60;
   const useBrush = data.length > WINDOW;
   const brushKey = `${gran}-${period}-${metric}-${equipper}-${data.length}`;
+  // كثافة عالية = نقاط كثيرة: يُلغى التحريك والتوهج والنقاط الصغيرة حتى يبقى الرسم سلسًا على الأجهزة الضعيفة
+  const dense = data.length > WINDOW;
+  // يوم/شهر لكل نقطة (لتسميات المحور)
+  const dayKey = (b: Bucket) => b.key.slice(0, 10);
+  const monthStarts = useMemo(() => {
+    const out: string[] = [];
+    let prev = '';
+    data.forEach(b => { const m = b.key.slice(0, 7); if (m !== prev) { out.push(b.key); prev = m; } });
+    return out;
+  }, [data]);
+  const spanDays = (a: number, b: number) => {
+    const x = data[a], y = data[b];
+    return x && y ? (toDate(dayKey(y)).getTime() - toDate(dayKey(x)).getTime()) / DAY : 0;
+  };
+  // تسميات المحور: أيام عند نافذة قصيرة (≤ 45 يومًا)، وأشهر عند نافذة أطول
+  const [dayTicks, setDayTicks] = useState(true);
+  // بداية النافذة الظاهرة: تُحدَّث فقط عند تغيّر شهرها، فيبقى سحب الشريط خفيفًا
+  const [winStart, setWinStart] = useState(0);
+  useEffect(() => {
+    const start = useBrush ? data.length - WINDOW : 0;
+    setWinStart(start);
+    setDayTicks(gran === 'month' || spanDays(start, data.length - 1) <= 45);
+  }, [brushKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const onBrush = ({ startIndex, endIndex }: { startIndex?: number; endIndex?: number }) => {
+    if (gran === 'month' || startIndex == null || endIndex == null) return;
+    const next = spanDays(startIndex, endIndex) <= 45;
+    if (next !== dayTicks) setDayTicks(next);
+    if (data[startIndex]?.key.slice(0, 7) !== data[winStart]?.key.slice(0, 7)) setWinStart(startIndex);
+  };
+  // تسميات الأشهر: الشهر الذي تبدأ به النافذة ثم بداية كل شهر بعده
+  const monthTicks = useMemo(() => {
+    const first = data[winStart]?.key;
+    return first ? [first, ...monthStarts.filter(k => k > first && k.slice(0, 7) !== first.slice(0, 7))] : monthStarts;
+  }, [data, winStart, monthStarts]);
+  const keyIndex = useMemo(() => new Map(data.map((b, i) => [b.key, i])), [data]);
+  const tickLabel = (key: string) => {
+    const b = data[keyIndex.get(key) ?? -1];
+    if (!b) return '';
+    if (gran === 'month' || gran === 'week') return b.label;
+    return dayTicks ? fmtDate(toDate(dayKey(b)), { day: 'numeric', month: 'short' }) : fmtDate(toDate(dayKey(b)), { month: 'short', year: '2-digit' });
+  };
   const zoom = (dir: 1 | -1) => setGran(g => GRANS[Math.min(GRANS.length - 1, Math.max(0, GRANS.indexOf(g) + dir))]);
 
   // ملخص الفترة المعروضة (للشركات الظاهرة فقط)
@@ -237,7 +278,6 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
   const yTicks = { fill: '#64748b', fontSize: 11, fontWeight: 600 };
   // عدد تسميات المحور يتكيّف مع عدد النقاط (نحو 10 تسميات كحد أقصى)
   // نحو 12 تسمية على المحور داخل النافذة المعروضة
-  const interval = Math.max(0, Math.ceil(Math.min(data.length, WINDOW) / 12) - 1);
 
   return createPortal(
     <div className="fixed inset-0 z-[100] bg-slate-900/45 backdrop-blur-md p-2 sm:p-5 flex animate-[overlayIn_.18s_ease]" onMouseDown={onClose}>
@@ -343,16 +383,18 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
                     ))}
                   </defs>
                   <CartesianGrid strokeDasharray="3 4" vertical={false} stroke="#94a3b8" strokeOpacity={0.15} />
-                  <XAxis dataKey="label" axisLine={false} tickLine={false} interval={interval} tick={xTicks} dy={6} />
+                  <XAxis dataKey="key" axisLine={false} tickLine={false} tick={xTicks} dy={6} tickFormatter={tickLabel} minTickGap={28}
+                    {...(!dayTicks && gran !== 'month' && gran !== 'week' ? { ticks: monthTicks, interval: 0 } : { interval: 'preserveStartEnd' as const })} />
                   <YAxis axisLine={false} tickLine={false} width={48} tick={yTicks} tickFormatter={compact}
                     domain={metric === 'price' ? ['dataMin - 20', 'dataMax + 20'] : [0, 'auto']} />
                   <Tooltip content={tooltip} cursor={{ stroke: '#0d9488', strokeWidth: 1.5, strokeDasharray: '3 3' }} wrapperStyle={{ outline: 'none', zIndex: 20 }} isAnimationActive={false} />
                   {shown.map(c => (
-                    <Area key={c} type="monotone" dataKey={c} stroke={COMPANY_COLOR[c]} strokeWidth={2.5} fill={`url(#exp-fill-${c})`} filter={`url(#exp-glow-${c})`}
-                      connectNulls dot={{ r: data.length > 40 ? 2 : 3.5, fill: '#fff', stroke: COMPANY_COLOR[c], strokeWidth: 2 }} activeDot={{ r: 6, stroke: COMPANY_COLOR[c], strokeWidth: 3, fill: '#fff' }} />
+                    <Area key={c} type={dense ? 'linear' : 'monotone'} dataKey={c} stroke={COMPANY_COLOR[c]} strokeWidth={dense ? 1.75 : 2.5} fill={`url(#exp-fill-${c})`}
+                      filter={dense ? undefined : `url(#exp-glow-${c})`} isAnimationActive={!dense}
+                      connectNulls dot={dense ? false : { r: data.length > 40 ? 2 : 3.5, fill: '#fff', stroke: COMPANY_COLOR[c], strokeWidth: 2 }} activeDot={{ r: 5, stroke: COMPANY_COLOR[c], strokeWidth: 2.5, fill: '#fff' }} />
                   ))}
                   {avgLine !== undefined && <ReferenceLine y={avgLine} stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={1.5} />}
-                  {useBrush && <Brush key={brushKey} dataKey="label" height={26} travellerWidth={10} startIndex={data.length - WINDOW} endIndex={data.length - 1} stroke="#0d9488" fill="transparent" tickFormatter={() => ''} />}
+                  {useBrush && <Brush key={brushKey} dataKey="key" height={26} travellerWidth={10} startIndex={data.length - WINDOW} endIndex={data.length - 1} stroke="#0d9488" fill="transparent" tickFormatter={() => ''} onChange={onBrush} />}
                 </AreaChart>
               ) : (
                 <BarChart data={data} margin={{ top: 16, right: 16, left: 4, bottom: 4 }} barGap={3}>
@@ -365,15 +407,16 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
                     ))}
                   </defs>
                   <CartesianGrid strokeDasharray="3 4" vertical={false} stroke="#94a3b8" strokeOpacity={0.15} />
-                  <XAxis dataKey="label" axisLine={false} tickLine={false} interval={interval} tick={xTicks} dy={6} />
+                  <XAxis dataKey="key" axisLine={false} tickLine={false} tick={xTicks} dy={6} tickFormatter={tickLabel} minTickGap={28}
+                    {...(!dayTicks && gran !== 'month' && gran !== 'week' ? { ticks: monthTicks, interval: 0 } : { interval: 'preserveStartEnd' as const })} />
                   <YAxis axisLine={false} tickLine={false} width={48} tick={yTicks} tickFormatter={compact}
                     domain={metric === 'price' ? ['dataMin - 20', 'dataMax + 20'] : [0, 'auto']} />
                   <Tooltip content={tooltip} cursor={{ fill: 'rgba(148,163,184,0.1)' }} wrapperStyle={{ outline: 'none', zIndex: 20 }} isAnimationActive={false} />
                   {shown.map(c => (
-                    <Bar key={c} dataKey={c} fill={`url(#exp-bar-${c})`} radius={[6, 6, 0, 0]} maxBarSize={daily ? 14 : 34} />
+                    <Bar key={c} dataKey={c} fill={`url(#exp-bar-${c})`} isAnimationActive={!dense} radius={[6, 6, 0, 0]} maxBarSize={daily ? 14 : 34} />
                   ))}
                   {avgLine !== undefined && <ReferenceLine y={avgLine} stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={1.5} />}
-                  {useBrush && <Brush key={brushKey} dataKey="label" height={26} travellerWidth={10} startIndex={data.length - WINDOW} endIndex={data.length - 1} stroke="#0d9488" fill="transparent" tickFormatter={() => ''} />}
+                  {useBrush && <Brush key={brushKey} dataKey="key" height={26} travellerWidth={10} startIndex={data.length - WINDOW} endIndex={data.length - 1} stroke="#0d9488" fill="transparent" tickFormatter={() => ''} onChange={onBrush} />}
                 </BarChart>
               )}
             </ResponsiveContainer>

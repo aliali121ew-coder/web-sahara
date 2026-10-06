@@ -9,8 +9,10 @@ export function cn(...inputs: ClassValue[]) {
 /**
  * أرقام بفواصل الآلاف وأرقام غربية في اللغتين (705,021)
  */
+// منسّق واحد يُعاد استخدامه: إنشاء Intl.NumberFormat في كل استدعاء كان يبطئ الجداول والرسوم الكبيرة
+const NUMBER_FMT = new Intl.NumberFormat('en-US');
 export function formatNumber(value: number): string {
-  return new Intl.NumberFormat('en-US').format(value);
+  return NUMBER_FMT.format(value);
 }
 
 /**

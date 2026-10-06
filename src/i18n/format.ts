@@ -7,17 +7,32 @@ import i18n from './index';
 const localeOf = (lang = i18n.language) => (lang === 'en' ? 'en-US' : 'ar-IQ');
 const NUM = { numberingSystem: 'latn' } as const;
 
-export const fmtNumber = (value: number, opts: Intl.NumberFormatOptions = {}) =>
-  new Intl.NumberFormat(localeOf(), { ...NUM, ...opts } as Intl.NumberFormatOptions).format(value);
+// إنشاء Intl.*Format مكلف (قد يتجاوز نصف ملّي ثانية)؛ يُعاد استخدام المنسّق لنفس اللغة والخيارات.
+// هذا يجعل الجداول والرسوم ذات المئات من التواريخ والأرقام أسرع بكثير.
+const cache = new Map<string, Intl.NumberFormat | Intl.DateTimeFormat>();
+const numFmt = (opts: Intl.NumberFormatOptions) => {
+  const key = `n|${localeOf()}|${JSON.stringify(opts)}`;
+  let f = cache.get(key) as Intl.NumberFormat | undefined;
+  if (!f) { f = new Intl.NumberFormat(localeOf(), { ...NUM, ...opts } as Intl.NumberFormatOptions); cache.set(key, f); }
+  return f;
+};
+const dateFmt = (opts: Intl.DateTimeFormatOptions) => {
+  const key = `d|${localeOf()}|${JSON.stringify(opts)}`;
+  let f = cache.get(key) as Intl.DateTimeFormat | undefined;
+  if (!f) { f = new Intl.DateTimeFormat(localeOf(), { ...NUM, ...opts } as Intl.DateTimeFormatOptions); cache.set(key, f); }
+  return f;
+};
+
+export const fmtNumber = (value: number, opts: Intl.NumberFormatOptions = {}) => numFmt(opts).format(value);
 
 export const fmtPercent = (ratio: number, digits = 1) =>
-  new Intl.NumberFormat(localeOf(), { ...NUM, style: 'percent', minimumFractionDigits: digits, maximumFractionDigits: digits } as Intl.NumberFormatOptions).format(ratio);
+  numFmt({ style: 'percent', minimumFractionDigits: digits, maximumFractionDigits: digits }).format(ratio);
 
 export const fmtDate = (d: Date | number | string, opts: Intl.DateTimeFormatOptions = { dateStyle: 'medium' }) =>
-  new Intl.DateTimeFormat(localeOf(), { ...NUM, ...opts } as Intl.DateTimeFormatOptions).format(new Date(d));
+  dateFmt(opts).format(new Date(d));
 
 export const fmtTime = (d: Date | number | string, opts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' }) =>
-  new Intl.DateTimeFormat(localeOf(), { ...NUM, ...opts } as Intl.DateTimeFormatOptions).format(new Date(d));
+  dateFmt(opts).format(new Date(d));
 
 /** «قبل 3 ساعات» / «3 hours ago» */
 export const fmtRelative = (from: Date | number, now: number = Date.now()) => {
