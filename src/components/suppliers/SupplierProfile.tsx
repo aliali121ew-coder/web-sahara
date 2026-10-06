@@ -3,9 +3,12 @@ import { ArrowRight, ArrowUpToLine, ArrowDownToLine, Truck, Droplets, ChevronLef
 import { useTranslation } from 'react-i18next';
 import { useFuelData } from '../../context/FuelDataContext';
 import { formatNumber } from '../../lib/utils';
-import { deliveriesOfSupplier, sameSupplier, equipperOf } from '../../lib/archiveSuppliers';
+import { deliveriesOfSupplier, sameSupplier, deliveryCompany } from '../../lib/archiveSuppliers';
 import type { InboundDelivery } from '../../types';
 import { fmtPrice, CompanyBadges, Avatar, type Company } from './supplierUi';
+
+/** الجهة التي ورد عبرها المورد: الشركة المجهزة، وإن لم تُذكر فالمورد نفسه (المورد صار المجهز أولًا) */
+const equipperOf = (d: InboundDelivery) => deliveryCompany(d);
 
 const PAGE_SIZE = 10;
 const dayOf = (d: InboundDelivery) => (d.receiptUnloadDate || d.date || '').split(' ')[0].replace(/-/g, '/');
@@ -19,7 +22,7 @@ const Tile: React.FC<{ icon: React.ReactNode; tone: string; label: string; value
   const Tag = onClick ? 'button' : 'div';
   return (
     <Tag type={onClick ? 'button' : undefined} onClick={onClick}
-      className={`sup-stat text-start rounded-2xl bg-white dark:bg-slate-900 border shadow-[0_1px_3px_rgba(15,23,42,0.06)] flex flex-col min-w-0 ${onClick ? 'cursor-pointer hover:border-teal-400 transition-colors' : ''} ${active ? 'border-teal-500 ring-2 ring-teal-500/20' : 'border-slate-200/70 dark:border-slate-800'}`}>
+      className={`sup-stat h-full w-full text-start rounded-2xl bg-white dark:bg-slate-900 border shadow-[0_1px_3px_rgba(15,23,42,0.06)] flex flex-col min-w-0 ${onClick ? 'cursor-pointer hover:border-teal-400 transition-colors' : ''} ${active ? 'border-teal-500 ring-2 ring-teal-500/20' : 'border-slate-200/70 dark:border-slate-800'}`}>
       <div className="sup-stat-pad pt-4 flex items-start justify-between gap-2">
         <span className="sup-stat-title font-medium text-slate-500 dark:text-slate-400 leading-tight">{label}</span>
         <span className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${tone}`}>{icon}</span>
@@ -125,8 +128,8 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
       </div>
 
       {/* القسم الثاني: جدول الوارد 60% + بطاقة المورد 40% */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-start">
-        <section className="lg:col-span-3 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-[0_1px_3px_rgba(15,23,42,0.05)] overflow-hidden min-w-0">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:items-stretch">
+        <section className="lg:col-span-3 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-[0_1px_3px_rgba(15,23,42,0.05)] overflow-hidden min-w-0 flex flex-col">
           <div className="px-4 sm:px-5 py-4 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800">
             <div>
               <h2 className="text-[15px] font-semibold text-slate-900 dark:text-white">{t('profile.archiveTitle')}</h2>
@@ -164,7 +167,7 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
             ))}
           </div>
 
-          <div className="hidden md:block overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto flex-1">
             <table className="w-full">
               <thead className="bg-slate-50 dark:bg-slate-800/60">
                 <tr>
@@ -195,7 +198,7 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
           </div>
 
           {filtered.length > PAGE_SIZE && (
-            <div className="px-4 sm:px-5 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
+            <div className="mt-auto px-4 sm:px-5 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
               <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
                 {t('pager.range', { from: safePage * PAGE_SIZE + 1, to: safePage * PAGE_SIZE + pageRows.length, total: filtered.length })}
               </span>
@@ -215,7 +218,7 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
         </section>
 
         {/* بطاقة المورد والمجهزين */}
-        <aside className="lg:col-span-2 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-[0_1px_3px_rgba(15,23,42,0.05)] overflow-hidden">
+        <aside className="lg:col-span-2 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-[0_1px_3px_rgba(15,23,42,0.05)] overflow-hidden flex flex-col">
           <div className="p-5 text-white bg-gradient-to-br from-teal-600 via-teal-500 to-[#5fb8a3]">
             <div className="flex items-center gap-3">
               <span className="p-0.5 rounded-xl bg-white/30 shrink-0"><Avatar s={avatarRec} size="w-14 h-14" text="text-xl" /></span>
@@ -238,7 +241,7 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
             </div>
           </div>
 
-          <div className="p-3 sm:p-4 space-y-4">
+          <div className="p-3 sm:p-4 space-y-4 flex-1 flex flex-col">
             {equippers.length === 0 && <p className="py-8 text-center text-sm text-slate-400">{t('profile.empty')}</p>}
             {equippers.map(g => (
               <div key={g.co}>
@@ -275,7 +278,7 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
             ))}
             {(company || equipper) && (
               <button type="button" onClick={() => { setCompany(null); setEquipper(null); }}
-                className="w-full h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer">
+                className="mt-auto w-full h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer">
                 {t('profile.showAll')}
               </button>
             )}

@@ -27,6 +27,7 @@ import { buildArchiveSuppliers, sameSupplier, deliveriesOfSupplier } from '../li
 
 const MOCK_SUPPLIERS_REMOVED_KEY = 'sahara_supplier_mock_removed';
 const SUPPLIER_NAMES_REPAIRED_KEY = 'sahara_supplier_names_repaired';
+const SUPPLIER_SOURCE_V2_KEY = 'sahara_supplier_source_v2';
 
 interface FuelDataContextType {
   activeTab: NavTabId;
@@ -389,6 +390,21 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const built = new Map(buildArchiveSuppliers(saharaDeliveries, etihadDeliveries).map(b => [b.id, b.supplierName]));
         list = list.map(x => (built.has(x.id) && built.get(x.id) !== x.supplierName ? { ...x, supplierName: built.get(x.id)! } : x));
         localStorage.setItem(SUPPLIER_NAMES_REPAIRED_KEY, '1');
+      }
+      // لمرة واحدة: المورد صار يُؤخذ من «اسم المجهز» أولًا ثم «الشركة المجهزة»؛ يُعاد حساب سجلات الأرشيف بهذه القاعدة.
+      // يُحذف السجل الذي لم يعد له وارد (ما لم يُدخل له المستخدم بيانات)، ويُبقى السعر الذي عدّله المستخدم بعد آخر وارد
+      if (!localStorage.getItem(SUPPLIER_SOURCE_V2_KEY)) {
+        const built = new Map(buildArchiveSuppliers(saharaDeliveries, etihadDeliveries).map(b => [b.id, b]));
+        const hasUserData = (x: SupplierPriceRecord) => !!(x.phone || x.location || x.contactName || x.logo);
+        list = list
+          .filter(x => !x.id.startsWith('sup-a-') || built.has(x.id) || hasUserData(x))
+          .map(x => {
+            const b = built.get(x.id);
+            if (!b) return x;
+            const manual = (x.lastUpdated || '').replace(/-/g, '/') > b.lastUpdated;
+            return manual ? x : { ...x, priceIqd: b.priceIqd, previousPriceIqd: b.previousPriceIqd, changePercent: b.changePercent, lastUpdated: b.lastUpdated, history: b.history, product: b.product || x.product };
+          });
+        localStorage.setItem(SUPPLIER_SOURCE_V2_KEY, '1');
       }
       // مورد أُدخل يدويًا بلا شركة: يُنسب للشركة التي ورد إليها أكثر
       if (list.some(x => !x.company)) {

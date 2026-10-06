@@ -2,7 +2,7 @@ import type { InboundDelivery, SupplierPriceRecord } from '../types';
 
 /**
  * الموردون الحقيقيون مستخرجون من أرشيف الوارد (وارد الصحاري ووارد الاتحاد).
- * المورد = «الشركة المجهزة»؛ وإن كانت فارغة أو «_» أو «مشتريات متنوعة» فاسم المورد في الشحنة.
+ * المورد = «اسم المجهز» في الشحنة (الأولوية له)؛ وإن كان فارغًا أو «_» فـ«الشركة المجهزة».
  * السعر الحالي = سعر آخر شحنة مسعّرة، والسابق = آخر سعر مختلف قبله.
  */
 
@@ -19,8 +19,16 @@ export const supplierKey = (v = '') =>
 const cleanName = (v = '') => v.replace(/\(.*?\)/g, ' ').replace(/\/\s*وقود/g, ' ').replace(/\s+/g, ' ').trim();
 
 export const deliverySupplier = (d: InboundDelivery): string => {
-  const co = (d.supplierCompany || '').trim();
-  return PLACEHOLDER.has(co) ? (d.supplierName || '').trim() : co;
+  const person = (d.supplierName || '').replace(/\s+/g, ' ').trim();
+  if (!PLACEHOLDER.has(person)) return person;
+  const co = (d.supplierCompany || '').replace(/\s+/g, ' ').trim();
+  return PLACEHOLDER.has(co) ? '' : co;
+};
+
+/** الجهة الأخرى في الشحنة: «الشركة المجهزة» إن كان المورد هو المجهز (تُعرض في صفحة المورد) */
+export const deliveryCompany = (d: InboundDelivery): string => {
+  const co = (d.supplierCompany || '').replace(/\s+/g, ' ').trim();
+  return PLACEHOLDER.has(co) ? '' : co;
 };
 
 /** هل الاسمان لنفس المورد؟ مطابقة تامة بعد التطبيع، أو احتواء للأسماء الطويلة («معمل المصفى الذهبي» ⊃ «المصفى الذهبي») */

@@ -106,17 +106,17 @@
     "empty": "No shipments",
     "col": {
       "date": "Date",
-      "equipper": "Equipper",
+      "equipper": "Supplying company",
       "driver": "Driver",
       "truck": "Truck no.",
       "qty": "Quantity",
       "price": "Price"
     },
     "statTankers": "Tankers",
-    "statEquippers": "Equippers",
+    "statEquippers": "Supplying companies",
     "statLast": "Last inbound",
-    "equippersCount_one": "{{count}} equipper",
-    "equippersCount_other": "{{count}} equippers",
+    "equippersCount_one": "{{count}} supplying company",
+    "equippersCount_other": "{{count}} supplying companies",
     "tankersShort": "tankers",
     "showAll": "Show all inbound"
   }

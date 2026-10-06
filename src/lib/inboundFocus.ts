@@ -10,11 +10,12 @@ const KEY = 'sahara_inbound_focus';
 export const FOCUS_EVENT = 'sahara-inbound-focus';
 const PLACEHOLDER = new Set(['', '_', '-', 'مشتريات متنوعة']);
 
+// المورد = المجهز أولًا، وإن لم يوجد فالشركة المجهزة (نفس قاعدة صفحة الموردين)
 export const focusFromDelivery = (d: InboundDelivery, scope: InboundFocus['scope'], date: string): InboundFocus => {
-  const company = (d.supplierCompany || '').trim();
-  return PLACEHOLDER.has(company)
-    ? { scope, company: '', person: (d.supplierName || '').trim(), date }
-    : { scope, company: d.supplierCompany, person: '', date };
+  const person = (d.supplierName || '').trim();
+  return PLACEHOLDER.has(person) || person === (d.supplierCompany || '').trim()
+    ? { scope, company: d.supplierCompany, person: '', date }
+    : { scope, company: '', person: d.supplierName || '', date };
 };
 
 export const requestInboundFocus = (f: InboundFocus) => {
