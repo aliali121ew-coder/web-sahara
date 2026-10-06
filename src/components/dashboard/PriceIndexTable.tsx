@@ -4,26 +4,19 @@ import { useFuelData } from '../../context/FuelDataContext';
 import { useTranslation } from 'react-i18next';
 import { Avatar, fmtPrice } from '../suppliers/supplierUi';
 
-/** شارة التغيّر الموسّعة: أيقونة الاتجاه ونسبة بخط واضح، وتحتها الاتجاه وفرق السعر بالدينار */
-const ChangeBadge: React.FC<{ pct: number; diff: number }> = ({ pct, diff }) => {
-  const { t } = useTranslation(['suppliers', 'common']);
+/** خلية التغيّر: السهم داخل مربع صغير، والنسبة نصًا ملوّنًا (أحمر للارتفاع، أخضر للانخفاض) */
+const ChangeCell: React.FC<{ pct: number }> = ({ pct }) => {
   const up = pct > 0, down = pct < 0;
-  const tone = up ? 'bg-rose-50 text-rose-600 ring-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-900'
-    : down ? 'bg-emerald-50 text-emerald-600 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900'
-    : 'bg-amber-50 text-amber-600 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-900';
-  const icon = up ? 'bg-rose-500' : down ? 'bg-emerald-500' : 'bg-amber-400';
+  const box = up ? 'bg-rose-50 text-rose-500 ring-rose-200 dark:bg-rose-950/40 dark:ring-rose-900'
+    : down ? 'bg-emerald-50 text-emerald-600 ring-emerald-200 dark:bg-emerald-950/40 dark:ring-emerald-900'
+    : 'bg-slate-50 text-slate-400 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700';
+  const text = up ? 'text-rose-600 dark:text-rose-400' : down ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400';
   return (
-    <span className={`inline-flex items-center gap-2 min-w-[124px] rounded-xl ring-1 ps-1 pe-2.5 py-1 ${tone}`}>
-      <span className={`w-6 h-6 rounded-lg ${icon} text-white flex items-center justify-center shrink-0`}>
-        {up ? <TrendingUp className="w-3.5 h-3.5" strokeWidth={2.75} /> : down ? <TrendingDown className="w-3.5 h-3.5" strokeWidth={2.75} /> : <Minus className="w-3.5 h-3.5" strokeWidth={2.75} />}
+    <span className="inline-flex items-center gap-2">
+      <span className={`w-6 h-6 rounded-md ring-1 flex items-center justify-center shrink-0 ${box}`}>
+        {up ? <TrendingUp className="w-3.5 h-3.5" strokeWidth={2.5} /> : down ? <TrendingDown className="w-3.5 h-3.5" strokeWidth={2.5} /> : <Minus className="w-3.5 h-3.5" strokeWidth={2.5} />}
       </span>
-      <span className="flex flex-col items-start leading-tight">
-        <span dir="ltr" className="text-[14px] font-extrabold tabular-nums">{up ? '+' : ''}{pct}%</span>
-        <span className="text-[10.5px] font-medium opacity-80 tabular-nums">
-          {up ? t('change.up') : down ? t('change.down') : t('change.stable')}
-          {diff !== 0 && <> · <span dir="ltr">{diff > 0 ? '+' : '−'}{fmtPrice(Math.abs(diff))}</span> {t('common:units.iqd')}</>}
-        </span>
-      </span>
+      <span dir="ltr" className={`text-[13px] font-bold tabular-nums ${text}`}>{up ? '+' : ''}{pct}%</span>
     </span>
   );
 };
@@ -44,8 +37,10 @@ export const PriceIndexTable: React.FC = () => {
   // كل العناوين في الوسط؛ خلية المجهز (الشعار والاسم) بمحاذاة البداية
   const th = 'px-3 xl:px-4 pt-3 pb-1 text-center text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap';
   // كل صف كارت مستقل: خلفية وحدود أعلى/أسفل للخلايا، والطرفان بحد جانبي وزوايا دائرية
-  const td = 'px-3 xl:px-4 py-2.5 text-center text-[13px] text-slate-700 dark:text-slate-300 whitespace-nowrap bg-white dark:bg-slate-900 border-y border-slate-200/80 dark:border-slate-800 transition-colors group-hover:bg-teal-50/50 group-hover:border-teal-200 dark:group-hover:bg-teal-950/20 dark:group-hover:border-teal-900 first:border-s first:rounded-s-2xl last:border-e last:rounded-e-2xl';
+  const td = 'px-3 xl:px-4 py-3 text-center text-[13px] text-slate-700 dark:text-slate-300 whitespace-nowrap bg-white dark:bg-slate-900 border-y border-slate-200/80 dark:border-slate-800 transition-colors group-hover:bg-teal-50/50 group-hover:border-teal-200 dark:group-hover:bg-teal-950/20 dark:group-hover:border-teal-900 first:border-s first:rounded-s-2xl last:border-e last:rounded-e-2xl';
   const open = () => setActiveTab('suppliers');
+  const iqd = 'text-[11px] font-normal text-slate-400';
+  const diffTone = (v: number) => (v > 0 ? 'text-rose-600 dark:text-rose-400' : v < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400');
 
   return (
     <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-soft-card overflow-hidden">
@@ -74,12 +69,13 @@ export const PriceIndexTable: React.FC = () => {
               <th className={th}>{t('dashboard:priceIndex.color')}</th>
               <th className={th}>{t('dashboard:priceIndex.current')}</th>
               <th className={th}>{t('dashboard:priceIndex.previous')}</th>
+              <th className={th}>{t('dashboard:priceIndex.diff')}</th>
               <th className={th}>{t('dashboard:priceIndex.change')}</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 && (
-              <tr><td colSpan={7} className="py-10 text-center text-sm text-slate-400">{t('dashboard:priceIndex.empty')}</td></tr>
+              <tr><td colSpan={8} className="py-10 text-center text-sm text-slate-400">{t('dashboard:priceIndex.empty')}</td></tr>
             )}
             {rows.map(s => (
               <tr key={s.id} onClick={open} className="group cursor-pointer">
@@ -92,9 +88,12 @@ export const PriceIndexTable: React.FC = () => {
                 <td className={td}><span className="block truncate max-w-[160px] mx-auto">{s.product || '—'}</span></td>
                 <td className={`${td} tabular-nums`}>{s.density || '—'}</td>
                 <td className={td}><span className="block truncate max-w-[120px] mx-auto">{s.color || '—'}</span></td>
-                <td className={`${td} font-semibold text-slate-900 dark:text-white tabular-nums`}>{fmtPrice(s.priceIqd)}</td>
-                <td className={`${td} tabular-nums`}>{fmtPrice(s.previousPriceIqd)}</td>
-                <td className={td}><ChangeBadge pct={s.changePercent} diff={s.priceIqd - s.previousPriceIqd} /></td>
+                <td className={`${td} font-semibold text-slate-900 dark:text-white tabular-nums`}>{fmtPrice(s.priceIqd)} <span className={iqd}>{t('common:units.iqd')}</span></td>
+                <td className={`${td} tabular-nums`}>{fmtPrice(s.previousPriceIqd)} <span className={iqd}>{t('common:units.iqd')}</span></td>
+                <td className={`${td} tabular-nums font-semibold ${diffTone(s.priceIqd - s.previousPriceIqd)}`}>
+                  {s.priceIqd - s.previousPriceIqd ? <><span dir="ltr">{s.priceIqd > s.previousPriceIqd ? '+' : '−'}{fmtPrice(Math.abs(s.priceIqd - s.previousPriceIqd))}</span> <span className={iqd}>{t('common:units.iqd')}</span></> : '—'}
+                </td>
+                <td className={td}><ChangeCell pct={s.changePercent} /></td>
               </tr>
             ))}
           </tbody>
