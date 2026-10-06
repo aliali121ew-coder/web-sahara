@@ -13,7 +13,7 @@ export type Period = 'd30' | 'd90' | 'm12' | 'all';
 type Metric = 'qty' | 'tankers' | 'price';
 type Mode = 'waves' | 'bars';
 
-interface Bucket { key: string; label: string; full: string; sahara: number | null; etihad: number | null; saharaQ: number; etihadQ: number; saharaN: number; etihadN: number }
+interface Bucket { key: string; label: string; full: string; sahara: number | null; etihad: number | null; saharaQ: number; etihadQ: number; saharaN: number; etihadN: number; saharaP: number; etihadP: number }
 
 const DAY = 86400000;
 const priceOf = (d: InboundDelivery) => d.productPrice || d.pricePerLiter || 0;
@@ -43,23 +43,16 @@ export const buildBuckets = (rows: Row[], period: Period, metric: Metric): Bucke
     if (priceOf(d) > 0) { a.cost[co] += qtyOf(d) * priceOf(d); a.pq[co] += qtyOf(d); }
     acc.set(key, a);
   });
-  // الأيام بلا وارد تظهر صفرًا في العرض اليومي حتى يبقى المحور الزمني متصلًا
-  let keys: string[];
-  if (daily) {
-    keys = [];
-    for (let ts = from; ts <= lastTs; ts += DAY) {
-      const dt = new Date(ts);
-      keys.push(`${dt.getFullYear()}/${String(dt.getMonth() + 1).padStart(2, '0')}/${String(dt.getDate()).padStart(2, '0')}`);
-    }
-  } else {
-    keys = [...acc.keys()].sort();
-    if (period === 'm12') keys = keys.slice(-12);
-  }
+  // تُعرض فقط الأيام/الأشهر التي فيها وارد داخل الفترة، فيملأ الرسم عرضه بالبيانات الفعلية بدل امتداد فارغ
+  let keys = [...acc.keys()].sort();
+  if (period === 'm12') keys = keys.slice(-12);
   const multiYear = new Set(keys.map(k => k.slice(0, 4))).size > 1;
   return keys.map(key => {
     const a = acc.get(key);
+    const price = (c: Company) => (a && a.pq[c] ? Math.round((a.cost[c] / a.pq[c]) * 10) / 10 : 0);
+    // شركة بلا وارد في هذه الفترة: لا نقطة لها (null) فيتصل خطها بنقاطها فقط دون الهبوط إلى الصفر
     const val = (c: Company): number | null => {
-      if (!a) return metric === 'price' ? null : 0;
+      if (!a || !a.n[c]) return null;
       if (metric === 'qty') return a.q[c];
       if (metric === 'tankers') return a.n[c];
       return a.pq[c] ? Math.round((a.cost[c] / a.pq[c]) * 10) / 10 : null;
@@ -71,6 +64,7 @@ export const buildBuckets = (rows: Row[], period: Period, metric: Metric): Bucke
       full: daily ? fmtDate(date, { dateStyle: 'medium' }) : fmtDate(date, { month: 'long', year: 'numeric' }),
       sahara: val('sahara'), etihad: val('etihad'),
       saharaQ: a?.q.sahara ?? 0, etihadQ: a?.q.etihad ?? 0, saharaN: a?.n.sahara ?? 0, etihadN: a?.n.etihad ?? 0,
+      saharaP: price('sahara'), etihadP: price('etihad'),
     };
   });
 };
@@ -137,19 +131,32 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
   const tooltip = ({ active, payload }: any) => {
     if (!active || !payload?.length) return null;
     const b = payload[0].payload as Bucket;
+    const parts = shown.filter(c => (c === 'sahara' ? b.saharaN : b.etihadN) > 0);
+    const totalQ = parts.reduce((a, c) => a + (c === 'sahara' ? b.saharaQ : b.etihadQ), 0);
+    const totalN = parts.reduce((a, c) => a + (c === 'sahara' ? b.saharaN : b.etihadN), 0);
+    const stat = (k: string, v: string, strong = false) => (
+      <div className="min-w-0">
+        <div className="text-[10px] text-slate-400 truncate">{k}</div>
+        <div className={`tabular-nums truncate ${strong ? 'text-[13px] font-bold text-slate-900 dark:text-white' : 'text-[12px] font-semibold text-slate-700 dark:text-slate-200'}`}>{v}</div>
+      </div>
+    );
     return (
-      <div dir={i18n.dir()} className="w-[230px] rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur border border-slate-200/80 dark:border-slate-700 shadow-[0_12px_32px_-12px_rgba(15,23,42,0.35)] overflow-hidden text-start">
-        <div className="px-3.5 py-2.5 bg-teal-50/70 dark:bg-teal-950/30 text-[12px] font-semibold text-teal-700 dark:text-teal-300">{b.full}</div>
-        <div className="px-3.5 py-2.5 space-y-2">
-          {shown.map(c => (
-            <div key={c} className="text-[12px]">
-              <div className="flex items-center gap-2">
+      <div dir={i18n.dir()} className="w-[260px] rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur border border-slate-200/80 dark:border-slate-700 shadow-[0_12px_32px_-12px_rgba(15,23,42,0.35)] overflow-hidden text-start">
+        <div className="px-3.5 py-2.5 bg-teal-50/70 dark:bg-teal-950/30 flex items-center justify-between gap-2">
+          <span className="text-[12px] font-semibold text-teal-700 dark:text-teal-300">{b.full}</span>
+          {parts.length > 1 && <span className="text-[11px] text-slate-500 tabular-nums">{formatNumber(totalQ)} {t('common:units.liter')} · {formatNumber(totalN)}</span>}
+        </div>
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          {parts.map(c => (
+            <div key={c} className="px-3.5 py-2.5">
+              <div className="flex items-center gap-2 mb-1.5">
                 <span className="w-2 h-2 rounded-full shrink-0" style={{ background: COMPANY_COLOR[c] }} />
-                <span className="font-medium text-slate-700 dark:text-slate-200">{t(`receiver.${c}`)}</span>
-                <span className="ms-auto font-semibold text-slate-900 dark:text-white tabular-nums">{b[c] == null ? '—' : fmtVal(b[c] as number)}</span>
+                <span className="text-[12px] font-semibold text-slate-800 dark:text-slate-100">{t(`receiver.${c}`)}</span>
               </div>
-              <div className="ps-4 text-[10.5px] text-slate-400 tabular-nums">
-                {formatNumber(c === 'sahara' ? b.saharaQ : b.etihadQ)} {t('common:units.liter')} · {t('profile.tankersTotal', { count: c === 'sahara' ? b.saharaN : b.etihadN })}
+              <div className="grid grid-cols-3 gap-2">
+                {stat(t('profile.metric.qty'), `${formatNumber(c === 'sahara' ? b.saharaQ : b.etihadQ)}`, true)}
+                {stat(t('profile.metric.tankers'), formatNumber(c === 'sahara' ? b.saharaN : b.etihadN))}
+                {stat(t('profile.metric.price'), (c === 'sahara' ? b.saharaP : b.etihadP) ? formatNumber(c === 'sahara' ? b.saharaP : b.etihadP) : '—')}
               </div>
             </div>
           ))}
@@ -160,7 +167,8 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
 
   const xTicks = { fill: '#64748b', fontSize: 11, fontWeight: 600 };
   const yTicks = { fill: '#64748b', fontSize: 11, fontWeight: 600 };
-  const interval = daily ? (period === 'd90' ? 9 : 3) : 0;
+  // عدد تسميات المحور يتكيّف مع عدد النقاط (نحو 10 تسميات كحد أقصى)
+  const interval = Math.max(0, Math.ceil(data.length / 10) - 1);
 
   return createPortal(
     <div className="fixed inset-0 z-[100] bg-slate-900/45 backdrop-blur-md p-2 sm:p-5 flex animate-[overlayIn_.18s_ease]" onMouseDown={onClose}>
@@ -252,7 +260,7 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
                   <Tooltip content={tooltip} cursor={{ stroke: '#0d9488', strokeWidth: 1.5, strokeDasharray: '3 3' }} wrapperStyle={{ outline: 'none', zIndex: 20 }} isAnimationActive={false} />
                   {shown.map(c => (
                     <Area key={c} type="monotone" dataKey={c} stroke={COMPANY_COLOR[c]} strokeWidth={2.5} fill={`url(#exp-fill-${c})`} filter={`url(#exp-glow-${c})`}
-                      connectNulls dot={false} activeDot={{ r: 6, stroke: COMPANY_COLOR[c], strokeWidth: 3, fill: '#fff' }} />
+                      connectNulls dot={{ r: data.length > 40 ? 2 : 3.5, fill: '#fff', stroke: COMPANY_COLOR[c], strokeWidth: 2 }} activeDot={{ r: 6, stroke: COMPANY_COLOR[c], strokeWidth: 3, fill: '#fff' }} />
                   ))}
                   {avgLine !== undefined && <ReferenceLine y={avgLine} stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={1.5} />}
                 </AreaChart>
