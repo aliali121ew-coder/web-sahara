@@ -23,11 +23,12 @@ import {
   INITIAL_MESSAGES,
   INITIAL_NOTIFICATIONS
 } from '../lib/mockData';
-import { buildArchiveSuppliers, sameSupplier, deliveriesOfSupplier, archiveValue } from '../lib/archiveSuppliers';
+import { buildArchiveSuppliers, sameSupplier, deliveriesOfSupplier, archiveValue, recordColor } from '../lib/archiveSuppliers';
 
 const MOCK_SUPPLIERS_REMOVED_KEY = 'sahara_supplier_mock_removed';
 const SUPPLIER_NAMES_REPAIRED_KEY = 'sahara_supplier_names_repaired';
 const SUPPLIER_SOURCE_V2_KEY = 'sahara_supplier_source_v2';
+const SUPPLIER_COLOR_YELLOW_KEY = 'sahara_supplier_color_yellow_v1';
 
 interface FuelDataContextType {
   activeTab: NavTabId;
@@ -431,6 +432,11 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           return { ...x, density, color };
         });
         if (touched) list = filled;
+      }
+      // لمرة واحدة: «أصفر مخضر» المنسوخ من الأرشيف يصبح «أصفر» في سجلات الأسعار
+      if (!localStorage.getItem(SUPPLIER_COLOR_YELLOW_KEY)) {
+        if (list.some(x => recordColor(x.color) !== x.color)) list = list.map(x => (recordColor(x.color) !== x.color ? { ...x, color: recordColor(x.color) } : x));
+        localStorage.setItem(SUPPLIER_COLOR_YELLOW_KEY, '1');
       }
       return missing.length || list !== prev ? [...list, ...missing] : prev;
     });

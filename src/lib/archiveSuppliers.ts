@@ -83,6 +83,9 @@ export const archiveIdentity = (rec: { supplierName: string; company?: 'sahara' 
   return [...freq].sort((a, b) => b[1] - a[1])[0][0];
 };
 
+/** لون سجل السعر: «أصفر مخضر» في الأرشيف يُكتب «أصفر» */
+export const recordColor = (v?: string) => (v && v.replace(/\s+/g, ' ').trim() === 'أصفر مخضر' ? 'أصفر' : v);
+
 /** قيمة فعلية في حقل نصي من الأرشيف («_» و«-» و«0» تعني فارغ) */
 export const archiveValue = (v: unknown): string | undefined => {
   const s = String(v ?? '').replace(/\s+/g, ' ').trim();
@@ -124,7 +127,7 @@ const buildCompanySuppliers = (deliveries: InboundDelivery[], company: 'sahara' 
       if (history.length >= 30) break;
     }
     const density = list.map(d => archiveValue(d.productDensity)).find(Boolean);
-    const color = list.map(d => archiveValue(d.productColor)).find(Boolean);
+    const color = recordColor(list.map(d => archiveValue(d.productColor)).find(Boolean));
     out.push({
       id: `sup-a-${company}-${key.replace(/\s+/g, '-')}`,
       density,
