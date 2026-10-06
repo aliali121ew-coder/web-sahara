@@ -19,10 +19,8 @@ const detectLanguage = (): AppLang => {
     const saved = localStorage.getItem(LANG_KEY);
     if (isAppLang(saved)) return saved;
   } catch { /* تجاهل */ }
-  const browser = (typeof navigator !== 'undefined' ? navigator.languages || [navigator.language] : [])
-    .map(l => l?.slice(0, 2).toLowerCase())
-    .find(isAppLang);
-  return browser || 'ar';
+  // الافتراضي العربية دائمًا (لا تُتبع لغة المتصفح)؛ الإنجليزية فقط إن اختارها المستخدم من زر اللغة
+  return 'ar';
 };
 
 /** تحديث سمات الصفحة (اللغة والاتجاه والعنوان) مع كل تبديل */
