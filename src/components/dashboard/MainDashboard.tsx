@@ -16,14 +16,14 @@ export const MainDashboard: React.FC = () => {
       {/* Section 2: كاز - شركة الاتحاد */}
       <EtihadGasSection />
 
-      {/* Section 3: منظومة بنزين المحطات (الأرصدة + الوارد والصادر) */}
+      {/* Section 3: تفاصيل نفط الأسود (الصحاري + الاتحاد + الإجمالي) */}
+      <BlackOilSection />
+
+      {/* Section 4: منظومة بنزين المحطات (الأرصدة + الوارد والصادر) */}
       <PetrolStationsSection />
 
-      {/* Section 4: قسم مشتريات الوقود والمشتقات (5 بطاقات) */}
+      {/* Section 5: قسم مشتريات الوقود والمشتقات (5 بطاقات) */}
       <FuelMetricsGrid />
-
-      {/* Section 5: تفاصيل نفط الأسود (الصحاري + الاتحاد + الإجمالي) */}
-      <BlackOilSection />
 
       {/* Section 6: تفاصيل خزانات الشركة (مستطيلات بيانية + أسطوانات ثلاثية الأبعاد) */}
       <CompanyTanksSection />
