@@ -35,13 +35,7 @@
     "tankers": "عدد الصهاريج",
     "lastDay": "آخر يوم وارد",
     "totalTankers": "الإجمالي",
-    "lastDayOn": "آخر وارد في {{date}}",
-    "tankerCount_zero": "لا صهاريج",
-    "tankerCount_one": "صهريج واحد",
-    "tankerCount_two": "صهريجان",
-    "tankerCount_few": "{{count}} صهاريج",
-    "tankerCount_many": "{{count}} صهريجًا",
-    "tankerCount_other": "{{count}} صهريج"
+    "lastDayOn": "آخر وارد في {{date}}"
   },
   "change": {
     "up": "ارتفاع",

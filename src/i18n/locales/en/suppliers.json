@@ -35,9 +35,7 @@
     "tankers": "Tankers",
     "lastDay": "Last inbound day",
     "totalTankers": "Total",
-    "lastDayOn": "Last inbound on {{date}}",
-    "tankerCount_one": "{{count}} tanker",
-    "tankerCount_other": "{{count}} tankers"
+    "lastDayOn": "Last inbound on {{date}}"
   },
   "change": {
     "up": "Up",

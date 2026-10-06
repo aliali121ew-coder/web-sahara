@@ -31,7 +31,7 @@ import { useFuelData } from '../../context/FuelDataContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { enumText } from '../../i18n/enums';
 import { useTranslation } from 'react-i18next';
-import { formatIQD } from '../../lib/utils';
+import { formatIQD, formatNumber } from '../../lib/utils';
 
 interface QuickActionModalProps {
   isOpen: boolean;
@@ -1315,7 +1315,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                   {computedCost > 0 && (
                     <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800/80 text-emerald-700 dark:text-emerald-300 font-bold shadow-2xs">
                       <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-cairo">{t('deliveries:quick.totalCost')}:</span>
-                      <span className="font-sans font-black text-xs">{formatIQD(computedCost)} {t('common:units.iqd')}</span>
+                      <span className="font-sans font-black text-xs">{formatNumber(computedCost)} {t('common:units.iqd')}</span>
                     </div>
                   )}
                   {attachments.length > 0 && (

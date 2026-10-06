@@ -41,6 +41,7 @@ import { useQuickAction } from '../../context/QuickActionContext';
 import { formatNumber, formatIQD, getBusinessDate } from '../../lib/utils';
 import { InboundDelivery } from '../../types';
 import { computeInboundPriceStats, deliveryDay } from '../../lib/inboundPrice';
+import { takeInboundFocus, FOCUS_EVENT, type InboundFocus } from '../../lib/inboundFocus';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
 import {
   InboundPrintReport,
@@ -296,6 +297,23 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, localSearch, filterCompany, filterSupplier, filterSupplierCompany, filterFuelType, dateFrom, dateTo]);
+
+  // فتح الأرشيف من صفحة الموردين: تصفية على المورد وآخر يوم وارد له
+  useEffect(() => {
+    if (!isArchive || !scope) return;
+    const apply = (f: InboundFocus | null) => {
+      if (!f) return;
+      setLocalSearch('');
+      setFilterSupplierCompany(f.company || 'الكل');
+      setFilterSupplier(f.person || 'الكل');
+      setDateFrom(f.date);
+      setDateTo(f.date);
+    };
+    apply(takeInboundFocus(scope));
+    const on = () => apply(takeInboundFocus(scope));
+    window.addEventListener(FOCUS_EVENT, on);
+    return () => window.removeEventListener(FOCUS_EVENT, on);
+  }, [isArchive, scope]);
 
   const filteredDeliveries = useMemo(() => {
     const q = (searchQuery || localSearch).trim().toLowerCase();
@@ -1138,7 +1156,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                       {/* 10. تكلفة المنتج */}
                       {visibleColumns.cost && (
                         <td className="py-3.5 px-3.5 whitespace-nowrap font-sans font-bold text-emerald-600 dark:text-emerald-400">
-                          {formatIQD(cost)} <span className="text-[10px] text-emerald-700/80 dark:text-emerald-400 font-cairo">{t('common:units.iqd')}</span>
+                          {formatNumber(cost)} <span className="text-[10px] text-emerald-700/80 dark:text-emerald-400 font-cairo">{t('common:units.iqd')}</span>
                         </td>
                       )}
 
@@ -1712,7 +1730,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                 <div className="p-2.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-500/20 col-span-2">
                   <span className="text-[10px] font-bold text-emerald-600 block">{t('deliveries:totalCost')}</span>
                   <span className="text-sm font-sans font-black text-emerald-600 dark:text-emerald-400">
-                    {formatIQD(selectedVoucher.productCost ?? selectedVoucher.totalCostIqd ?? 0)} {t('common:units.iqd')}
+                    {formatNumber(selectedVoucher.productCost ?? selectedVoucher.totalCostIqd ?? 0)} {t('common:units.iqd')}
                   </span>
                 </div>
               </div>
