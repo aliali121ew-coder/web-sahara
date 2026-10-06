@@ -39,28 +39,6 @@ const ChangeBadge: React.FC<{ cur: number; prev: number | null | undefined; upIs
   );
 };
 
-/**
- * كارت صغير موحّد (نفس كروت أقسام الكاز والبنزين): العنوان kpi-label وأيقونة في مربع بالطرف المقابل،
- * والرقم kpi-num تحته بخط Inter؛ داخل kpi-wrap يتكيف حجمه مع عرض الكارت فلا يُقصّ الرقم.
- */
-const MiniStat: React.FC<{
-  label: string; value: React.ReactNode; unit: React.ReactNode; icon?: React.ReactNode; badge?: React.ReactNode;
-  box: string; iconBox?: string; labelTone?: string; numTone?: string; unitTone?: string;
-}> = ({ label, value, unit, icon, badge, box, iconBox, labelTone = 'text-slate-500 dark:text-slate-400', numTone = 'text-slate-900 dark:text-white', unitTone = 'text-slate-400' }) => (
-  <div className={`p-2.5 sm:p-3 rounded-2xl border flex flex-col justify-between min-w-0 ${box}`}>
-    <div className="flex items-center justify-between gap-1.5 mb-1">
-      <span className={`kpi-label ${labelTone}`}>{label}</span>
-      <div className="flex items-center gap-1 shrink-0">
-        {badge}
-        {icon && <div className={`w-5 h-5 rounded-lg flex items-center justify-center border shrink-0 ${iconBox}`}>{icon}</div>}
-      </div>
-    </div>
-    <div className={`kpi-num font-black font-mono ${numTone}`}>
-      {value} <span className={`text-[8.5px] font-normal ${unitTone}`}>{unit}</span>
-    </div>
-  </div>
-);
-
 export const BlackOilSection: React.FC = () => {
   const { t } = useTranslation(['dashboard', 'common']);
   // 1. Sahara Data: من السجل اليومي لنفط الصحاري الأسود وخزانات قسمه في منظومة الخزانات
@@ -213,26 +191,54 @@ export const BlackOilSection: React.FC = () => {
             </div>
 
             {/* Dual Data Metric Breakdown */}
-            <div className="kpi-wrap pt-0.5"><div className="kpi-grid kpi-grid-2 gap-2">
-              <MiniStat label={t('dashboard:balance.actual')} value={formatNumber(saharaTotalBalance)} unit={<>{t('common:units.liter')} ({saharaFill}%)</>}
-                box="bg-sky-50/60 dark:bg-sky-950/30 border-sky-200/60 dark:border-sky-900/40" numTone="text-sky-900 dark:text-sky-200" />
-              <MiniStat label={t('dashboard:capacity.remainingOfCapacity')} value={formatNumber(saharaRemainingCapacity)} unit={t('common:units.liter')}
-                box="bg-slate-100/90 dark:bg-slate-800/90 border-slate-200/80 dark:border-slate-700/80" />
-            </div></div>
+            <div className="grid grid-cols-2 gap-2 pt-0.5">
+              <div className="p-2 rounded-xl bg-sky-50/60 dark:bg-sky-950/30 border border-sky-200/60 dark:border-sky-900/40">
+                <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 block leading-tight">{t('dashboard:balance.actual')}</span>
+                <span className="font-mono font-black text-[14px] leading-tight text-sky-900 dark:text-sky-200 block truncate">
+                  {formatNumber(saharaTotalBalance)} <span className="text-[10.5px] font-normal">{t('common:units.liter')} ({saharaFill}%)</span>
+                </span>
+              </div>
+
+              <div className="p-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80">
+                <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 block leading-tight">{t('dashboard:capacity.remainingOfCapacity')}</span>
+                <span className="font-mono font-black text-[14px] leading-tight text-slate-900 dark:text-slate-100 block truncate">
+                  {formatNumber(saharaRemainingCapacity)} <span className="text-[10.5px] font-normal text-slate-500 dark:text-slate-400">{t('common:units.liter')}</span>
+                </span>
+              </div>
+            </div>
 
           </div>
 
           {/* Bottom Operational Stats: Inbound / Outbound */}
-          <div className="kpi-wrap pt-2 border-t border-slate-200/60 dark:border-slate-800 relative z-10"><div className="kpi-grid kpi-grid-2 gap-2.5">
-            <MiniStat label={t('dashboard:flow.totalInbound')} value={formatNumber(saharaInbound)} unit={t('common:units.liter')}
-              box="bg-slate-50/80 dark:bg-slate-800/60 border-slate-200/70 dark:border-slate-700/50"
-              icon={<ArrowDownLeft className="w-3 h-3" />} iconBox="bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-800/40"
-              badge={<ChangeBadge cur={saharaInbound} prev={saharaPrevDay?.inbound} upIsGood title={`${t('dashboard:compare.prevDay')} (${saharaPrevDay?.date ?? ''}): ${formatNumber(saharaPrevDay?.inbound ?? 0)}`} />} />
-            <MiniStat label={t('dashboard:flow.daily')} value={formatNumber(saharaOutbound)} unit={t('common:units.liter')}
-              box="bg-slate-50/80 dark:bg-slate-800/60 border-slate-200/70 dark:border-slate-700/50"
-              icon={<Activity className="w-3 h-3" />} iconBox="bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border-blue-200/60 dark:border-blue-800/40"
-              badge={<ChangeBadge cur={saharaOutbound} prev={saharaPrevDay?.consumption} upIsGood={false} title={`${t('dashboard:compare.prevDay')} (${saharaPrevDay?.date ?? ''}): ${formatNumber(saharaPrevDay?.consumption ?? 0)}`} />} />
-          </div></div>
+          <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-800 relative z-10">
+            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex items-center justify-between gap-1 overflow-hidden min-w-0">
+              <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 shrink-0">
+                <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                <span className="text-xs 2xl:text-[13px] font-bold whitespace-nowrap">{t('dashboard:flow.inboundColon')}</span>
+                <ChangeBadge cur={saharaInbound} prev={saharaPrevDay?.inbound} upIsGood title={`${t('dashboard:compare.prevDay')} (${saharaPrevDay?.date ?? ''}): ${formatNumber(saharaPrevDay?.inbound ?? 0)}`} />
+              </div>
+              <span 
+                className="font-mono font-black text-slate-900 dark:text-white text-xs 2xl:text-[13.5px] leading-tight truncate"
+                title={`${formatNumber(saharaInbound)} ${t('common:units.liter')}`}
+              >
+                {formatNumber(saharaInbound)} <span className="text-[10.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
+              </span>
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex items-center justify-between gap-1 overflow-hidden min-w-0">
+              <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 shrink-0">
+                <Activity className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                <span className="text-xs 2xl:text-[13px] font-bold whitespace-nowrap">{t('dashboard:flow.consumptionColon')}</span>
+                <ChangeBadge cur={saharaOutbound} prev={saharaPrevDay?.consumption} upIsGood={false} title={`${t('dashboard:compare.prevDay')} (${saharaPrevDay?.date ?? ''}): ${formatNumber(saharaPrevDay?.consumption ?? 0)}`} />
+              </div>
+              <span 
+                className="font-mono font-black text-slate-900 dark:text-white text-xs 2xl:text-[13.5px] leading-tight truncate"
+                title={`${formatNumber(saharaOutbound)} ${t('common:units.liter')}`}
+              >
+                {formatNumber(saharaOutbound)} <span className="text-[10.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
+              </span>
+            </div>
+          </div>
 
 
         </div>
@@ -322,26 +328,54 @@ export const BlackOilSection: React.FC = () => {
             </div>
 
             {/* Dual Data Metric Breakdown */}
-            <div className="kpi-wrap pt-0.5"><div className="kpi-grid kpi-grid-2 gap-2">
-              <MiniStat label={t('dashboard:balance.actual')} value={formatNumber(etihadTotalBalance)} unit={<>{t('common:units.liter')} ({etihadFill}%)</>}
-                box="bg-teal-50/60 dark:bg-teal-950/30 border-teal-200/60 dark:border-teal-900/40" numTone="text-teal-900 dark:text-teal-200" />
-              <MiniStat label={t('dashboard:capacity.remainingOfCapacity')} value={formatNumber(etihadRemainingCapacity)} unit={t('common:units.liter')}
-                box="bg-slate-100/90 dark:bg-slate-800/90 border-slate-200/80 dark:border-slate-700/80" />
-            </div></div>
+            <div className="grid grid-cols-2 gap-2 pt-0.5">
+              <div className="p-2 rounded-xl bg-teal-50/60 dark:bg-teal-950/30 border border-teal-200/60 dark:border-teal-900/40">
+                <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 block leading-tight">{t('dashboard:balance.actual')}</span>
+                <span className="font-mono font-black text-[14px] leading-tight text-teal-900 dark:text-teal-200 block truncate">
+                  {formatNumber(etihadTotalBalance)} <span className="text-[10.5px] font-normal">{t('common:units.liter')} ({etihadFill}%)</span>
+                </span>
+              </div>
+
+              <div className="p-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80">
+                <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 block leading-tight">{t('dashboard:capacity.remainingOfCapacity')}</span>
+                <span className="font-mono font-black text-[14px] leading-tight text-slate-900 dark:text-slate-100 block truncate">
+                  {formatNumber(etihadRemainingCapacity)} <span className="text-[10.5px] font-normal text-slate-500 dark:text-slate-400">{t('common:units.liter')}</span>
+                </span>
+              </div>
+            </div>
 
           </div>
 
           {/* Bottom Operational Stats: Inbound / Outbound */}
-          <div className="kpi-wrap pt-2 border-t border-slate-200/60 dark:border-slate-800 relative z-10"><div className="kpi-grid kpi-grid-2 gap-2.5">
-            <MiniStat label={t('dashboard:flow.totalInbound')} value={formatNumber(etihadInbound)} unit={t('common:units.liter')}
-              box="bg-slate-50/80 dark:bg-slate-800/60 border-slate-200/70 dark:border-slate-700/50"
-              icon={<ArrowDownLeft className="w-3 h-3" />} iconBox="bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-800/40"
-              badge={<ChangeBadge cur={etihadInbound} prev={etihadPrevDay?.inbound} upIsGood title={`${t('dashboard:compare.prevDay')} (${etihadPrevDay?.date ?? ''}): ${formatNumber(etihadPrevDay?.inbound ?? 0)}`} />} />
-            <MiniStat label={t('dashboard:flow.daily')} value={formatNumber(etihadOutbound)} unit={t('common:units.liter')}
-              box="bg-slate-50/80 dark:bg-slate-800/60 border-slate-200/70 dark:border-slate-700/50"
-              icon={<Activity className="w-3 h-3" />} iconBox="bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border-blue-200/60 dark:border-blue-800/40"
-              badge={<ChangeBadge cur={etihadOutbound} prev={etihadPrevDay?.consumption} upIsGood={false} title={`${t('dashboard:compare.prevDay')} (${etihadPrevDay?.date ?? ''}): ${formatNumber(etihadPrevDay?.consumption ?? 0)}`} />} />
-          </div></div>
+          <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-800 relative z-10">
+            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex items-center justify-between gap-1 overflow-hidden min-w-0">
+              <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 shrink-0">
+                <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                <span className="text-xs 2xl:text-[13px] font-bold whitespace-nowrap">{t('dashboard:flow.inboundColon')}</span>
+                <ChangeBadge cur={etihadInbound} prev={etihadPrevDay?.inbound} upIsGood title={`${t('dashboard:compare.prevDay')} (${etihadPrevDay?.date ?? ''}): ${formatNumber(etihadPrevDay?.inbound ?? 0)}`} />
+              </div>
+              <span 
+                className="font-mono font-black text-slate-900 dark:text-white text-xs 2xl:text-[13.5px] leading-tight truncate"
+                title={`${formatNumber(etihadInbound)} ${t('common:units.liter')}`}
+              >
+                {formatNumber(etihadInbound)} <span className="text-[10.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
+              </span>
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex items-center justify-between gap-1 overflow-hidden min-w-0">
+              <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 shrink-0">
+                <Activity className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                <span className="text-xs 2xl:text-[13px] font-bold whitespace-nowrap">{t('dashboard:flow.consumptionColon')}</span>
+                <ChangeBadge cur={etihadOutbound} prev={etihadPrevDay?.consumption} upIsGood={false} title={`${t('dashboard:compare.prevDay')} (${etihadPrevDay?.date ?? ''}): ${formatNumber(etihadPrevDay?.consumption ?? 0)}`} />
+              </div>
+              <span 
+                className="font-mono font-black text-slate-900 dark:text-white text-xs 2xl:text-[13.5px] leading-tight truncate"
+                title={`${formatNumber(etihadOutbound)} ${t('common:units.liter')}`}
+              >
+                {formatNumber(etihadOutbound)} <span className="text-[10.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
+              </span>
+            </div>
+          </div>
 
         </div>
 
@@ -391,15 +425,42 @@ export const BlackOilSection: React.FC = () => {
             </div>
           </div>
 
-          {/* Middle: Twin KPI Badges - الوارد الكلي + الاستهلاك الكلي (نفس الكارت الصغير الموحّد بألوان داكنة) */}
-          <div className="kpi-wrap relative z-10"><div className="kpi-grid kpi-grid-2 gap-2">
-            <MiniStat label={t('dashboard:flow.totalInboundAll')} value={formatNumber(grandTotalInbound)} unit={t('common:units.liter')}
-              box="bg-white/10 dark:bg-white/5 border-white/10" labelTone="text-emerald-300" numTone="text-white" unitTone="text-emerald-200/70"
-              icon={<ArrowDownLeft className="w-3 h-3" />} iconBox="bg-emerald-400/15 text-emerald-300 border-emerald-300/30" />
-            <MiniStat label={t('dashboard:flow.totalConsumption')} value={formatNumber(grandTotalOutbound)} unit={t('common:units.liter')}
-              box="bg-white/10 dark:bg-white/5 border-white/10" labelTone="text-cyan-300" numTone="text-white" unitTone="text-cyan-200/70"
-              icon={<Activity className="w-3 h-3" />} iconBox="bg-cyan-400/15 text-cyan-300 border-cyan-300/30" />
-          </div></div>
+          {/* Middle: Twin KPI Badges - الوارد الكلي + الاستهلاك الكلي (Micro-Stack Responsive Architecture for Millions) */}
+          <div className="grid grid-cols-2 gap-2 relative z-10">
+            {/* Inbound Card */}
+            <div className="p-2.5 rounded-xl bg-white/10 dark:bg-white/5 border border-white/10 flex flex-col justify-between space-y-1 overflow-hidden min-w-0">
+              <div className="flex items-center gap-1.5 text-emerald-300">
+                <ArrowDownLeft className="w-3.5 h-3.5 shrink-0" />
+                <span className="text-[10px] sm:text-[11px] font-bold whitespace-nowrap">{t('dashboard:flow.totalInboundAll')}</span>
+              </div>
+              <div className="flex items-baseline gap-1 min-w-0">
+                <span 
+                  className="font-mono font-black text-white text-xs sm:text-[13px] tracking-tight truncate" 
+                  title={`${formatNumber(grandTotalInbound)} ${t('common:units.liter')}`}
+                >
+                  {formatNumber(grandTotalInbound)}
+                </span>
+                <span className="text-[9px] font-normal text-emerald-200/70 shrink-0">{t('common:units.liter')}</span>
+              </div>
+            </div>
+
+            {/* Consumption Card */}
+            <div className="p-2.5 rounded-xl bg-white/10 dark:bg-white/5 border border-white/10 flex flex-col justify-between space-y-1 overflow-hidden min-w-0">
+              <div className="flex items-center gap-1.5 text-cyan-300">
+                <Activity className="w-3.5 h-3.5 shrink-0" />
+                <span className="text-[10px] sm:text-[11px] font-bold whitespace-nowrap">{t('dashboard:flow.totalConsumption')}</span>
+              </div>
+              <div className="flex items-baseline gap-1 min-w-0">
+                <span 
+                  className="font-mono font-black text-white text-xs sm:text-[13px] tracking-tight truncate" 
+                  title={`${formatNumber(grandTotalOutbound)} ${t('common:units.liter')}`}
+                >
+                  {formatNumber(grandTotalOutbound)}
+                </span>
+                <span className="text-[9px] font-normal text-cyan-200/70 shrink-0">{t('common:units.liter')}</span>
+              </div>
+            </div>
+          </div>
 
           {/* Frosted Glass Coverage Block (يؤمن لغاية) */}
           <div className="p-3.5 rounded-2xl bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/15 shadow-inner relative z-10 space-y-1">
