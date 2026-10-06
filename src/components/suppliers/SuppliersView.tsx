@@ -71,34 +71,34 @@ const KpiCard: React.FC<{
   icon: React.ReactNode; iconBg: string; title: string; a: KpiValue; b: KpiValue;
   trend?: { pct: number; text: string }; note?: string; action?: { label: string; onClick: () => void }; className?: string;
 }> = ({ icon, iconBg, title, a, b, trend, note, action, className = '' }) => (
-  <div className={`${className} rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-[0_1px_3px_rgba(15,23,42,0.06)] flex flex-col min-w-0`}>
-    <div className="px-4 pt-4 pb-3 flex-1">
+  <div className={`${className} sup-kpi rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-[0_1px_3px_rgba(15,23,42,0.06)] flex flex-col min-w-0`}>
+    <div className="sup-kpi-body pt-4 pb-3 flex-1">
       <div className="flex items-center gap-2.5">
         <span className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${iconBg}`}>{icon}</span>
-        <span className="text-sm font-medium text-slate-600 dark:text-slate-300 truncate">{title}</span>
+        <span className="sup-kpi-title font-medium text-slate-600 dark:text-slate-300 leading-tight">{title}</span>
       </div>
       <div className="mt-3.5 grid grid-cols-2 gap-2">
         {[a, b].map((v, i) => (
           <div key={i} className="min-w-0">
-            <div className={`${v.small ? 'text-sm xl:text-[15px] pt-1' : 'text-lg xl:text-xl'} leading-tight font-bold text-slate-900 dark:text-white truncate tabular-nums`} title={v.value}>{v.value}</div>
-            <div className="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase text-slate-500 dark:text-slate-400 truncate">
-              <span className={`w-2.5 h-2.5 rounded-full border-2 shrink-0 ${v.tone === 'green' ? 'border-emerald-500' : 'border-orange-400'}`} />
+            <div className={`sup-kpi-val ${v.small ? 'is-small' : ''} font-bold text-slate-900 dark:text-white tabular-nums`} title={v.value}>{v.value}</div>
+            <div className="sup-kpi-lbl mt-1.5 flex items-start gap-1.5 font-medium uppercase text-slate-500 dark:text-slate-400">
+              <span className={`mt-[2px] w-2.5 h-2.5 rounded-full border-2 shrink-0 ${v.tone === 'green' ? 'border-emerald-500' : 'border-orange-400'}`} />
               {v.label}
             </div>
           </div>
         ))}
       </div>
     </div>
-    <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 text-[11.5px]">
+    <div className="sup-kpi-foot py-2.5 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
       {trend ? (
-        <span className="flex items-center gap-1.5 min-w-0">
+        <span className="flex flex-wrap items-center gap-x-1.5 min-w-0">
           {trend.pct >= 0
             ? <TrendingUp className={`w-3.5 h-3.5 shrink-0 ${trend.pct > 0 ? 'text-rose-500' : 'text-slate-400'}`} />
             : <TrendingDown className="w-3.5 h-3.5 shrink-0 text-emerald-500" />}
           <span dir="ltr" className={`font-semibold ${trend.pct > 0 ? 'text-rose-500' : trend.pct < 0 ? 'text-emerald-500' : 'text-slate-400'}`}>{trend.pct > 0 ? '+' : ''}{trend.pct}%</span>
-          <span className="text-slate-400 truncate">{trend.text}</span>
+          <span className="text-slate-400 leading-tight">{trend.text}</span>
         </span>
-      ) : note ? <span className="text-slate-400 truncate tabular-nums">{note}</span> : <span />}
+      ) : note ? <span className="text-slate-400 leading-tight tabular-nums">{note}</span> : <span />}
       {action && (
         <button type="button" onClick={action.onClick} className="font-medium text-slate-700 dark:text-slate-200 hover:text-teal-600 dark:hover:text-teal-400 whitespace-nowrap cursor-pointer">
           {action.label}
@@ -275,7 +275,6 @@ export const SuppliersView: React.FC = () => {
   const [sort, setSort] = useState<SortKey>('name');
   const [sortOpen, setSortOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [checked, setChecked] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(0);
   const [editing, setEditing] = useState<{ rec: SupplierPriceRecord; isNew: boolean } | null>(null);
   const sortRef = useOutside(sortOpen, () => setSortOpen(false));
@@ -327,7 +326,7 @@ export const SuppliersView: React.FC = () => {
 
   const exportCsv = () => {
     const head = [t('table.receiver'), t('table.supplier'), t('fields.product'), t('fields.category'), t('table.current'), t('table.previous'), t('table.change'), t('table.updated')];
-    const list = checked.size ? rows.filter(r => checked.has(r.id)) : rows;
+    const list = rows;
     const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
     const body = list.map(s => [inboundOf(s).companies.map(c => t(`receiver.${c}`)).join(' + ') || '—', s.supplierName, s.product, enumText(s.category), s.priceIqd, s.previousPriceIqd, `${s.changePercent}%`, s.lastUpdated].map(esc).join(','));
     const blob = new Blob(['﻿' + [head.map(esc).join(','), ...body].join('\n')], { type: 'text/csv;charset=utf-8' });
@@ -368,7 +367,6 @@ export const SuppliersView: React.FC = () => {
   const winStart = Math.max(0, Math.min(safePage - 2, pageCount - 5));
   const pageWindow = Array.from({ length: Math.min(5, pageCount) }, (_, i) => winStart + i);
   useEffect(() => { setPage(0); }, [query, sort]);
-  const allChecked = pageRows.length > 0 && pageRows.every(r => checked.has(r.id));
   const th = 'px-3 xl:px-4 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap';
   const td = 'px-3 xl:px-4 py-3 text-[13px] text-slate-700 dark:text-slate-300 whitespace-nowrap';
 
@@ -515,7 +513,7 @@ export const SuppliersView: React.FC = () => {
                   )}
                   <button type="button" onClick={() => { setMenuOpen(false); exportCsv(); }}
                     className="w-full px-3 py-2 rounded-lg text-start text-[13px] text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2 cursor-pointer">
-                    <Download className="w-4 h-4 text-teal-500" /> {checked.size ? t('toolbar.exportSelected', { count: checked.size }) : t('toolbar.export')}
+                    <Download className="w-4 h-4 text-teal-500" /> {t('toolbar.export')}
                   </button>
                 </div>
               )}
@@ -571,11 +569,6 @@ export const SuppliersView: React.FC = () => {
             <table className="w-full">
               <thead className="bg-slate-50 dark:bg-slate-800/60">
                 <tr>
-                  <th className={`${th} w-10`}>
-                    <input type="checkbox" aria-label={t('table.selectAll')} checked={allChecked}
-                      onChange={() => setChecked(prev => { const n = new Set(prev); pageRows.forEach(r => (allChecked ? n.delete(r.id) : n.add(r.id))); return n; })}
-                      className="w-4 h-4 rounded border-slate-300 accent-teal-500 cursor-pointer" />
-                  </th>
                   <th className={th}>{t('table.receiver')}</th>
                   <th className={th}>{t('table.supplier')}</th>
                   <th className={th}>{t('table.current')}</th>
@@ -589,7 +582,7 @@ export const SuppliersView: React.FC = () => {
               </thead>
               <tbody>
                 {rows.length === 0 && (
-                  <tr><td colSpan={10} className="py-12 text-center text-sm text-slate-400">{t('empty')}</td></tr>
+                  <tr><td colSpan={9} className="py-12 text-center text-sm text-slate-400">{t('empty')}</td></tr>
                 )}
                 {pageRows.map(s => {
                   const active = s.id === selected?.id;
@@ -597,20 +590,9 @@ export const SuppliersView: React.FC = () => {
                   return (
                     <tr key={s.id} onClick={() => setSelectedId(s.id)} aria-selected={active}
                       className={`border-t border-slate-100 dark:border-slate-800 cursor-pointer transition-colors ${active ? 'bg-teal-50/70 dark:bg-teal-950/30' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'}`}>
-                      <td className={td} onClick={e => e.stopPropagation()}>
-                        <input type="checkbox" aria-label={t('table.select', { name: s.supplierName })} checked={checked.has(s.id)}
-                          onChange={() => setChecked(prev => { const n = new Set(prev); if (n.has(s.id)) n.delete(s.id); else n.add(s.id); return n; })}
-                          className="w-4 h-4 rounded border-slate-300 accent-teal-500 cursor-pointer" />
-                      </td>
                       <td className={td}><CompanyBadges companies={inb.companies} /></td>
                       <td className={td}>
-                        <div className="flex items-center gap-2.5">
-                          <Avatar s={s} size="w-8 h-8" text="text-[10px]" />
-                          <div className="min-w-0">
-                            <div className="text-[13px] font-medium text-slate-800 dark:text-slate-100 truncate max-w-[200px] xl:max-w-[260px]">{s.supplierName}</div>
-                            <div className="text-[11px] text-slate-400 truncate max-w-[200px] xl:max-w-[260px]">{s.product}</div>
-                          </div>
-                        </div>
+                        <div className="text-[13px] font-medium text-slate-800 dark:text-slate-100 truncate max-w-[220px] xl:max-w-[300px]">{s.supplierName}</div>
                       </td>
                       <td className={`${td} font-semibold text-slate-900 dark:text-white tabular-nums`}>{fmtPrice(s.priceIqd)}</td>
                       <td className={`${td} tabular-nums`}>{fmtPrice(s.previousPriceIqd)}</td>

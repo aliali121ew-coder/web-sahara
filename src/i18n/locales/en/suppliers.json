@@ -50,8 +50,7 @@
     "sortBy": "Sort by",
     "actions": "Actions",
     "add": "Add supplier",
-    "export": "Export CSV",
-    "exportSelected": "Export selected ({{count}})"
+    "export": "Export CSV"
   },
   "sort": {
     "name": "Name",
@@ -68,8 +67,6 @@
     "updated": "Last updated",
     "action": "Action",
     "view": "View",
-    "selectAll": "Select all",
-    "select": "Select {{name}}",
     "inbound": "Inbound",
     "tankers": "Tankers",
     "receiver": "Receiving company"

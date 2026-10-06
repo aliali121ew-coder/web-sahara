@@ -50,8 +50,7 @@
     "sortBy": "ترتيب حسب",
     "actions": "إجراءات",
     "add": "إضافة مورد",
-    "export": "تصدير CSV",
-    "exportSelected": "تصدير المحدد ({{count}})"
+    "export": "تصدير CSV"
   },
   "sort": {
     "name": "الاسم",
@@ -68,8 +67,6 @@
     "updated": "آخر تحديث",
     "action": "إجراء",
     "view": "عرض",
-    "selectAll": "تحديد الكل",
-    "select": "تحديد {{name}}",
     "inbound": "الوارد",
     "tankers": "عدد الصهاريج",
     "receiver": "الشركة المستلمة"
