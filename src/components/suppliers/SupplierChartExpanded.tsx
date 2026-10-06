@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, Brush } from 'recharts';
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from 'recharts';
 import { Activity, BarChart3, Waves, X, Droplets, Truck, Coins, CalendarRange, ZoomIn, ZoomOut } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { fmtDate } from '../../i18n/format';
@@ -96,6 +96,51 @@ export const buildBuckets = (rows: Row[], period: Period, metric: Metric, gran: 
   });
 };
 
+/** شريط نطاق بمقبضين (بداية/نهاية) وسحب للمنطقة المحددة؛ عناصر HTML خفيفة بدل إعادة رسم الرسم البياني أثناء السحب */
+const RangeBar: React.FC<{ count: number; value: [number, number]; onChange: (v: [number, number]) => void; startLabel: string; endLabel: string }> = ({ count, value, onChange, startLabel, endLabel }) => {
+  const max = Math.max(1, count - 1);
+  const [s, e] = value;
+  const pct = (i: number) => (i / max) * 100;
+  const trackRef = React.useRef<HTMLDivElement>(null);
+  // سحب المنطقة المحددة كلها مع الحفاظ على عرضها
+  const onPanStart = (ev: React.PointerEvent) => {
+    const el = trackRef.current;
+    if (!el) return;
+    ev.preventDefault();
+    const startX = ev.clientX, w = el.getBoundingClientRect().width, span = e - s, s0 = s;
+    let raf = 0;
+    const move = (m: PointerEvent) => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const shift = Math.round(((m.clientX - startX) / w) * max);
+        const ns = Math.min(max - span, Math.max(0, s0 + shift));
+        onChange([ns, ns + span]);
+      });
+    };
+    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  const thumb = 'absolute inset-0 w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-7 [&::-webkit-slider-thumb]:rounded-md [&::-webkit-slider-thumb]:bg-teal-600 [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:shadow [&::-webkit-slider-thumb]:cursor-ew-resize [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-7 [&::-moz-range-thumb]:rounded-md [&::-moz-range-thumb]:bg-teal-600 [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:cursor-ew-resize';
+  return (
+    <div>
+      <div ref={trackRef} className="relative h-8">
+        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-2 rounded-full bg-slate-200 dark:bg-slate-700" />
+        <div onPointerDown={onPanStart} className="absolute top-1/2 -translate-y-1/2 h-5 rounded-md bg-teal-500/25 border border-teal-500/60 cursor-grab active:cursor-grabbing"
+          style={{ left: `${pct(s)}%`, width: `${Math.max(0.5, pct(e) - pct(s))}%` }} />
+        <input type="range" min={0} max={max} value={s} aria-label={startLabel} className={thumb}
+          onChange={ev => onChange([Math.min(Number(ev.target.value), e - 1), e])} />
+        <input type="range" min={0} max={max} value={e} aria-label={endLabel} className={thumb}
+          onChange={ev => onChange([s, Math.max(Number(ev.target.value), s + 1)])} />
+      </div>
+      <div className="mt-0.5 flex justify-between text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">
+        <span>{startLabel}</span>
+        <span>{endLabel}</span>
+      </div>
+    </div>
+  );
+};
+
 const Pills = <T extends string>({ value, options, onChange, size = 'sm' }: { value: T; options: { id: T; label: React.ReactNode }[]; onChange: (v: T) => void; size?: 'sm' | 'md' }) => (
   <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/50">
     {options.map(o => (
@@ -135,47 +180,31 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
   }, [rows, name]);
   const scoped = useMemo(() => (equipper ? rows.filter(r => (deliveryCompany(r.d) || name) === equipper) : rows), [rows, equipper, name]);
   const data = useMemo(() => buildBuckets(scoped, period, metric, gran), [scoped, period, metric, gran]);
-  // نافذة العرض: عند كثرة النقاط يظهر شريط تنقّل (Brush) يبدأ بآخر 60 نقطة، ويمكن سحبه أو توسيعه
+  // نافذة العرض: عند كثرة النقاط تُعرض آخر 60 نقطة، وشريط النطاق أسفل الرسم يغيّرها.
+  // الشريط خفيف (عنصرا input) والرسم يستخدم قيمة مؤجّلة (useDeferredValue) فيبقى السحب فوريًا على الأجهزة الضعيفة.
   const WINDOW = 60;
-  const useBrush = data.length > WINDOW;
-  const brushKey = `${gran}-${period}-${metric}-${equipper}-${data.length}`;
-  // كثافة عالية = نقاط كثيرة: يُلغى التحريك والتوهج والنقاط الصغيرة حتى يبقى الرسم سلسًا على الأجهزة الضعيفة
-  const dense = data.length > WINDOW;
-  // يوم/شهر لكل نقطة (لتسميات المحور)
+  const resetKey = `${gran}-${period}-${metric}-${equipper}-${data.length}`;
+  const [range, setRange] = useState<[number, number]>([0, 0]);
+  useEffect(() => { setRange([Math.max(0, data.length - WINDOW), Math.max(0, data.length - 1)]); }, [resetKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const view = useDeferredValue(range);
+  const [vs, ve] = [Math.min(view[0], Math.max(0, data.length - 1)), Math.min(Math.max(view[1], view[0]), Math.max(0, data.length - 1))];
+  const visible = useMemo(() => data.slice(vs, ve + 1), [data, vs, ve]);
+  const hasRange = data.length > WINDOW;
+  // كثافة عالية = نقاط كثيرة ظاهرة: يُلغى التحريك والتوهج والنقاط الصغيرة حتى يبقى الرسم سلسًا
+  const dense = visible.length > WINDOW;
   const dayKey = (b: Bucket) => b.key.slice(0, 10);
-  const monthStarts = useMemo(() => {
+  const spanDays = visible.length ? (toDate(dayKey(visible[visible.length - 1])).getTime() - toDate(dayKey(visible[0])).getTime()) / DAY : 0;
+  // تسميات المحور: أيام عند نافذة قصيرة (≤ 45 يومًا)، وأشهر عند نافذة أطول تبدأ بشهر أول نقطة ظاهرة
+  const dayTicks = gran === 'month' || gran === 'week' || spanDays <= 45;
+  const monthTicks = useMemo(() => {
     const out: string[] = [];
     let prev = '';
-    data.forEach(b => { const m = b.key.slice(0, 7); if (m !== prev) { out.push(b.key); prev = m; } });
+    visible.forEach(b => { const m = b.key.slice(0, 7); if (m !== prev) { out.push(b.key); prev = m; } });
     return out;
-  }, [data]);
-  const spanDays = (a: number, b: number) => {
-    const x = data[a], y = data[b];
-    return x && y ? (toDate(dayKey(y)).getTime() - toDate(dayKey(x)).getTime()) / DAY : 0;
-  };
-  // تسميات المحور: أيام عند نافذة قصيرة (≤ 45 يومًا)، وأشهر عند نافذة أطول
-  const [dayTicks, setDayTicks] = useState(true);
-  // بداية النافذة الظاهرة: تُحدَّث فقط عند تغيّر شهرها، فيبقى سحب الشريط خفيفًا
-  const [winStart, setWinStart] = useState(0);
-  useEffect(() => {
-    const start = useBrush ? data.length - WINDOW : 0;
-    setWinStart(start);
-    setDayTicks(gran === 'month' || spanDays(start, data.length - 1) <= 45);
-  }, [brushKey]); // eslint-disable-line react-hooks/exhaustive-deps
-  const onBrush = ({ startIndex, endIndex }: { startIndex?: number; endIndex?: number }) => {
-    if (gran === 'month' || startIndex == null || endIndex == null) return;
-    const next = spanDays(startIndex, endIndex) <= 45;
-    if (next !== dayTicks) setDayTicks(next);
-    if (data[startIndex]?.key.slice(0, 7) !== data[winStart]?.key.slice(0, 7)) setWinStart(startIndex);
-  };
-  // تسميات الأشهر: الشهر الذي تبدأ به النافذة ثم بداية كل شهر بعده
-  const monthTicks = useMemo(() => {
-    const first = data[winStart]?.key;
-    return first ? [first, ...monthStarts.filter(k => k > first && k.slice(0, 7) !== first.slice(0, 7))] : monthStarts;
-  }, [data, winStart, monthStarts]);
-  const keyIndex = useMemo(() => new Map(data.map((b, i) => [b.key, i])), [data]);
+  }, [visible]);
+  const keyIndex = useMemo(() => new Map(visible.map((b, i) => [b.key, i])), [visible]);
   const tickLabel = (key: string) => {
-    const b = data[keyIndex.get(key) ?? -1];
+    const b = visible[keyIndex.get(key) ?? -1];
     if (!b) return '';
     if (gran === 'month' || gran === 'week') return b.label;
     return dayTicks ? fmtDate(toDate(dayKey(b)), { day: 'numeric', month: 'short' }) : fmtDate(toDate(dayKey(b)), { month: 'short', year: '2-digit' });
@@ -367,7 +396,7 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
           ) : (
             <ResponsiveContainer width="100%" height="100%">
               {mode === 'waves' ? (
-                <AreaChart data={data} margin={{ top: 16, right: 16, left: 4, bottom: 4 }}>
+                <AreaChart data={visible} margin={{ top: 16, right: 16, left: 4, bottom: 4 }}>
                   <defs>
                     {companies.map(c => (
                       <React.Fragment key={c}>
@@ -384,20 +413,19 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
                   </defs>
                   <CartesianGrid strokeDasharray="3 4" vertical={false} stroke="#94a3b8" strokeOpacity={0.15} />
                   <XAxis dataKey="key" axisLine={false} tickLine={false} tick={xTicks} dy={6} tickFormatter={tickLabel} minTickGap={28}
-                    {...(!dayTicks && gran !== 'month' && gran !== 'week' ? { ticks: monthTicks, interval: 0 } : { interval: 'preserveStartEnd' as const })} />
+                    {...(!dayTicks ? { ticks: monthTicks, interval: 0 } : { interval: 'preserveStartEnd' as const })} />
                   <YAxis axisLine={false} tickLine={false} width={48} tick={yTicks} tickFormatter={compact}
                     domain={metric === 'price' ? ['dataMin - 20', 'dataMax + 20'] : [0, 'auto']} />
                   <Tooltip content={tooltip} cursor={{ stroke: '#0d9488', strokeWidth: 1.5, strokeDasharray: '3 3' }} wrapperStyle={{ outline: 'none', zIndex: 20 }} isAnimationActive={false} />
                   {shown.map(c => (
                     <Area key={c} type={dense ? 'linear' : 'monotone'} dataKey={c} stroke={COMPANY_COLOR[c]} strokeWidth={dense ? 1.75 : 2.5} fill={`url(#exp-fill-${c})`}
                       filter={dense ? undefined : `url(#exp-glow-${c})`} isAnimationActive={!dense}
-                      connectNulls dot={dense ? false : { r: data.length > 40 ? 2 : 3.5, fill: '#fff', stroke: COMPANY_COLOR[c], strokeWidth: 2 }} activeDot={{ r: 5, stroke: COMPANY_COLOR[c], strokeWidth: 2.5, fill: '#fff' }} />
+                      connectNulls dot={dense ? false : { r: visible.length > 40 ? 2 : 3.5, fill: '#fff', stroke: COMPANY_COLOR[c], strokeWidth: 2 }} activeDot={{ r: 5, stroke: COMPANY_COLOR[c], strokeWidth: 2.5, fill: '#fff' }} />
                   ))}
                   {avgLine !== undefined && <ReferenceLine y={avgLine} stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={1.5} />}
-                  {useBrush && <Brush key={brushKey} dataKey="key" height={26} travellerWidth={10} startIndex={data.length - WINDOW} endIndex={data.length - 1} stroke="#0d9488" fill="transparent" tickFormatter={() => ''} onChange={onBrush} />}
                 </AreaChart>
               ) : (
-                <BarChart data={data} margin={{ top: 16, right: 16, left: 4, bottom: 4 }} barGap={3}>
+                <BarChart data={visible} margin={{ top: 16, right: 16, left: 4, bottom: 4 }} barGap={3}>
                   <defs>
                     {companies.map(c => (
                       <linearGradient key={c} id={`exp-bar-${c}`} x1="0" y1="0" x2="0" y2="1">
@@ -408,7 +436,7 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
                   </defs>
                   <CartesianGrid strokeDasharray="3 4" vertical={false} stroke="#94a3b8" strokeOpacity={0.15} />
                   <XAxis dataKey="key" axisLine={false} tickLine={false} tick={xTicks} dy={6} tickFormatter={tickLabel} minTickGap={28}
-                    {...(!dayTicks && gran !== 'month' && gran !== 'week' ? { ticks: monthTicks, interval: 0 } : { interval: 'preserveStartEnd' as const })} />
+                    {...(!dayTicks ? { ticks: monthTicks, interval: 0 } : { interval: 'preserveStartEnd' as const })} />
                   <YAxis axisLine={false} tickLine={false} width={48} tick={yTicks} tickFormatter={compact}
                     domain={metric === 'price' ? ['dataMin - 20', 'dataMax + 20'] : [0, 'auto']} />
                   <Tooltip content={tooltip} cursor={{ fill: 'rgba(148,163,184,0.1)' }} wrapperStyle={{ outline: 'none', zIndex: 20 }} isAnimationActive={false} />
@@ -416,7 +444,6 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
                     <Bar key={c} dataKey={c} fill={`url(#exp-bar-${c})`} isAnimationActive={!dense} radius={[6, 6, 0, 0]} maxBarSize={daily ? 14 : 34} />
                   ))}
                   {avgLine !== undefined && <ReferenceLine y={avgLine} stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={1.5} />}
-                  {useBrush && <Brush key={brushKey} dataKey="key" height={26} travellerWidth={10} startIndex={data.length - WINDOW} endIndex={data.length - 1} stroke="#0d9488" fill="transparent" tickFormatter={() => ''} onChange={onBrush} />}
                 </BarChart>
               )}
             </ResponsiveContainer>
@@ -424,6 +451,13 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
           </div>
         </div>
 
+        {/* شريط النطاق: مقبضان لبداية ونهاية النافذة، وسحب الجزء المحدد ينقلها كلها */}
+        {hasRange && (
+          <div className="relative shrink-0 px-4 sm:px-6 pt-2 pb-1" dir="ltr">
+            <RangeBar count={data.length} value={range} onChange={setRange}
+              startLabel={data[range[0]]?.full ?? ''} endLabel={data[range[1]]?.full ?? ''} />
+          </div>
+        )}
         {/* التذييل: إظهار/إخفاء كل شركة وشرح خط المتوسط */}
         <div className="relative shrink-0 px-4 sm:px-6 py-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-[12px]">
           <div className="flex items-center gap-2">
