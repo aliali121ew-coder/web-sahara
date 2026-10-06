@@ -8,7 +8,7 @@ import { formatNumber } from '../../lib/utils';
 import { deliveryCompany } from '../../lib/archiveSuppliers';
 import type { InboundDelivery } from '../../types';
 import { COMPANY_COLOR, type Company } from './supplierUi';
-import { LiteLines } from './LiteLines';
+import { LiteLines, LiteBars } from './LiteLines';
 
 interface Row { d: InboundDelivery; co: Company }
 export type Period = 'd30' | 'd90' | 'm12' | 'all';
@@ -293,10 +293,13 @@ const ChartArea: React.FC<{
           {data.length === 0 ? (
             <div className="h-full flex items-center justify-center text-sm text-slate-400">{emptyText}</div>
           ) : (
-            live && mode === 'waves' ? (
-              // أثناء السحب: رسم SVG خفيف جدًا (خطوط فقط)، والرسم الكامل يعود عند الإفلات
-              <LiteLines points={points as unknown as (Record<string, unknown> & { key: string })[]} series={shown.map(c => ({ id: c, color: COMPANY_COLOR[c] }))}
-                ticks={ticks} tickLabel={tickLabel} yFrom={metric === 'price' ? 'data' : 'zero'} format={compact} />
+            live ? (
+              // أثناء السحب: رسم SVG خفيف جدًا (خطوط أو أعمدة بلا مكتبة الرسوم)، والرسم الكامل يعود عند الإفلات
+              React.createElement(mode === 'waves' ? LiteLines : LiteBars, {
+                points: points as unknown as (Record<string, unknown> & { key: string })[],
+                series: shown.map(c => ({ id: c, color: COMPANY_COLOR[c] })),
+                ticks, tickLabel, yFrom: metric === 'price' ? 'data' : 'zero', format: compact,
+              })
             ) : (
               <ChartView points={points} mode={mode} metric={metric} shown={shown} companies={companies} avgLine={avgLine}
                 daily={gran !== 'month'} dense={dense} live={live} ticks={ticks} tickLabel={tickLabel} tooltip={tooltip} />
