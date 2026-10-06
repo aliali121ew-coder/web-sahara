@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, startTransition } from 'react';
+import { CLOUD_APPLIED_EVENT } from '../lib/cloudSync';
 import {
   TankItem,
   FuelProductMetric,
@@ -352,6 +353,38 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const saved = localStorage.getItem('sahara_notifications');
     return saved ? dedupeById(JSON.parse(saved)) : INITIAL_NOTIFICATIONS;
   });
+
+  // تعديلات من متصفح/جهاز آخر وصلت من السحابة أثناء فتح الصفحة: تُعاد قراءة المفاتيح التي تغيّرت فقط،
+  // بنفس تنظيف التحميل الأول، فتبقى القيمة المحفوظة كما هي ولا يُعاد رفعها
+  useEffect(() => {
+    const parse = <T,>(key: string): T | null => {
+      try {
+        const saved = localStorage.getItem(key);
+        return saved ? (JSON.parse(saved) as T) : null;
+      } catch {
+        return null;
+      }
+    };
+    const onCloud = (e: Event) => {
+      const keys = (e as CustomEvent<string[]>).detail ?? [];
+      const has = (k: string) => keys.includes(k);
+      if (has('sahara_tanks')) { const v = parse<TankItem[]>('sahara_tanks'); if (Array.isArray(v)) setTanks(v); }
+      if (has('sahara_fuel_metrics')) {
+        const v = parse<FuelProductMetric[]>('sahara_fuel_metrics');
+        if (Array.isArray(v)) setFuelMetrics(v.map(item => { const initial = INITIAL_FUEL_METRICS.find(i => i.id === item.id); return initial ? { ...item, name: initial.name } : item; }));
+      }
+      if (has('sahara_supplier_prices')) { const v = parse<SupplierPriceRecord[]>('sahara_supplier_prices'); if (Array.isArray(v)) setSupplierPrices(v); }
+      if (has('sahara_inbound_deliveries')) { const v = parse<InboundDelivery[]>('sahara_inbound_deliveries'); if (Array.isArray(v)) setSaharaDeliveries(dedupeIds(v.filter(isRealDelivery).map(normalizeDeliveryItem))); }
+      if (has('etihad_inbound_deliveries')) { const v = parse<InboundDelivery[]>('etihad_inbound_deliveries'); if (Array.isArray(v)) setEtihadDeliveries(dedupeIds(v.filter(isRealDelivery).map(normalizeDeliveryItem))); }
+      if (has('sahara_supply_requests')) { const v = parse<SupplyRequest[]>('sahara_supply_requests'); if (Array.isArray(v)) setSupplyRequests(v); }
+      if (has('sahara_tasks')) { const v = parse<OperationalTask[]>('sahara_tasks'); if (Array.isArray(v)) setTasks(v); }
+      if (has('sahara_messages')) { const v = parse<DispatchMessage[]>('sahara_messages'); if (Array.isArray(v)) setMessages(v); }
+      if (has('sahara_notifications')) { const v = parse<SystemNotification[]>('sahara_notifications'); if (Array.isArray(v)) setNotifications(dedupeById(v)); }
+    };
+    window.addEventListener(CLOUD_APPLIED_EVENT, onCloud);
+    return () => window.removeEventListener(CLOUD_APPLIED_EVENT, onCloud);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Save changes to localStorage
   useEffect(() => {
