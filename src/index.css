@@ -393,9 +393,6 @@ svg path:focus-visible {
 @keyframes successDraw { to { stroke-dashoffset: 0; } }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes rankUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
-@keyframes rankDown { from { opacity: 0; transform: translateY(-18px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { [class*="animate-[rank"] { animation: none !important; } }
 @keyframes dialogIn { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { [class*="animate-[overlayIn"], [class*="animate-[dialogIn"] { animation: none !important; } }
 @media (prefers-reduced-motion: reduce) { [class*="animate-[fadeIn"] { animation: none !important; } }

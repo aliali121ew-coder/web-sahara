@@ -23,6 +23,7 @@
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
     "exceljs": "^4.4.0",
+    "framer-motion": "^14.0.0",
     "i18next": "^26.4.2",
     "i18next-resources-to-backend": "^1.2.3",
     "jszip": "^3.10.2",
