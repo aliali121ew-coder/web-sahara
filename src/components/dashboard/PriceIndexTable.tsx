@@ -1,7 +1,32 @@
 import React from 'react';
+import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { useFuelData } from '../../context/FuelDataContext';
 import { useTranslation } from 'react-i18next';
-import { Avatar, ChangePill, fmtPrice } from '../suppliers/supplierUi';
+import { Avatar, fmtPrice } from '../suppliers/supplierUi';
+
+/** شارة التغيّر الموسّعة: أيقونة الاتجاه ونسبة بخط واضح، وتحتها الاتجاه وفرق السعر بالدينار */
+const ChangeBadge: React.FC<{ pct: number; diff: number }> = ({ pct, diff }) => {
+  const { t } = useTranslation(['suppliers', 'common']);
+  const up = pct > 0, down = pct < 0;
+  const tone = up ? 'bg-rose-50 text-rose-600 ring-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-900'
+    : down ? 'bg-emerald-50 text-emerald-600 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900'
+    : 'bg-amber-50 text-amber-600 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-900';
+  const icon = up ? 'bg-rose-500' : down ? 'bg-emerald-500' : 'bg-amber-400';
+  return (
+    <span className={`inline-flex items-center gap-2 min-w-[124px] rounded-xl ring-1 ps-1 pe-2.5 py-1 ${tone}`}>
+      <span className={`w-6 h-6 rounded-lg ${icon} text-white flex items-center justify-center shrink-0`}>
+        {up ? <TrendingUp className="w-3.5 h-3.5" strokeWidth={2.75} /> : down ? <TrendingDown className="w-3.5 h-3.5" strokeWidth={2.75} /> : <Minus className="w-3.5 h-3.5" strokeWidth={2.75} />}
+      </span>
+      <span className="flex flex-col items-start leading-tight">
+        <span dir="ltr" className="text-[14px] font-extrabold tabular-nums">{up ? '+' : ''}{pct}%</span>
+        <span className="text-[10.5px] font-medium opacity-80 tabular-nums">
+          {up ? t('change.up') : down ? t('change.down') : t('change.stable')}
+          {diff !== 0 && <> · <span dir="ltr">{diff > 0 ? '+' : '−'}{fmtPrice(Math.abs(diff))}</span> {t('common:units.iqd')}</>}
+        </span>
+      </span>
+    </span>
+  );
+};
 
 /**
  * مؤشرات الأسعار في الرئيسية: نفس أعمدة جدول «كل الموردين» (بلا الشركة المستلمة وآخر تحديث والإجراء)،
@@ -19,7 +44,7 @@ export const PriceIndexTable: React.FC = () => {
   // كل العناوين في الوسط؛ خلية المجهز (الشعار والاسم) بمحاذاة البداية
   const th = 'px-3 xl:px-4 pt-3 pb-1 text-center text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap';
   // كل صف كارت مستقل: خلفية وحدود أعلى/أسفل للخلايا، والطرفان بحد جانبي وزوايا دائرية
-  const td = 'px-3 xl:px-4 py-3 text-center text-[13px] text-slate-700 dark:text-slate-300 whitespace-nowrap bg-white dark:bg-slate-900 border-y border-slate-200/80 dark:border-slate-800 transition-colors group-hover:bg-teal-50/50 group-hover:border-teal-200 dark:group-hover:bg-teal-950/20 dark:group-hover:border-teal-900 first:border-s first:rounded-s-2xl last:border-e last:rounded-e-2xl';
+  const td = 'px-3 xl:px-4 py-2.5 text-center text-[13px] text-slate-700 dark:text-slate-300 whitespace-nowrap bg-white dark:bg-slate-900 border-y border-slate-200/80 dark:border-slate-800 transition-colors group-hover:bg-teal-50/50 group-hover:border-teal-200 dark:group-hover:bg-teal-950/20 dark:group-hover:border-teal-900 first:border-s first:rounded-s-2xl last:border-e last:rounded-e-2xl';
   const open = () => setActiveTab('suppliers');
 
   return (
@@ -69,7 +94,7 @@ export const PriceIndexTable: React.FC = () => {
                 <td className={td}><span className="block truncate max-w-[120px] mx-auto">{s.color || '—'}</span></td>
                 <td className={`${td} font-semibold text-slate-900 dark:text-white tabular-nums`}>{fmtPrice(s.priceIqd)}</td>
                 <td className={`${td} tabular-nums`}>{fmtPrice(s.previousPriceIqd)}</td>
-                <td className={td}><ChangePill pct={s.changePercent} /></td>
+                <td className={td}><ChangeBadge pct={s.changePercent} diff={s.priceIqd - s.previousPriceIqd} /></td>
               </tr>
             ))}
           </tbody>
