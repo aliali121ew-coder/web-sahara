@@ -16,30 +16,13 @@ import { setSessionValue, useSessionState } from '../../lib/useSessionState';
 import { SupplierProfile } from './SupplierProfile';
 import { SuppliersCompare } from './SuppliersCompare';
 import type { InboundDelivery, NavTabId, SupplierPriceRecord } from '../../types';
-import { fmtPrice, CompanyBadges, Avatar, type Company } from './supplierUi';
+import { ChangePill, fmtPrice, CompanyBadges, Avatar, type Company } from './supplierUi';
 
 type SortKey = 'name' | 'priceDesc' | 'priceAsc' | 'change' | 'updated';
 
 const PAGE_SIZE = 10;
 
 const dateKey = (d?: string) => (d || '').replace(/-/g, '/');
-
-/** شارة نسبة التغير: ارتفاع / انخفاض / ثابت */
-const ChangePill: React.FC<{ pct: number }> = ({ pct }) => {
-  const { t } = useTranslation('suppliers');
-  const cls = pct > 0 ? 'bg-rose-50 text-rose-500 dark:bg-rose-950/50 dark:text-rose-300'
-    : pct < 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-300'
-    : 'bg-amber-50 text-amber-500 dark:bg-amber-950/40 dark:text-amber-300';
-  // الارتفاع والانخفاض بخط اتجاه (كما في البطاقات) بدل الكلمة؛ والثابت بكلمته
-  if (pct === 0) return <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap ${cls}`}>{t('change.stable')}</span>;
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap ${cls}`}
-      title={pct > 0 ? t('change.up') : t('change.down')} aria-label={`${pct > 0 ? t('change.up') : t('change.down')} ${pct}%`}>
-      {pct > 0 ? <TrendingUp className="w-3.5 h-3.5" strokeWidth={2.75} /> : <TrendingDown className="w-3.5 h-3.5" strokeWidth={2.75} />}
-      <span dir="ltr">{pct > 0 ? '+' : ''}{pct}%</span>
-    </span>
-  );
-};
 
 /** بطاقة مؤشر: رقم رئيسي واحد واضح، وتحته سطران هادئان (اسم ← قيمة) بدل أرقام متجاورة */
 const StatCard: React.FC<{

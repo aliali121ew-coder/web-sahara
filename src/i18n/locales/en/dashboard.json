@@ -171,18 +171,21 @@
     "title": "Company & supplier price index",
     "daily": "Updated daily",
     "text": "Track price gaps and market movement between the government and commercial sectors",
-    "supplier": "Supplier / company",
+    "supplier": "Equipper",
     "product": "Product",
     "category": "Category",
     "current": "Current price",
     "previous": "Previous price",
-    "change": "Change (24h)",
+    "change": "Change",
     "availability": "Availability",
     "empty": "No results match the current filters",
     "receiver": {
       "sahara": "Sahara inbound",
       "etihad": "Etihad inbound"
-    }
+    },
+    "density": "Density",
+    "color": "Color",
+    "viewAll": "All suppliers"
   },
   "sahara": {
     "sectors": {
