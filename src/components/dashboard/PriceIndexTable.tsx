@@ -17,8 +17,9 @@ export const PriceIndexTable: React.FC = () => {
     .sort((a, b) => b.lastUpdated.replace(/-/g, '/').localeCompare(a.lastUpdated.replace(/-/g, '/')))
     .slice(0, 7);
 
-  const th = 'px-3 xl:px-4 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap';
-  const td = 'px-3 xl:px-4 py-3 text-[13px] text-slate-700 dark:text-slate-300 whitespace-nowrap';
+  // العمود الأول (المجهز) بمحاذاة البداية، والباقي في الوسط
+  const th = 'px-3 xl:px-4 py-3 text-center text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap';
+  const td = 'px-3 xl:px-4 py-3 text-center text-[13px] text-slate-700 dark:text-slate-300 whitespace-nowrap';
   const open = () => setActiveTab('suppliers');
 
   return (
@@ -46,7 +47,7 @@ export const PriceIndexTable: React.FC = () => {
         <table className="w-full">
           <thead className="bg-slate-50 dark:bg-slate-800/60">
             <tr>
-              <th className={th}>{t('dashboard:priceIndex.supplier')}</th>
+              <th className={`${th} !text-start`}>{t('dashboard:priceIndex.supplier')}</th>
               <th className={th}>{t('dashboard:priceIndex.product')}</th>
               <th className={th}>{t('dashboard:priceIndex.density')}</th>
               <th className={th}>{t('dashboard:priceIndex.color')}</th>
@@ -61,15 +62,15 @@ export const PriceIndexTable: React.FC = () => {
             )}
             {rows.map(s => (
               <tr key={s.id} onClick={open} className="border-t border-slate-100 dark:border-slate-800 cursor-pointer transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                <td className={td}>
+                <td className={`${td} !text-start`}>
                   <div className="flex items-center gap-2.5">
                     <Avatar s={s} size="w-8 h-8" text="text-xs" />
                     <span className="text-[13px] font-medium text-slate-800 dark:text-slate-100 truncate max-w-[200px] xl:max-w-[260px]">{s.supplierName}</span>
                   </div>
                 </td>
-                <td className={td}><span className="block truncate max-w-[160px]">{s.product || '—'}</span></td>
-                <td className={`${td} tabular-nums`} dir="ltr" style={{ textAlign: 'start' }}>{s.density || '—'}</td>
-                <td className={td}><span className="block truncate max-w-[120px]">{s.color || '—'}</span></td>
+                <td className={td}><span className="block truncate max-w-[160px] mx-auto">{s.product || '—'}</span></td>
+                <td className={`${td} tabular-nums`}>{s.density || '—'}</td>
+                <td className={td}><span className="block truncate max-w-[120px] mx-auto">{s.color || '—'}</span></td>
                 <td className={`${td} font-semibold text-slate-900 dark:text-white tabular-nums`}>{fmtPrice(s.priceIqd)}</td>
                 <td className={`${td} tabular-nums`}>{fmtPrice(s.previousPriceIqd)}</td>
                 <td className={td}><ChangePill pct={s.changePercent} /></td>
