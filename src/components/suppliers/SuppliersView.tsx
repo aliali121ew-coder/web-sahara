@@ -261,16 +261,16 @@ export const SuppliersView: React.FC = () => {
   );
   /** شحنات المورد في أرشيف الوارد (الشركتين): الأحدث أولًا، مع مجموع الكمية */
   const inboundOf = useMemo(() => {
-    const cache = new Map<string, { last?: { d: InboundDelivery; tab: NavTabId }; total: number; count: number; lastDay: string; lastDayCount: number }>();
+    const cache = new Map<string, { last?: { d: InboundDelivery; tab: NavTabId }; count: number; lastDay: string; lastDayCount: number; lastDayQty: number }>();
     return (s: SupplierPriceRecord) => {
       if (!cache.has(s.id)) {
         const hits = deliveriesOfSupplier(allDeliveries, x => x.d, s.supplierName);
         hits.sort((a, b) => dateKey(b.d.receiptUnloadDate || b.d.date).localeCompare(dateKey(a.d.receiptUnloadDate || a.d.date)));
-        const total = hits.reduce((a, { d }) => a + (d.receivedQuantity || d.volumeLiters || 0), 0);
         // صهاريج آخر يوم وارد من المورد
         const lastDay = hits[0] ? dateKey(hits[0].d.receiptUnloadDate || hits[0].d.date) : '';
-        const lastDayCount = lastDay ? hits.filter(({ d }) => dateKey(d.receiptUnloadDate || d.date) === lastDay).length : 0;
-        cache.set(s.id, { last: hits[0], total, count: hits.length, lastDay, lastDayCount });
+        const dayHits = lastDay ? hits.filter(({ d }) => dateKey(d.receiptUnloadDate || d.date) === lastDay) : [];
+        const lastDayQty = dayHits.reduce((a, { d }) => a + (d.receivedQuantity || d.volumeLiters || 0), 0);
+        cache.set(s.id, { last: hits[0], count: hits.length, lastDay, lastDayCount: dayHits.length, lastDayQty });
       }
       return cache.get(s.id)!;
     };
@@ -504,8 +504,8 @@ export const SuppliersView: React.FC = () => {
                   {[
                     { k: t('table.current'), v: fmtPrice(s.priceIqd), strong: true },
                     { k: t('table.previous'), v: fmtPrice(s.previousPriceIqd) },
-                    { k: t('table.inbound'), v: inb.count ? formatNumber(inb.total) : '—' },
-                    { k: t('table.tankers'), v: inb.count ? formatNumber(inb.count) : '—' },
+                    { k: t('table.inbound'), v: inb.count ? formatNumber(inb.lastDayQty) : '—' },
+                    { k: t('table.tankers'), v: inb.count ? formatNumber(inb.lastDayCount) : '—' },
                   ].map(({ k, v, strong }) => (
                     <div key={k} className="rounded-xl bg-slate-50 dark:bg-slate-800/60 px-1.5 py-2 min-w-0">
                       <dt className="text-[10.5px] text-slate-400 truncate">{k}</dt>
@@ -576,10 +576,13 @@ export const SuppliersView: React.FC = () => {
                       <td className={`${td} tabular-nums`}>{s.lastUpdated}</td>
                       <td className={td}>
                         {inb.count ? (
-                          <span className="tabular-nums font-semibold text-slate-900 dark:text-white">{formatNumber(inb.total)} <span className="text-[11px] font-normal text-slate-400">{t('common:units.liter')}</span></span>
+                          <div className="tabular-nums">
+                            <div className="font-semibold text-slate-900 dark:text-white">{formatNumber(inb.lastDayQty)} <span className="text-[11px] font-normal text-slate-400">{t('common:units.liter')}</span></div>
+                            <div className="text-[11px] text-slate-400">{inb.lastDay}</div>
+                          </div>
                         ) : '—'}
                       </td>
-                      <td className={`${td} tabular-nums`}>{inb.count ? formatNumber(inb.count) : '—'}</td>
+                      <td className={`${td} tabular-nums`}>{inb.count ? formatNumber(inb.lastDayCount) : '—'}</td>
                       <td className={td} onClick={e => e.stopPropagation()}>
                         {editable ? (
                           <button type="button" onClick={() => setEditing({ rec: s, isNew: false })}
