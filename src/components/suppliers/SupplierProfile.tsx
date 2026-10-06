@@ -296,10 +296,10 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
                   <th className={th}>{t('profile.col.date')}</th>
                   <th className={th}>{t('table.receiver')}</th>
                   <th className={th}>{t('profile.col.equipper')}</th>
+                  <th className={th}>{t('profile.col.price')}</th>
+                  <th className={th}>{t('profile.col.qty')}</th>
                   <th className={th}>{t('profile.col.driver')}</th>
                   <th className={th}>{t('profile.col.truck')}</th>
-                  <th className={th}>{t('profile.col.qty')}</th>
-                  <th className={th}>{t('profile.col.price')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -309,10 +309,10 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
                     <td className={`${td} tabular-nums`}>{dayOf(d)}</td>
                     <td className={td}><CompanyBadges companies={[co]} /></td>
                     <td className={td}><span className="block truncate max-w-[160px]">{equipperOf(d) || name}</span></td>
+                    <td className={`${td} tabular-nums`}>{priceOf(d) ? fmtPrice(priceOf(d)) : '—'}</td>
+                    <td className={`${td} tabular-nums font-semibold text-slate-900 dark:text-white`}>{formatNumber(qtyOf(d))} <span className="text-[11px] font-normal text-slate-400">{t('common:units.liter')}</span></td>
                     <td className={td}><span className="block truncate max-w-[140px]">{d.driverName || '—'}</span></td>
                     <td className={`${td} tabular-nums`} dir="ltr" style={{ textAlign: 'start' }}>{d.truckNumber || '—'}</td>
-                    <td className={`${td} tabular-nums font-semibold text-slate-900 dark:text-white`}>{formatNumber(qtyOf(d))} <span className="text-[11px] font-normal text-slate-400">{t('common:units.liter')}</span></td>
-                    <td className={`${td} tabular-nums`}>{priceOf(d) ? fmtPrice(priceOf(d)) : '—'}</td>
                   </tr>
                 ))}
               </tbody>
