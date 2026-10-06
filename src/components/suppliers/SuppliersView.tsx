@@ -25,10 +25,6 @@ const sameSupplier = (a?: string, b?: string) => {
 const dateKey = (d?: string) => (d || '').replace(/-/g, '/');
 
 const fmtPrice = (v: number) => formatNumber(Math.round(v * 100) / 100);
-const supplierCode = (s: SupplierPriceRecord, i: number) => {
-  const n = s.id.replace(/\D/g, '');
-  return `SUP-${(n ? n.slice(-4) : String(i + 1)).padStart(3, '0')}`;
-};
 
 const AVATAR_TONES = ['from-teal-400 to-emerald-600', 'from-sky-400 to-blue-600', 'from-amber-400 to-orange-600', 'from-violet-400 to-purple-600', 'from-rose-400 to-pink-600', 'from-lime-400 to-green-600'];
 const toneOf = (id: string) => AVATAR_TONES[[...id].reduce((a, c) => a + c.charCodeAt(0), 0) % AVATAR_TONES.length];
@@ -300,10 +296,10 @@ export const SuppliersView: React.FC = () => {
   const marketAvg = supplierPrices.length ? supplierPrices.reduce((a, s) => a + s.priceIqd, 0) / supplierPrices.length : 0;
 
   const exportCsv = () => {
-    const head = [t('table.code'), t('table.supplier'), t('fields.product'), t('fields.category'), t('table.current'), t('table.previous'), t('table.change'), t('table.updated')];
+    const head = [t('table.supplier'), t('fields.product'), t('fields.category'), t('table.current'), t('table.previous'), t('table.change'), t('table.updated')];
     const list = checked.size ? rows.filter(r => checked.has(r.id)) : rows;
     const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
-    const body = list.map((s, i) => [supplierCode(s, i), s.supplierName, s.product, enumText(s.category), s.priceIqd, s.previousPriceIqd, `${s.changePercent}%`, s.lastUpdated].map(esc).join(','));
+    const body = list.map(s => [s.supplierName, s.product, enumText(s.category), s.priceIqd, s.previousPriceIqd, `${s.changePercent}%`, s.lastUpdated].map(esc).join(','));
     const blob = new Blob(['﻿' + [head.map(esc).join(','), ...body].join('\n')], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -481,13 +477,13 @@ export const SuppliersView: React.FC = () => {
                       onChange={() => setChecked(allChecked ? new Set() : new Set(rows.map(r => r.id)))}
                       className="w-4 h-4 rounded border-slate-300 accent-teal-500 cursor-pointer" />
                   </th>
-                  <th className={th}>{t('table.code')}</th>
                   <th className={th}>{t('table.supplier')}</th>
                   <th className={th}>{t('table.current')}</th>
                   <th className={th}>{t('table.previous')}</th>
                   <th className={th}>{t('table.change')}</th>
                   <th className={th}>{t('table.updated')}</th>
                   <th className={th}>{t('table.inbound')}</th>
+                  <th className={th}>{t('table.tankers')}</th>
                   <th className={th}>{t('table.action')}</th>
                 </tr>
               </thead>
@@ -495,7 +491,7 @@ export const SuppliersView: React.FC = () => {
                 {rows.length === 0 && (
                   <tr><td colSpan={9} className="py-12 text-center text-sm text-slate-400">{t('empty')}</td></tr>
                 )}
-                {rows.map((s, i) => {
+                {rows.map(s => {
                   const active = s.id === selected?.id;
                   const inb = inboundOf(s);
                   return (
@@ -506,7 +502,6 @@ export const SuppliersView: React.FC = () => {
                           onChange={() => setChecked(prev => { const n = new Set(prev); if (n.has(s.id)) n.delete(s.id); else n.add(s.id); return n; })}
                           className="w-4 h-4 rounded border-slate-300 accent-teal-500 cursor-pointer" />
                       </td>
-                      <td className={`${td} font-medium text-slate-800 dark:text-slate-200 tabular-nums`}>{supplierCode(s, i)}</td>
                       <td className={td}>
                         <div className="flex items-center gap-2.5">
                           <Avatar s={s} size="w-8 h-8" text="text-[10px]" />
@@ -522,12 +517,10 @@ export const SuppliersView: React.FC = () => {
                       <td className={`${td} tabular-nums`}>{s.lastUpdated}</td>
                       <td className={td}>
                         {inb.count ? (
-                          <div className="tabular-nums">
-                            <div className="font-semibold text-slate-900 dark:text-white">{formatNumber(inb.total)} <span className="text-[11px] font-normal text-slate-400">{t('common:units.liter')}</span></div>
-                            <div className="text-[11px] text-slate-400">{t('table.shipments', { count: inb.count })}</div>
-                          </div>
+                          <span className="tabular-nums font-semibold text-slate-900 dark:text-white">{formatNumber(inb.total)} <span className="text-[11px] font-normal text-slate-400">{t('common:units.liter')}</span></span>
                         ) : '—'}
                       </td>
+                      <td className={`${td} tabular-nums`}>{inb.count ? formatNumber(inb.count) : '—'}</td>
                       <td className={td} onClick={e => e.stopPropagation()}>
                         {editable ? (
                           <button type="button" onClick={() => setEditing({ rec: s, isNew: false })}

@@ -57,7 +57,6 @@
     "updated": "آخر تحديث"
   },
   "table": {
-    "code": "الرمز",
     "supplier": "المورد",
     "current": "السعر الحالي",
     "previous": "السعر السابق",
@@ -68,12 +67,7 @@
     "selectAll": "تحديد الكل",
     "select": "تحديد {{name}}",
     "inbound": "الوارد",
-    "shipments_zero": "لا شحنات",
-    "shipments_one": "شحنة واحدة",
-    "shipments_two": "شحنتان",
-    "shipments_few": "{{count}} شحنات",
-    "shipments_many": "{{count}} شحنة",
-    "shipments_other": "{{count}} شحنة"
+    "tankers": "عدد الصهاريج"
   },
   "modal": {
     "addTitle": "إضافة مورد",
