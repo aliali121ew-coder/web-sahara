@@ -28,8 +28,10 @@ const rowV: Variants = {
 // موجة المرور: الكارت المؤشَّر عليه يبرز بوضوح وجيرانه يرتفعون أقل فأقل،
 // وعند ترك الماوس يعود كل كارت بنابض مرن يتأرجح قليلًا كموج البحر بدل الرجوع الفوري
 const LIFT = [-10, -4, -1.5];
-const waveIn = (d: number) => ({ type: 'spring' as const, stiffness: 420, damping: 24, delay: d * 0.03 });
-const waveOut = (d: number) => ({ type: 'spring' as const, stiffness: 90, damping: 6, mass: 0.9, delay: d * 0.06 });
+// الظل والتكبير يختفيان بلمح البصر حتى لا تبقى كروت «معلّقة» عند التمرير السريع؛ الارتفاع وحده يتأرجح
+const fade = { duration: 0.12, ease: 'easeOut' as const };
+const waveIn = (d: number) => ({ y: { type: 'spring' as const, stiffness: 520, damping: 26, delay: d * 0.02 }, scale: fade, boxShadow: fade });
+const waveOut = (d: number) => ({ y: { type: 'spring' as const, stiffness: 300, damping: 13, mass: 0.6, delay: d * 0.025 }, scale: fade, boxShadow: fade });
 
 /**
  * لوحة ترتيب الموردين (بديل الأعمدة المائلة): دونات الحصص في الأعلى، ثم صف لكل مورد
