@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Search, ArrowDownUp, ChevronDown, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, Pencil, Plus, Download, Coins, History, TrendingUp, TrendingDown,
+  Search, ArrowDownUp, ChevronDown, ChevronLeft, ChevronRight, Pencil, Plus, Download, Coins, History, TrendingUp, TrendingDown,
   Minus, X, Trash2, ImagePlus, Truck, Check,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -77,7 +77,7 @@ const StatCard: React.FC<{
       <span className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>{icon}</span>
     </div>
     <div className="sup-stat-pad mt-1 flex items-baseline gap-1.5 min-w-0">
-      <span className={`sup-stat-val font-bold tabular-nums ${valueClass}`}>{value}</span>
+      <span dir="ltr" className={`sup-stat-val font-bold tabular-nums ${valueClass}`}>{value}</span>
       {unit && <span className="sup-stat-unit text-slate-400 font-medium whitespace-nowrap">{unit}</span>}
     </div>
     <dl className="sup-stat-pad mt-auto pt-3 pb-3.5 space-y-1.5">
@@ -92,9 +92,17 @@ const StatCard: React.FC<{
 );
 
 /** رقم بإشارة ولون حسب الاتجاه (ارتفاع السعر أحمر، انخفاضه أخضر) */
+/** مؤشر اتجاه بأسلوب لوحات المال: خط اتجاه داخل مربع ناعم بلون خفيف */
+const TrendMark: React.FC<{ v: number }> = ({ v }) =>
+  v === 0 ? null : (
+    <span className={`inline-flex items-center justify-center w-[18px] h-[18px] rounded-md shrink-0 ${v > 0 ? 'bg-rose-500/10' : 'bg-emerald-500/10'}`}>
+      {v > 0 ? <TrendingUp className="w-3 h-3" strokeWidth={2.75} /> : <TrendingDown className="w-3 h-3" strokeWidth={2.75} />}
+    </span>
+  );
+
 const Signed: React.FC<{ v: number; suffix?: string; text?: string }> = ({ v, suffix = '', text }) => (
-  <span className={`inline-flex items-center gap-1 ${v > 0 ? 'text-rose-500' : v < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
-    {v > 0 ? <ArrowUp className="w-3.5 h-3.5" /> : v < 0 ? <ArrowDown className="w-3.5 h-3.5" /> : null}
+  <span className={`inline-flex items-center gap-1.5 ${v > 0 ? 'text-rose-500' : v < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+    <TrendMark v={v} />
     <span dir="ltr">{text ?? `${v > 0 ? '+' : ''}${v}${suffix}`}</span>
   </span>
 );
@@ -420,8 +428,8 @@ export const SuppliersView: React.FC = () => {
               {
                 label: t('cards.diffFromCurrent'),
                 value: (
-                  <span className={`inline-flex items-center gap-1 ${diff > 0 ? 'text-rose-500' : diff < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
-                    {diff > 0 ? <ArrowUp className="w-3.5 h-3.5" /> : diff < 0 ? <ArrowDown className="w-3.5 h-3.5" /> : <Minus className="w-3.5 h-3.5" />}
+                  <span className={`inline-flex items-center gap-1.5 ${diff > 0 ? 'text-rose-500' : diff < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                    <TrendMark v={diff} />
                     <span className="tabular-nums">{fmtPrice(Math.abs(diff))}</span> {t('common:units.iqd')}
                   </span>
                 ),
