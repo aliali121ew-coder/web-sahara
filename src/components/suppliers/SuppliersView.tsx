@@ -321,7 +321,27 @@ export const SuppliersView: React.FC = () => {
     return [...list].sort(by[sort]);
   }, [supplierPrices, query, sort]);
 
-  const marketAvg = supplierPrices.length ? supplierPrices.reduce((a, s) => a + s.priceIqd, 0) / supplierPrices.length : 0;
+  // متوسط السوق لكل شركة على حدة (أسعار الصحاري والاتحاد مختلفة): موزون بالكمية من شحنات الأرشيف المسعّرة
+  // لآخر 30 يومًا، ويتوسع إلى 90 يومًا إن كانت الشحنات أقل من 10
+  const market = useMemo(() => {
+    const cutoff = (days: number) => {
+      const d = new Date(Date.now() - days * 86400000);
+      return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+    };
+    const calc = (ds: InboundDelivery[]) => {
+      for (const days of [30, 90]) {
+        const from = cutoff(days);
+        const priced = ds.filter(d => (d.productPrice || d.pricePerLiter || 0) > 0 && dateKey(d.receiptUnloadDate || d.date) >= from);
+        if (priced.length >= 10 || days === 90) {
+          const qty = priced.reduce((a, d) => a + (d.receivedQuantity || d.volumeLiters || 0), 0);
+          const cost = priced.reduce((a, d) => a + (d.receivedQuantity || d.volumeLiters || 0) * (d.productPrice || d.pricePerLiter || 0), 0);
+          return { avg: qty ? Math.round((cost / qty) * 10) / 10 : 0, days };
+        }
+      }
+      return { avg: 0, days: 90 };
+    };
+    return { sahara: calc(saharaDeliveries), etihad: calc(etihadDeliveries) };
+  }, [saharaDeliveries, etihadDeliveries]);
 
   const exportCsv = () => {
     const head = [t('table.receiver'), t('table.supplier'), t('fields.product'), t('fields.category'), t('table.current'), t('table.previous'), t('table.change'), t('table.updated')];
@@ -351,7 +371,11 @@ export const SuppliersView: React.FC = () => {
   // مجموع آخر يوم وارد (كل صهاريجه) كما في الجدول
   const lastQty = sel?.lastDayQty ?? 0;
   const diff = selected ? selected.priceIqd - selected.previousPriceIqd : 0;
-  const vsMarket = selected && marketAvg ? Math.round(((selected.priceIqd - marketAvg) / marketAvg) * 1000) / 10 : 0;
+  const ownCo: Company = selected?.company ?? 'sahara';
+  const otherCo: Company = ownCo === 'sahara' ? 'etihad' : 'sahara';
+  const ownMarket = market[ownCo];
+  const vsMarket = selected && selected.priceIqd && ownMarket.avg ? Math.round(((selected.priceIqd - ownMarket.avg) / ownMarket.avg) * 1000) / 10 : 0;
+  const marketLabel = (c: Company) => t('cards.marketAvgOf', { company: t(`receiver.${c}`), period: t('common:units.days', { count: market[c].days }) });
 
   const SORTS: { id: SortKey; label: string }[] = [
     { id: 'name', label: t('sort.name') }, { id: 'priceDesc', label: t('sort.priceDesc') }, { id: 'priceAsc', label: t('sort.priceAsc') },
@@ -453,8 +477,9 @@ export const SuppliersView: React.FC = () => {
             valueClass={selected.changePercent > 0 ? 'text-rose-500' : selected.changePercent < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}
             unit={selected.changePercent > 0 ? t('change.up') : selected.changePercent < 0 ? t('change.down') : t('change.stable')}
             rows={[
-              { label: t('cards.marketAvg'), value: fmtPrice(marketAvg) },
-              { label: t('cards.vsMarket'), value: <Signed v={vsMarket} suffix="%" /> },
+              { label: marketLabel(ownCo), value: ownMarket.avg ? fmtPrice(ownMarket.avg) : '—' },
+              { label: t('cards.vsMarket'), value: ownMarket.avg && selected.priceIqd ? <Signed v={vsMarket} suffix="%" /> : '—' },
+              { label: marketLabel(otherCo), value: <span className="text-slate-400 font-medium">{market[otherCo].avg ? fmtPrice(market[otherCo].avg) : '—'}</span> },
             ]}
           />
           <StatCard

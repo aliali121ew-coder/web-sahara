@@ -26,7 +26,6 @@
     "lastInbound": "Last inbound",
     "updatedOn": "Last updated",
     "difference": "Difference",
-    "marketAvg": "Market avg",
     "vsPrevious": "vs previous price",
     "lastChange": "Last change",
     "vsMarket": "vs market average",
@@ -36,7 +35,8 @@
     "lastDay": "Last inbound day",
     "totalTankers": "Total",
     "lastDayOn": "Last inbound on {{date}}",
-    "diffFromCurrent": "Difference from current"
+    "diffFromCurrent": "Difference from current",
+    "marketAvgOf": "{{company}} avg · {{period}}"
   },
   "change": {
     "up": "Up",
