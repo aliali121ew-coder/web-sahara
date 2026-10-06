@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { BarChart, Bar, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { BarChart3, Waves, X, Scale } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { fmtDate } from '../../i18n/format';
 import { formatNumber } from '../../lib/utils';
 import { deliveriesOfSupplier } from '../../lib/archiveSuppliers';
 import type { InboundDelivery, SupplierPriceRecord } from '../../types';
 import type { Company } from './supplierUi';
+import { CompareWaves } from './CompareWaves';
 
 type Period = 'd30' | 'd90' | 'm12' | 'all';
 type Metric = 'qty' | 'tankers' | 'price';
@@ -17,7 +17,6 @@ type Scope = 'all' | Company;
 /** ألوان الموردين في الأمواج: ترتيب فئوي ثابت (مُتحقَّق منه للفاتح والداكن)، ويتبع اللون المورد لا ترتيبه */
 const SERIES_LIGHT = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#4a3aa7'];
 const SERIES_DARK = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#9085e9'];
-const TOP = 6;
 const ACCENT = '#0d9488';
 const DAY = 86400000;
 
@@ -55,8 +54,7 @@ export const SuppliersCompare: React.FC<{ suppliers: SupplierPriceRecord[]; saha
   const [mode, setMode] = useState<Mode>('bars');
   const [scope, setScope] = useState<Scope>('all');
   const [hover, setHover] = useState<number | null>(null);
-  const [hidden, setHidden] = useState<Set<string>>(new Set());
-  const dark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+    const dark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
   const palette = dark ? SERIES_DARK : SERIES_LIGHT;
 
   useEffect(() => {
@@ -98,37 +96,8 @@ export const SuppliersCompare: React.FC<{ suppliers: SupplierPriceRecord[]; saha
     return { id: s.id, name: s.supplierName, company: s.company as Company, value: valueOf(a, metric) ?? 0, agg: a };
   }).filter(b => b.value > 0).sort((x, y) => y.value - x.value), [inScope, metric]);
 
-  // أمواج: أعلى 6 موردين بالكمية، قيمة لكل فترة زمنية (يومي لآخر 30/90 يومًا، شهري لغير ذلك)
-  const daily = period === 'd30' || period === 'd90';
-  const top = useMemo(() => [...bars].sort((x, y) => y.agg.qty - x.agg.qty).slice(0, TOP), [bars]);
-  const colorOf = useMemo(() => new Map(top.map((b, i) => [b.id, palette[i]])), [top, palette]);
-  const waves = useMemo(() => {
-    const keys = new Set<string>();
-    const per = new Map<string, Map<string, Agg>>();
-    top.forEach(b => {
-      const m = new Map<string, Agg>();
-      inScope.find(x => x.s.id === b.id)?.ds.forEach(d => {
-        const k = daily ? dayOf(d) : dayOf(d).slice(0, 7);
-        keys.add(k);
-        const a = m.get(k) ?? emptyAgg();
-        a.qty += qtyOf(d); a.n += 1; if (priceOf(d) > 0) { a.cost += qtyOf(d) * priceOf(d); a.pq += qtyOf(d); }
-        m.set(k, a);
-      });
-      per.set(b.id, m);
-    });
-    const sorted = [...keys].sort();
-    const multiYear = new Set(sorted.map(k => k.slice(0, 4))).size > 1;
-    return sorted.map(k => {
-      const row: Record<string, number | string | null> = {
-        key: k,
-        label: daily ? fmtDate(toDate(k), { day: 'numeric', month: 'short' }) : fmtDate(toDate(k), multiYear ? { month: 'short', year: '2-digit' } : { month: 'short' }),
-        full: daily ? fmtDate(toDate(k), { dateStyle: 'medium' }) : fmtDate(toDate(k), { month: 'long', year: 'numeric' }),
-      };
-      top.forEach(b => { row[b.id] = valueOf(per.get(b.id)?.get(k), metric); });
-      return row;
-    });
-  }, [top, inScope, daily, metric]);
-
+  // الأمواج: كل الموردين في النطاق (شحناتهم وكمياتهم) لمكوّن CompareWaves
+  const waveSuppliers = useMemo(() => inScope.map(({ s, ds }) => ({ id: s.id, name: s.supplierName, qty: ds.reduce((a, d) => a + qtyOf(d), 0), ds })), [inScope]);
   const unit = metric === 'qty' ? t('common:units.liter') : metric === 'price' ? t('units.iqdPerLiter') : t('profile.statTankers');
   const fmtVal = (v: number) => (metric === 'price' ? formatNumber(v) : formatNumber(Math.round(v)));
   const active = hover ?? 0;
@@ -177,27 +146,17 @@ export const SuppliersCompare: React.FC<{ suppliers: SupplierPriceRecord[]; saha
           </div>
         </div>
 
-        {/* قيمة المورد المحدد (أعمدة) أو مفتاح الموردين (أمواج) */}
+        {mode === 'waves' ? (
+          <CompareWaves suppliers={waveSuppliers} metric={metric} palette={palette} resetKey={`${period}-${scope}-${metric}`} />
+        ) : (<>
+        {/* قيمة المورد المحدد */}
         <div className="relative shrink-0 px-4 sm:px-6 pt-3 min-h-[34px] flex flex-wrap items-center gap-2">
-          {mode === 'bars' ? (
-            cur && (
-              <div className="flex items-baseline gap-2 tabular-nums">
-                <span className="text-[13px] font-semibold text-slate-700 dark:text-slate-200">{cur.name}</span>
-                <span className="kpi-num text-[20px] text-slate-900 dark:text-white">{fmtVal(cur.value)}</span>
-                <span className="text-[12px] text-slate-400">{unit}{metric !== 'price' && total ? ` · ${Math.round((cur.value / total) * 1000) / 10}%` : ''}</span>
-              </div>
-            )
-          ) : (
-            top.map(b => {
-              const on = !hidden.has(b.id);
-              return (
-                <button key={b.id} type="button" aria-pressed={on}
-                  onClick={() => setHidden(prev => { const n = new Set(prev); if (n.has(b.id)) n.delete(b.id); else if (top.length - n.size > 1) n.add(b.id); return n; })}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[12px] font-semibold transition-all cursor-pointer ${on ? 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 shadow-sm' : 'opacity-45 line-through bg-slate-100 dark:bg-slate-800 border-transparent text-slate-500'}`}>
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ background: colorOf.get(b.id) }} />{b.name}
-                </button>
-              );
-            })
+          {cur && (
+            <div className="flex items-baseline gap-2 tabular-nums">
+              <span className="text-[13px] font-semibold text-slate-700 dark:text-slate-200">{cur.name}</span>
+              <span className="kpi-num text-[20px] text-slate-900 dark:text-white">{fmtVal(cur.value)}</span>
+              <span className="text-[12px] text-slate-400">{unit}{metric !== 'price' && total ? ` · ${Math.round((cur.value / total) * 1000) / 10}%` : ''}</span>
+            </div>
           )}
         </div>
 
@@ -207,7 +166,6 @@ export const SuppliersCompare: React.FC<{ suppliers: SupplierPriceRecord[]; saha
             <div className="h-full flex items-center justify-center text-sm text-slate-400">{t('profile.empty')}</div>
           ) : (
             <ResponsiveContainer width="100%" height="100%" debounce={60}>
-              {mode === 'bars' ? (
                 <BarChart data={bars} margin={{ top: 16, right: 8, left: 4, bottom: 8 }} barCategoryGap="22%"
                   onMouseMove={(s: { activeTooltipIndex?: number | string | null }) => setHover(s?.activeTooltipIndex != null ? Number(s.activeTooltipIndex) : null)}
                   onMouseLeave={() => setHover(null)}>
@@ -254,54 +212,10 @@ export const SuppliersCompare: React.FC<{ suppliers: SupplierPriceRecord[]; saha
                     {bars.map((b, i) => <Cell key={b.id} fill={i === active ? 'url(#cmp-active)' : 'url(#cmp-soft)'} />)}
                   </Bar>
                 </BarChart>
-              ) : (
-                <AreaChart data={waves} margin={{ top: 16, right: 16, left: 4, bottom: 4 }}>
-                  <defs>
-                    {top.map(b => (
-                      <linearGradient key={b.id} id={`cmp-fill-${b.id}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={colorOf.get(b.id)} stopOpacity={0.18} />
-                        <stop offset="100%" stopColor={colorOf.get(b.id)} stopOpacity={0} />
-                      </linearGradient>
-                    ))}
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 4" vertical={false} stroke="#94a3b8" strokeOpacity={0.15} />
-                  <XAxis dataKey="label" axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={24} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} dy={6} />
-                  <YAxis axisLine={false} tickLine={false} width={48} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} tickFormatter={compact}
-                    domain={metric === 'price' ? ['dataMin - 20', 'dataMax + 20'] : [0, 'auto']} />
-                  <Tooltip isAnimationActive={false} cursor={{ stroke: ACCENT, strokeWidth: 1.5, strokeDasharray: '3 3' }} wrapperStyle={{ outline: 'none', zIndex: 20 }}
-                    content={({ active: on, payload }: any) => {
-                      if (!on || !payload?.length) return null;
-                      const row = payload[0].payload as Record<string, number | string | null>;
-                      const items = top.filter(b => !hidden.has(b.id) && row[b.id] != null).sort((x, y) => (row[y.id] as number) - (row[x.id] as number));
-                      return (
-                        <div dir={i18n.dir()} className="w-[240px] rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur border border-slate-200/80 dark:border-slate-700 shadow-[0_12px_32px_-12px_rgba(15,23,42,0.35)] overflow-hidden text-start">
-                          <div className="px-3.5 py-2.5 bg-teal-50/70 dark:bg-teal-950/30 text-[12px] font-semibold text-teal-700 dark:text-teal-300">{row.full}</div>
-                          <div className="px-3.5 py-2.5 space-y-1.5">
-                            {items.map(b => (
-                              <div key={b.id} className="flex items-center gap-2 text-[12px]">
-                                <span className="w-2 h-2 rounded-full shrink-0" style={{ background: colorOf.get(b.id) }} />
-                                <span className="truncate text-slate-700 dark:text-slate-200">{b.name}</span>
-                                <span className="ms-auto kpi-num text-[12.5px] text-slate-900 dark:text-white">{fmtVal(row[b.id] as number)}</span>
-                              </div>
-                            ))}
-                            {!items.length && <div className="text-[12px] text-slate-400">—</div>}
-                          </div>
-                        </div>
-                      );
-                    }} />
-                  {top.filter(b => !hidden.has(b.id)).map(b => (
-                    <Area key={b.id} type="monotone" dataKey={b.id} name={b.name} stroke={colorOf.get(b.id)} strokeWidth={2.25} fill={`url(#cmp-fill-${b.id})`}
-                      connectNulls isAnimationActive={false} dot={waves.length > 40 ? false : { r: 2.5, fill: '#fff', stroke: colorOf.get(b.id), strokeWidth: 2 }}
-                      activeDot={{ r: 5, stroke: colorOf.get(b.id), strokeWidth: 2.5, fill: '#fff' }} />
-                  ))}
-                </AreaChart>
-              )}
             </ResponsiveContainer>
           )}
         </div>
-        {mode === 'waves' && bars.length > TOP && (
-          <div className="relative shrink-0 px-4 sm:px-6 pb-3 text-[11.5px] text-slate-400">{t('compare.topNote', { count: TOP })}</div>
-        )}
+        </>)}
       </div>
     </div>,
     document.body

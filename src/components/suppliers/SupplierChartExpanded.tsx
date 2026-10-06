@@ -8,6 +8,7 @@ import { formatNumber } from '../../lib/utils';
 import { deliveryCompany } from '../../lib/archiveSuppliers';
 import type { InboundDelivery } from '../../types';
 import { COMPANY_COLOR, type Company } from './supplierUi';
+import { LiteLines } from './LiteLines';
 
 interface Row { d: InboundDelivery; co: Company }
 export type Period = 'd30' | 'd90' | 'm12' | 'all';
@@ -97,7 +98,7 @@ export const buildBuckets = (rows: Row[], period: Period, metric: Metric, gran: 
 };
 
 /** شريط نطاق بمقبضين (بداية/نهاية) وسحب للمنطقة المحددة؛ عناصر HTML خفيفة بدل إعادة رسم الرسم البياني أثناء السحب */
-const RangeBar: React.FC<{ count: number; value: [number, number]; onChange: (v: [number, number]) => void; onEnd?: () => void; startLabel: string; endLabel: string }> = ({ count, value, onChange, onEnd, startLabel, endLabel }) => {
+export const RangeBar: React.FC<{ count: number; value: [number, number]; onChange: (v: [number, number]) => void; onEnd?: () => void; startLabel: string; endLabel: string }> = ({ count, value, onChange, onEnd, startLabel, endLabel }) => {
   const max = Math.max(1, count - 1);
   const [s, e] = value;
   const pct = (i: number) => (i / max) * 100;
@@ -292,8 +293,14 @@ const ChartArea: React.FC<{
           {data.length === 0 ? (
             <div className="h-full flex items-center justify-center text-sm text-slate-400">{emptyText}</div>
           ) : (
-            <ChartView points={points} mode={mode} metric={metric} shown={shown} companies={companies} avgLine={avgLine}
-              daily={gran !== 'month'} dense={dense} live={live} ticks={ticks} tickLabel={tickLabel} tooltip={tooltip} />
+            live && mode === 'waves' ? (
+              // أثناء السحب: رسم SVG خفيف جدًا (خطوط فقط)، والرسم الكامل يعود عند الإفلات
+              <LiteLines points={points as unknown as (Record<string, unknown> & { key: string })[]} series={shown.map(c => ({ id: c, color: COMPANY_COLOR[c] }))}
+                ticks={ticks} tickLabel={tickLabel} yFrom={metric === 'price' ? 'data' : 'zero'} format={compact} />
+            ) : (
+              <ChartView points={points} mode={mode} metric={metric} shown={shown} companies={companies} avgLine={avgLine}
+                daily={gran !== 'month'} dense={dense} live={live} ticks={ticks} tickLabel={tickLabel} tooltip={tooltip} />
+            )
           )}
         </div>
       </div>

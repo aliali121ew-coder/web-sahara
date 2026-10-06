@@ -163,6 +163,7 @@
     "subtitle_one": "{{count}} supplier in this period",
     "subtitle_other": "{{count}} suppliers in this period",
     "allCompanies": "All companies",
-    "topNote": "Showing the top {{count}} suppliers by quantity; tap a name to hide or show it"
+    "others": "Other suppliers",
+    "pick": "Suppliers ({{count}}/{{max}})"
   }
 }
