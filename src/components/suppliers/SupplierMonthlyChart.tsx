@@ -5,19 +5,26 @@ import { fmtDate } from '../../i18n/format';
 import { formatNumber } from '../../lib/utils';
 import type { InboundDelivery } from '../../types';
 import type { Company } from './supplierUi';
+import { Maximize2 } from 'lucide-react';
+import { SupplierChartExpanded } from './SupplierChartExpanded';
+
+/** لونا الشركتين في الرسوم (مُتحقَّق منهما لعمى الألوان والتباين في الوضعين الفاتح والداكن) */
+export const COMPANY_COLOR: Record<Company, string> = { sahara: '#d97706', etihad: '#0284c7' };
 
 interface Row { d: InboundDelivery; co: Company }
 interface Point { key: string; label: string; full: string; qty: number; n: number; sahara: number; etihad: number; saharaN: number; etihadN: number; avgPrice: number }
 
-const MONTHS = 12;
 const ACCENT = '#0d9488';
 const compact = (v: number) => (v >= 1e6 ? `${Math.round(v / 1e5) / 10}M` : v >= 1e3 ? `${Math.round(v / 1e3)}k` : String(v));
 const priceOf = (d: InboundDelivery) => d.productPrice || d.pricePerLiter || 0;
 
 /** أعمدة الوارد الشهري (آخر 12 شهرًا فيها وارد): أعمدة ناعمة متدرجة، وأعلى شهر (أو الذي تمر عليه الفأرة) بلون غامق مع نقطة وقيمته */
-export const SupplierMonthlyChart: React.FC<{ rows: Row[] }> = ({ rows }) => {
+export const SupplierMonthlyChart: React.FC<{ rows: Row[]; name: string }> = ({ rows, name }) => {
   const { t, i18n } = useTranslation(['suppliers', 'common']);
   const [hover, setHover] = useState<number | null>(null);
+  // عدد الأشهر المعروضة (0 = الكل) ونافذة التكبير
+  const [months, setMonths] = useState<6 | 12 | 0>(12);
+  const [expanded, setExpanded] = useState(false);
 
   const data = useMemo<Point[]>(() => {
     const by = new Map<string, Point & { cost: number; pq: number }>();
@@ -31,14 +38,14 @@ export const SupplierMonthlyChart: React.FC<{ rows: Row[] }> = ({ rows }) => {
       if (priceOf(d) > 0) { p.cost += q * priceOf(d); p.pq += q; }
       by.set(key, p);
     });
-    const list = [...by.values()].sort((a, b) => a.key.localeCompare(b.key)).slice(-MONTHS);
+    const list = [...by.values()].sort((a, b) => a.key.localeCompare(b.key)).slice(months ? -months : 0);
     const multiYear = new Set(list.map(p => p.key.slice(0, 4))).size > 1;
     return list.map(({ cost, pq, ...p }) => {
       const [y, m] = p.key.split('/').map(Number);
       const date = new Date(y, m - 1, 1);
       return { ...p, avgPrice: pq ? Math.round((cost / pq) * 10) / 10 : 0, label: fmtDate(date, multiYear ? { month: 'short', year: '2-digit' } : { month: 'short' }), full: fmtDate(date, { month: 'long', year: 'numeric' }) };
     });
-  }, [rows]);
+  }, [rows, months]);
 
   if (!data.length) return null;
   // الشهر المحدد: الذي تمر عليه الفأرة، وإلا الشهر صاحب أعلى وارد
@@ -48,12 +55,25 @@ export const SupplierMonthlyChart: React.FC<{ rows: Row[] }> = ({ rows }) => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between gap-2 mb-1">
+      <div className="flex items-center justify-between gap-2 mb-1.5">
         <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100">{t('profile.chartTitle')}</span>
-        <span className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-          <span className="w-2.5 h-2.5 rounded-sm" style={{ background: ACCENT }} />{t('profile.chartLegend')}
-        </span>
+        <div className="flex items-center gap-1.5">
+          {/* الفترة: 6 أشهر / 12 شهرًا / الكل */}
+          <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10.5px] font-semibold">
+            {([6, 12, 0] as const).map(m => (
+              <button key={m} type="button" onClick={() => { setMonths(m); setHover(null); }} aria-pressed={months === m}
+                className={`px-2 py-0.5 rounded-md cursor-pointer transition-colors ${months === m ? 'bg-white dark:bg-slate-700 text-teal-600 dark:text-teal-300 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+                {m === 6 ? t('profile.period.m6') : m === 12 ? t('profile.period.m12') : t('profile.period.all')}
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={() => setExpanded(true)} aria-label={t('profile.expand')} title={t('profile.expand')}
+            className="w-7 h-7 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-teal-600 hover:border-teal-400 flex items-center justify-center cursor-pointer">
+            <Maximize2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
+      {expanded && <SupplierChartExpanded name={name} rows={rows} initialPeriod={months === 0 ? 'all' : 'm12'} onClose={() => setExpanded(false)} />}
       {/* بطاقة قيمة الشهر المحدد */}
       <div className="flex items-baseline gap-2 mb-1 tabular-nums">
         <span className="text-[11px] text-slate-400">{cur.full}</span>

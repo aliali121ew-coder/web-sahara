@@ -123,6 +123,27 @@
     "lastPrice": "Last price: {{price}}",
     "avgPrice": "Average price",
     "chartTitle": "Monthly inbound",
-    "chartLegend": "Quantity (L)"
+    "expand": "Expand chart",
+    "analysisTitle": "Supplier inbound analysis",
+    "period": {
+      "d30": "30 days",
+      "d90": "90 days",
+      "m6": "6 months",
+      "m12": "12 months",
+      "all": "All"
+    },
+    "metric": {
+      "qty": "Quantity",
+      "tankers": "Tankers",
+      "price": "Price"
+    },
+    "mode": {
+      "waves": "Waves",
+      "bars": "Bars"
+    },
+    "peakDay": "Peak day",
+    "peakMonth": "Peak month",
+    "avgLine": "Average line",
+    "toggleSeries": "Show or hide"
   }
 }

@@ -7,6 +7,9 @@ import type { SupplierPriceRecord } from '../../types';
 export const fmtPrice = (v: number) => formatNumber(Math.round(v * 100) / 100);
 
 export type Company = 'sahara' | 'etihad';
+
+/** لونا الشركتين في الرسوم (مُتحقَّق منهما لعمى الألوان والتباين في الوضعين الفاتح والداكن) */
+export const COMPANY_COLOR: Record<Company, string> = { sahara: '#d97706', etihad: '#0284c7' };
 /** شارة الشركة المستلمة (أرشيف الوارد الذي ورد إليه المورد) */
 export const CompanyBadges: React.FC<{ companies: Company[] }> = ({ companies }) => {
   const { t } = useTranslation('suppliers');

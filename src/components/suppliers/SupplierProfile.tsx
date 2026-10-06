@@ -334,7 +334,7 @@ export const SupplierProfile: React.FC<{ name: string; onBack: () => void }> = (
             )}
             {/* الرسم البياني: الوارد الشهري حسب الشركة، بارتفاع ثابت أسفل البطاقة */}
             <div className="shrink-0 h-[220px] pt-3 border-t border-slate-100 dark:border-slate-800">
-              <SupplierMonthlyChart rows={rows} />
+              <SupplierMonthlyChart rows={rows} name={name} />
             </div>
           </div>
         </aside>
