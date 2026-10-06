@@ -1,4 +1,4 @@
-import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from 'recharts';
 import { Activity, BarChart3, Waves, X, Droplets, Truck, Coins, CalendarRange, ZoomIn, ZoomOut } from 'lucide-react';
@@ -97,7 +97,7 @@ export const buildBuckets = (rows: Row[], period: Period, metric: Metric, gran: 
 };
 
 /** شريط نطاق بمقبضين (بداية/نهاية) وسحب للمنطقة المحددة؛ عناصر HTML خفيفة بدل إعادة رسم الرسم البياني أثناء السحب */
-const RangeBar: React.FC<{ count: number; value: [number, number]; onChange: (v: [number, number]) => void; startLabel: string; endLabel: string }> = ({ count, value, onChange, startLabel, endLabel }) => {
+const RangeBar: React.FC<{ count: number; value: [number, number]; onChange: (v: [number, number]) => void; onEnd?: () => void; startLabel: string; endLabel: string }> = ({ count, value, onChange, onEnd, startLabel, endLabel }) => {
   const max = Math.max(1, count - 1);
   const [s, e] = value;
   const pct = (i: number) => (i / max) * 100;
@@ -117,7 +117,7 @@ const RangeBar: React.FC<{ count: number; value: [number, number]; onChange: (v:
         onChange([ns, ns + span]);
       });
     };
-    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+    const up = () => { cancelAnimationFrame(raf); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); onEnd?.(); };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
   };
@@ -152,6 +152,163 @@ const Pills = <T extends string>({ value, options, onChange, size = 'sm' }: { va
   </div>
 );
 
+/** أقصى عدد نقاط تُرسم فعليًا؛ الزائد يُختصر بالحفاظ على القمة والقاع في كل مقطع (شكل المنحنى لا يتغير) */
+const MAX_DRAWN = 360;
+const WINDOW = 60;
+
+const decimate = (pts: Bucket[]): Bucket[] => {
+  if (pts.length <= MAX_DRAWN) return pts;
+  const total = (b: Bucket) => (b.sahara ?? 0) + (b.etihad ?? 0);
+  const chunk = Math.ceil(pts.length / (MAX_DRAWN / 2));
+  const out: Bucket[] = [];
+  for (let i = 0; i < pts.length; i += chunk) {
+    let lo = i, hi = i;
+    for (let j = i; j < Math.min(i + chunk, pts.length); j++) {
+      if (total(pts[j]) < total(pts[lo])) lo = j;
+      if (total(pts[j]) > total(pts[hi])) hi = j;
+    }
+    if (lo === hi) out.push(pts[lo]);
+    else out.push(pts[Math.min(lo, hi)], pts[Math.max(lo, hi)]);
+  }
+  return out;
+};
+
+interface ViewProps {
+  points: Bucket[]; mode: Mode; metric: Metric; shown: Company[]; companies: Company[]; avgLine?: number; daily: boolean;
+  dense: boolean; live: boolean; ticks: string[]; tickLabel: (k: string) => string; tooltip: (p: any) => React.ReactNode;
+}
+
+/** الرسم نفسه: لا يُعاد رسمه إلا عند تغيّر نقاطه أو إعداداته (React.memo) */
+const ChartView = React.memo(({ points, mode, metric, shown, companies, avgLine, daily, dense, live, ticks, tickLabel, tooltip }: ViewProps) => {
+  const xTicks = { fill: '#64748b', fontSize: 11, fontWeight: 600 };
+  const yTicks = { fill: '#64748b', fontSize: 11, fontWeight: 600 };
+  const axis = (
+    <XAxis dataKey="key" axisLine={false} tickLine={false} tick={xTicks} dy={6} tickFormatter={tickLabel} ticks={ticks} interval={0} />
+  );
+  const yAxis = (
+    <YAxis axisLine={false} tickLine={false} width={48} tick={yTicks} tickFormatter={compact}
+      domain={metric === 'price' ? ['dataMin - 20', 'dataMax + 20'] : [0, 'auto']} />
+  );
+  const anim = !dense && !live;
+  return (
+    <ResponsiveContainer width="100%" height="100%" debounce={60}>
+      {mode === 'waves' ? (
+        <AreaChart data={points} margin={{ top: 16, right: 16, left: 4, bottom: 4 }}>
+          <defs>
+            {companies.map(c => (
+              <React.Fragment key={c}>
+                <linearGradient id={`exp-fill-${c}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={COMPANY_COLOR[c]} stopOpacity={0.26} />
+                  <stop offset="70%" stopColor={COMPANY_COLOR[c]} stopOpacity={0.04} />
+                  <stop offset="100%" stopColor={COMPANY_COLOR[c]} stopOpacity={0} />
+                </linearGradient>
+                <filter id={`exp-glow-${c}`} x="-20%" y="-20%" width="140%" height="140%">
+                  <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor={COMPANY_COLOR[c]} floodOpacity="0.35" />
+                </filter>
+              </React.Fragment>
+            ))}
+          </defs>
+          <CartesianGrid strokeDasharray="3 4" vertical={false} stroke="#94a3b8" strokeOpacity={0.15} />
+          {axis}{yAxis}
+          {!live && <Tooltip content={tooltip} cursor={{ stroke: '#0d9488', strokeWidth: 1.5, strokeDasharray: '3 3' }} wrapperStyle={{ outline: 'none', zIndex: 20 }} isAnimationActive={false} />}
+          {shown.map(c => (
+            <Area key={c} type={dense ? 'linear' : 'monotone'} dataKey={c} stroke={COMPANY_COLOR[c]} strokeWidth={dense ? 1.75 : 2.5} fill={`url(#exp-fill-${c})`}
+              filter={dense || live ? undefined : `url(#exp-glow-${c})`} isAnimationActive={anim}
+              connectNulls dot={dense ? false : { r: points.length > 40 ? 2 : 3.5, fill: '#fff', stroke: COMPANY_COLOR[c], strokeWidth: 2 }} activeDot={live ? false : { r: 5, stroke: COMPANY_COLOR[c], strokeWidth: 2.5, fill: '#fff' }} />
+          ))}
+          {avgLine !== undefined && <ReferenceLine y={avgLine} stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={1.5} />}
+        </AreaChart>
+      ) : (
+        <BarChart data={points} margin={{ top: 16, right: 16, left: 4, bottom: 4 }} barGap={3}>
+          <defs>
+            {companies.map(c => (
+              <linearGradient key={c} id={`exp-bar-${c}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={COMPANY_COLOR[c]} stopOpacity={0.95} />
+                <stop offset="100%" stopColor={COMPANY_COLOR[c]} stopOpacity={0.45} />
+              </linearGradient>
+            ))}
+          </defs>
+          <CartesianGrid strokeDasharray="3 4" vertical={false} stroke="#94a3b8" strokeOpacity={0.15} />
+          {axis}{yAxis}
+          {!live && <Tooltip content={tooltip} cursor={{ fill: 'rgba(148,163,184,0.1)' }} wrapperStyle={{ outline: 'none', zIndex: 20 }} isAnimationActive={false} />}
+          {shown.map(c => (
+            <Bar key={c} dataKey={c} fill={`url(#exp-bar-${c})`} isAnimationActive={anim} radius={[6, 6, 0, 0]} maxBarSize={daily ? 14 : 34} />
+          ))}
+          {avgLine !== undefined && <ReferenceLine y={avgLine} stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={1.5} />}
+        </BarChart>
+      )}
+    </ResponsiveContainer>
+  );
+});
+
+/**
+ * منطقة الرسم مع شريط النطاق: حالة السحب محصورة هنا فلا يُعاد رسم بقية النافذة أثناء السحب،
+ * والرسم يتبع قيمة مؤجلة (useDeferredValue) فيبقى المقبض سريعًا حتى على الأجهزة الضعيفة.
+ */
+const ChartArea: React.FC<{
+  data: Bucket[]; gran: Gran; mode: Mode; metric: Metric; shown: Company[]; companies: Company[]; avgLine?: number;
+  resetKey: string; tooltip: (p: any) => React.ReactNode; emptyText: string;
+}> = ({ data, gran, mode, metric, shown, companies, avgLine, resetKey, tooltip, emptyText }) => {
+  const [range, setRange] = useState<[number, number]>([Math.max(0, data.length - WINDOW), Math.max(0, data.length - 1)]);
+  const [live, setLive] = useState(false);
+  useEffect(() => { setRange([Math.max(0, data.length - WINDOW), Math.max(0, data.length - 1)]); }, [resetKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const view = useDeferredValue(range);
+  const last = Math.max(0, data.length - 1);
+  const vs = Math.min(view[0], last), ve = Math.min(Math.max(view[1], view[0]), last);
+  const visible = useMemo(() => data.slice(vs, ve + 1), [data, vs, ve]);
+  const points = useMemo(() => decimate(visible), [visible]);
+  const hasRange = data.length > WINDOW;
+  const dense = hasRange || visible.length > WINDOW;
+
+  const dayKey = (b: Bucket) => b.key.slice(0, 10);
+  const spanDays = visible.length ? (toDate(dayKey(visible[visible.length - 1])).getTime() - toDate(dayKey(visible[0])).getTime()) / DAY : 0;
+  // تسميات المحور محسوبة مسبقًا (لا قياس نصوص أثناء السحب): أشهر للنوافذ الطويلة، ونحو 10 تسميات موزعة للقصيرة
+  const dayTicks = gran === 'month' || gran === 'week' || spanDays <= 45;
+  const ticks = useMemo(() => {
+    if (!points.length) return [];
+    if (!dayTicks) {
+      const out: string[] = [];
+      let prev = '';
+      points.forEach(b => { const m = b.key.slice(0, 7); if (m !== prev) { out.push(b.key); prev = m; } });
+      return out;
+    }
+    const step = Math.max(1, Math.ceil(points.length / 10));
+    const out = points.filter((_, i) => i % step === 0).map(b => b.key);
+    const lastKey = points[points.length - 1].key;
+    return out[out.length - 1] === lastKey ? out : [...out, lastKey];
+  }, [points, dayTicks]);
+  const byKey = useMemo(() => new Map(points.map(b => [b.key, b])), [points]);
+  const tickLabel = useCallback((key: string) => {
+    const b = byKey.get(key);
+    if (!b) return '';
+    if (gran === 'month' || gran === 'week') return b.label;
+    return dayTicks ? fmtDate(toDate(b.key.slice(0, 10)), { day: 'numeric', month: 'short' }) : fmtDate(toDate(b.key.slice(0, 10)), { month: 'short', year: '2-digit' });
+  }, [byKey, gran, dayTicks]);
+
+  return (
+    <>
+      <div className="relative flex-1 min-h-[260px] px-2 sm:px-4 pt-3" dir="ltr">
+        <div className="h-full">
+          {data.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-sm text-slate-400">{emptyText}</div>
+          ) : (
+            <ChartView points={points} mode={mode} metric={metric} shown={shown} companies={companies} avgLine={avgLine}
+              daily={gran !== 'month'} dense={dense} live={live} ticks={ticks} tickLabel={tickLabel} tooltip={tooltip} />
+          )}
+        </div>
+      </div>
+      {/* شريط النطاق: مقبضان لبداية ونهاية النافذة، وسحب الجزء المحدد ينقلها كلها */}
+      {hasRange && (
+        <div className="relative shrink-0 px-4 sm:px-6 pt-2 pb-1" dir="ltr"
+          onPointerDown={() => setLive(true)} onPointerUp={() => setLive(false)} onPointerCancel={() => setLive(false)} onPointerLeave={e => { if (e.buttons === 0) setLive(false); }}>
+          <RangeBar count={data.length} value={range} onChange={setRange} onEnd={() => setLive(false)}
+            startLabel={data[range[0]]?.full ?? ''} endLabel={data[range[1]]?.full ?? ''} />
+        </div>
+      )}
+    </>
+  );
+};
+
 /** نافذة تحليل الوارد بملء الشاشة لصفحة المورد */
 export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initialPeriod?: Period; onClose: () => void }> = ({ name, rows, initialPeriod = 'm12', onClose }) => {
   const { t, i18n } = useTranslation(['suppliers', 'common']);
@@ -180,35 +337,8 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
   }, [rows, name]);
   const scoped = useMemo(() => (equipper ? rows.filter(r => (deliveryCompany(r.d) || name) === equipper) : rows), [rows, equipper, name]);
   const data = useMemo(() => buildBuckets(scoped, period, metric, gran), [scoped, period, metric, gran]);
-  // نافذة العرض: عند كثرة النقاط تُعرض آخر 60 نقطة، وشريط النطاق أسفل الرسم يغيّرها.
-  // الشريط خفيف (عنصرا input) والرسم يستخدم قيمة مؤجّلة (useDeferredValue) فيبقى السحب فوريًا على الأجهزة الضعيفة.
-  const WINDOW = 60;
+  // مفتاح إعادة ضبط نافذة العرض عند تغيير الفترة أو المقياس أو المستوى أو المجهز
   const resetKey = `${gran}-${period}-${metric}-${equipper}-${data.length}`;
-  const [range, setRange] = useState<[number, number]>([0, 0]);
-  useEffect(() => { setRange([Math.max(0, data.length - WINDOW), Math.max(0, data.length - 1)]); }, [resetKey]); // eslint-disable-line react-hooks/exhaustive-deps
-  const view = useDeferredValue(range);
-  const [vs, ve] = [Math.min(view[0], Math.max(0, data.length - 1)), Math.min(Math.max(view[1], view[0]), Math.max(0, data.length - 1))];
-  const visible = useMemo(() => data.slice(vs, ve + 1), [data, vs, ve]);
-  const hasRange = data.length > WINDOW;
-  // كثافة عالية = نقاط كثيرة ظاهرة: يُلغى التحريك والتوهج والنقاط الصغيرة حتى يبقى الرسم سلسًا
-  const dense = visible.length > WINDOW;
-  const dayKey = (b: Bucket) => b.key.slice(0, 10);
-  const spanDays = visible.length ? (toDate(dayKey(visible[visible.length - 1])).getTime() - toDate(dayKey(visible[0])).getTime()) / DAY : 0;
-  // تسميات المحور: أيام عند نافذة قصيرة (≤ 45 يومًا)، وأشهر عند نافذة أطول تبدأ بشهر أول نقطة ظاهرة
-  const dayTicks = gran === 'month' || gran === 'week' || spanDays <= 45;
-  const monthTicks = useMemo(() => {
-    const out: string[] = [];
-    let prev = '';
-    visible.forEach(b => { const m = b.key.slice(0, 7); if (m !== prev) { out.push(b.key); prev = m; } });
-    return out;
-  }, [visible]);
-  const keyIndex = useMemo(() => new Map(visible.map((b, i) => [b.key, i])), [visible]);
-  const tickLabel = (key: string) => {
-    const b = visible[keyIndex.get(key) ?? -1];
-    if (!b) return '';
-    if (gran === 'month' || gran === 'week') return b.label;
-    return dayTicks ? fmtDate(toDate(dayKey(b)), { day: 'numeric', month: 'short' }) : fmtDate(toDate(dayKey(b)), { month: 'short', year: '2-digit' });
-  };
   const zoom = (dir: 1 | -1) => setGran(g => GRANS[Math.min(GRANS.length - 1, Math.max(0, GRANS.indexOf(g) + dir))]);
 
   // ملخص الفترة المعروضة (للشركات الظاهرة فقط)
@@ -239,7 +369,7 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
   const fmtVal = (v: number) => (metric === 'price' ? formatNumber(v) : formatNumber(Math.round(v)));
   const daily = gran !== 'month';
 
-  const tooltip = ({ active, payload }: any) => {
+  const tooltip = useCallback(({ active, payload }: any) => {
     if (!active || !payload?.length) return null;
     const b = payload[0].payload as Bucket;
     if (b.ship) {
@@ -301,12 +431,8 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
         </div>
       </div>
     );
-  };
+  }, [shown, name, t, i18n]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const xTicks = { fill: '#64748b', fontSize: 11, fontWeight: 600 };
-  const yTicks = { fill: '#64748b', fontSize: 11, fontWeight: 600 };
-  // عدد تسميات المحور يتكيّف مع عدد النقاط (نحو 10 تسميات كحد أقصى)
-  // نحو 12 تسمية على المحور داخل النافذة المعروضة
 
   return createPortal(
     <div className="fixed inset-0 z-[100] bg-slate-900/45 backdrop-blur-md p-2 sm:p-5 flex animate-[overlayIn_.18s_ease]" onMouseDown={onClose}>
@@ -388,76 +514,9 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
           </div>
         </div>
 
-        {/* الرسم */}
-        <div className="relative flex-1 min-h-[260px] px-2 sm:px-4 pt-3" dir="ltr">
-          <div className="h-full">
-          {data.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-sm text-slate-400">{t('profile.empty')}</div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              {mode === 'waves' ? (
-                <AreaChart data={visible} margin={{ top: 16, right: 16, left: 4, bottom: 4 }}>
-                  <defs>
-                    {companies.map(c => (
-                      <React.Fragment key={c}>
-                        <linearGradient id={`exp-fill-${c}`} x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor={COMPANY_COLOR[c]} stopOpacity={0.26} />
-                          <stop offset="70%" stopColor={COMPANY_COLOR[c]} stopOpacity={0.04} />
-                          <stop offset="100%" stopColor={COMPANY_COLOR[c]} stopOpacity={0} />
-                        </linearGradient>
-                        <filter id={`exp-glow-${c}`} x="-20%" y="-20%" width="140%" height="140%">
-                          <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor={COMPANY_COLOR[c]} floodOpacity="0.35" />
-                        </filter>
-                      </React.Fragment>
-                    ))}
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 4" vertical={false} stroke="#94a3b8" strokeOpacity={0.15} />
-                  <XAxis dataKey="key" axisLine={false} tickLine={false} tick={xTicks} dy={6} tickFormatter={tickLabel} minTickGap={28}
-                    {...(!dayTicks ? { ticks: monthTicks, interval: 0 } : { interval: 'preserveStartEnd' as const })} />
-                  <YAxis axisLine={false} tickLine={false} width={48} tick={yTicks} tickFormatter={compact}
-                    domain={metric === 'price' ? ['dataMin - 20', 'dataMax + 20'] : [0, 'auto']} />
-                  <Tooltip content={tooltip} cursor={{ stroke: '#0d9488', strokeWidth: 1.5, strokeDasharray: '3 3' }} wrapperStyle={{ outline: 'none', zIndex: 20 }} isAnimationActive={false} />
-                  {shown.map(c => (
-                    <Area key={c} type={dense ? 'linear' : 'monotone'} dataKey={c} stroke={COMPANY_COLOR[c]} strokeWidth={dense ? 1.75 : 2.5} fill={`url(#exp-fill-${c})`}
-                      filter={dense ? undefined : `url(#exp-glow-${c})`} isAnimationActive={!dense}
-                      connectNulls dot={dense ? false : { r: visible.length > 40 ? 2 : 3.5, fill: '#fff', stroke: COMPANY_COLOR[c], strokeWidth: 2 }} activeDot={{ r: 5, stroke: COMPANY_COLOR[c], strokeWidth: 2.5, fill: '#fff' }} />
-                  ))}
-                  {avgLine !== undefined && <ReferenceLine y={avgLine} stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={1.5} />}
-                </AreaChart>
-              ) : (
-                <BarChart data={visible} margin={{ top: 16, right: 16, left: 4, bottom: 4 }} barGap={3}>
-                  <defs>
-                    {companies.map(c => (
-                      <linearGradient key={c} id={`exp-bar-${c}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={COMPANY_COLOR[c]} stopOpacity={0.95} />
-                        <stop offset="100%" stopColor={COMPANY_COLOR[c]} stopOpacity={0.45} />
-                      </linearGradient>
-                    ))}
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 4" vertical={false} stroke="#94a3b8" strokeOpacity={0.15} />
-                  <XAxis dataKey="key" axisLine={false} tickLine={false} tick={xTicks} dy={6} tickFormatter={tickLabel} minTickGap={28}
-                    {...(!dayTicks ? { ticks: monthTicks, interval: 0 } : { interval: 'preserveStartEnd' as const })} />
-                  <YAxis axisLine={false} tickLine={false} width={48} tick={yTicks} tickFormatter={compact}
-                    domain={metric === 'price' ? ['dataMin - 20', 'dataMax + 20'] : [0, 'auto']} />
-                  <Tooltip content={tooltip} cursor={{ fill: 'rgba(148,163,184,0.1)' }} wrapperStyle={{ outline: 'none', zIndex: 20 }} isAnimationActive={false} />
-                  {shown.map(c => (
-                    <Bar key={c} dataKey={c} fill={`url(#exp-bar-${c})`} isAnimationActive={!dense} radius={[6, 6, 0, 0]} maxBarSize={daily ? 14 : 34} />
-                  ))}
-                  {avgLine !== undefined && <ReferenceLine y={avgLine} stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={1.5} />}
-                </BarChart>
-              )}
-            </ResponsiveContainer>
-          )}
-          </div>
-        </div>
-
-        {/* شريط النطاق: مقبضان لبداية ونهاية النافذة، وسحب الجزء المحدد ينقلها كلها */}
-        {hasRange && (
-          <div className="relative shrink-0 px-4 sm:px-6 pt-2 pb-1" dir="ltr">
-            <RangeBar count={data.length} value={range} onChange={setRange}
-              startLabel={data[range[0]]?.full ?? ''} endLabel={data[range[1]]?.full ?? ''} />
-          </div>
-        )}
+        {/* الرسم وشريط النطاق (حالة السحب معزولة داخلهما) */}
+        <ChartArea data={data} gran={gran} mode={mode} metric={metric} shown={shown} companies={companies} avgLine={avgLine}
+          resetKey={resetKey} tooltip={tooltip} emptyText={t('profile.empty')} />
         {/* التذييل: إظهار/إخفاء كل شركة وشرح خط المتوسط */}
         <div className="relative shrink-0 px-4 sm:px-6 py-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-[12px]">
           <div className="flex items-center gap-2">
