@@ -211,28 +211,28 @@ export const BlackOilSection: React.FC = () => {
 
           {/* Bottom Operational Stats: Inbound / Outbound */}
           <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-800 relative z-10">
-            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex items-center justify-between gap-1 overflow-hidden min-w-0">
+            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-wrap items-center justify-between gap-x-1 gap-y-0.5 min-w-0">
               <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 shrink-0">
                 <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                 <span className="text-xs 2xl:text-[13px] font-bold whitespace-nowrap">{t('dashboard:flow.inboundColon')}</span>
                 <ChangeBadge cur={saharaInbound} prev={saharaPrevDay?.inbound} upIsGood title={`${t('dashboard:compare.prevDay')} (${saharaPrevDay?.date ?? ''}): ${formatNumber(saharaPrevDay?.inbound ?? 0)}`} />
               </div>
               <span 
-                className="font-mono font-black text-slate-900 dark:text-white text-xs 2xl:text-[13.5px] leading-tight truncate"
+                className="ms-auto font-mono font-black text-slate-900 dark:text-white text-xs 2xl:text-[13.5px] leading-tight whitespace-nowrap"
                 title={`${formatNumber(saharaInbound)} ${t('common:units.liter')}`}
               >
                 {formatNumber(saharaInbound)} <span className="text-[10.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </span>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex items-center justify-between gap-1 overflow-hidden min-w-0">
+            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-wrap items-center justify-between gap-x-1 gap-y-0.5 min-w-0">
               <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 shrink-0">
                 <Activity className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                 <span className="text-xs 2xl:text-[13px] font-bold whitespace-nowrap">{t('dashboard:flow.consumptionColon')}</span>
                 <ChangeBadge cur={saharaOutbound} prev={saharaPrevDay?.consumption} upIsGood={false} title={`${t('dashboard:compare.prevDay')} (${saharaPrevDay?.date ?? ''}): ${formatNumber(saharaPrevDay?.consumption ?? 0)}`} />
               </div>
               <span 
-                className="font-mono font-black text-slate-900 dark:text-white text-xs 2xl:text-[13.5px] leading-tight truncate"
+                className="ms-auto font-mono font-black text-slate-900 dark:text-white text-xs 2xl:text-[13.5px] leading-tight whitespace-nowrap"
                 title={`${formatNumber(saharaOutbound)} ${t('common:units.liter')}`}
               >
                 {formatNumber(saharaOutbound)} <span className="text-[10.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
@@ -348,28 +348,28 @@ export const BlackOilSection: React.FC = () => {
 
           {/* Bottom Operational Stats: Inbound / Outbound */}
           <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-800 relative z-10">
-            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex items-center justify-between gap-1 overflow-hidden min-w-0">
+            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-wrap items-center justify-between gap-x-1 gap-y-0.5 min-w-0">
               <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 shrink-0">
                 <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                 <span className="text-xs 2xl:text-[13px] font-bold whitespace-nowrap">{t('dashboard:flow.inboundColon')}</span>
                 <ChangeBadge cur={etihadInbound} prev={etihadPrevDay?.inbound} upIsGood title={`${t('dashboard:compare.prevDay')} (${etihadPrevDay?.date ?? ''}): ${formatNumber(etihadPrevDay?.inbound ?? 0)}`} />
               </div>
               <span 
-                className="font-mono font-black text-slate-900 dark:text-white text-xs 2xl:text-[13.5px] leading-tight truncate"
+                className="ms-auto font-mono font-black text-slate-900 dark:text-white text-xs 2xl:text-[13.5px] leading-tight whitespace-nowrap"
                 title={`${formatNumber(etihadInbound)} ${t('common:units.liter')}`}
               >
                 {formatNumber(etihadInbound)} <span className="text-[10.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </span>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex items-center justify-between gap-1 overflow-hidden min-w-0">
+            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-wrap items-center justify-between gap-x-1 gap-y-0.5 min-w-0">
               <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 shrink-0">
                 <Activity className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                 <span className="text-xs 2xl:text-[13px] font-bold whitespace-nowrap">{t('dashboard:flow.consumptionColon')}</span>
                 <ChangeBadge cur={etihadOutbound} prev={etihadPrevDay?.consumption} upIsGood={false} title={`${t('dashboard:compare.prevDay')} (${etihadPrevDay?.date ?? ''}): ${formatNumber(etihadPrevDay?.consumption ?? 0)}`} />
               </div>
               <span 
-                className="font-mono font-black text-slate-900 dark:text-white text-xs 2xl:text-[13.5px] leading-tight truncate"
+                className="ms-auto font-mono font-black text-slate-900 dark:text-white text-xs 2xl:text-[13.5px] leading-tight whitespace-nowrap"
                 title={`${formatNumber(etihadOutbound)} ${t('common:units.liter')}`}
               >
                 {formatNumber(etihadOutbound)} <span className="text-[10.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
