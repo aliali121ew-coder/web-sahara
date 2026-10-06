@@ -34,13 +34,67 @@ const waveIn = (d: number) => ({ y: { type: 'spring' as const, stiffness: 520, d
 const waveOut = (d: number) => ({ y: { type: 'spring' as const, stiffness: 300, damping: 13, mass: 0.6, delay: d * 0.025 }, scale: fade, boxShadow: fade });
 
 /**
+ * صف مورد في الترتيب (memo): المرور يغيّر near/back للكروت القريبة فقط، فلا يُعاد رسم الـ30 الباقية.
+ * near: بُعده عن الكارت المؤشَّر عليه (0..3، و-1 بلا مرور)، back: بُعده عن آخر كارت تُرك (لتأخير موجة الرجوع)
+ */
+const RankRow = React.memo<{
+  b: RankItem; i: number; logo?: string; max: number; total: number; unit: string; showShare: boolean; near: number; back: number;
+  fmtVal: (v: number) => string; onOpen: (id: string) => void; setHover: (id: string | null) => void;
+}>(({ b, i, logo, max, total, unit, showShare, near, back, fmtVal, onOpen, setHover }) => {
+  const { t } = useTranslation(['suppliers', 'common']);
+  const pct = (b.value / max) * 100;
+  const share = total ? Math.round((b.value / total) * 1000) / 10 : 0;
+  const avg = b.agg.pq ? Math.round((b.agg.cost / b.agg.pq) * 10) / 10 : 0;
+  const on = near === 0;
+  return (
+      <motion.li variants={rowV}>
+        <motion.button type="button" onClick={() => onOpen(b.id)} onMouseEnter={() => setHover(b.id)} onMouseLeave={() => setHover(null)}
+          animate={{
+            y: near >= 0 ? (LIFT[near] ?? 0) : 0,
+            scale: on ? 1.025 : 1,
+            boxShadow: on ? '0 14px 30px -12px rgba(13,148,136,0.45)' : '0 0 0 0 rgba(13,148,136,0)',
+          }}
+          transition={near >= 0 ? waveIn(near) : waveOut(back)}
+          className={`group relative w-full text-start rounded-2xl px-3 py-2.5 flex items-center gap-3 border transition-colors cursor-pointer ${on ? 'z-10 bg-teal-50/80 dark:bg-teal-950/40 border-teal-300 dark:border-teal-700' : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
+          <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${MEDAL[i] ?? 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>
+            {i === 0 ? <Trophy className="w-3.5 h-3.5" /> : i + 1}
+          </span>
+          <Avatar s={{ id: b.id, supplierName: b.name, logo }} size="w-9 h-9" text="text-xs" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 truncate">{b.name}</span>
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${b.company === 'sahara' ? 'bg-amber-500' : 'bg-sky-500'}`} title={t(`receiver.${b.company}`)} />
+              <span className="text-[10.5px] text-slate-400 shrink-0">{t(`receiver.${b.company}`)}</span>
+            </div>
+            {/* الشريط: عرضه نسبة من الأعلى، والتفاصيل تظهر عند المرور */}
+            <div className="mt-1.5 relative h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+              <span className={`absolute inset-y-0 start-0 rounded-full transition-[width] duration-500 ease-out ${i === 0 ? 'bg-gradient-to-l from-teal-400 via-emerald-500 to-teal-600' : 'bg-gradient-to-l from-teal-300 to-teal-500'}`}
+                style={{ width: `${Math.max(1.5, pct)}%` }} />
+            </div>
+            <div className={`grid grid-cols-3 gap-2 text-[11px] text-slate-500 dark:text-slate-400 tabular-nums overflow-hidden transition-all ${on ? 'max-h-6 mt-1.5 opacity-100' : 'max-h-0 opacity-0'}`}>
+              <span>{t('profile.metric.qty')}: <b className="text-slate-700 dark:text-slate-200">{compact(b.agg.qty)}</b></span>
+              <span>{t('profile.metric.tankers')}: <b className="text-slate-700 dark:text-slate-200">{formatNumber(b.agg.n)}</b></span>
+              <span>{t('profile.metric.price')}: <b className="text-slate-700 dark:text-slate-200">{avg ? formatNumber(avg) : '—'}</b></span>
+            </div>
+          </div>
+          <div className="text-end shrink-0 w-28">
+            <div className="kpi-num text-[15px] text-slate-900 dark:text-white">{fmtVal(b.value)}</div>
+            <div className="text-[10.5px] text-slate-400">{showShare ? `${share}% · ${unit}` : unit}</div>
+          </div>
+          <ChevronLeft className={`w-4 h-4 text-teal-500 shrink-0 ltr:rotate-180 transition-opacity ${on ? 'opacity-100' : 'opacity-0'}`} />
+        </motion.button>
+      </motion.li>
+  );
+});
+
+/**
  * لوحة ترتيب الموردين (بديل الأعمدة المائلة): دونات الحصص في الأعلى، ثم صف لكل مورد
  * بشارة ترتيب وشعار وشريط متدرج بقيمته وحصته؛ الضغط على مورد يفتح تحليل وارده.
  */
-export const CompareRanking: React.FC<{
+export const CompareRanking = React.memo<{
   items: RankItem[]; records: SupplierPriceRecord[]; palette: string[]; unit: string; showShare: boolean;
   fmtVal: (v: number) => string; onOpen: (id: string) => void;
-}> = ({ items, records, palette, unit, showShare, fmtVal, onOpen }) => {
+}>(({ items, records, palette, unit, showShare, fmtVal, onOpen }) => {
   const { t } = useTranslation(['suppliers', 'common']);
   const [hover, setHover] = useState<string | null>(null);
   // تتغيّر قائمة الموردين (فلتر/ترتيب) ⇒ تُعاد موجة الظهور
@@ -111,55 +165,15 @@ export const CompareRanking: React.FC<{
       <MotionConfig reducedMotion="user">
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pe-1" aria-label={t('compare.rankingLabel')}>
         <motion.ol key={waveKey} className="space-y-1.5 pt-3 pb-2 px-1" variants={listV} initial="hidden" animate="show">
-          {items.map((b, i) => {
-            const rec = recordOf.get(b.id);
-            const pct = (b.value / max) * 100;
-            const share = total ? Math.round((b.value / total) * 1000) / 10 : 0;
-            const avg = b.agg.pq ? Math.round((b.agg.cost / b.agg.pq) * 10) / 10 : 0;
-            const on = hover === b.id;
-            return (
-              <motion.li key={b.id} variants={rowV}>
-                <motion.button type="button" onClick={() => onOpen(b.id)} onMouseEnter={() => setHover(b.id)} onMouseLeave={() => setHover(null)}
-                  animate={{
-                    y: hoverIdx >= 0 ? (LIFT[Math.abs(i - hoverIdx)] ?? 0) : 0,
-                    scale: on ? 1.025 : 1,
-                    boxShadow: on ? '0 14px 30px -12px rgba(13,148,136,0.45)' : '0 0 0 0 rgba(13,148,136,0)',
-                  }}
-                  transition={hoverIdx >= 0 ? waveIn(Math.abs(i - hoverIdx)) : waveOut(Math.abs(i - lastIdx.current))}
-                  className={`group relative w-full text-start rounded-2xl px-3 py-2.5 flex items-center gap-3 border transition-colors cursor-pointer ${on ? 'z-10 bg-teal-50/80 dark:bg-teal-950/40 border-teal-300 dark:border-teal-700' : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
-                  <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${MEDAL[i] ?? 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>
-                    {i === 0 ? <Trophy className="w-3.5 h-3.5" /> : i + 1}
-                  </span>
-                  <Avatar s={{ id: b.id, supplierName: b.name, logo: rec?.logo }} size="w-9 h-9" text="text-xs" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 truncate">{b.name}</span>
-                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${b.company === 'sahara' ? 'bg-amber-500' : 'bg-sky-500'}`} title={t(`receiver.${b.company}`)} />
-                      <span className="text-[10.5px] text-slate-400 shrink-0">{t(`receiver.${b.company}`)}</span>
-                    </div>
-                    {/* الشريط: عرضه نسبة من الأعلى، والتفاصيل تظهر عند المرور */}
-                    <div className="mt-1.5 relative h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                      <span className={`absolute inset-y-0 start-0 rounded-full transition-[width] duration-500 ease-out ${i === 0 ? 'bg-gradient-to-l from-teal-400 via-emerald-500 to-teal-600' : 'bg-gradient-to-l from-teal-300 to-teal-500'}`}
-                        style={{ width: `${Math.max(1.5, pct)}%` }} />
-                    </div>
-                    <div className={`grid grid-cols-3 gap-2 text-[11px] text-slate-500 dark:text-slate-400 tabular-nums overflow-hidden transition-all ${on ? 'max-h-6 mt-1.5 opacity-100' : 'max-h-0 opacity-0'}`}>
-                      <span>{t('profile.metric.qty')}: <b className="text-slate-700 dark:text-slate-200">{compact(b.agg.qty)}</b></span>
-                      <span>{t('profile.metric.tankers')}: <b className="text-slate-700 dark:text-slate-200">{formatNumber(b.agg.n)}</b></span>
-                      <span>{t('profile.metric.price')}: <b className="text-slate-700 dark:text-slate-200">{avg ? formatNumber(avg) : '—'}</b></span>
-                    </div>
-                  </div>
-                  <div className="text-end shrink-0 w-28">
-                    <div className="kpi-num text-[15px] text-slate-900 dark:text-white">{fmtVal(b.value)}</div>
-                    <div className="text-[10.5px] text-slate-400">{showShare ? `${share}% · ${unit}` : unit}</div>
-                  </div>
-                  <ChevronLeft className={`w-4 h-4 text-teal-500 shrink-0 ltr:rotate-180 transition-opacity ${on ? 'opacity-100' : 'opacity-0'}`} />
-                </motion.button>
-              </motion.li>
-            );
-          })}
+          {items.map((b, i) => (
+            <RankRow key={b.id} b={b} i={i} logo={recordOf.get(b.id)?.logo} max={max} total={total} unit={unit} showShare={showShare}
+              near={hoverIdx >= 0 ? Math.min(Math.abs(i - hoverIdx), 3) : -1}
+              back={hoverIdx < 0 ? Math.min(Math.abs(i - lastIdx.current), 3) : 0}
+              fmtVal={fmtVal} onOpen={onOpen} setHover={setHover} />
+          ))}
         </motion.ol>
       </div>
       </MotionConfig>
     </div>
   );
-};
+});

@@ -46,6 +46,26 @@ export const deliveriesOfSupplier = <T,>(items: T[], get: (x: T) => InboundDeliv
   return exact.length ? exact : items.filter(x => sameSupplier(deliverySupplier(get(x)), name));
 };
 
+/** فهرس شحنات الأرشيف بمفتاح المورد (مرور واحد) لاستخراج شحنات موردين كثيرين دون مسح الأرشيف لكل مورد */
+export const indexDeliveries = (items: InboundDelivery[]): Map<string, InboundDelivery[]> => {
+  const idx = new Map<string, InboundDelivery[]>();
+  for (const d of items) {
+    const k = supplierKey(deliverySupplier(d));
+    const list = idx.get(k);
+    if (list) list.push(d); else idx.set(k, [d]);
+  }
+  return idx;
+};
+
+/** مثل deliveriesOfSupplier لكن من الفهرس؛ التقريبية تمر على المفاتيح لا على الشحنات */
+export const deliveriesFromIndex = (idx: Map<string, InboundDelivery[]>, name: string): InboundDelivery[] => {
+  const exact = idx.get(supplierKey(name));
+  if (exact?.length) return exact;
+  const out: InboundDelivery[] = [];
+  for (const [k, list] of idx) if (sameSupplier(k, name)) out.push(...list);
+  return out;
+};
+
 const dateKey = (d: InboundDelivery) => (d.receiptUnloadDate || d.date || '').replace(/-/g, '/');
 const priceOf = (d: InboundDelivery) => d.productPrice || d.pricePerLiter || 0;
 

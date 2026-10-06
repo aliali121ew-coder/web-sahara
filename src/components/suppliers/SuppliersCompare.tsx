@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart3, Waves, X, Scale } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatNumber } from '../../lib/utils';
-import { deliveriesOfSupplier } from '../../lib/archiveSuppliers';
+import { deliveriesFromIndex, indexDeliveries } from '../../lib/archiveSuppliers';
 import type { InboundDelivery, SupplierPriceRecord } from '../../types';
 import type { Company } from './supplierUi';
 import { CompareWaves } from './CompareWaves';
@@ -55,12 +55,15 @@ export const SuppliersCompare: React.FC<{ suppliers: SupplierPriceRecord[]; saha
   // مورد مفتوح من لوحة الترتيب: نافذة تحليل وارده فوق المقارنة
   const [openId, setOpenId] = useState<string | null>(null);
   const openRec = openId ? suppliers.find(s => s.id === openId) ?? null : null;
+  // فهرس الأرشيفين بمفتاح المورد مرة واحدة
+  const idx = useMemo(() => ({ sahara: indexDeliveries(sahara), etihad: indexDeliveries(etihad) }), [sahara, etihad]);
   const openRows = useMemo(() => {
     if (!openRec?.company) return [];
     const co = openRec.company;
-    return deliveriesOfSupplier(co === 'etihad' ? etihad : sahara, d => d, openRec.supplierName).map(d => ({ d, co }));
-  }, [openRec, sahara, etihad]);
-    const dark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+    return deliveriesFromIndex(idx[co === 'etihad' ? 'etihad' : 'sahara'], openRec.supplierName).map(d => ({ d, co }));
+  }, [openRec, idx]);
+  const closeOpen = useCallback(() => setOpenId(null), []);
+  const dark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
   const palette = dark ? SERIES_DARK : SERIES_LIGHT;
 
   useEffect(() => {
@@ -75,9 +78,9 @@ export const SuppliersCompare: React.FC<{ suppliers: SupplierPriceRecord[]; saha
   const perSupplier = useMemo(() => {
     return suppliers
       .filter(s => s.company)
-      .map(s => ({ s, ds: deliveriesOfSupplier(s.company === 'etihad' ? etihad : sahara, d => d, s.supplierName) }))
+      .map(s => ({ s, ds: deliveriesFromIndex(idx[s.company === 'etihad' ? 'etihad' : 'sahara'], s.supplierName) }))
       .filter(x => x.ds.length);
-  }, [suppliers, sahara, etihad]);
+  }, [suppliers, idx]);
 
   // الفترة تُحسب من آخر يوم وارد في الأرشيف
   const from = useMemo(() => {
@@ -105,11 +108,11 @@ export const SuppliersCompare: React.FC<{ suppliers: SupplierPriceRecord[]; saha
   // الأمواج: كل الموردين في النطاق (شحناتهم وكمياتهم) لمكوّن CompareWaves
   const waveSuppliers = useMemo(() => inScope.map(({ s, ds }) => ({ id: s.id, name: s.supplierName, qty: ds.reduce((a, d) => a + qtyOf(d), 0), ds })), [inScope]);
   const unit = metric === 'qty' ? t('common:units.liter') : metric === 'price' ? t('units.iqdPerLiter') : t('profile.statTankers');
-  const fmtVal = (v: number) => (metric === 'price' ? formatNumber(v) : formatNumber(Math.round(v)));
+  const fmtVal = useCallback((v: number) => (metric === 'price' ? formatNumber(v) : formatNumber(Math.round(v))), [metric]);
 
   return (<>
   {openRec && (
-    <SupplierChartExpanded name={openRec.supplierName} rows={openRows} initialPeriod={period === 'all' ? 'all' : 'm12'} onClose={() => setOpenId(null)} />
+    <SupplierChartExpanded name={openRec.supplierName} rows={openRows} initialPeriod={period === 'all' ? 'all' : 'm12'} stacked onClose={closeOpen} />
   )}
   {createPortal(
     <div className="fixed inset-0 z-[100] bg-slate-900/45 backdrop-blur-md p-2 sm:p-5 flex animate-[overlayIn_.18s_ease]" onMouseDown={onClose}>

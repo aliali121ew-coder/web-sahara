@@ -337,7 +337,8 @@ const ChartArea: React.FC<{
 };
 
 /** نافذة تحليل الوارد بملء الشاشة لصفحة المورد */
-export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initialPeriod?: Period; initialMonth?: string | null; onClose: () => void }> = ({ name, rows, initialPeriod = 'm12', initialMonth = null, onClose }) => {
+// stacked: مفتوحة فوق نافذة أخرى مموّهة أصلًا ⇒ بلا تمويه ثانٍ لكامل الشاشة (مكلف جدًا في الرسم)
+export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initialPeriod?: Period; initialMonth?: string | null; stacked?: boolean; onClose: () => void }> = ({ name, rows, initialPeriod = 'm12', initialMonth = null, stacked = false, onClose }) => {
   const { t, i18n } = useTranslation(['suppliers', 'common']);
   const [period, setPeriod] = useState<Period>(initialMonth ? 'all' : initialPeriod);
   const [metric, setMetric] = useState<Metric>('qty');
@@ -468,7 +469,7 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
 
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] bg-slate-900/45 backdrop-blur-md p-2 sm:p-5 flex animate-[overlayIn_.18s_ease]" onMouseDown={onClose}>
+    <div className={`fixed inset-0 z-[100] p-2 sm:p-5 flex animate-[overlayIn_.18s_ease] ${stacked ? 'bg-slate-900/30' : 'bg-slate-900/45 backdrop-blur-md'}`} onMouseDown={onClose}>
       <div role="dialog" aria-modal="true" aria-label={t('profile.analysisTitle')} onMouseDown={e => e.stopPropagation()}
         className="relative flex-1 flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-[0_24px_64px_-16px_rgba(15,23,42,0.45)] overflow-hidden animate-[dialogIn_.22s_ease]">
         {/* توهج خلفي هادئ */}
