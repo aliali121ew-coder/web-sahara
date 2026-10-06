@@ -411,21 +411,21 @@ export const SuppliersView: React.FC = () => {
       {selected && (
         <div key={`k-${selected.id}`} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 xl:gap-4 animate-[fadeIn_.25s_ease]">
           <StatCard
-            icon={<Coins className="w-4 h-4 text-white" />} iconBg="bg-amber-400"
-            title={t('cards.current')}
-            value={fmtPrice(selected.priceIqd)} unit={iqdL}
-            rows={[
-              { label: t('cards.updatedOn'), value: selected.lastUpdated || '—' },
-              { label: t('cards.vsPrevious'), value: <Signed v={selected.changePercent} suffix="%" /> },
-            ]}
-          />
-          <StatCard
             icon={<History className="w-4 h-4 text-teal-600" />} iconBg="bg-teal-50 dark:bg-teal-950/60"
             title={t('cards.previous')}
             value={fmtPrice(selected.previousPriceIqd)} unit={iqdL}
             rows={[
               { label: t('cards.difference'), value: <Signed v={diff} text={`${diff > 0 ? '+' : ''}${fmtPrice(diff)}`} /> },
               { label: t('cards.lastChange'), value: selected.history?.[1]?.date || selected.lastUpdated || '—' },
+            ]}
+          />
+          <StatCard
+            icon={<Coins className="w-4 h-4 text-white" />} iconBg="bg-amber-400"
+            title={t('cards.current')}
+            value={fmtPrice(selected.priceIqd)} unit={iqdL}
+            rows={[
+              { label: t('cards.updatedOn'), value: selected.lastUpdated || '—' },
+              { label: t('cards.vsPrevious'), value: <Signed v={selected.changePercent} suffix="%" /> },
             ]}
           />
           <StatCard
