@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search, ArrowDownUp, ChevronDown, ChevronLeft, ChevronRight, Pencil, Plus, Download, Coins, History, TrendingUp, TrendingDown,
-  Minus, X, Trash2, ImagePlus, Truck, Check,
+  Minus, X, Trash2, ImagePlus, Truck, Check, Phone, MapPin,
 } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useFuelData } from '../../context/FuelDataContext';
 import { usePermissions } from '../../lib/usePermission';
@@ -19,7 +20,6 @@ import { fmtPrice, CompanyBadges, Avatar, type Company } from './supplierUi';
 type SortKey = 'name' | 'priceDesc' | 'priceAsc' | 'change' | 'updated';
 
 const PAGE_SIZE = 10;
-const CATEGORIES: SupplierPriceRecord['category'][] = ['تجاري', 'رسمي', 'حكومي'];
 
 const dateKey = (d?: string) => (d || '').replace(/-/g, '/');
 
@@ -113,117 +113,167 @@ const SupplierModal: React.FC<{ initial: SupplierPriceRecord; isNew: boolean; on
   const { t } = useTranslation(['suppliers', 'common']);
   const [f, setF] = useState<SupplierPriceRecord>(initial);
   const [price, setPrice] = useState(initial.priceIqd ? String(initial.priceIqd) : '');
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const set = <K extends keyof SupplierPriceRecord>(k: K, v: SupplierPriceRecord[K]) => setF(p => ({ ...p, [k]: v }));
   const priceNum = Number(price.replace(/,/g, ''));
   const valid = f.supplierName.trim() && f.product.trim() && priceNum > 0;
+  const priceChanged = !isNew && priceNum > 0 && priceNum !== initial.priceIqd;
+  const delta = priceChanged && initial.priceIqd ? Math.round(((priceNum - initial.priceIqd) / initial.priceIqd) * 10000) / 100 : 0;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    // إيقاف تمرير الصفحة خلف النافذة
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
   }, [onClose]);
 
-  const input = 'w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20';
-  const label = 'block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5';
+  const save = () => valid && onSave({ ...f, supplierName: f.supplierName.trim(), product: f.product.trim(), priceIqd: priceNum, id: f.id || `sup-${Date.now()}` });
+  const input = 'w-full h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/60 text-sm text-slate-900 dark:text-white outline-none transition-colors placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-800 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10';
+  const label = 'block text-[12.5px] font-medium text-slate-600 dark:text-slate-300 mb-1.5';
+  const section = 'text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-3';
 
-  return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" onMouseDown={onClose}>
+  // النافذة تُعرض فوق الصفحة كلها (portal) فتغطي الهيدر والقائمة بالتعتيم والضبابية كاملة
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-slate-900/45 backdrop-blur-md animate-[overlayIn_.18s_ease]" onMouseDown={onClose}>
       <div role="dialog" aria-modal="true" aria-label={isNew ? t('modal.addTitle') : t('modal.editTitle')}
-        className="w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl"
+        className="w-full max-w-xl max-h-[94vh] flex flex-col rounded-3xl animate-[dialogIn_.22s_cubic-bezier(.2,.9,.3,1.2)] bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-[0_24px_64px_-16px_rgba(15,23,42,0.45)] overflow-hidden"
         onMouseDown={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white">{isNew ? t('modal.addTitle') : t('modal.editTitle')}</h3>
-          <button type="button" onClick={onClose} aria-label={t('common:actions.close')} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"><X className="w-4 h-4" /></button>
-        </div>
 
-        <div className="p-6 space-y-5">
+        {/* الرأس: الشعار مع زر تغييره، والعنوان واسم المورد */}
+        <div className="relative px-5 sm:px-6 pt-5 pb-4 bg-gradient-to-b from-teal-50/80 to-transparent dark:from-teal-950/30">
+          <button type="button" onClick={onClose} aria-label={t('common:actions.close')}
+            className="absolute top-4 end-4 w-9 h-9 rounded-full flex items-center justify-center text-slate-500 hover:bg-white/80 dark:hover:bg-slate-800 cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
           <div className="flex items-center gap-4">
-            <Avatar s={f.id ? f : { ...f, id: 'new' }} size="w-16 h-16" text="text-lg" />
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => fileRef.current?.click()} className="h-9 px-3 rounded-lg border border-teal-500 text-teal-600 dark:text-teal-400 text-xs font-semibold flex items-center gap-1.5 hover:bg-teal-50 dark:hover:bg-teal-950/40 cursor-pointer">
-                <ImagePlus className="w-4 h-4" /> {t('modal.logo')}
+            <div className="relative shrink-0">
+              <span className="block p-1 rounded-full bg-white dark:bg-slate-900 shadow-[0_4px_14px_rgba(15,23,42,0.12)]">
+                <Avatar s={f.id ? f : { ...f, id: 'new' }} size="w-16 h-16" text="text-xl" />
+              </span>
+              <button type="button" onClick={() => fileRef.current?.click()} aria-label={t('modal.logo')} title={t('modal.logo')}
+                className="absolute -bottom-0.5 -end-0.5 w-7 h-7 rounded-full bg-teal-500 hover:bg-teal-600 text-white border-2 border-white dark:border-slate-900 flex items-center justify-center cursor-pointer">
+                <ImagePlus className="w-3.5 h-3.5" />
               </button>
-              {f.logo && (
-                <button type="button" onClick={() => set('logo', undefined)} className="h-9 px-3 rounded-lg text-xs font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">{t('modal.removeLogo')}</button>
-              )}
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={async e => {
                 const file = e.target.files?.[0];
                 e.target.value = '';
                 if (file) set('logo', await shrinkImage(file));
               }} />
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="sm:col-span-2">
-              <label className={label}>{t('fields.name')}</label>
-              <input className={input} value={f.supplierName} onChange={e => set('supplierName', e.target.value)} autoFocus />
-            </div>
-            <div className="sm:col-span-2">
-              <label className={label}>{t('fields.product')}</label>
-              <input className={input} value={f.product} onChange={e => set('product', e.target.value)} />
-            </div>
-            <div>
-              <label className={label}>{t('fields.price')}</label>
-              <input className={input} dir="ltr" inputMode="decimal" value={price} onChange={e => setPrice(e.target.value.replace(/[^\d.,]/g, ''))} />
-              {!isNew && priceNum > 0 && priceNum !== initial.priceIqd && (
-                <p className="mt-1.5 text-[11px] text-teal-600 dark:text-teal-400">{t('modal.priceNote', { old: fmtPrice(initial.priceIqd) })}</p>
+            <div className="min-w-0 pe-10">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">{isNew ? t('modal.addTitle') : t('modal.editTitle')}</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{f.supplierName || t('modal.newHint')}</p>
+              {f.logo && (
+                <button type="button" onClick={() => set('logo', undefined)} className="mt-1 text-[12px] font-medium text-rose-500 hover:underline cursor-pointer">{t('modal.removeLogo')}</button>
               )}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={label}>{t('table.receiver')}</label>
-                <select className={input} value={f.company ?? ''} onChange={e => set('company', (e.target.value || undefined) as SupplierPriceRecord['company'])}>
-                  {!f.company && <option value="">—</option>}
-                  <option value="sahara">{t('receiver.sahara')}</option>
-                  <option value="etihad">{t('receiver.etihad')}</option>
-                </select>
-              </div>
-              <div>
-                <label className={label}>{t('fields.category')}</label>
-                <select className={input} value={f.category} onChange={e => set('category', e.target.value as SupplierPriceRecord['category'])}>
-                  {CATEGORIES.map(c => <option key={c} value={c}>{enumText(c)}</option>)}
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className={label}>{t('fields.phone')}</label>
-              <input className={input} dir="ltr" inputMode="tel" value={f.phone ?? ''} onChange={e => set('phone', e.target.value)} />
-            </div>
-            <div>
-              <label className={label}>{t('fields.location')}</label>
-              <input className={input} value={f.location ?? ''} onChange={e => set('location', e.target.value)} />
-            </div>
-            <div>
-              <label className={label}>{t('fields.contactName')}</label>
-              <input className={input} value={f.contactName ?? ''} onChange={e => set('contactName', e.target.value)} />
-            </div>
-            <div>
-              <label className={label}>{t('fields.contactRole')}</label>
-              <input className={input} value={f.contactRole ?? ''} onChange={e => set('contactRole', e.target.value)} />
             </div>
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-5 space-y-6">
+          {/* البيانات الأساسية */}
+          <section>
+            <h4 className={section}>{t('modal.sectionBasic')}</h4>
+            <div className="space-y-4">
+              <div>
+                <label className={label}>{t('fields.name')}</label>
+                <input className={`${input} px-3.5`} value={f.supplierName} onChange={e => set('supplierName', e.target.value)} autoFocus />
+              </div>
+              <div>
+                <label className={label}>{t('fields.product')}</label>
+                <input className={`${input} px-3.5`} value={f.product} onChange={e => set('product', e.target.value)} />
+              </div>
+            </div>
+          </section>
+
+          {/* السعر والشركة المستلمة */}
+          <section>
+            <h4 className={section}>{t('modal.sectionPrice')}</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={label}>{t('cards.current')}</label>
+                <div className="relative">
+                  <input className={`${input} ps-3.5 pe-24 text-base font-semibold tabular-nums`} inputMode="decimal" value={price}
+                    onChange={e => setPrice(e.target.value.replace(/[^\d.,]/g, ''))} />
+                  <span className="absolute inset-y-0 end-3 flex items-center text-[12px] text-slate-400 pointer-events-none">{t('units.iqdPerLiter')}</span>
+                </div>
+              </div>
+              <div>
+                <label className={label}>{t('table.receiver')}</label>
+                <div className="grid grid-cols-2 gap-1 p-1 h-11 rounded-xl bg-slate-100 dark:bg-slate-800">
+                  {(['sahara', 'etihad'] as Company[]).map(c => (
+                    <button key={c} type="button" onClick={() => set('company', c)} aria-pressed={f.company === c}
+                      className={`rounded-lg text-[13px] font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${f.company === c ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+                      <span className={`w-2 h-2 rounded-full ${c === 'sahara' ? 'bg-amber-500' : 'bg-sky-500'}`} />{t(`receiver.${c}`)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {/* معاينة أثر تغيير السعر */}
+            {priceChanged && (
+              <div className={`mt-3 rounded-xl px-3.5 py-2.5 flex items-center gap-3 text-[12.5px] ${delta > 0 ? 'bg-rose-50 dark:bg-rose-950/30' : 'bg-emerald-50 dark:bg-emerald-950/30'}`}>
+                <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${delta > 0 ? 'bg-rose-500/10 text-rose-500' : 'bg-emerald-500/10 text-emerald-600'}`}>
+                  {delta > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                </span>
+                <span className="flex-1 text-slate-600 dark:text-slate-300">{t('modal.priceNote', { old: fmtPrice(initial.priceIqd) })}</span>
+                <span dir="ltr" className={`font-semibold tabular-nums ${delta > 0 ? 'text-rose-500' : 'text-emerald-600'}`}>{delta > 0 ? '+' : ''}{delta}%</span>
+              </div>
+            )}
+          </section>
+
+          {/* التواصل */}
+          <section>
+            <h4 className={section}>{t('modal.sectionContact')}</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={label}>{t('fields.phone')}</label>
+                <div className="relative">
+                  <Phone className="absolute top-1/2 -translate-y-1/2 start-3.5 w-4 h-4 text-slate-400 pointer-events-none" />
+                  <input className={`${input} ps-10 pe-3.5`} dir="ltr" style={{ textAlign: 'start' }} inputMode="tel" value={f.phone ?? ''} onChange={e => set('phone', e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <label className={label}>{t('fields.location')}</label>
+                <div className="relative">
+                  <MapPin className="absolute top-1/2 -translate-y-1/2 start-3.5 w-4 h-4 text-slate-400 pointer-events-none" />
+                  <input className={`${input} ps-10 pe-3.5`} value={f.location ?? ''} onChange={e => set('location', e.target.value)} />
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* التذييل: الحذف بتأكيد داخلي، والإلغاء والحفظ */}
+        <div className="shrink-0 px-5 sm:px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50/60 dark:bg-slate-900">
           {onDelete ? (
-            <button type="button" onClick={() => { if (window.confirm(t('modal.deleteConfirm', { name: f.supplierName }))) onDelete(); }}
-              className="h-10 px-3 rounded-lg text-sm font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-1.5 cursor-pointer">
-              <Trash2 className="w-4 h-4" /> {t('common:actions.delete')}
-            </button>
+            confirmDelete ? (
+              <div className="flex items-center gap-2">
+                <span className="text-[12.5px] text-rose-600">{t('modal.deleteAsk')}</span>
+                <button type="button" onClick={onDelete} className="h-9 px-3 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-[13px] font-semibold cursor-pointer">{t('common:actions.delete')}</button>
+                <button type="button" onClick={() => setConfirmDelete(false)} className="h-9 px-2 rounded-lg text-[13px] text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">{t('common:actions.cancel')}</button>
+              </div>
+            ) : (
+              <button type="button" onClick={() => setConfirmDelete(true)}
+                className="h-10 px-3 rounded-xl text-sm font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-1.5 cursor-pointer">
+                <Trash2 className="w-4 h-4" /> {t('common:actions.delete')}
+              </button>
+            )
           ) : <span />}
           <div className="flex items-center gap-2">
-            <button type="button" onClick={onClose} className="h-10 px-4 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">{t('common:actions.cancel')}</button>
-            <button type="button" disabled={!valid}
-              onClick={() => onSave({ ...f, supplierName: f.supplierName.trim(), product: f.product.trim(), priceIqd: priceNum, id: f.id || `sup-${Date.now()}` })}
-              className="h-10 px-5 rounded-lg text-sm font-semibold bg-teal-500 hover:bg-teal-600 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center gap-1.5 cursor-pointer">
+            <button type="button" onClick={onClose} className="h-10 px-4 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">{t('common:actions.cancel')}</button>
+            <button type="button" disabled={!valid} onClick={save}
+              className="h-10 px-5 rounded-xl text-sm font-semibold bg-teal-500 hover:bg-teal-600 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center gap-1.5 shadow-[0_6px_16px_-6px_rgba(13,148,136,0.6)] cursor-pointer">
               <Check className="w-4 h-4" /> {t('common:actions.save')}
             </button>
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

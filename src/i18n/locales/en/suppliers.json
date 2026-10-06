@@ -11,13 +11,9 @@
   "fields": {
     "name": "Supplier name",
     "product": "Product",
-    "price": "Current price (IQD / L)",
-    "category": "Category",
-    "availability": "Availability",
     "phone": "Phone number",
     "location": "Location",
-    "contactName": "Representative name",
-    "contactRole": "Representative title"
+    "category": "Category"
   },
   "cards": {
     "current": "Current price",
@@ -78,7 +74,11 @@
     "logo": "Upload logo",
     "removeLogo": "Remove logo",
     "priceNote": "{{old}} becomes the previous price, and the dashboard price index updates right away",
-    "deleteConfirm": "Delete supplier “{{name}}”? It will also be removed from the price index."
+    "sectionBasic": "Basic details",
+    "sectionPrice": "Price & receiving company",
+    "sectionContact": "Contact",
+    "newHint": "New supplier",
+    "deleteAsk": "Delete this supplier?"
   },
   "pager": {
     "label": "Pagination",

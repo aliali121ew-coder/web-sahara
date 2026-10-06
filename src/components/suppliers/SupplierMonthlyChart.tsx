@@ -16,7 +16,7 @@ const priceOf = (d: InboundDelivery) => d.productPrice || d.pricePerLiter || 0;
 
 /** أعمدة الوارد الشهري (آخر 12 شهرًا فيها وارد): أعمدة ناعمة متدرجة، وأعلى شهر (أو الذي تمر عليه الفأرة) بلون غامق مع نقطة وقيمته */
 export const SupplierMonthlyChart: React.FC<{ rows: Row[] }> = ({ rows }) => {
-  const { t } = useTranslation(['suppliers', 'common']);
+  const { t, i18n } = useTranslation(['suppliers', 'common']);
   const [hover, setHover] = useState<number | null>(null);
 
   const data = useMemo<Point[]>(() => {
@@ -80,27 +80,47 @@ export const SupplierMonthlyChart: React.FC<{ rows: Row[] }> = ({ rows }) => {
             <YAxis tickLine={false} axisLine={false} width={34} tickCount={5} tickFormatter={compact} tick={{ fontSize: 10, fill: '#94a3b8' }} />
             <Tooltip
               cursor={false}
+              // تظهر البطاقة فوق الرسم (لا تحته) حتى لا يقصّها حدّ البطاقة الشخصية
+              position={{ y: -150 }}
+              allowEscapeViewBox={{ x: false, y: true }}
+              wrapperStyle={{ outline: 'none', zIndex: 20 }}
               content={({ active: on, payload }) => {
                 if (!on || !payload?.length) return null;
                 const p = payload[0].payload as Point;
-                const rowsOf: [string, string][] = [
-                  [t('profile.col.qty'), `${formatNumber(p.qty)} ${t('common:units.liter')}`],
-                  [t('profile.statTankers'), formatNumber(p.n)],
-                  ...(p.saharaN ? [[t('receiver.sahara'), `${formatNumber(p.sahara)} · ${formatNumber(p.saharaN)}`] as [string, string]] : []),
-                  ...(p.etihadN ? [[t('receiver.etihad'), `${formatNumber(p.etihad)} · ${formatNumber(p.etihadN)}`] as [string, string]] : []),
-                  ...(p.avgPrice ? [[t('profile.avgPrice'), `${formatNumber(p.avgPrice)} ${t('units.iqdPerLiter')}`] as [string, string]] : []),
-                ];
+                const parts = ([
+                  { c: 'sahara', q: p.sahara, n: p.saharaN, color: '#d97706' },
+                  { c: 'etihad', q: p.etihad, n: p.etihadN, color: '#0284c7' },
+                ] as const).filter(x => x.n);
                 return (
-                  <div dir="auto" className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-lg px-3 py-2 text-xs min-w-[170px]">
-                    <div className="font-semibold text-slate-900 dark:text-white mb-1">{p.full}</div>
-                    <dl className="space-y-0.5">
-                      {rowsOf.map(([k, v]) => (
-                        <div key={k} className="flex items-center justify-between gap-4">
-                          <dt className="text-slate-400">{k}</dt>
-                          <dd className="font-medium text-slate-800 dark:text-slate-100 tabular-nums">{v}</dd>
+                  <div dir={i18n.dir()} className="w-[220px] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700 shadow-[0_12px_32px_-12px_rgba(15,23,42,0.35)] overflow-hidden text-start">
+                    {/* الرأس: الشهر والكمية الكلية وعدد الصهاريج */}
+                    <div className="px-3.5 pt-3 pb-2.5 bg-teal-50/70 dark:bg-teal-950/30">
+                      <div className="text-[11px] font-medium text-teal-700 dark:text-teal-300">{p.full}</div>
+                      <div className="mt-0.5 flex items-baseline gap-1.5 tabular-nums">
+                        <span className="text-lg font-bold text-slate-900 dark:text-white">{formatNumber(p.qty)}</span>
+                        <span className="text-[11px] text-slate-500">{t('common:units.liter')}</span>
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">{t('profile.tankersTotal', { count: p.n })}</div>
+                    </div>
+                    {/* توزيع الشركات المستلمة */}
+                    <div className="px-3.5 py-2.5 space-y-2">
+                      {parts.map(x => (
+                        <div key={x.c} className="text-[12px]">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: x.color }} />
+                            <span className="font-medium text-slate-700 dark:text-slate-200">{t(`receiver.${x.c}`)}</span>
+                            <span className="ms-auto font-semibold text-slate-900 dark:text-white tabular-nums">{formatNumber(x.q)}</span>
+                          </div>
+                          <div className="ps-4 text-[10.5px] text-slate-400 tabular-nums">{t('profile.tankersTotal', { count: x.n })}</div>
                         </div>
                       ))}
-                    </dl>
+                    </div>
+                    {p.avgPrice > 0 && (
+                      <div className="px-3.5 py-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[12px]">
+                        <span className="text-slate-500 dark:text-slate-400">{t('profile.avgPrice')}</span>
+                        <span className="font-semibold text-slate-900 dark:text-white tabular-nums">{formatNumber(p.avgPrice)} <span className="text-[10.5px] font-normal text-slate-400">{t('units.iqdPerLiter')}</span></span>
+                      </div>
+                    )}
                   </div>
                 );
               }}
