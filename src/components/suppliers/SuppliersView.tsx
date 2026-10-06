@@ -62,8 +62,15 @@ const ChangePill: React.FC<{ pct: number }> = ({ pct }) => {
   const cls = pct > 0 ? 'bg-rose-50 text-rose-500 dark:bg-rose-950/50 dark:text-rose-300'
     : pct < 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-300'
     : 'bg-amber-50 text-amber-500 dark:bg-amber-950/40 dark:text-amber-300';
-  const label = pct > 0 ? t('change.up') : pct < 0 ? t('change.down') : t('change.stable');
-  return <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap ${cls}`}>{label}{pct !== 0 && <span dir="ltr">{pct > 0 ? '+' : ''}{pct}%</span>}</span>;
+  // الارتفاع والانخفاض بخط اتجاه (كما في البطاقات) بدل الكلمة؛ والثابت بكلمته
+  if (pct === 0) return <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap ${cls}`}>{t('change.stable')}</span>;
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap ${cls}`}
+      title={pct > 0 ? t('change.up') : t('change.down')} aria-label={`${pct > 0 ? t('change.up') : t('change.down')} ${pct}%`}>
+      {pct > 0 ? <TrendingUp className="w-3.5 h-3.5" strokeWidth={2.75} /> : <TrendingDown className="w-3.5 h-3.5" strokeWidth={2.75} />}
+      <span dir="ltr">{pct > 0 ? '+' : ''}{pct}%</span>
+    </span>
+  );
 };
 
 /** بطاقة مؤشر: رقم رئيسي واحد واضح، وتحته سطران هادئان (اسم ← قيمة) بدل أرقام متجاورة */
@@ -269,9 +276,11 @@ export const SuppliersView: React.FC = () => {
   const { supplierPrices, saharaDeliveries, etihadDeliveries, saveSupplier, deleteSupplier, setActiveTab } = useFuelData();
   const editable = usePermissions().canEdit('suppliers');
 
-  const [selectedId, setSelectedId] = useState<string | undefined>(() => supplierPrices[0]?.id);
+  // يُعرض أولًا آخر مورد تحدّث سعره (نفس ترتيب الجدول الافتراضي)
+  const [selectedId, setSelectedId] = useState<string | undefined>(() =>
+    [...supplierPrices].sort((a, b) => dateKey(b.lastUpdated).localeCompare(dateKey(a.lastUpdated)))[0]?.id);
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<SortKey>('name');
+  const [sort, setSort] = useState<SortKey>('updated');
   const [sortOpen, setSortOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [page, setPage] = useState(0);
@@ -379,8 +388,8 @@ export const SuppliersView: React.FC = () => {
   const marketLabel = (c: Company) => t('cards.marketAvgOf', { company: t(`receiver.${c}`), period: t('common:units.days', { count: market[c].days }) });
 
   const SORTS: { id: SortKey; label: string }[] = [
-    { id: 'name', label: t('sort.name') }, { id: 'priceDesc', label: t('sort.priceDesc') }, { id: 'priceAsc', label: t('sort.priceAsc') },
-    { id: 'change', label: t('sort.change') }, { id: 'updated', label: t('sort.updated') },
+    { id: 'updated', label: t('sort.updated') }, { id: 'name', label: t('sort.name') }, { id: 'priceDesc', label: t('sort.priceDesc') },
+    { id: 'priceAsc', label: t('sort.priceAsc') }, { id: 'change', label: t('sort.change') },
   ];
 
   // 10 موردين في كل صفحة؛ البحث أو الترتيب يعيد للصفحة الأولى
