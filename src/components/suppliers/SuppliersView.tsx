@@ -14,7 +14,6 @@ import type { InboundDelivery, NavTabId, SupplierPriceRecord } from '../../types
 type SortKey = 'name' | 'priceDesc' | 'priceAsc' | 'change' | 'updated';
 
 const CATEGORIES: SupplierPriceRecord['category'][] = ['تجاري', 'رسمي', 'حكومي'];
-const AVAILABILITY: SupplierPriceRecord['availability'][] = ['متوفر', 'محدود', 'غير متوفر'];
 
 /** تطبيع اسم المورد لمطابقته مع «الشركة المجهزة» في سجلات الوارد */
 const normName = (v = '') => v.replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/^شركه\s+/, '').replace(/\s+/g, ' ').trim();
@@ -56,13 +55,6 @@ const ChangePill: React.FC<{ pct: number }> = ({ pct }) => {
     : 'bg-amber-50 text-amber-500 dark:bg-amber-950/40 dark:text-amber-300';
   const label = pct > 0 ? t('change.up') : pct < 0 ? t('change.down') : t('change.stable');
   return <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap ${cls}`}>{label}{pct !== 0 && <span dir="ltr">{pct > 0 ? '+' : ''}{pct}%</span>}</span>;
-};
-
-const AvailabilityPill: React.FC<{ v: SupplierPriceRecord['availability'] }> = ({ v }) => {
-  const cls = v === 'متوفر' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-300'
-    : v === 'محدود' ? 'bg-amber-50 text-amber-500 dark:bg-amber-950/40 dark:text-amber-300'
-    : 'bg-rose-50 text-rose-500 dark:bg-rose-950/50 dark:text-rose-300';
-  return <span className={`inline-block px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap ${cls}`}>{enumText(v)}</span>;
 };
 
 interface KpiValue { value: string; label: string; tone: 'green' | 'orange' }
@@ -196,19 +188,11 @@ const SupplierModal: React.FC<{ initial: SupplierPriceRecord; isNew: boolean; on
                 <p className="mt-1.5 text-[11px] text-teal-600 dark:text-teal-400">{t('modal.priceNote', { old: fmtPrice(initial.priceIqd) })}</p>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
+            <div>
                 <label className={label}>{t('fields.category')}</label>
                 <select className={input} value={f.category} onChange={e => set('category', e.target.value as SupplierPriceRecord['category'])}>
                   {CATEGORIES.map(c => <option key={c} value={c}>{enumText(c)}</option>)}
                 </select>
-              </div>
-              <div>
-                <label className={label}>{t('fields.availability')}</label>
-                <select className={input} value={f.availability} onChange={e => set('availability', e.target.value as SupplierPriceRecord['availability'])}>
-                  {AVAILABILITY.map(c => <option key={c} value={c}>{enumText(c)}</option>)}
-                </select>
-              </div>
             </div>
             <div>
               <label className={label}>{t('fields.phone')}</label>
@@ -315,10 +299,10 @@ export const SuppliersView: React.FC = () => {
   const marketAvg = supplierPrices.length ? supplierPrices.reduce((a, s) => a + s.priceIqd, 0) / supplierPrices.length : 0;
 
   const exportCsv = () => {
-    const head = [t('table.code'), t('table.supplier'), t('fields.product'), t('fields.category'), t('table.current'), t('table.previous'), t('table.change'), t('fields.availability'), t('table.updated')];
+    const head = [t('table.code'), t('table.supplier'), t('fields.product'), t('fields.category'), t('table.current'), t('table.previous'), t('table.change'), t('table.updated')];
     const list = checked.size ? rows.filter(r => checked.has(r.id)) : rows;
     const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
-    const body = list.map((s, i) => [supplierCode(s, i), s.supplierName, s.product, enumText(s.category), s.priceIqd, s.previousPriceIqd, `${s.changePercent}%`, enumText(s.availability), s.lastUpdated].map(esc).join(','));
+    const body = list.map((s, i) => [supplierCode(s, i), s.supplierName, s.product, enumText(s.category), s.priceIqd, s.previousPriceIqd, `${s.changePercent}%`, s.lastUpdated].map(esc).join(','));
     const blob = new Blob(['﻿' + [head.map(esc).join(','), ...body].join('\n')], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -501,7 +485,6 @@ export const SuppliersView: React.FC = () => {
                   <th className={th}>{t('table.current')}</th>
                   <th className={th}>{t('table.previous')}</th>
                   <th className={th}>{t('table.change')}</th>
-                  <th className={th}>{t('fields.availability')}</th>
                   <th className={th}>{t('table.updated')}</th>
                   <th className={th}>{t('cards.lastInbound')}</th>
                   <th className={th}>{t('table.action')}</th>
@@ -509,7 +492,7 @@ export const SuppliersView: React.FC = () => {
               </thead>
               <tbody>
                 {rows.length === 0 && (
-                  <tr><td colSpan={10} className="py-12 text-center text-sm text-slate-400">{t('empty')}</td></tr>
+                  <tr><td colSpan={9} className="py-12 text-center text-sm text-slate-400">{t('empty')}</td></tr>
                 )}
                 {rows.map((s, i) => {
                   const active = s.id === selected?.id;
@@ -535,7 +518,6 @@ export const SuppliersView: React.FC = () => {
                       <td className={`${td} font-semibold text-slate-900 dark:text-white tabular-nums`}>{fmtPrice(s.priceIqd)}</td>
                       <td className={`${td} tabular-nums`}>{fmtPrice(s.previousPriceIqd)}</td>
                       <td className={td}><ChangePill pct={s.changePercent} /></td>
-                      <td className={td}><AvailabilityPill v={s.availability} /></td>
                       <td className={`${td} tabular-nums`}>{s.lastUpdated}</td>
                       <td className={`${td} tabular-nums`}>{li ? (li.d.receiptUnloadDate || li.d.date) : '—'}</td>
                       <td className={td} onClick={e => e.stopPropagation()}>
