@@ -53,7 +53,7 @@ const MANUAL_ONLY_ID = 'fuel-muhassan';
 /** layout="side": بدون ترويسة وفي عمودين (للعمود الجانبي في صفحة المشتريات) */
 export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout = 'row' }) => {
   const isSide = layout === 'side';
-  const { fuelMetrics, supplierPrices, saharaDeliveries, etihadDeliveries } = useFuelData();
+  const { fuelMetrics, saharaDeliveries, etihadDeliveries } = useFuelData();
   const { t } = useTranslation(['dashboard', 'common']);
   const { publishedComputed: petrolDays } = usePetrolLedger();
   const { computed: saharaBlackOilDays } = useBlackOilLedger('sahara');
@@ -125,19 +125,10 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
         source: 'standalone' as const, auto: null, src: undefined, manual: null
       };
     }
-    let matched = supplierPrices.find(s => {
-      if (metric.id === 'fuel-1') return s.product.includes('بنزين');
-      if (metric.id === 'fuel-2') return s.product.includes('Euro 5') || s.supplierName.includes('كربلاء الدولي');
-      if (metric.id === 'fuel-muhassan') return s.product.includes('حكومي') || s.supplierName.includes('توزيع');
-      if (metric.id === 'fuel-3') return s.supplierName.includes('الاتحاد');
-      if (metric.id === 'fuel-4') return s.product.includes('نفط أسود') || s.supplierName.includes('الفرات الأوسط');
-      if (metric.id === 'fuel-5') return s.supplierName.includes('الوطنية');
-      return false;
-    });
-
-    const displayPrice = matched ? matched.priceIqd : metric.priceIqd;
-    const previousPrice = matched?.previousPriceIqd ?? metric.priceIqd;
-    const trendPercent = matched ? matched.changePercent : metric.trendPercent;
+    // بطاقات المشتريات تأخذ سعرها من الوارد أو التعديل اليدوي فقط؛ صفحة الموردين لا تؤثر عليها
+    const displayPrice = metric.priceIqd;
+    const previousPrice = metric.priceIqd;
+    const trendPercent = metric.trendPercent;
 
     const src = inboundSources[metric.id];
     const auto = src?.days[0] ?? null;

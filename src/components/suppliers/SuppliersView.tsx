@@ -620,7 +620,7 @@ export const SuppliersView: React.FC = () => {
                   <th className={th}>{t('table.change')}</th>
                   <th className={th}>{t('table.updated')}</th>
                   <th className={th}>{t('table.inbound')}</th>
-                  <th className={th}>{t('table.tankers')}</th>
+                  <th className={`${th} !text-center`}>{t('table.tankers')}</th>
                   <th className={th}>{t('table.action')}</th>
                 </tr>
               </thead>
@@ -647,7 +647,7 @@ export const SuppliersView: React.FC = () => {
                           <span className="tabular-nums font-semibold text-slate-900 dark:text-white">{formatNumber(inb.lastDayQty)} <span className="text-[11px] font-normal text-slate-400">{t('common:units.liter')}</span></span>
                         ) : '—'}
                       </td>
-                      <td className={`${td} tabular-nums`}>{inb.count ? formatNumber(inb.lastDayCount) : '—'}</td>
+                      <td className={`${td} tabular-nums text-center`}>{inb.count ? formatNumber(inb.lastDayCount) : '—'}</td>
                       <td className={td} onClick={e => e.stopPropagation()}>
                         {editable ? (
                           <button type="button" onClick={() => setEditing({ rec: s, isNew: false })} aria-label={t('common:actions.edit')} title={t('common:actions.edit')}
