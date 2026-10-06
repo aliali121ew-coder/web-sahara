@@ -193,16 +193,16 @@ export const BlackOilSection: React.FC = () => {
             {/* Dual Data Metric Breakdown */}
             <div className="grid grid-cols-2 gap-2 pt-0.5">
               <div className="p-2 rounded-xl bg-sky-50/60 dark:bg-sky-950/30 border border-sky-200/60 dark:border-sky-900/40">
-                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">{t('dashboard:balance.actual')}</span>
-                <span className="font-mono font-black text-xs text-sky-900 dark:text-sky-200 block mt-0.5 truncate">
-                  {formatNumber(saharaTotalBalance)} <span className="text-[9px] font-normal">{t('common:units.liter')} ({saharaFill}%)</span>
+                <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 block leading-tight">{t('dashboard:balance.actual')}</span>
+                <span className="font-mono font-black text-[14px] leading-tight text-sky-900 dark:text-sky-200 block truncate">
+                  {formatNumber(saharaTotalBalance)} <span className="text-[10.5px] font-normal">{t('common:units.liter')} ({saharaFill}%)</span>
                 </span>
               </div>
 
               <div className="p-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80">
-                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">{t('dashboard:capacity.remainingOfCapacity')}</span>
-                <span className="font-mono font-black text-xs text-slate-900 dark:text-slate-100 block mt-0.5 truncate">
-                  {formatNumber(saharaRemainingCapacity)} <span className="text-[9px] font-normal text-slate-500 dark:text-slate-400">{t('common:units.liter')}</span>
+                <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 block leading-tight">{t('dashboard:capacity.remainingOfCapacity')}</span>
+                <span className="font-mono font-black text-[14px] leading-tight text-slate-900 dark:text-slate-100 block truncate">
+                  {formatNumber(saharaRemainingCapacity)} <span className="text-[10.5px] font-normal text-slate-500 dark:text-slate-400">{t('common:units.liter')}</span>
                 </span>
               </div>
             </div>
@@ -214,28 +214,28 @@ export const BlackOilSection: React.FC = () => {
             <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex items-center justify-between gap-1 overflow-hidden min-w-0">
               <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 shrink-0">
                 <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                <span className="text-xs font-bold whitespace-nowrap">{t('dashboard:flow.inboundColon')}</span>
+                <span className="text-xs 2xl:text-[13px] font-bold whitespace-nowrap">{t('dashboard:flow.inboundColon')}</span>
                 <ChangeBadge cur={saharaInbound} prev={saharaPrevDay?.inbound} upIsGood title={`${t('dashboard:compare.prevDay')} (${saharaPrevDay?.date ?? ''}): ${formatNumber(saharaPrevDay?.inbound ?? 0)}`} />
               </div>
               <span 
-                className="font-mono font-black text-slate-900 dark:text-white text-xs truncate"
+                className="font-mono font-black text-slate-900 dark:text-white text-xs 2xl:text-[13.5px] leading-tight truncate"
                 title={`${formatNumber(saharaInbound)} ${t('common:units.liter')}`}
               >
-                {formatNumber(saharaInbound)} <span className="text-[9px] font-normal text-slate-400">{t('common:units.liter')}</span>
+                {formatNumber(saharaInbound)} <span className="text-[10.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </span>
             </div>
 
             <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex items-center justify-between gap-1 overflow-hidden min-w-0">
               <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 shrink-0">
                 <Activity className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                <span className="text-xs font-bold whitespace-nowrap">{t('dashboard:flow.consumptionColon')}</span>
+                <span className="text-xs 2xl:text-[13px] font-bold whitespace-nowrap">{t('dashboard:flow.consumptionColon')}</span>
                 <ChangeBadge cur={saharaOutbound} prev={saharaPrevDay?.consumption} upIsGood={false} title={`${t('dashboard:compare.prevDay')} (${saharaPrevDay?.date ?? ''}): ${formatNumber(saharaPrevDay?.consumption ?? 0)}`} />
               </div>
               <span 
-                className="font-mono font-black text-slate-900 dark:text-white text-xs truncate"
+                className="font-mono font-black text-slate-900 dark:text-white text-xs 2xl:text-[13.5px] leading-tight truncate"
                 title={`${formatNumber(saharaOutbound)} ${t('common:units.liter')}`}
               >
-                {formatNumber(saharaOutbound)} <span className="text-[9px] font-normal text-slate-400">{t('common:units.liter')}</span>
+                {formatNumber(saharaOutbound)} <span className="text-[10.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </span>
             </div>
           </div>
@@ -330,16 +330,16 @@ export const BlackOilSection: React.FC = () => {
             {/* Dual Data Metric Breakdown */}
             <div className="grid grid-cols-2 gap-2 pt-0.5">
               <div className="p-2 rounded-xl bg-teal-50/60 dark:bg-teal-950/30 border border-teal-200/60 dark:border-teal-900/40">
-                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">{t('dashboard:balance.actual')}</span>
-                <span className="font-mono font-black text-xs text-teal-900 dark:text-teal-200 block mt-0.5 truncate">
-                  {formatNumber(etihadTotalBalance)} <span className="text-[9px] font-normal">{t('common:units.liter')} ({etihadFill}%)</span>
+                <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 block leading-tight">{t('dashboard:balance.actual')}</span>
+                <span className="font-mono font-black text-[14px] leading-tight text-teal-900 dark:text-teal-200 block truncate">
+                  {formatNumber(etihadTotalBalance)} <span className="text-[10.5px] font-normal">{t('common:units.liter')} ({etihadFill}%)</span>
                 </span>
               </div>
 
               <div className="p-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80">
-                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">{t('dashboard:capacity.remainingOfCapacity')}</span>
-                <span className="font-mono font-black text-xs text-slate-900 dark:text-slate-100 block mt-0.5 truncate">
-                  {formatNumber(etihadRemainingCapacity)} <span className="text-[9px] font-normal text-slate-500 dark:text-slate-400">{t('common:units.liter')}</span>
+                <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 block leading-tight">{t('dashboard:capacity.remainingOfCapacity')}</span>
+                <span className="font-mono font-black text-[14px] leading-tight text-slate-900 dark:text-slate-100 block truncate">
+                  {formatNumber(etihadRemainingCapacity)} <span className="text-[10.5px] font-normal text-slate-500 dark:text-slate-400">{t('common:units.liter')}</span>
                 </span>
               </div>
             </div>
@@ -351,28 +351,28 @@ export const BlackOilSection: React.FC = () => {
             <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex items-center justify-between gap-1 overflow-hidden min-w-0">
               <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 shrink-0">
                 <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                <span className="text-xs font-bold whitespace-nowrap">{t('dashboard:flow.inboundColon')}</span>
+                <span className="text-xs 2xl:text-[13px] font-bold whitespace-nowrap">{t('dashboard:flow.inboundColon')}</span>
                 <ChangeBadge cur={etihadInbound} prev={etihadPrevDay?.inbound} upIsGood title={`${t('dashboard:compare.prevDay')} (${etihadPrevDay?.date ?? ''}): ${formatNumber(etihadPrevDay?.inbound ?? 0)}`} />
               </div>
               <span 
-                className="font-mono font-black text-slate-900 dark:text-white text-xs truncate"
+                className="font-mono font-black text-slate-900 dark:text-white text-xs 2xl:text-[13.5px] leading-tight truncate"
                 title={`${formatNumber(etihadInbound)} ${t('common:units.liter')}`}
               >
-                {formatNumber(etihadInbound)} <span className="text-[9px] font-normal text-slate-400">{t('common:units.liter')}</span>
+                {formatNumber(etihadInbound)} <span className="text-[10.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </span>
             </div>
 
             <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex items-center justify-between gap-1 overflow-hidden min-w-0">
               <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 shrink-0">
                 <Activity className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                <span className="text-xs font-bold whitespace-nowrap">{t('dashboard:flow.consumptionColon')}</span>
+                <span className="text-xs 2xl:text-[13px] font-bold whitespace-nowrap">{t('dashboard:flow.consumptionColon')}</span>
                 <ChangeBadge cur={etihadOutbound} prev={etihadPrevDay?.consumption} upIsGood={false} title={`${t('dashboard:compare.prevDay')} (${etihadPrevDay?.date ?? ''}): ${formatNumber(etihadPrevDay?.consumption ?? 0)}`} />
               </div>
               <span 
-                className="font-mono font-black text-slate-900 dark:text-white text-xs truncate"
+                className="font-mono font-black text-slate-900 dark:text-white text-xs 2xl:text-[13.5px] leading-tight truncate"
                 title={`${formatNumber(etihadOutbound)} ${t('common:units.liter')}`}
               >
-                {formatNumber(etihadOutbound)} <span className="text-[9px] font-normal text-slate-400">{t('common:units.liter')}</span>
+                {formatNumber(etihadOutbound)} <span className="text-[10.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </span>
             </div>
           </div>
