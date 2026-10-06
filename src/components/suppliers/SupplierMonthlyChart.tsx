@@ -14,7 +14,7 @@ const ACCENT = '#0d9488';
 const compact = (v: number) => (v >= 1e6 ? `${Math.round(v / 1e5) / 10}M` : v >= 1e3 ? `${Math.round(v / 1e3)}k` : String(v));
 const priceOf = (d: InboundDelivery) => d.productPrice || d.pricePerLiter || 0;
 
-/** أعمدة الوارد الشهري (آخر 12 شهرًا فيها وارد): أعمدة ناعمة متدرجة، والشهر المحدد بلون كامل مع نقطة وبطاقة قيمة */
+/** أعمدة الوارد الشهري (آخر 12 شهرًا فيها وارد): أعمدة ناعمة متدرجة، وأعلى شهر (أو الذي تمر عليه الفأرة) بلون غامق مع نقطة وقيمته */
 export const SupplierMonthlyChart: React.FC<{ rows: Row[] }> = ({ rows }) => {
   const { t } = useTranslation(['suppliers', 'common']);
   const [hover, setHover] = useState<number | null>(null);
@@ -41,8 +41,9 @@ export const SupplierMonthlyChart: React.FC<{ rows: Row[] }> = ({ rows }) => {
   }, [rows]);
 
   if (!data.length) return null;
-  // الشهر المحدد: الذي تمر عليه الفأرة، وإلا آخر شهر
-  const active = hover ?? data.length - 1;
+  // الشهر المحدد: الذي تمر عليه الفأرة، وإلا الشهر صاحب أعلى وارد
+  const peak = data.reduce((best, p, i) => (p.qty > data[best].qty ? i : best), 0);
+  const active = hover ?? peak;
   const cur = data[active];
 
   return (
