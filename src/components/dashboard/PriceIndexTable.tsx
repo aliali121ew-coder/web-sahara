@@ -10,13 +10,13 @@ const ChangeCell: React.FC<{ pct: number }> = ({ pct }) => {
   const box = up ? 'bg-rose-50 text-rose-500 ring-rose-200 dark:bg-rose-950/40 dark:ring-rose-900'
     : down ? 'bg-emerald-50 text-emerald-600 ring-emerald-200 dark:bg-emerald-950/40 dark:ring-emerald-900'
     : 'bg-slate-50 text-slate-400 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700';
-  const text = up ? 'text-rose-600 dark:text-rose-400' : down ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400';
+  const text = up ? 'text-rose-600 dark:text-rose-400' : down ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400';
   return (
     <span className="inline-flex items-center gap-2">
       <span className={`w-6 h-6 rounded-md ring-1 flex items-center justify-center shrink-0 ${box}`}>
         {up ? <TrendingUp className="w-3.5 h-3.5" strokeWidth={2.5} /> : down ? <TrendingDown className="w-3.5 h-3.5" strokeWidth={2.5} /> : <Minus className="w-3.5 h-3.5" strokeWidth={2.5} />}
       </span>
-      <span dir="ltr" className={`text-[13px] font-bold tabular-nums ${text}`}>{up ? '+' : ''}{pct}%</span>
+      <span dir="ltr" className={`text-[14.5px] font-extrabold tabular-nums ${text}`}>{up ? '+' : ''}{pct}%</span>
     </span>
   );
 };
@@ -35,12 +35,13 @@ export const PriceIndexTable: React.FC = () => {
     .slice(0, 7);
 
   // كل العناوين في الوسط؛ خلية المجهز (الشعار والاسم) بمحاذاة البداية
-  const th = 'px-3 xl:px-4 pt-3 pb-1 text-center text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap';
+  const th = 'px-3 xl:px-4 pt-3 pb-1 text-center text-[13px] font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap';
   // كل صف كارت مستقل: خلفية وحدود أعلى/أسفل للخلايا، والطرفان بحد جانبي وزوايا دائرية
-  const td = 'px-3 xl:px-4 py-3 text-center text-[13px] text-slate-700 dark:text-slate-300 whitespace-nowrap bg-white dark:bg-slate-900 border-y border-slate-200/80 dark:border-slate-800 transition-colors group-hover:bg-teal-50/50 group-hover:border-teal-200 dark:group-hover:bg-teal-950/20 dark:group-hover:border-teal-900 first:border-s first:rounded-s-2xl last:border-e last:rounded-e-2xl';
+  const td = 'px-3 xl:px-4 py-3 text-center text-[14px] whitespace-nowrap bg-white dark:bg-slate-900 border-y border-slate-200/80 dark:border-slate-800 transition-colors group-hover:bg-teal-50/50 group-hover:border-teal-200 dark:group-hover:bg-teal-950/20 dark:group-hover:border-teal-900 first:border-s first:rounded-s-2xl last:border-e last:rounded-e-2xl';
   const open = () => setActiveTab('suppliers');
-  const iqd = 'text-[11px] font-normal text-slate-400';
-  const diffTone = (v: number) => (v > 0 ? 'text-rose-600 dark:text-rose-400' : v < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400');
+  const plain = 'font-medium text-slate-800 dark:text-slate-100';
+  const iqd = 'text-[11.5px] font-medium text-slate-500 dark:text-slate-400';
+  const diffTone = (v: number) => (v > 0 ? 'text-rose-600 dark:text-rose-400' : v < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500');
 
   return (
     <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-soft-card overflow-hidden">
@@ -79,18 +80,18 @@ export const PriceIndexTable: React.FC = () => {
             )}
             {rows.map(s => (
               <tr key={s.id} onClick={open} className="group cursor-pointer">
-                <td className={`${td} !text-start`}>
+                <td className={`${td} ${plain} !text-start`}>
                   <div className="flex items-center gap-2.5">
                     <Avatar s={s} size="w-8 h-8" text="text-xs" />
-                    <span className="text-[13px] font-medium text-slate-800 dark:text-slate-100 truncate max-w-[200px] xl:max-w-[260px]">{s.supplierName}</span>
+                    <span className="text-[14.5px] font-bold text-slate-900 dark:text-white truncate max-w-[200px] xl:max-w-[260px]">{s.supplierName}</span>
                   </div>
                 </td>
-                <td className={td}><span className="block truncate max-w-[160px] mx-auto">{s.product || '—'}</span></td>
-                <td className={`${td} tabular-nums`}>{s.density || '—'}</td>
-                <td className={td}><span className="block truncate max-w-[120px] mx-auto">{s.color || '—'}</span></td>
-                <td className={`${td} font-semibold text-slate-900 dark:text-white tabular-nums`}>{fmtPrice(s.priceIqd)} <span className={iqd}>{t('common:units.iqd')}</span></td>
-                <td className={`${td} tabular-nums`}>{fmtPrice(s.previousPriceIqd)} <span className={iqd}>{t('common:units.iqd')}</span></td>
-                <td className={`${td} tabular-nums font-semibold ${diffTone(s.priceIqd - s.previousPriceIqd)}`}>
+                <td className={`${td} ${plain}`}><span className="block truncate max-w-[160px] mx-auto">{s.product || '—'}</span></td>
+                <td className={`${td} ${plain} tabular-nums`}>{s.density || '—'}</td>
+                <td className={`${td} ${plain}`}><span className="block truncate max-w-[120px] mx-auto">{s.color || '—'}</span></td>
+                <td className={`${td} font-extrabold text-slate-900 dark:text-white tabular-nums`}>{fmtPrice(s.priceIqd)} <span className={iqd}>{t('common:units.iqd')}</span></td>
+                <td className={`${td} tabular-nums font-normal text-slate-700 dark:text-slate-300`}>{fmtPrice(s.previousPriceIqd)} <span className={iqd}>{t('common:units.iqd')}</span></td>
+                <td className={`${td} tabular-nums font-bold ${diffTone(s.priceIqd - s.previousPriceIqd)}`}>
                   {s.priceIqd - s.previousPriceIqd ? <><span dir="ltr">{s.priceIqd > s.previousPriceIqd ? '+' : '−'}{fmtPrice(Math.abs(s.priceIqd - s.previousPriceIqd))}</span> <span className={iqd}>{t('common:units.iqd')}</span></> : '—'}
                 </td>
                 <td className={td}><ChangeCell pct={s.changePercent} /></td>
