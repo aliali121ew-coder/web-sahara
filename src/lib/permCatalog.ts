@@ -98,7 +98,7 @@ const KEY_RULES: Rule[] = [
   { match: eq('sahara_inbound_deliveries', 'sahara_deliveries', 'sahara_inbound_visible_columns', 'sahara_print_visible_columns'), read: ['deliveries-sahara', 'dashboard', 'reports'], write: ['deliveries-sahara'] },
   { match: eq('etihad_inbound_deliveries'), read: ['deliveries-etihad', 'dashboard', 'reports'], write: ['deliveries-etihad'] },
   { match: eq('fuel_price_overrides_v1'), read: ['prices', 'dashboard'], write: ['prices'] },
-  { match: eq('sahara_supplier_prices'), read: ['prices', 'suppliers', 'dashboard'], write: ['prices', 'suppliers'] },
+  { match: eq('sahara_supplier_prices', 'sahara_supplier_mock_removed'), read: ['prices', 'suppliers', 'dashboard'], write: ['prices', 'suppliers'] },
   { match: eq('sahara_tasks', 'sahara_supply_requests'), read: ['tasks', 'dashboard'], write: ['tasks'] },
   { match: eq('sahara_fuel_metrics'), read: ['dashboard', 'reports'], write: ['dashboard'] },
   // قوائم مرجعية وإشعارات وتفضيلات عرض: لكل حساب مفعّل

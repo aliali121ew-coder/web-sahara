@@ -16,12 +16,16 @@ import {
   INITIAL_TANKS,
   INITIAL_FUEL_METRICS,
   INITIAL_SUPPLIER_PRICES,
+  INITIAL_SUPPLIER_PRICES_MOCK,
   INITIAL_SUPPLY_REQUESTS,
   INITIAL_MANAGERS,
   INITIAL_TASKS,
   INITIAL_MESSAGES,
   INITIAL_NOTIFICATIONS
 } from '../lib/mockData';
+import { buildArchiveSuppliers, sameSupplier } from '../lib/archiveSuppliers';
+
+const MOCK_SUPPLIERS_REMOVED_KEY = 'sahara_supplier_mock_removed';
 
 interface FuelDataContextType {
   activeTab: NavTabId;
@@ -357,6 +361,23 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     localStorage.setItem('sahara_supplier_prices', JSON.stringify(supplierPrices));
   }, [supplierPrices]);
+
+  // الموردون الحقيقيون من أرشيف الوارد: يُحذف التجريبيون مرة واحدة (ما لم يعدّلهم المستخدم)،
+  // ويُضاف أي مورد جديد يظهر في الوارد تلقائيًا بسعر آخر شحنة له
+  useEffect(() => {
+    const all = [...saharaDeliveries, ...etihadDeliveries];
+    if (!all.length) return;
+    setSupplierPrices(prev => {
+      let list = prev;
+      if (!localStorage.getItem(MOCK_SUPPLIERS_REMOVED_KEY)) {
+        const seed = new Map(INITIAL_SUPPLIER_PRICES_MOCK.map(m => [m.id, m.supplierName]));
+        list = list.filter(s => seed.get(s.id) !== s.supplierName);
+        localStorage.setItem(MOCK_SUPPLIERS_REMOVED_KEY, '1');
+      }
+      const missing = buildArchiveSuppliers(all).filter(a => !list.some(s => sameSupplier(s.supplierName, a.supplierName)));
+      return missing.length || list !== prev ? [...list, ...missing] : prev;
+    });
+  }, [saharaDeliveries, etihadDeliveries]);
 
   useEffect(() => {
     localStorage.setItem('sahara_inbound_deliveries', JSON.stringify(saharaDeliveries));

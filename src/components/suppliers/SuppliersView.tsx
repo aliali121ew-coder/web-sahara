@@ -9,19 +9,13 @@ import { usePermissions } from '../../lib/usePermission';
 import { enumText } from '../../i18n/enums';
 import { collator } from '../../i18n/format';
 import { formatNumber } from '../../lib/utils';
+import { deliveriesOfSupplier } from '../../lib/archiveSuppliers';
 import type { InboundDelivery, NavTabId, SupplierPriceRecord } from '../../types';
 
 type SortKey = 'name' | 'priceDesc' | 'priceAsc' | 'change' | 'updated';
 
 const CATEGORIES: SupplierPriceRecord['category'][] = ['تجاري', 'رسمي', 'حكومي'];
 
-/** تطبيع اسم المورد لمطابقته مع «الشركة المجهزة» في سجلات الوارد */
-const normName = (v = '') => v.replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/^شركه\s+/, '').replace(/\s+/g, ' ').trim();
-const sameSupplier = (a?: string, b?: string) => {
-  const x = normName(a), y = normName(b);
-  if (x.length < 4 || y.length < 4) return x === y && !!x;
-  return x.includes(y) || y.includes(x);
-};
 const dateKey = (d?: string) => (d || '').replace(/-/g, '/');
 
 const fmtPrice = (v: number) => formatNumber(Math.round(v * 100) / 100);
@@ -268,7 +262,7 @@ export const SuppliersView: React.FC = () => {
     const cache = new Map<string, { last?: { d: InboundDelivery; tab: NavTabId }; total: number; count: number }>();
     return (s: SupplierPriceRecord) => {
       if (!cache.has(s.id)) {
-        const hits = allDeliveries.filter(({ d }) => sameSupplier(d.supplierCompany, s.supplierName) || sameSupplier(d.supplierName, s.supplierName));
+        const hits = deliveriesOfSupplier(allDeliveries, x => x.d, s.supplierName);
         hits.sort((a, b) => dateKey(b.d.receiptUnloadDate || b.d.date).localeCompare(dateKey(a.d.receiptUnloadDate || a.d.date)));
         const total = hits.reduce((a, { d }) => a + (d.receivedQuantity || d.volumeLiters || 0), 0);
         cache.set(s.id, { last: hits[0], total, count: hits.length });

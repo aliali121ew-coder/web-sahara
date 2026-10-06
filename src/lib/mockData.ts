@@ -169,7 +169,11 @@ export const INITIAL_FUEL_METRICS: FuelProductMetric[] = [
   },
 ];
 
-export const INITIAL_SUPPLIER_PRICES: SupplierPriceRecord[] = [
+/** الموردون الحقيقيون يُستخرجون من أرشيف الوارد (lib/archiveSuppliers)؛ لا بيانات وهمية */
+export const INITIAL_SUPPLIER_PRICES: SupplierPriceRecord[] = [];
+
+/** الموردون التجريبيون القدامى: تُستخدم فقط للتعرّف عليهم وحذفهم من البيانات المحفوظة */
+export const INITIAL_SUPPLIER_PRICES_MOCK: SupplierPriceRecord[] = [
   {
     id: 'sup-1',
     supplierName: 'شركة توزيع المنتجات النفطية - كربلاء',
