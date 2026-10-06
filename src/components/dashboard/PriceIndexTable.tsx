@@ -36,10 +36,10 @@ const ChangeCell: React.FC<{ pct: number }> = ({ pct }) => {
 
 /**
  * مؤشرات الأسعار في الرئيسية: نفس أعمدة جدول «كل الموردين» (بلا الشركة المستلمة وآخر تحديث والإجراء)،
- * ومصدرها سجلات الأسعار نفسها؛ الضغط على صف يفتح صفحة الموردين.
+ * ومصدرها سجلات الأسعار نفسها؛ للعرض فقط (الصفوف لا تنقل لأي صفحة).
  */
 export const PriceIndexTable: React.FC = () => {
-  const { supplierPrices, searchQuery, setActiveTab } = useFuelData();
+  const { supplierPrices, searchQuery } = useFuelData();
   const { t } = useTranslation(['dashboard', 'common']);
   const rows = supplierPrices
     .filter(item => item.supplierName.includes(searchQuery) || item.product.includes(searchQuery))
@@ -50,8 +50,7 @@ export const PriceIndexTable: React.FC = () => {
   // كل العناوين في الوسط؛ خلية المجهز (الشعار والاسم) بمحاذاة البداية
   const th = 'px-3 xl:px-4 pt-3 pb-1 text-center text-[13px] font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap';
   // كل صف كارت مستقل: خلفية وحدود أعلى/أسفل للخلايا، والطرفان بحد جانبي وزوايا دائرية
-  const td = 'px-3 xl:px-4 py-3 text-center text-[14px] whitespace-nowrap bg-white dark:bg-slate-900 border-y border-slate-200/80 dark:border-slate-800 transition-colors group-hover:bg-teal-50/50 group-hover:border-teal-200 dark:group-hover:bg-teal-950/20 dark:group-hover:border-teal-900 first:border-s first:rounded-s-2xl last:border-e last:rounded-e-2xl';
-  const open = () => setActiveTab('suppliers');
+  const td = 'px-3 xl:px-4 py-3 text-center text-[14px] whitespace-nowrap bg-white dark:bg-slate-900 border-y border-slate-200/80 dark:border-slate-800 first:border-s first:rounded-s-2xl last:border-e last:rounded-e-2xl';
   const plain = 'font-medium text-slate-800 dark:text-slate-100';
   const iqd = 'text-[11.5px] font-medium text-slate-500 dark:text-slate-400';
 
@@ -91,7 +90,7 @@ export const PriceIndexTable: React.FC = () => {
               <tr><td colSpan={8} className="py-10 text-center text-sm text-slate-400">{t('dashboard:priceIndex.empty')}</td></tr>
             )}
             {rows.map(s => (
-              <tr key={s.id} onClick={open} className="group cursor-pointer">
+              <tr key={s.id}>
                 <td className={`${td} ${plain} !text-start`}>
                   <div className="flex items-center gap-2.5">
                     <Avatar s={s} size="w-8 h-8" text="text-xs" />
