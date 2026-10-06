@@ -9,10 +9,12 @@ import { usePermissions } from '../../lib/usePermission';
 import { enumText } from '../../i18n/enums';
 import { collator } from '../../i18n/format';
 import { formatNumber } from '../../lib/utils';
-import { deliveriesOfSupplier, sameSupplier } from '../../lib/archiveSuppliers';
+import { deliveriesOfSupplier, sameSupplier, equipperOf } from '../../lib/archiveSuppliers';
 import { requestInboundFocus, focusFromDelivery } from '../../lib/inboundFocus';
-import { setSessionValue } from '../../lib/useSessionState';
+import { setSessionValue, useSessionState } from '../../lib/useSessionState';
+import { SupplierProfile } from './SupplierProfile';
 import type { InboundDelivery, NavTabId, SupplierPriceRecord } from '../../types';
+import { fmtPrice, CompanyBadges, Avatar, type Company } from './supplierUi';
 
 type SortKey = 'name' | 'priceDesc' | 'priceAsc' | 'change' | 'updated';
 
@@ -20,41 +22,6 @@ const PAGE_SIZE = 10;
 const CATEGORIES: SupplierPriceRecord['category'][] = ['تجاري', 'رسمي', 'حكومي'];
 
 const dateKey = (d?: string) => (d || '').replace(/-/g, '/');
-
-const fmtPrice = (v: number) => formatNumber(Math.round(v * 100) / 100);
-
-type Company = 'sahara' | 'etihad';
-/** شارة الشركة المستلمة (أرشيف الوارد الذي ورد إليه المورد) */
-const CompanyBadges: React.FC<{ companies: Company[] }> = ({ companies }) => {
-  const { t } = useTranslation('suppliers');
-  if (!companies.length) return <span className="text-slate-300 dark:text-slate-600">—</span>;
-  return (
-    <span className="inline-flex flex-wrap gap-1">
-      {companies.map(c => (
-        <span key={c} className={`px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap ${c === 'sahara' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300' : 'bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300'}`}>
-          {t(`receiver.${c}`)}
-        </span>
-      ))}
-    </span>
-  );
-};
-
-const AVATAR_TONES = ['from-teal-400 to-emerald-600', 'from-sky-400 to-blue-600', 'from-amber-400 to-orange-600', 'from-violet-400 to-purple-600', 'from-rose-400 to-pink-600', 'from-lime-400 to-green-600'];
-const toneOf = (id: string) => AVATAR_TONES[[...id].reduce((a, c) => a + c.charCodeAt(0), 0) % AVATAR_TONES.length];
-const initialsOf = (name: string) => {
-  const words = name.replace(/[()]/g, '').split(/\s+/).filter(w => w && !['شركة', 'شركه', '-', 'و'].includes(w));
-  // حرف واحد: الحروف العربية المنفصلة بمسافة تبدو مشوّهة داخل الدائرة
-  return (words[0] ?? '').replace(/^ال(?=..)/, '').charAt(0) || '?';
-};
-
-const Avatar: React.FC<{ s: Pick<SupplierPriceRecord, 'id' | 'supplierName' | 'logo'>; size: string; text: string }> = ({ s, size, text }) =>
-  s.logo ? (
-    <img src={s.logo} alt="" className={`${size} rounded-full object-cover shrink-0 bg-white`} />
-  ) : (
-    <span className={`${size} ${text} rounded-full shrink-0 bg-gradient-to-br ${toneOf(s.id)} text-white font-black flex items-center justify-center select-none`}>
-      {initialsOf(s.supplierName)}
-    </span>
-  );
 
 /** شارة نسبة التغير: ارتفاع / انخفاض / ثابت */
 const ChangePill: React.FC<{ pct: number }> = ({ pct }) => {
@@ -275,6 +242,8 @@ export const SuppliersView: React.FC = () => {
   const { t } = useTranslation(['suppliers', 'common']);
   const { supplierPrices, saharaDeliveries, etihadDeliveries, saveSupplier, deleteSupplier, setActiveTab } = useFuelData();
   const editable = usePermissions().canEdit('suppliers');
+  // صفحة المورد الكاملة (تبقى مفتوحة بعد تحديث الصفحة)
+  const [profile, setProfile] = useSessionState<string | null>('supplier_profile', null);
 
   // يُعرض أولًا آخر مورد تحدّث سعره (نفس ترتيب الجدول الافتراضي)
   const [selectedId, setSelectedId] = useState<string | undefined>(() =>
@@ -367,6 +336,13 @@ export const SuppliersView: React.FC = () => {
 
   const iqdL = t('units.iqdPerLiter');
   const sel = selected ? inboundOf(selected) : undefined;
+  // ملخص بطاقة ملف المورد: كل صهاريجه في الشركتين وعدد مجهزيه
+  const profileStats = useMemo(() => {
+    if (!selected) return { tankers: 0, equippers: 0 };
+    const hits = deliveriesOfSupplier(allDeliveries, x => x.d, selected.supplierName);
+    const eq = new Set(hits.map(({ d, tab }) => `${tab}|${equipperOf(d) || selected.supplierName}`));
+    return { tankers: hits.length, equippers: eq.size };
+  }, [selected, allDeliveries]);
   const last = sel?.last;
   /** «عرض التفاصيل»: أرشيف وارد الشركة (التقارير ← الوارد) مصفّى على المورد وآخر يوم وارد له */
   const openArchive = () => {
@@ -403,6 +379,8 @@ export const SuppliersView: React.FC = () => {
   const th = 'px-3 xl:px-4 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap';
   const td = 'px-3 xl:px-4 py-3 text-[13px] text-slate-700 dark:text-slate-300 whitespace-nowrap';
 
+  if (profile) return <SupplierProfile name={profile} onBack={() => setProfile(null)} />;
+
   return (
     <div className="space-y-5 pb-10">
       {/* ── رأس المورد المختار ── */}
@@ -433,18 +411,28 @@ export const SuppliersView: React.FC = () => {
               </dl>
             </div>
           </div>
-          <div className="lg:w-64 shrink-0 rounded-2xl bg-slate-50 dark:bg-slate-800/60 px-6 py-5">
-            <div className="text-[13px] text-slate-500 dark:text-slate-400">{t('header.representative')}</div>
-            <div className="mt-2.5 flex items-center gap-3">
-              <span className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-300 to-slate-500 dark:from-slate-600 dark:to-slate-700 text-white font-bold flex items-center justify-center shrink-0">
-                {(selected.contactName || '?').trim().charAt(0)}
-              </span>
-              <div className="min-w-0">
-                <div className="text-[15px] font-medium text-slate-900 dark:text-white truncate">{selected.contactName || t('header.noContact')}</div>
-                <div className="text-xs text-slate-400 truncate">{selected.contactRole || '—'}</div>
+          {/* بطاقة ملف المورد: تفتح صفحة المورد الكاملة (وارد الشركتين والمجهزون) */}
+          <button type="button" onClick={() => setProfile(selected.supplierName)}
+            className="group lg:w-72 shrink-0 rounded-2xl p-4 text-start text-white bg-gradient-to-br from-teal-600 via-teal-500 to-[#5fb8a3] shadow-[0_8px_24px_-10px_rgba(13,148,136,0.6)] hover:shadow-[0_10px_28px_-8px_rgba(13,148,136,0.7)] transition-shadow cursor-pointer">
+            <div className="flex items-center gap-3">
+              <span className="p-0.5 rounded-xl bg-white/30 shrink-0"><Avatar s={selected} size="w-11 h-11" text="text-base" /></span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[11.5px] text-white/80">{t('profile.cardLabel')}</div>
+                <div className="text-[15px] font-semibold truncate">{selected.supplierName}</div>
+              </div>
+              <ChevronLeft className="w-5 h-5 text-white/80 ltr:rotate-180 transition-transform group-hover:-translate-x-0.5 ltr:group-hover:translate-x-0.5" />
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="rounded-xl bg-white/15 px-3 py-2">
+                <div className="text-[15px] font-bold tabular-nums">{formatNumber(profileStats.tankers)}</div>
+                <div className="text-[11px] text-white/80">{t('profile.statTankers')}</div>
+              </div>
+              <div className="rounded-xl bg-white/15 px-3 py-2">
+                <div className="text-[15px] font-bold tabular-nums">{formatNumber(profileStats.equippers)}</div>
+                <div className="text-[11px] text-white/80">{t('profile.statEquippers')}</div>
               </div>
             </div>
-          </div>
+          </button>
         </section>
       ) : (
         <section className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 p-10 text-center text-slate-400">{t('empty')}</section>

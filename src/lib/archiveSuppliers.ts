@@ -88,3 +88,9 @@ const buildCompanySuppliers = (deliveries: InboundDelivery[], company: 'sahara' 
   }
   return out;
 };
+
+/** المجهز في الشحنة: اسم المجهز، وإن كان فارغًا أو «_» فالشركة المجهزة نفسها */
+export const equipperOf = (d: InboundDelivery) => {
+  const n = (d.supplierName || '').replace(/\s+/g, ' ').trim();
+  return n === '' || n === '_' || n === '-' ? (d.supplierCompany || '').replace(/\s+/g, ' ').trim() : n;
+};

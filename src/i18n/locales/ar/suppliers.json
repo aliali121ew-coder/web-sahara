@@ -89,5 +89,43 @@
   "receiver": {
     "sahara": "الصحاري",
     "etihad": "الاتحاد"
+  },
+  "profile": {
+    "cardLabel": "ملف المورد",
+    "back": "الموردين",
+    "subtitle": "وارد الصحاري والاتحاد من الأرشيف",
+    "highest": "أعلى سعر",
+    "lowest": "أدنى سعر",
+    "tankersOf": "صهاريج {{company}}",
+    "tapToFilter": "اضغط للتصفية",
+    "totalInbound": "الوارد الكلي",
+    "tankersTotal_zero": "لا صهاريج",
+    "tankersTotal_one": "صهريج واحد",
+    "tankersTotal_two": "صهريجان",
+    "tankersTotal_few": "{{count}} صهاريج",
+    "tankersTotal_many": "{{count}} صهريجًا",
+    "tankersTotal_other": "{{count}} صهريج",
+    "archiveTitle": "سجل الوارد",
+    "archiveSummary": "{{count}} شحنة · {{qty}} لتر",
+    "empty": "لا توجد شحنات",
+    "col": {
+      "date": "التاريخ",
+      "equipper": "المجهز",
+      "driver": "السائق",
+      "truck": "رقم العجلة",
+      "qty": "الكمية",
+      "price": "السعر"
+    },
+    "statTankers": "الصهاريج",
+    "statEquippers": "المجهزون",
+    "statLast": "آخر وارد",
+    "equippersCount_zero": "لا مجهزين",
+    "equippersCount_one": "مجهز واحد",
+    "equippersCount_two": "مجهزان",
+    "equippersCount_few": "{{count}} مجهزين",
+    "equippersCount_many": "{{count}} مجهزًا",
+    "equippersCount_other": "{{count}} مجهز",
+    "tankersShort": "صهريج",
+    "showAll": "عرض كل الوارد"
   }
 }

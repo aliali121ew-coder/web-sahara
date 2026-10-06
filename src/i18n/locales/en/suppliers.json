@@ -89,5 +89,35 @@
   "receiver": {
     "sahara": "Sahara",
     "etihad": "Etihad"
+  },
+  "profile": {
+    "cardLabel": "Supplier profile",
+    "back": "Suppliers",
+    "subtitle": "Sahara and Etihad inbound from the archive",
+    "highest": "Highest price",
+    "lowest": "Lowest price",
+    "tankersOf": "{{company}} tankers",
+    "tapToFilter": "Tap to filter",
+    "totalInbound": "Total inbound",
+    "tankersTotal_one": "{{count}} tanker",
+    "tankersTotal_other": "{{count}} tankers",
+    "archiveTitle": "Inbound log",
+    "archiveSummary": "{{count}} shipments · {{qty}} L",
+    "empty": "No shipments",
+    "col": {
+      "date": "Date",
+      "equipper": "Equipper",
+      "driver": "Driver",
+      "truck": "Truck no.",
+      "qty": "Quantity",
+      "price": "Price"
+    },
+    "statTankers": "Tankers",
+    "statEquippers": "Equippers",
+    "statLast": "Last inbound",
+    "equippersCount_one": "{{count}} equipper",
+    "equippersCount_other": "{{count}} equippers",
+    "tankersShort": "tankers",
+    "showAll": "Show all inbound"
   }
 }
