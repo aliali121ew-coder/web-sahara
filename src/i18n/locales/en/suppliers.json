@@ -76,5 +76,11 @@
     "removeLogo": "Remove logo",
     "priceNote": "{{old}} becomes the previous price, and the dashboard price index updates right away",
     "deleteConfirm": "Delete supplier “{{name}}”? It will also be removed from the price index."
+  },
+  "pager": {
+    "label": "Pagination",
+    "prev": "Previous",
+    "next": "Next",
+    "range": "{{from}}–{{to}} of {{total}}"
   }
 }

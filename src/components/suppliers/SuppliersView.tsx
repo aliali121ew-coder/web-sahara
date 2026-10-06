@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Search, ArrowDownUp, ChevronDown, Pencil, Plus, Download, Coins, History, TrendingUp, TrendingDown,
+  Search, ArrowDownUp, ChevronDown, ChevronLeft, ChevronRight, Pencil, Plus, Download, Coins, History, TrendingUp, TrendingDown,
   Minus, X, Trash2, ImagePlus, Truck, Check,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +14,7 @@ import type { InboundDelivery, NavTabId, SupplierPriceRecord } from '../../types
 
 type SortKey = 'name' | 'priceDesc' | 'priceAsc' | 'change' | 'updated';
 
+const PAGE_SIZE = 10;
 const CATEGORIES: SupplierPriceRecord['category'][] = ['تجاري', 'رسمي', 'حكومي'];
 
 const dateKey = (d?: string) => (d || '').replace(/-/g, '/');
@@ -247,6 +248,7 @@ export const SuppliersView: React.FC = () => {
   const [sortOpen, setSortOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(0);
   const [editing, setEditing] = useState<{ rec: SupplierPriceRecord; isNew: boolean } | null>(null);
   const sortRef = useOutside(sortOpen, () => setSortOpen(false));
   const menuRef = useOutside(menuOpen, () => setMenuOpen(false));
@@ -314,7 +316,12 @@ export const SuppliersView: React.FC = () => {
     { id: 'change', label: t('sort.change') }, { id: 'updated', label: t('sort.updated') },
   ];
 
-  const allChecked = rows.length > 0 && rows.every(r => checked.has(r.id));
+  // 10 موردين في كل صفحة؛ البحث أو الترتيب يعيد للصفحة الأولى
+  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pageRows = rows.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
+  useEffect(() => { setPage(0); }, [query, sort]);
+  const allChecked = pageRows.length > 0 && pageRows.every(r => checked.has(r.id));
   const th = 'px-4 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap';
   const td = 'px-4 py-3 text-[13px] text-slate-700 dark:text-slate-300 whitespace-nowrap';
 
@@ -468,7 +475,7 @@ export const SuppliersView: React.FC = () => {
                 <tr>
                   <th className={`${th} w-10`}>
                     <input type="checkbox" aria-label={t('table.selectAll')} checked={allChecked}
-                      onChange={() => setChecked(allChecked ? new Set() : new Set(rows.map(r => r.id)))}
+                      onChange={() => setChecked(prev => { const n = new Set(prev); pageRows.forEach(r => (allChecked ? n.delete(r.id) : n.add(r.id))); return n; })}
                       className="w-4 h-4 rounded border-slate-300 accent-teal-500 cursor-pointer" />
                   </th>
                   <th className={th}>{t('table.supplier')}</th>
@@ -485,7 +492,7 @@ export const SuppliersView: React.FC = () => {
                 {rows.length === 0 && (
                   <tr><td colSpan={9} className="py-12 text-center text-sm text-slate-400">{t('empty')}</td></tr>
                 )}
-                {rows.map(s => {
+                {pageRows.map(s => {
                   const active = s.id === selected?.id;
                   const inb = inboundOf(s);
                   return (
@@ -534,6 +541,29 @@ export const SuppliersView: React.FC = () => {
               </tbody>
             </table>
         </div>
+        {rows.length > PAGE_SIZE && (
+          <div className="px-4 sm:px-6 py-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+            <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+              {t('pager.range', { from: safePage * PAGE_SIZE + 1, to: safePage * PAGE_SIZE + pageRows.length, total: rows.length })}
+            </span>
+            <nav aria-label={t('pager.label')} className="flex items-center gap-1">
+              <button type="button" disabled={safePage === 0} onClick={() => setPage(safePage - 1)} aria-label={t('pager.prev')}
+                className="h-8 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+                <ChevronRight className="w-3.5 h-3.5 ltr:rotate-180" /> {t('pager.prev')}
+              </button>
+              {Array.from({ length: pageCount }, (_, i) => (
+                <button key={i} type="button" onClick={() => setPage(i)} aria-current={i === safePage ? 'page' : undefined}
+                  className={`w-8 h-8 rounded-lg text-xs font-medium tabular-nums cursor-pointer ${i === safePage ? 'bg-teal-500 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                  {i + 1}
+                </button>
+              ))}
+              <button type="button" disabled={safePage >= pageCount - 1} onClick={() => setPage(safePage + 1)} aria-label={t('pager.next')}
+                className="h-8 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+                {t('pager.next')} <ChevronLeft className="w-3.5 h-3.5 ltr:rotate-180" />
+              </button>
+            </nav>
+          </div>
+        )}
       </section>
 
       {editing && (

@@ -19,7 +19,10 @@ export const PriceIndexTable: React.FC = () => {
       item.supplierName.includes(searchQuery) ||
       item.product.includes(searchQuery);
     return matchesSearch;
-  });
+  })
+    // الرئيسية تعرض آخر 7 موردين تحديثًا فقط؛ القائمة الكاملة في صفحة الموردين
+    .sort((a, b) => b.lastUpdated.replace(/-/g, '/').localeCompare(a.lastUpdated.replace(/-/g, '/')))
+    .slice(0, 7);
 
   return (
     <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-soft-card space-y-4">
