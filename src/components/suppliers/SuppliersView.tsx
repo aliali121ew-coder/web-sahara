@@ -9,7 +9,7 @@ import { usePermissions } from '../../lib/usePermission';
 import { enumText } from '../../i18n/enums';
 import { collator } from '../../i18n/format';
 import { formatNumber } from '../../lib/utils';
-import { deliveriesOfSupplier } from '../../lib/archiveSuppliers';
+import { deliveriesOfSupplier, sameSupplier } from '../../lib/archiveSuppliers';
 import { requestInboundFocus, focusFromDelivery } from '../../lib/inboundFocus';
 import { setSessionValue } from '../../lib/useSessionState';
 import type { InboundDelivery, NavTabId, SupplierPriceRecord } from '../../types';
@@ -374,6 +374,7 @@ export const SuppliersView: React.FC = () => {
   const ownCo: Company = selected?.company ?? 'sahara';
   const otherCo: Company = ownCo === 'sahara' ? 'etihad' : 'sahara';
   const ownMarket = market[ownCo];
+  const inBothCompanies = !!selected && supplierPrices.some(x => x.id !== selected.id && x.company === otherCo && sameSupplier(x.supplierName, selected.supplierName));
   const vsMarket = selected && selected.priceIqd && ownMarket.avg ? Math.round(((selected.priceIqd - ownMarket.avg) / ownMarket.avg) * 1000) / 10 : 0;
   const marketLabel = (c: Company) => t('cards.marketAvgOf', { company: t(`receiver.${c}`), period: t('common:units.days', { count: market[c].days }) });
 
@@ -479,7 +480,8 @@ export const SuppliersView: React.FC = () => {
             rows={[
               { label: marketLabel(ownCo), value: ownMarket.avg ? fmtPrice(ownMarket.avg) : '—' },
               { label: t('cards.vsMarket'), value: ownMarket.avg && selected.priceIqd ? <Signed v={vsMarket} suffix="%" /> : '—' },
-              { label: marketLabel(otherCo), value: <span className="text-slate-400 font-medium">{market[otherCo].avg ? fmtPrice(market[otherCo].avg) : '—'}</span> },
+              // متوسط الشركة الأخرى فقط إن كان نفس المورد يورّد لها أيضًا
+              ...(inBothCompanies ? [{ label: marketLabel(otherCo), value: <span className="text-slate-400 font-medium">{market[otherCo].avg ? fmtPrice(market[otherCo].avg) : '—'}</span> }] : []),
             ]}
           />
           <StatCard
