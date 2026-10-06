@@ -187,7 +187,7 @@ export const SaharaGasSection: React.FC = () => {
                 </span>
               </div>
               <div className="flex items-baseline gap-2 mt-1.5">
-                <span className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
+                <span className="text-3xl sm:text-4xl lg:text-[36px] font-black text-slate-900 dark:text-white font-mono tracking-tight">
                   {formatNumber(actualBalance)}
                 </span>
                 <span className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">{t('common:units.liter')}</span>
@@ -460,7 +460,7 @@ export const SaharaGasSection: React.FC = () => {
 
           {/* 1. Prediction Headline (Enlarged) */}
           <div className="text-center py-1.5 space-y-1.5">
-            <div className="text-3xl sm:text-4xl lg:text-[34px] font-black text-slate-900 dark:text-white tracking-tight leading-none drop-shadow-2xs">
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-none drop-shadow-2xs">
               {t('dashboard:coverage.until')} <span className="text-amber-600 dark:text-amber-400">{coverageDays === null ? '—' : `${t('common:units.days', { count: coverageDays })}`}</span>
             </div>
             <p className="text-xs sm:text-[12.5px] text-slate-500 dark:text-slate-400 font-semibold leading-none">

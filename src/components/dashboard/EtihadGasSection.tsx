@@ -152,7 +152,7 @@ export const EtihadGasSection: React.FC = () => {
                 </span>
               </div>
               <div className="flex items-baseline gap-2 mt-1.5">
-                <span className="text-3xl sm:text-4xl lg:text-5xl font-black font-mono tracking-tight text-slate-900 dark:text-white">
+                <span className="text-3xl sm:text-4xl lg:text-[36px] font-black font-mono tracking-tight text-slate-900 dark:text-white">
                   {formatNumber(etihadTotalBalance)}
                 </span>
                 <span className="text-base sm:text-lg font-bold text-teal-600 dark:text-teal-400">{t('common:units.liter')}</span>
