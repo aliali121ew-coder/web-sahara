@@ -324,6 +324,9 @@ export const SuppliersView: React.FC = () => {
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount - 1);
   const pageRows = rows.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
+  // أرقام الصفحات: 5 حول الصفحة الحالية حتى لا يتجاوز الشريط عرض الهاتف
+  const winStart = Math.max(0, Math.min(safePage - 2, pageCount - 5));
+  const pageWindow = Array.from({ length: Math.min(5, pageCount) }, (_, i) => winStart + i);
   useEffect(() => { setPage(0); }, [query, sort]);
   const allChecked = pageRows.length > 0 && pageRows.every(r => checked.has(r.id));
   const th = 'px-4 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap';
@@ -334,16 +337,16 @@ export const SuppliersView: React.FC = () => {
       {/* ── رأس المورد المختار ── */}
       {selected ? (
         <section key={selected.id} className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-[0_1px_3px_rgba(15,23,42,0.05)] p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center gap-5 animate-[fadeIn_.25s_ease]">
-          <div className="flex items-center gap-5 sm:gap-7 flex-1 min-w-0">
+          <div className="flex items-start sm:items-center gap-4 sm:gap-7 flex-1 min-w-0">
             <span className="p-1 rounded-full bg-white dark:bg-slate-900 shadow-[0_4px_14px_rgba(15,23,42,0.12)] shrink-0">
-              <Avatar s={selected} size="w-20 h-20 sm:w-24 sm:h-24" text="text-2xl sm:text-3xl" />
+              <Avatar s={selected} size="w-16 h-16 sm:w-24 sm:h-24" text="text-xl sm:text-3xl" />
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-3">
-                <h1 className="text-xl sm:text-[28px] leading-tight font-bold text-slate-900 dark:text-white truncate">{selected.supplierName}</h1>
+                <h1 className="text-lg sm:text-[28px] leading-tight font-bold text-slate-900 dark:text-white break-words">{selected.supplierName}</h1>
                 <span className="px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-300 text-xs font-medium">{enumText(selected.category)}</span>
               </div>
-              <dl className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-3">
+              <dl className="mt-3 sm:mt-4 grid grid-cols-2 sm:grid-cols-3 gap-x-4 sm:gap-x-8 gap-y-3">
                 {[
                   { k: t('fields.product'), v: selected.product },
                   { k: t('fields.phone'), v: selected.phone, ltr: true },
@@ -480,7 +483,51 @@ export const SuppliersView: React.FC = () => {
             </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* الهاتف والتابلت: بطاقة لكل مورد بدل الجدول العريض */}
+        <div className="lg:hidden px-3 sm:px-4 pb-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {rows.length === 0 && <p className="sm:col-span-2 py-10 text-center text-sm text-slate-400">{t('empty')}</p>}
+          {pageRows.map(s => {
+            const active = s.id === selected?.id;
+            const inb = inboundOf(s);
+            return (
+              <article key={s.id} onClick={() => setSelectedId(s.id)} aria-selected={active}
+                className={`rounded-2xl border p-3.5 cursor-pointer transition-colors ${active ? 'border-teal-400 bg-teal-50/60 dark:bg-teal-950/30 dark:border-teal-700' : 'border-slate-200/80 dark:border-slate-800 hover:bg-slate-50/80 dark:hover:bg-slate-800/40'}`}>
+                <div className="flex items-center gap-3">
+                  <Avatar s={s} size="w-10 h-10" text="text-sm" />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold text-slate-900 dark:text-white truncate">{s.supplierName}</div>
+                    <div className="text-[11px] text-slate-400 truncate">{s.product}</div>
+                  </div>
+                  <ChangePill pct={s.changePercent} />
+                </div>
+                <dl className="mt-3 grid grid-cols-2 min-[480px]:grid-cols-4 sm:grid-cols-2 gap-2 text-center">
+                  {[
+                    { k: t('table.current'), v: fmtPrice(s.priceIqd), strong: true },
+                    { k: t('table.previous'), v: fmtPrice(s.previousPriceIqd) },
+                    { k: t('table.inbound'), v: inb.count ? formatNumber(inb.total) : '—' },
+                    { k: t('table.tankers'), v: inb.count ? formatNumber(inb.count) : '—' },
+                  ].map(({ k, v, strong }) => (
+                    <div key={k} className="rounded-xl bg-slate-50 dark:bg-slate-800/60 px-1.5 py-2 min-w-0">
+                      <dt className="text-[10.5px] text-slate-400 truncate">{k}</dt>
+                      <dd className={`mt-0.5 text-[13px] tabular-nums truncate ${strong ? 'font-bold text-slate-900 dark:text-white' : 'font-medium text-slate-700 dark:text-slate-200'}`}>{v}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-slate-400 tabular-nums">{t('table.updated')}: {s.lastUpdated || '—'}</span>
+                  {editable && (
+                    <button type="button" onClick={e => { e.stopPropagation(); setEditing({ rec: s, isNew: false }); }}
+                      className="h-7 px-3 rounded-md bg-teal-500 hover:bg-teal-600 text-white text-xs font-medium flex items-center gap-1.5 cursor-pointer">
+                      <Pencil className="w-3 h-3" /> {t('common:actions.edit')}
+                    </button>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+
+        <div className="hidden lg:block overflow-x-auto">
             <table className="w-full min-w-[980px]">
               <thead className="bg-slate-50 dark:bg-slate-800/60">
                 <tr>
@@ -560,9 +607,9 @@ export const SuppliersView: React.FC = () => {
             <nav aria-label={t('pager.label')} className="flex items-center gap-1">
               <button type="button" disabled={safePage === 0} onClick={() => setPage(safePage - 1)} aria-label={t('pager.prev')}
                 className="h-8 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
-                <ChevronRight className="w-3.5 h-3.5 ltr:rotate-180" /> {t('pager.prev')}
+                <ChevronRight className="w-3.5 h-3.5 ltr:rotate-180" /> <span className="hidden sm:inline">{t('pager.prev')}</span>
               </button>
-              {Array.from({ length: pageCount }, (_, i) => (
+              {pageWindow.map(i => (
                 <button key={i} type="button" onClick={() => setPage(i)} aria-current={i === safePage ? 'page' : undefined}
                   className={`w-8 h-8 rounded-lg text-xs font-medium tabular-nums cursor-pointer ${i === safePage ? 'bg-teal-500 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                   {i + 1}
@@ -570,7 +617,7 @@ export const SuppliersView: React.FC = () => {
               ))}
               <button type="button" disabled={safePage >= pageCount - 1} onClick={() => setPage(safePage + 1)} aria-label={t('pager.next')}
                 className="h-8 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
-                {t('pager.next')} <ChevronLeft className="w-3.5 h-3.5 ltr:rotate-180" />
+                <span className="hidden sm:inline">{t('pager.next')}</span> <ChevronLeft className="w-3.5 h-3.5 ltr:rotate-180" />
               </button>
             </nav>
           </div>
