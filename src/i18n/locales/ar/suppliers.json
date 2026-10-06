@@ -26,12 +26,16 @@
     "lastInbound": "آخر وارد",
     "updatedOn": "آخر تحديث",
     "difference": "الفرق",
-    "marketAvg": "متوسط السوق",
+    "marketAvg": "المتوسط",
     "vsPrevious": "عن السعر السابق",
     "lastChange": "آخر تغيير",
     "vsMarket": "عن متوسط السوق",
     "viewDetails": "عرض التفاصيل",
-    "noInbound": "لا توجد شحنات واردة مسجلة"
+    "noInbound": "لا توجد شحنات واردة مسجلة",
+    "tankers": "عدد الصهاريج",
+    "lastDay": "آخر يوم وارد",
+    "totalTankers": "الإجمالي",
+    "lastDayOn": "آخر وارد في {{date}}"
   },
   "change": {
     "up": "ارتفاع",

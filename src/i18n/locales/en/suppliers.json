@@ -26,12 +26,16 @@
     "lastInbound": "Last inbound",
     "updatedOn": "Last updated",
     "difference": "Difference",
-    "marketAvg": "Market average",
+    "marketAvg": "Market avg",
     "vsPrevious": "vs previous price",
     "lastChange": "Last change",
     "vsMarket": "vs market average",
     "viewDetails": "View details",
-    "noInbound": "No inbound shipments recorded"
+    "noInbound": "No inbound shipments recorded",
+    "tankers": "Tankers",
+    "lastDay": "Last inbound day",
+    "totalTankers": "Total",
+    "lastDayOn": "Last inbound on {{date}}"
   },
   "change": {
     "up": "Up",

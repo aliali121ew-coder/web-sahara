@@ -48,21 +48,21 @@ const ChangePill: React.FC<{ pct: number }> = ({ pct }) => {
   return <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap ${cls}`}>{label}{pct !== 0 && <span dir="ltr">{pct > 0 ? '+' : ''}{pct}%</span>}</span>;
 };
 
-interface KpiValue { value: string; label: string; tone: 'green' | 'orange' }
+interface KpiValue { value: string; label: string; tone: 'green' | 'orange'; small?: boolean }
 const KpiCard: React.FC<{
   icon: React.ReactNode; iconBg: string; title: string; a: KpiValue; b: KpiValue;
-  trend?: { pct: number; text: string }; action?: { label: string; onClick: () => void };
-}> = ({ icon, iconBg, title, a, b, trend, action }) => (
-  <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-[0_1px_3px_rgba(15,23,42,0.06)] flex flex-col min-w-0">
-    <div className="px-5 pt-5 pb-4 flex-1">
+  trend?: { pct: number; text: string }; note?: string; action?: { label: string; onClick: () => void }; className?: string;
+}> = ({ icon, iconBg, title, a, b, trend, note, action, className = '' }) => (
+  <div className={`${className} rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-[0_1px_3px_rgba(15,23,42,0.06)] flex flex-col min-w-0`}>
+    <div className="px-4 pt-4 pb-3 flex-1">
       <div className="flex items-center gap-2.5">
         <span className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${iconBg}`}>{icon}</span>
-        <span className="text-[15px] font-medium text-slate-600 dark:text-slate-300 truncate">{title}</span>
+        <span className="text-sm font-medium text-slate-600 dark:text-slate-300 truncate">{title}</span>
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-3">
+      <div className="mt-3.5 grid grid-cols-2 gap-2">
         {[a, b].map((v, i) => (
           <div key={i} className="min-w-0">
-            <div className="text-[22px] leading-tight font-bold text-slate-900 dark:text-white truncate tabular-nums">{v.value}</div>
+            <div className={`${v.small ? 'text-sm xl:text-[15px] pt-1' : 'text-lg xl:text-xl'} leading-tight font-bold text-slate-900 dark:text-white truncate tabular-nums`} title={v.value}>{v.value}</div>
             <div className="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase text-slate-500 dark:text-slate-400 truncate">
               <span className={`w-2.5 h-2.5 rounded-full border-2 shrink-0 ${v.tone === 'green' ? 'border-emerald-500' : 'border-orange-400'}`} />
               {v.label}
@@ -71,7 +71,7 @@ const KpiCard: React.FC<{
         ))}
       </div>
     </div>
-    <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 text-[11.5px]">
+    <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 text-[11.5px]">
       {trend ? (
         <span className="flex items-center gap-1.5 min-w-0">
           {trend.pct >= 0
@@ -80,7 +80,7 @@ const KpiCard: React.FC<{
           <span dir="ltr" className={`font-semibold ${trend.pct > 0 ? 'text-rose-500' : trend.pct < 0 ? 'text-emerald-500' : 'text-slate-400'}`}>{trend.pct > 0 ? '+' : ''}{trend.pct}%</span>
           <span className="text-slate-400 truncate">{trend.text}</span>
         </span>
-      ) : <span />}
+      ) : note ? <span className="text-slate-400 truncate tabular-nums">{note}</span> : <span />}
       {action && (
         <button type="button" onClick={action.onClick} className="font-medium text-slate-700 dark:text-slate-200 hover:text-teal-600 dark:hover:text-teal-400 whitespace-nowrap cursor-pointer">
           {action.label}
@@ -261,13 +261,16 @@ export const SuppliersView: React.FC = () => {
   );
   /** شحنات المورد في أرشيف الوارد (الشركتين): الأحدث أولًا، مع مجموع الكمية */
   const inboundOf = useMemo(() => {
-    const cache = new Map<string, { last?: { d: InboundDelivery; tab: NavTabId }; total: number; count: number }>();
+    const cache = new Map<string, { last?: { d: InboundDelivery; tab: NavTabId }; total: number; count: number; lastDay: string; lastDayCount: number }>();
     return (s: SupplierPriceRecord) => {
       if (!cache.has(s.id)) {
         const hits = deliveriesOfSupplier(allDeliveries, x => x.d, s.supplierName);
         hits.sort((a, b) => dateKey(b.d.receiptUnloadDate || b.d.date).localeCompare(dateKey(a.d.receiptUnloadDate || a.d.date)));
         const total = hits.reduce((a, { d }) => a + (d.receivedQuantity || d.volumeLiters || 0), 0);
-        cache.set(s.id, { last: hits[0], total, count: hits.length });
+        // صهاريج آخر يوم وارد من المورد
+        const lastDay = hits[0] ? dateKey(hits[0].d.receiptUnloadDate || hits[0].d.date) : '';
+        const lastDayCount = lastDay ? hits.filter(({ d }) => dateKey(d.receiptUnloadDate || d.date) === lastDay).length : 0;
+        cache.set(s.id, { last: hits[0], total, count: hits.length, lastDay, lastDayCount });
       }
       return cache.get(s.id)!;
     };
@@ -305,7 +308,8 @@ export const SuppliersView: React.FC = () => {
   };
 
   const iqdL = t('units.iqdPerLiter');
-  const last = selected ? inboundOf(selected).last : undefined;
+  const sel = selected ? inboundOf(selected) : undefined;
+  const last = sel?.last;
   const lastQty = last ? (last.d.receivedQuantity || last.d.volumeLiters || 0) : 0;
   const lastPrice = last ? (last.d.productPrice || last.d.pricePerLiter || 0) : 0;
   const diff = selected ? selected.priceIqd - selected.previousPriceIqd : 0;
@@ -374,12 +378,12 @@ export const SuppliersView: React.FC = () => {
 
       {/* ── البطاقات ── */}
       {selected && (
-        <div key={`k-${selected.id}`} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_0.7fr] gap-4 animate-[fadeIn_.25s_ease]">
+        <div key={`k-${selected.id}`} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 xl:gap-4 animate-[fadeIn_.25s_ease]">
           <KpiCard
             icon={<Coins className="w-4 h-4 text-white" />} iconBg="bg-amber-400"
             title={t('cards.current')}
             a={{ value: fmtPrice(selected.priceIqd), label: iqdL, tone: 'green' }}
-            b={{ value: selected.lastUpdated || '—', label: t('cards.updatedOn'), tone: 'orange' }}
+            b={{ value: selected.lastUpdated || '—', label: t('cards.updatedOn'), tone: 'orange', small: true }}
             trend={{ pct: selected.changePercent, text: t('cards.vsPrevious') }}
           />
           <KpiCard
@@ -397,11 +401,18 @@ export const SuppliersView: React.FC = () => {
             b={{ value: fmtPrice(marketAvg), label: t('cards.marketAvg'), tone: 'orange' }}
             trend={{ pct: vsMarket, text: t('cards.vsMarket') }}
           />
-          <div className="rounded-2xl p-5 flex flex-col items-center justify-center text-center text-white bg-gradient-to-br from-teal-600 via-teal-500 to-[#9dcf9f] shadow-[0_8px_24px_-8px_rgba(13,148,136,0.55)] min-h-[150px]">
+          <KpiCard
+            icon={<Truck className="w-4 h-4 text-sky-600" />} iconBg="bg-sky-50 dark:bg-sky-950/50"
+            title={t('cards.tankers')}
+            a={{ value: sel?.lastDayCount ? formatNumber(sel.lastDayCount) : '—', label: t('cards.lastDay'), tone: 'green' }}
+            b={{ value: sel?.count ? formatNumber(sel.count) : '—', label: t('cards.totalTankers'), tone: 'orange' }}
+            note={sel?.lastDay ? t('cards.lastDayOn', { date: sel.lastDay }) : t('cards.noInbound')}
+          />
+          <div className="sm:col-span-2 lg:col-span-1 rounded-2xl p-4 flex flex-col items-center justify-center text-center text-white bg-gradient-to-br from-teal-600 via-teal-500 to-[#9dcf9f] shadow-[0_8px_24px_-8px_rgba(13,148,136,0.55)] min-h-[150px]">
             <div className="text-[13px] text-white/85 flex items-center gap-1.5"><Truck className="w-3.5 h-3.5" /> {t('cards.lastInbound')}</div>
             {last ? (
               <>
-                <div className="mt-1.5 text-[26px] font-bold leading-tight tabular-nums">{formatNumber(lastQty)} <span className="text-sm font-semibold">{t('common:units.liter')}</span></div>
+                <div className="mt-1.5 text-2xl font-bold leading-tight tabular-nums">{formatNumber(lastQty)} <span className="text-sm font-semibold">{t('common:units.liter')}</span></div>
                 <div className="mt-1 text-[11.5px] text-white/80 tabular-nums">{last.d.receiptUnloadDate || last.d.date}{lastPrice ? ` · ${fmtPrice(lastPrice)} ${iqdL}` : ''}</div>
                 <button type="button" onClick={() => setActiveTab(last.tab)} className="mt-3 w-full max-w-[150px] h-8 rounded-full bg-white/20 hover:bg-white/30 text-[12.5px] font-medium transition-colors cursor-pointer">
                   {t('cards.viewDetails')}
