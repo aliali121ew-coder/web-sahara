@@ -177,10 +177,14 @@ const decimate = (pts: Bucket[]): Bucket[] => {
 interface ViewProps {
   points: Bucket[]; mode: Mode; metric: Metric; shown: Company[]; companies: Company[]; avgLine?: number; daily: boolean;
   dense: boolean; live: boolean; ticks: string[]; tickLabel: (k: string) => string; tooltip: (p: any) => React.ReactNode;
+  onPick?: (key: string) => void;
 }
 
 /** الرسم نفسه: لا يُعاد رسمه إلا عند تغيّر نقاطه أو إعداداته (React.memo) */
-const ChartView = React.memo(({ points, mode, metric, shown, companies, avgLine, daily, dense, live, ticks, tickLabel, tooltip }: ViewProps) => {
+const ChartView = React.memo(({ points, mode, metric, shown, companies, avgLine, daily, dense, live, ticks, tickLabel, tooltip, onPick }: ViewProps) => {
+  // الضغط على شهر يفتحه (يعرض كل شحناته)
+  const pick = onPick ? (st: { activeLabel?: string | number }) => { if (st?.activeLabel != null) onPick(String(st.activeLabel)); } : undefined;
+  const pickStyle = onPick ? { cursor: 'pointer' } : undefined;
   const xTicks = { fill: '#64748b', fontSize: 11, fontWeight: 600 };
   const yTicks = { fill: '#64748b', fontSize: 11, fontWeight: 600 };
   const axis = (
@@ -194,7 +198,7 @@ const ChartView = React.memo(({ points, mode, metric, shown, companies, avgLine,
   return (
     <ResponsiveContainer width="100%" height="100%" debounce={60}>
       {mode === 'waves' ? (
-        <AreaChart data={points} margin={{ top: 16, right: 16, left: 4, bottom: 4 }}>
+        <AreaChart data={points} margin={{ top: 16, right: 16, left: 4, bottom: 4 }} onClick={pick} style={pickStyle}>
           <defs>
             {companies.map(c => (
               <React.Fragment key={c}>
@@ -220,7 +224,7 @@ const ChartView = React.memo(({ points, mode, metric, shown, companies, avgLine,
           {avgLine !== undefined && <ReferenceLine y={avgLine} stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={1.5} />}
         </AreaChart>
       ) : (
-        <BarChart data={points} margin={{ top: 16, right: 16, left: 4, bottom: 4 }} barGap={3}>
+        <BarChart data={points} margin={{ top: 16, right: 16, left: 4, bottom: 4 }} barGap={3} onClick={pick} style={pickStyle}>
           <defs>
             {companies.map(c => (
               <linearGradient key={c} id={`exp-bar-${c}`} x1="0" y1="0" x2="0" y2="1">
@@ -248,11 +252,23 @@ const ChartView = React.memo(({ points, mode, metric, shown, companies, avgLine,
  */
 const ChartArea: React.FC<{
   data: Bucket[]; gran: Gran; mode: Mode; metric: Metric; shown: Company[]; companies: Company[]; avgLine?: number;
-  resetKey: string; tooltip: (p: any) => React.ReactNode; emptyText: string;
-}> = ({ data, gran, mode, metric, shown, companies, avgLine, resetKey, tooltip, emptyText }) => {
+  resetKey: string; tooltip: (p: any) => React.ReactNode; emptyText: string; focus?: string | null; onPick?: (key: string) => void;
+}> = ({ data, gran, mode, metric, shown, companies, avgLine, resetKey, tooltip, emptyText, focus, onPick }) => {
   const [range, setRange] = useState<[number, number]>([Math.max(0, data.length - WINDOW), Math.max(0, data.length - 1)]);
   const [live, setLive] = useState(false);
-  useEffect(() => { setRange([Math.max(0, data.length - WINDOW), Math.max(0, data.length - 1)]); }, [resetKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    // شهر مفتوح: النافذة تغطي كل نقاط ذلك الشهر، وإلا آخر 60 نقطة
+    if (focus) {
+      const first = data.findIndex(b => b.key.startsWith(focus));
+      if (first >= 0) {
+        let lastIdx = first;
+        while (lastIdx + 1 < data.length && data[lastIdx + 1].key.startsWith(focus)) lastIdx++;
+        setRange([first, Math.max(lastIdx, first + 1 < data.length ? first + 1 : first)]);
+        return;
+      }
+    }
+    setRange([Math.max(0, data.length - WINDOW), Math.max(0, data.length - 1)]);
+  }, [resetKey, focus]); // eslint-disable-line react-hooks/exhaustive-deps
   const view = useDeferredValue(range);
   const last = Math.max(0, data.length - 1);
   const vs = Math.min(view[0], last), ve = Math.min(Math.max(view[1], view[0]), last);
@@ -302,7 +318,8 @@ const ChartArea: React.FC<{
               })
             ) : (
               <ChartView points={points} mode={mode} metric={metric} shown={shown} companies={companies} avgLine={avgLine}
-                daily={gran !== 'month'} dense={dense} live={live} ticks={ticks} tickLabel={tickLabel} tooltip={tooltip} />
+                daily={gran !== 'month'} dense={dense} live={live} ticks={ticks} tickLabel={tickLabel} tooltip={tooltip}
+                onPick={gran === 'month' ? onPick : undefined} />
             )
           )}
         </div>
@@ -320,12 +337,15 @@ const ChartArea: React.FC<{
 };
 
 /** نافذة تحليل الوارد بملء الشاشة لصفحة المورد */
-export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initialPeriod?: Period; onClose: () => void }> = ({ name, rows, initialPeriod = 'm12', onClose }) => {
+export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initialPeriod?: Period; initialMonth?: string | null; onClose: () => void }> = ({ name, rows, initialPeriod = 'm12', initialMonth = null, onClose }) => {
   const { t, i18n } = useTranslation(['suppliers', 'common']);
-  const [period, setPeriod] = useState<Period>(initialPeriod);
+  const [period, setPeriod] = useState<Period>(initialMonth ? 'all' : initialPeriod);
   const [metric, setMetric] = useState<Metric>('qty');
-  const [mode, setMode] = useState<Mode>('waves');
-  const [gran, setGran] = useState<Gran>('month');
+  const [mode, setMode] = useState<Mode>(initialMonth ? 'bars' : 'waves');
+  const [gran, setGran] = useState<Gran>(initialMonth ? 'shipment' : 'month');
+  // الشهر المفتوح (YYYY/MM): يعرض كل شحناته
+  const [focus, setFocus] = useState<string | null>(initialMonth);
+  const openMonth = useCallback((key: string) => { setFocus(key.slice(0, 7)); setPeriod('all'); setGran('shipment'); }, []);
   // المجهز (الشركة المجهزة) داخل المورد: الكل أو مجهز واحد
   const [equipper, setEquipper] = useState<string>('');
   const companies = useMemo(() => (['sahara', 'etihad'] as Company[]).filter(c => rows.some(r => r.co === c)), [rows]);
@@ -349,7 +369,10 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
   const data = useMemo(() => buildBuckets(scoped, period, metric, gran), [scoped, period, metric, gran]);
   // مفتاح إعادة ضبط نافذة العرض عند تغيير الفترة أو المقياس أو المستوى أو المجهز
   const resetKey = `${gran}-${period}-${metric}-${equipper}-${data.length}`;
-  const zoom = (dir: 1 | -1) => setGran(g => GRANS[Math.min(GRANS.length - 1, Math.max(0, GRANS.indexOf(g) + dir))]);
+  const zoom = (dir: 1 | -1) => {
+    setFocus(null);
+    setGran(g => GRANS[Math.min(GRANS.length - 1, Math.max(0, GRANS.indexOf(g) + dir))]);
+  };
 
   // ملخص الفترة المعروضة (للشركات الظاهرة فقط)
   const summary = useMemo(() => {
@@ -461,7 +484,7 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
               <p className="text-xs text-slate-500 truncate">{name}</p>
             </div>
           </div>
-          <Pills value={period} onChange={setPeriod} size="md" options={[
+          <Pills value={period} onChange={v => { setFocus(null); setPeriod(v); }} size="md" options={[
             { id: 'd30', label: t('profile.period.d30') }, { id: 'd90', label: t('profile.period.d90') },
             { id: 'm12', label: t('profile.period.m12') }, { id: 'all', label: t('profile.period.all') },
           ]} />
@@ -526,7 +549,7 @@ export const SupplierChartExpanded: React.FC<{ name: string; rows: Row[]; initia
 
         {/* الرسم وشريط النطاق (حالة السحب معزولة داخلهما) */}
         <ChartArea data={data} gran={gran} mode={mode} metric={metric} shown={shown} companies={companies} avgLine={avgLine}
-          resetKey={resetKey} tooltip={tooltip} emptyText={t('profile.empty')} />
+          resetKey={resetKey} tooltip={tooltip} emptyText={t('profile.empty')} focus={focus} onPick={openMonth} />
         {/* التذييل: إظهار/إخفاء كل شركة وشرح خط المتوسط */}
         <div className="relative shrink-0 px-4 sm:px-6 py-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-[12px]">
           <div className="flex items-center gap-2">

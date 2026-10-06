@@ -25,6 +25,8 @@ export const SupplierMonthlyChart: React.FC<{ rows: Row[]; name: string }> = ({ 
   // عدد الأشهر المعروضة (0 = الكل) ونافذة التكبير
   const [months, setMonths] = useState<6 | 12 | 0>(12);
   const [expanded, setExpanded] = useState(false);
+  // الضغط على عمود شهر يفتح نافذة التحليل على ذلك الشهر بكل شحناته
+  const [openMonth, setOpenMonth] = useState<string | null>(null);
 
   const data = useMemo<Point[]>(() => {
     const by = new Map<string, Point & { cost: number; pq: number }>();
@@ -73,7 +75,7 @@ export const SupplierMonthlyChart: React.FC<{ rows: Row[]; name: string }> = ({ 
           </button>
         </div>
       </div>
-      {expanded && <SupplierChartExpanded name={name} rows={rows} initialPeriod={months === 0 ? 'all' : 'm12'} onClose={() => setExpanded(false)} />}
+      {expanded && <SupplierChartExpanded name={name} rows={rows} initialPeriod={months === 0 ? 'all' : 'm12'} initialMonth={openMonth} onClose={() => { setExpanded(false); setOpenMonth(null); }} />}
       {/* بطاقة قيمة الشهر المحدد */}
       <div className="flex items-baseline gap-2 mb-1 tabular-nums">
         <span className="text-[11px] text-slate-400">{cur.full}</span>
@@ -84,7 +86,12 @@ export const SupplierMonthlyChart: React.FC<{ rows: Row[]; name: string }> = ({ 
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 14, right: 4, left: 0, bottom: 0 }} barCategoryGap="22%"
             onMouseMove={(s: { activeTooltipIndex?: number | string | null }) => setHover(typeof s?.activeTooltipIndex === 'number' ? s.activeTooltipIndex : s?.activeTooltipIndex != null ? Number(s.activeTooltipIndex) : null)}
-            onMouseLeave={() => setHover(null)}>
+            onMouseLeave={() => setHover(null)}
+            onClick={(st: { activeTooltipIndex?: number | string | null }) => {
+              const i = st?.activeTooltipIndex != null ? Number(st.activeTooltipIndex) : -1;
+              if (data[i]) { setOpenMonth(data[i].key); setExpanded(true); }
+            }}
+            style={{ cursor: 'pointer' }}>
             <defs>
               <linearGradient id="sup-bar-soft" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={ACCENT} stopOpacity={0.28} />
