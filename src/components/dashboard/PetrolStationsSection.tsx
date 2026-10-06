@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { SectionHeader } from './SectionHeader';
 import {
   Fuel,
   ArrowDownLeft,
@@ -178,27 +179,15 @@ export const PetrolStationsSection: React.FC = () => {
     <div className="space-y-4 animate-in fade-in duration-300">
       
       {/* 🌟 Section Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2.5">
-          <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-600 via-orange-500 to-amber-400 text-white shadow-md shadow-amber-500/20">
-            <Fuel className="w-4 h-4 text-amber-50" />
-            <span className="absolute -top-1 -right-1 flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                {t('dashboard:petrol.title')}
-              </h2>
-              <span className="px-2.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 text-[10px] font-bold border border-amber-200/80 dark:border-amber-800/60">
-                {t('dashboard:section.stockOps')}
-              </span>
-            </div>
-          </div>
+      <SectionHeader title={t('dashboard:petrol.title')} icon={
+        <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-600 via-orange-500 to-amber-400 text-white shadow-md shadow-amber-500/20">
+          <Fuel className="w-4 h-4 text-amber-50" />
+          <span className="absolute -top-1 -right-1 flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
         </div>
-      </div>
+      } />
 
       {/* 🌟 3 Main Columns Container */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4 items-stretch">

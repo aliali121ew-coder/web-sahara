@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { SectionHeader } from './SectionHeader';
 import { createPortal } from 'react-dom';
 import {
   TrendingUp,
@@ -160,22 +161,11 @@ export const SaharaGasSection: React.FC = () => {
     <div className="space-y-3.5">
       
       {/* Section Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2.5">
-          <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-700 via-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20">
-            <Flame className="w-4 h-4 text-amber-300 animate-pulse" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                {t('dashboard:sahara.title')}
-              </h2>
-
-              
-            </div>
-          </div>
+      <SectionHeader title={t('dashboard:sahara.title')} icon={
+        <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-700 via-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20">
+          <Flame className="w-4 h-4 text-amber-300 animate-pulse" />
         </div>
-      </div>
+      } />
 
       {/* Hero Cards Grid (Responsive: Mobile 1 Col, Tablet 2 Rows/Split, Desktop 3 Cards in 1 Row 5+3+4) */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">

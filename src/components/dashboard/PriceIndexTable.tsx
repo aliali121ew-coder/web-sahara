@@ -1,8 +1,9 @@
 import React from 'react';
-import { ArrowUp, ArrowDown, Minus, TrendingUp, TrendingDown } from 'lucide-react';
+import { ArrowUp, ArrowDown, Minus, TrendingUp, TrendingDown, BadgeDollarSign } from 'lucide-react';
 import { useFuelData } from '../../context/FuelDataContext';
 import { useTranslation } from 'react-i18next';
 import { Avatar, fmtPrice } from '../suppliers/supplierUi';
+import { SectionHeader } from './SectionHeader';
 
 /** مربع الاتجاه لفرق التغيّر: سهم مستقيم داخل كارت صغير بدل الإشارة (+ / −) */
 const DirBox: React.FC<{ v: number }> = ({ v }) => {
@@ -55,23 +56,14 @@ export const PriceIndexTable: React.FC = () => {
   const iqd = 'text-[11.5px] font-medium text-slate-500 dark:text-slate-400';
 
   return (
-    <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-soft-card overflow-hidden">
-      <div className="px-5 sm:px-6 pt-5 pb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-5 bg-blue-600 rounded-full" />
-          <div>
-            <h3 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white flex items-center gap-2">
-              <span>{t('dashboard:priceIndex.title')}</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-600 font-bold border border-blue-200 dark:border-blue-800">
-                {t('dashboard:priceIndex.daily')}
-              </span>
-            </h3>
-            <p className="text-xs text-slate-500">{t('dashboard:priceIndex.text')}</p>
-          </div>
+    <div className="space-y-3.5">
+      <SectionHeader title={t('dashboard:priceIndex.title')} icon={
+        <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-700 via-blue-600 to-sky-500 text-white shadow-md shadow-blue-500/20">
+          <BadgeDollarSign className="w-4 h-4 text-blue-100" />
         </div>
-      </div>
-
-      <div className="overflow-x-auto px-3 sm:px-4 pb-4 bg-slate-50/70 dark:bg-slate-950/30 border-t border-slate-100 dark:border-slate-800">
+      } />
+    <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-soft-card overflow-hidden">
+      <div className="overflow-x-auto px-3 sm:px-4 pb-4 bg-slate-50/70 dark:bg-slate-950/30">
         <table className="w-full border-separate border-spacing-y-1.5">
           <thead>
             <tr>
@@ -116,6 +108,7 @@ export const PriceIndexTable: React.FC = () => {
           </tbody>
         </table>
       </div>
+    </div>
     </div>
   );
 };

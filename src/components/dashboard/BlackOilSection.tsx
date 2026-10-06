@@ -1,4 +1,5 @@
 import React from 'react';
+import { SectionHeader } from './SectionHeader';
 import {
   Droplets,
   ArrowDownLeft,
@@ -97,23 +98,11 @@ export const BlackOilSection: React.FC = () => {
     <div className="space-y-4">
       
       {/* Section Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2.5">
-          <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-700 via-indigo-600 to-slate-900 text-white shadow-md shadow-purple-500/20">
-            <Droplets className="w-4 h-4 text-purple-200" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                {t('dashboard:blackOil.details')}
-              </h2>
-              <span className="px-2.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-[10px] font-bold border border-purple-200/80 dark:border-purple-800/80">
-                {t('dashboard:blackOil.unified')}
-              </span>
-            </div>
-          </div>
+      <SectionHeader title={t('dashboard:blackOil.details')} icon={
+        <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-700 via-indigo-600 to-slate-900 text-white shadow-md shadow-purple-500/20">
+          <Droplets className="w-4 h-4 text-purple-200" />
         </div>
-      </div>
+      } />
 
       {/* Grid: 2 Spacious Main Cards (Sahara 5/12 + Etihad 4/12) + 1 Compact Luxury Executive Card (3/12) */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4 items-stretch">

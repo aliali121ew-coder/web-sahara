@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { SectionHeader } from './SectionHeader';
 import { Waves, Building2, Fuel } from 'lucide-react';
 import { formatNumber } from '../../lib/utils';
 import { useTranslation } from 'react-i18next';
@@ -104,14 +105,11 @@ export const CompanyTanksSection: React.FC = () => {
       <TankGlobalSvgDefs />
 
       {/* ترويسة القسم */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-700 via-indigo-600 to-teal-600 text-white shadow-md shadow-blue-500/20">
-            <Waves className="w-4 h-4 text-teal-200 animate-pulse" />
-          </div>
-          <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">{t('dashboard:companyTanks.details')}</h2>
+      <SectionHeader title={t('dashboard:companyTanks.details')} icon={
+        <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-700 via-indigo-600 to-teal-600 text-white shadow-md shadow-blue-500/20">
+          <Waves className="w-4 h-4 text-teal-200 animate-pulse" />
         </div>
-      </div>
+      } />
 
       {/* الكروت الأم: الاتحاد (خزانان)، الصحاري (خزانان)، البنزين (خزان) */}
       <div className="grid grid-cols-1 xl:grid-cols-[2fr_2fr_1fr] gap-4 items-stretch">

@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
+import { SectionHeader } from './SectionHeader';
 import {
   Flame,
   Fuel,
@@ -250,23 +251,11 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
       
       {/* Section Header */}
       {!isSide && (
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2.5">
-          <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-700 via-indigo-600 to-blue-600 text-white shadow-md shadow-blue-500/20">
-            <Layers className="w-4 h-4 text-blue-100" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                {t('dashboard:purchases.title')}
-              </h2>
-              <span className="px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-bold border border-slate-200/80 dark:border-slate-700/80">
-                {t('dashboard:purchases.categories', { count: fuelMetrics.length })}
-              </span>
-            </div>
-          </div>
+      <SectionHeader title={t('dashboard:purchases.title')} icon={
+        <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-700 via-indigo-600 to-blue-600 text-white shadow-md shadow-blue-500/20">
+          <Layers className="w-4 h-4 text-blue-100" />
         </div>
-      </div>
+      } />
       )}
 
       {/* 6 Luxury Pastel Cards Grid (Adaptive on Open Sidebar) */}
@@ -296,12 +285,6 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
               {/* شريط تقدّم الضغط المطوّل */}
               {pressing === item.id && (
                 <span className="absolute bottom-0 inset-x-0 h-1 bg-teal-500 origin-right" style={{ animation: 'fmLongPress 520ms linear forwards' }} />
-              )}
-              {/* شارة السعر اليدوي */}
-              {source === 'manual' && (
-                <span className="absolute top-2 left-2 z-10 px-1.5 py-px rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 text-[9px] font-black ring-1 ring-amber-200 dark:ring-amber-900" title={t('dashboard:purchases.manualHint')}>
-                  {t('dashboard:purchases.manual')}
-                </span>
               )}
               <div>
                 

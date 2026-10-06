@@ -56,9 +56,6 @@
     "actual": "Actual balance",
     "total": "Total balance"
   },
-  "section": {
-    "stockOps": "Stock & operations"
-  },
   "day": {
     "yesterday": "Yesterday",
     "today": "Today"
@@ -76,7 +73,6 @@
   },
   "blackOil": {
     "details": "Black oil details",
-    "unified": "Unified strategic stock",
     "sahara": "Black oil – Sahara Karbala",
     "etihad": "Black oil – Etihad Company",
     "both": "Sahara Karbala + Etihad",
@@ -112,7 +108,6 @@
   "purchases": {
     "title": "Fuel & product purchases",
     "longPress": "Press and hold to view the price",
-    "manualHint": "Manual price until the next inbound",
     "previous": "Previous:",
     "down": "Price down",
     "up": "Price up",
@@ -120,9 +115,7 @@
     "manual": "Manual",
     "approvedPrice": "Approved price per liter",
     "total": "Total purchased",
-    "lastPriceUpdate": "Price last updated",
-    "categories_one": "{{count}} main product",
-    "categories_other": "{{count}} main products"
+    "lastPriceUpdate": "Price last updated"
   },
   "petrol": {
     "surplusColon": "Surplus:",
@@ -169,8 +162,6 @@
   },
   "priceIndex": {
     "title": "Company & supplier price index",
-    "daily": "Updated daily",
-    "text": "Track price gaps and market movement between the government and commercial sectors",
     "supplier": "Equipper",
     "product": "Product",
     "category": "Category",

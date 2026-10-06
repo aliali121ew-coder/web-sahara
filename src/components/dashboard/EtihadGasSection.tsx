@@ -1,4 +1,5 @@
 import React from 'react';
+import { SectionHeader } from './SectionHeader';
 import {
   Building2,
   Calendar,
@@ -127,23 +128,11 @@ export const EtihadGasSection: React.FC = () => {
     <div className="space-y-3.5">
       
       {/* Section Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2.5">
-          <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-teal-700 via-teal-600 to-emerald-600 text-white shadow-md shadow-teal-500/20">
-            <Building2 className="w-4 h-4 text-teal-100" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                {t('dashboard:etihad.title')}
-              </h2>
-              <span className="px-2.5 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 text-[10px] font-bold border border-teal-200/80 dark:border-teal-800/60">
-                {t('dashboard:section.stockOps')}
-              </span>
-            </div>
-          </div>
+      <SectionHeader title={t('dashboard:etihad.title')} icon={
+        <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-teal-700 via-teal-600 to-emerald-600 text-white shadow-md shadow-teal-500/20">
+          <Building2 className="w-4 h-4 text-teal-100" />
         </div>
-      </div>
+      } />
 
       {/* Main Strategic Card (7 Cols on xl) + Side Telemetry Charts (5 Cols on xl) */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
