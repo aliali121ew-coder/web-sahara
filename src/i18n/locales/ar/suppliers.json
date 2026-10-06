@@ -71,7 +71,8 @@
     "selectAll": "تحديد الكل",
     "select": "تحديد {{name}}",
     "inbound": "الوارد",
-    "tankers": "عدد الصهاريج"
+    "tankers": "عدد الصهاريج",
+    "receiver": "الشركة المستلمة"
   },
   "modal": {
     "addTitle": "إضافة مورد",
@@ -86,5 +87,9 @@
     "prev": "السابق",
     "next": "التالي",
     "range": "{{from}}–{{to}} من {{total}}"
+  },
+  "receiver": {
+    "sahara": "الصحاري",
+    "etihad": "الاتحاد"
   }
 }

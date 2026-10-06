@@ -23,6 +23,22 @@ const dateKey = (d?: string) => (d || '').replace(/-/g, '/');
 
 const fmtPrice = (v: number) => formatNumber(Math.round(v * 100) / 100);
 
+type Company = 'sahara' | 'etihad';
+/** شارة الشركة المستلمة (أرشيف الوارد الذي ورد إليه المورد) */
+const CompanyBadges: React.FC<{ companies: Company[] }> = ({ companies }) => {
+  const { t } = useTranslation('suppliers');
+  if (!companies.length) return <span className="text-slate-300 dark:text-slate-600">—</span>;
+  return (
+    <span className="inline-flex flex-wrap gap-1">
+      {companies.map(c => (
+        <span key={c} className={`px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap ${c === 'sahara' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300' : 'bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300'}`}>
+          {t(`receiver.${c}`)}
+        </span>
+      ))}
+    </span>
+  );
+};
+
 const AVATAR_TONES = ['from-teal-400 to-emerald-600', 'from-sky-400 to-blue-600', 'from-amber-400 to-orange-600', 'from-violet-400 to-purple-600', 'from-rose-400 to-pink-600', 'from-lime-400 to-green-600'];
 const toneOf = (id: string) => AVATAR_TONES[[...id].reduce((a, c) => a + c.charCodeAt(0), 0) % AVATAR_TONES.length];
 const initialsOf = (name: string) => {
@@ -263,7 +279,7 @@ export const SuppliersView: React.FC = () => {
   );
   /** شحنات المورد في أرشيف الوارد (الشركتين): الأحدث أولًا، مع مجموع الكمية */
   const inboundOf = useMemo(() => {
-    const cache = new Map<string, { last?: { d: InboundDelivery; tab: NavTabId }; count: number; lastDay: string; lastDayCount: number; lastDayQty: number }>();
+    const cache = new Map<string, { last?: { d: InboundDelivery; tab: NavTabId }; count: number; lastDay: string; lastDayCount: number; lastDayQty: number; companies: Company[] }>();
     return (s: SupplierPriceRecord) => {
       if (!cache.has(s.id)) {
         const hits = deliveriesOfSupplier(allDeliveries, x => x.d, s.supplierName);
@@ -272,7 +288,9 @@ export const SuppliersView: React.FC = () => {
         const lastDay = hits[0] ? dateKey(hits[0].d.receiptUnloadDate || hits[0].d.date) : '';
         const dayHits = lastDay ? hits.filter(({ d }) => dateKey(d.receiptUnloadDate || d.date) === lastDay) : [];
         const lastDayQty = dayHits.reduce((a, { d }) => a + (d.receivedQuantity || d.volumeLiters || 0), 0);
-        cache.set(s.id, { last: hits[0], count: hits.length, lastDay, lastDayCount: dayHits.length, lastDayQty });
+        // الشركة المستلمة: أرشيف الصحاري أو الاتحاد (أو كلاهما)
+        const companies = (['sahara', 'etihad'] as Company[]).filter(c => hits.some(h => h.tab === (c === 'etihad' ? 'deliveries-etihad' : 'deliveries-sahara')));
+        cache.set(s.id, { last: hits[0], count: hits.length, lastDay, lastDayCount: dayHits.length, lastDayQty, companies });
       }
       return cache.get(s.id)!;
     };
@@ -297,10 +315,10 @@ export const SuppliersView: React.FC = () => {
   const marketAvg = supplierPrices.length ? supplierPrices.reduce((a, s) => a + s.priceIqd, 0) / supplierPrices.length : 0;
 
   const exportCsv = () => {
-    const head = [t('table.supplier'), t('fields.product'), t('fields.category'), t('table.current'), t('table.previous'), t('table.change'), t('table.updated')];
+    const head = [t('table.receiver'), t('table.supplier'), t('fields.product'), t('fields.category'), t('table.current'), t('table.previous'), t('table.change'), t('table.updated')];
     const list = checked.size ? rows.filter(r => checked.has(r.id)) : rows;
     const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
-    const body = list.map(s => [s.supplierName, s.product, enumText(s.category), s.priceIqd, s.previousPriceIqd, `${s.changePercent}%`, s.lastUpdated].map(esc).join(','));
+    const body = list.map(s => [inboundOf(s).companies.map(c => t(`receiver.${c}`)).join(' + ') || '—', s.supplierName, s.product, enumText(s.category), s.priceIqd, s.previousPriceIqd, `${s.changePercent}%`, s.lastUpdated].map(esc).join(','));
     const blob = new Blob(['﻿' + [head.map(esc).join(','), ...body].join('\n')], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -340,8 +358,8 @@ export const SuppliersView: React.FC = () => {
   const pageWindow = Array.from({ length: Math.min(5, pageCount) }, (_, i) => winStart + i);
   useEffect(() => { setPage(0); }, [query, sort]);
   const allChecked = pageRows.length > 0 && pageRows.every(r => checked.has(r.id));
-  const th = 'px-4 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap';
-  const td = 'px-4 py-3 text-[13px] text-slate-700 dark:text-slate-300 whitespace-nowrap';
+  const th = 'px-3 xl:px-4 py-3 text-start text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap';
+  const td = 'px-3 xl:px-4 py-3 text-[13px] text-slate-700 dark:text-slate-300 whitespace-nowrap';
 
   return (
     <div className="space-y-5 pb-10">
@@ -508,6 +526,7 @@ export const SuppliersView: React.FC = () => {
                     <div className="text-sm font-semibold text-slate-900 dark:text-white truncate">{s.supplierName}</div>
                     <div className="text-[11px] text-slate-400 truncate">{s.product}</div>
                   </div>
+                  <CompanyBadges companies={inb.companies} />
                   <ChangePill pct={s.changePercent} />
                 </div>
                 <dl className="mt-3 grid grid-cols-2 min-[480px]:grid-cols-4 sm:grid-cols-2 gap-2 text-center">
@@ -538,7 +557,7 @@ export const SuppliersView: React.FC = () => {
         </div>
 
         <div className="hidden lg:block overflow-x-auto">
-            <table className="w-full min-w-[980px]">
+            <table className="w-full">
               <thead className="bg-slate-50 dark:bg-slate-800/60">
                 <tr>
                   <th className={`${th} w-10`}>
@@ -546,6 +565,7 @@ export const SuppliersView: React.FC = () => {
                       onChange={() => setChecked(prev => { const n = new Set(prev); pageRows.forEach(r => (allChecked ? n.delete(r.id) : n.add(r.id))); return n; })}
                       className="w-4 h-4 rounded border-slate-300 accent-teal-500 cursor-pointer" />
                   </th>
+                  <th className={th}>{t('table.receiver')}</th>
                   <th className={th}>{t('table.supplier')}</th>
                   <th className={th}>{t('table.current')}</th>
                   <th className={th}>{t('table.previous')}</th>
@@ -558,7 +578,7 @@ export const SuppliersView: React.FC = () => {
               </thead>
               <tbody>
                 {rows.length === 0 && (
-                  <tr><td colSpan={9} className="py-12 text-center text-sm text-slate-400">{t('empty')}</td></tr>
+                  <tr><td colSpan={10} className="py-12 text-center text-sm text-slate-400">{t('empty')}</td></tr>
                 )}
                 {pageRows.map(s => {
                   const active = s.id === selected?.id;
@@ -571,12 +591,13 @@ export const SuppliersView: React.FC = () => {
                           onChange={() => setChecked(prev => { const n = new Set(prev); if (n.has(s.id)) n.delete(s.id); else n.add(s.id); return n; })}
                           className="w-4 h-4 rounded border-slate-300 accent-teal-500 cursor-pointer" />
                       </td>
+                      <td className={td}><CompanyBadges companies={inb.companies} /></td>
                       <td className={td}>
                         <div className="flex items-center gap-2.5">
                           <Avatar s={s} size="w-8 h-8" text="text-[10px]" />
                           <div className="min-w-0">
-                            <div className="text-[13px] font-medium text-slate-800 dark:text-slate-100 truncate max-w-[240px]">{s.supplierName}</div>
-                            <div className="text-[11px] text-slate-400 truncate max-w-[240px]">{s.product}</div>
+                            <div className="text-[13px] font-medium text-slate-800 dark:text-slate-100 truncate max-w-[200px] xl:max-w-[260px]">{s.supplierName}</div>
+                            <div className="text-[11px] text-slate-400 truncate max-w-[200px] xl:max-w-[260px]">{s.product}</div>
                           </div>
                         </div>
                       </td>
@@ -592,9 +613,9 @@ export const SuppliersView: React.FC = () => {
                       <td className={`${td} tabular-nums`}>{inb.count ? formatNumber(inb.lastDayCount) : '—'}</td>
                       <td className={td} onClick={e => e.stopPropagation()}>
                         {editable ? (
-                          <button type="button" onClick={() => setEditing({ rec: s, isNew: false })}
-                            className="h-7 px-3 rounded-md bg-teal-500 hover:bg-teal-600 text-white text-xs font-medium flex items-center gap-1.5 cursor-pointer">
-                            <Pencil className="w-3 h-3" /> {t('common:actions.edit')}
+                          <button type="button" onClick={() => setEditing({ rec: s, isNew: false })} aria-label={t('common:actions.edit')} title={t('common:actions.edit')}
+                            className="h-7 px-2 xl:px-3 rounded-md bg-teal-500 hover:bg-teal-600 text-white text-xs font-medium flex items-center gap-1.5 cursor-pointer">
+                            <Pencil className="w-3 h-3" /> <span className="hidden xl:inline">{t('common:actions.edit')}</span>
                           </button>
                         ) : (
                           <button type="button" onClick={() => setSelectedId(s.id)}

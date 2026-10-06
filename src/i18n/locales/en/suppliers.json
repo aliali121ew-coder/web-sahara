@@ -71,7 +71,8 @@
     "selectAll": "Select all",
     "select": "Select {{name}}",
     "inbound": "Inbound",
-    "tankers": "Tankers"
+    "tankers": "Tankers",
+    "receiver": "Receiving company"
   },
   "modal": {
     "addTitle": "Add supplier",
@@ -86,5 +87,9 @@
     "prev": "Previous",
     "next": "Next",
     "range": "{{from}}–{{to}} of {{total}}"
+  },
+  "receiver": {
+    "sahara": "Sahara",
+    "etihad": "Etihad"
   }
 }
