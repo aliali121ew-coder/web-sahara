@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { CLOUD_APPLIED_EVENT } from './cloudSync';
 import { getProfile } from './session';
 
 /**
@@ -63,11 +64,15 @@ export const usePriceLog = () => {
   useEffect(() => {
     const refresh = () => setLog(read());
     const onStorage = (e: StorageEvent) => { if (e.key === PRICE_LOG_KEY) refresh(); };
+    // تعديلات من متصفح/جهاز آخر وصلت من السحابة أثناء فتح الصفحة
+    const onCloud = (e: Event) => { const keys = (e as CustomEvent<string[]>).detail ?? []; if (keys.includes(PRICE_LOG_KEY)) refresh(); };
     window.addEventListener(SYNC_EVENT, refresh);
     window.addEventListener('storage', onStorage);
+    window.addEventListener(CLOUD_APPLIED_EVENT, onCloud);
     return () => {
       window.removeEventListener(SYNC_EVENT, refresh);
       window.removeEventListener('storage', onStorage);
+      window.removeEventListener(CLOUD_APPLIED_EVENT, onCloud);
     };
   }, []);
   return log;

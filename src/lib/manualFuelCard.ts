@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { CLOUD_APPLIED_EVENT } from './cloudSync';
 
 /**
  * كارت يدوي بالكامل (كاز محطات): لا يرتبط بأي وارد أو سجل، ويُدخل السعر والكمية والتاريخ للعرض فقط.
@@ -36,11 +37,15 @@ export const useManualFuelCards = () => {
   useEffect(() => {
     const refresh = () => setCards(read());
     const onStorage = (e: StorageEvent) => { if (e.key === KEY) refresh(); };
+    // تعديلات من متصفح/جهاز آخر وصلت من السحابة أثناء فتح الصفحة
+    const onCloud = (e: Event) => { const keys = (e as CustomEvent<string[]>).detail ?? []; if (keys.includes(KEY)) refresh(); };
     window.addEventListener(SYNC_EVENT, refresh);
     window.addEventListener('storage', onStorage);
+    window.addEventListener(CLOUD_APPLIED_EVENT, onCloud);
     return () => {
       window.removeEventListener(SYNC_EVENT, refresh);
       window.removeEventListener('storage', onStorage);
+      window.removeEventListener(CLOUD_APPLIED_EVENT, onCloud);
     };
   }, []);
 
