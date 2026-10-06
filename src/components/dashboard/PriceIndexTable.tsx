@@ -1,22 +1,35 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { ArrowUp, ArrowDown, Minus, TrendingUp, TrendingDown } from 'lucide-react';
 import { useFuelData } from '../../context/FuelDataContext';
 import { useTranslation } from 'react-i18next';
 import { Avatar, fmtPrice } from '../suppliers/supplierUi';
 
-/** خلية التغيّر: السهم داخل مربع صغير، والنسبة نصًا ملوّنًا (أحمر للارتفاع، أخضر للانخفاض) */
+/** مربع الاتجاه لفرق التغيّر: سهم مستقيم داخل كارت صغير بدل الإشارة (+ / −) */
+const DirBox: React.FC<{ v: number }> = ({ v }) => {
+  const tone = v > 0 ? 'bg-rose-50/70 text-rose-400 ring-rose-100 dark:bg-rose-950/30 dark:text-rose-300 dark:ring-rose-900/60'
+    : v < 0 ? 'bg-emerald-50/70 text-emerald-500 ring-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-900/60'
+    : 'bg-slate-50 text-slate-400 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700';
+  return (
+    <span className={`w-4 h-4 rounded ring-1 flex items-center justify-center shrink-0 ${tone}`}>
+      {v > 0 ? <ArrowUp className="w-2.5 h-2.5" strokeWidth={2} /> : v < 0 ? <ArrowDown className="w-2.5 h-2.5" strokeWidth={2} /> : <Minus className="w-2.5 h-2.5" strokeWidth={2} />}
+    </span>
+  );
+};
+
+const toneText = (v: number) => (v > 0 ? 'text-rose-600 dark:text-rose-400' : v < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400');
+
+/** خلية التغيّر: سهم الاتجاه المائل داخل مربع صغير، والنسبة نصًا ملوّنًا */
 const ChangeCell: React.FC<{ pct: number }> = ({ pct }) => {
   const up = pct > 0, down = pct < 0;
   const box = up ? 'bg-rose-50 text-rose-500 ring-rose-200 dark:bg-rose-950/40 dark:ring-rose-900'
     : down ? 'bg-emerald-50 text-emerald-600 ring-emerald-200 dark:bg-emerald-950/40 dark:ring-emerald-900'
     : 'bg-slate-50 text-slate-400 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700';
-  const text = up ? 'text-rose-600 dark:text-rose-400' : down ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400';
   return (
     <span className="inline-flex items-center gap-2">
       <span className={`w-6 h-6 rounded-md ring-1 flex items-center justify-center shrink-0 ${box}`}>
         {up ? <TrendingUp className="w-3.5 h-3.5" strokeWidth={2.5} /> : down ? <TrendingDown className="w-3.5 h-3.5" strokeWidth={2.5} /> : <Minus className="w-3.5 h-3.5" strokeWidth={2.5} />}
       </span>
-      <span dir="ltr" className={`text-[14.5px] font-extrabold tabular-nums ${text}`}>{up ? '+' : ''}{pct}%</span>
+      <span dir="ltr" className={`text-[14.5px] font-extrabold tabular-nums ${toneText(pct)}`}>{up ? '+' : ''}{pct}%</span>
     </span>
   );
 };
@@ -41,7 +54,6 @@ export const PriceIndexTable: React.FC = () => {
   const open = () => setActiveTab('suppliers');
   const plain = 'font-medium text-slate-800 dark:text-slate-100';
   const iqd = 'text-[11.5px] font-medium text-slate-500 dark:text-slate-400';
-  const diffTone = (v: number) => (v > 0 ? 'text-rose-600 dark:text-rose-400' : v < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500');
 
   return (
     <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-soft-card overflow-hidden">
@@ -91,8 +103,13 @@ export const PriceIndexTable: React.FC = () => {
                 <td className={`${td} ${plain}`}><span className="block truncate max-w-[120px] mx-auto">{s.color || '—'}</span></td>
                 <td className={`${td} font-extrabold text-slate-900 dark:text-white tabular-nums`}>{fmtPrice(s.priceIqd)} <span className={iqd}>{t('common:units.iqd')}</span></td>
                 <td className={`${td} tabular-nums font-normal text-slate-700 dark:text-slate-300`}>{fmtPrice(s.previousPriceIqd)} <span className={iqd}>{t('common:units.iqd')}</span></td>
-                <td className={`${td} tabular-nums font-bold ${diffTone(s.priceIqd - s.previousPriceIqd)}`}>
-                  {s.priceIqd - s.previousPriceIqd ? <><span dir="ltr">{s.priceIqd > s.previousPriceIqd ? '+' : '−'}{fmtPrice(Math.abs(s.priceIqd - s.previousPriceIqd))}</span> <span className={iqd}>{t('common:units.iqd')}</span></> : '—'}
+                <td className={`${td} tabular-nums font-bold ${toneText(s.priceIqd - s.previousPriceIqd)}`}>
+                  {s.priceIqd - s.previousPriceIqd ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <DirBox v={s.priceIqd - s.previousPriceIqd} />
+                      <span>{fmtPrice(Math.abs(s.priceIqd - s.previousPriceIqd))} <span className={iqd}>{t('common:units.iqd')}</span></span>
+                    </span>
+                  ) : '—'}
                 </td>
                 <td className={td}><ChangeCell pct={s.changePercent} /></td>
               </tr>
