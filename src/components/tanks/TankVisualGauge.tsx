@@ -157,7 +157,7 @@ export const TankVisualGauge: React.FC<TankVisualGaugeProps> = ({ tank }) => {
         </div>
       </div>
 
-      {/* Sensor Readings (Temperature, Pressure, Water level) */}
+      {/* Sensor Readings (Temperature, Pressure, Water level) — بلا قراءة حساس تظهر «—» بدل رقم */}
       <div className="grid grid-cols-3 gap-1.5 p-2 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 text-center">
         <div>
           <div className="flex items-center justify-center gap-1 text-[10px] text-slate-400 font-bold">
@@ -165,7 +165,7 @@ export const TankVisualGauge: React.FC<TankVisualGaugeProps> = ({ tank }) => {
             <span>{t('tanks:gauge.temperature')}</span>
           </div>
           <span className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200">
-            {tank.temperatureC}°C
+            {tank.temperatureC ? `${tank.temperatureC}°C` : '—'}
           </span>
         </div>
 
@@ -175,7 +175,7 @@ export const TankVisualGauge: React.FC<TankVisualGaugeProps> = ({ tank }) => {
             <span>{t('tanks:gauge.pressure')}</span>
           </div>
           <span className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200">
-            {tank.pressureBar} bar
+            {tank.pressureBar ? `${tank.pressureBar} bar` : '—'}
           </span>
         </div>
 

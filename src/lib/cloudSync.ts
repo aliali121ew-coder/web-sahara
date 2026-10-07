@@ -163,7 +163,8 @@ async function flush(): Promise<void> {
   if (flushing || !getToken()) return;
   const pending = readPending();
   if (!Object.keys(pending).length) {
-    setStatus('saved');
+    // لا شيء للإرسال: «غير متصل» يبقى حتى يرد الخادم فعلًا (fetchState يعيدها «محفوظ»)
+    if (status !== 'offline') setStatus('saved');
     return;
   }
   flushing = true;
@@ -190,9 +191,10 @@ async function flush(): Promise<void> {
     flushing = false;
     if (Object.keys(latest).length) scheduleFlush(200);
     else setStatus('saved');
-  } catch {
+  } catch (e) {
     flushing = false;
-    setStatus(navigator.onLine ? 'error' : 'offline');
+    // فشل الاتصال نفسه (TypeError) = غير متصل، حتى لو ظن المتصفح أن الشبكة متاحة (إشارة ضعيفة أو الخادم لا يُصل)
+    setStatus(e instanceof TypeError || !navigator.onLine ? 'offline' : 'error');
     scheduleFlush(15000); // إعادة المحاولة لاحقًا، والتعديلات محفوظة محليًا حتى تصل
   }
 }
@@ -256,11 +258,26 @@ const restoreRejected = async (keys: string[]) => {
   }
 };
 
-const fetchState = async (timeoutMs = 8000) => {
+/**
+ * بصمة آخر نسخة طُبّقت من الخادم (ETag). المزامنة الدورية ترسلها فيرد الخادم 304 بلا جسم إن لم يتغيّر شيء.
+ * تُحفظ فقط بعد تطبيق النسخة فعلًا، حتى لا تُفوَّت نسخة تُركت بسبب تعديلات معلّقة
+ */
+let stateEtag: string | null = null;
+const rememberEtag = (res: Response) => { stateEtag = res.headers.get('etag'); };
+/** وقت آخر مزامنة خلفية: العودة المتكررة للتطبيق (التنقل بين التطبيقات في الهاتف) لا تكرر الطلب خلال 10 ثوانٍ */
+let lastBackgroundSync = 0;
+
+const fetchState = async (timeoutMs = 8000, conditional = false) => {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    return await api('/api/state', { signal: ctrl.signal });
+    const res = await api('/api/state', { signal: ctrl.signal, headers: conditional && stateEtag ? { 'if-none-match': stateEtag } : {} });
+    // وصل الخادم بعد انقطاع (حتى لو لم يُطلق المتصفح حدث online): إرسال المعلّق وتحديث الحالة
+    if (status === 'offline') {
+      setStatus('saved');
+      void flush();
+    }
+    return res;
   } finally {
     clearTimeout(t);
   }
@@ -279,41 +296,81 @@ export async function initCloudSync(): Promise<InitResult> {
   // وإلا يبدأ بالبيانات الافتراضية ويرفعها فوق بيانات الخادم (حدث عند بطء تشغيل الخادم)
   const freshDevice = localSyncKeys().length === 0;
 
-  try {
-    let res = await fetchState(freshDevice ? 30000 : 8000);
-    for (let attempt = 1; freshDevice && !res.ok && res.status !== 401 && attempt < 5; attempt++) {
-      await new Promise(r => setTimeout(r, 2000));
-      res = await fetchState(30000);
-    }
-    if (res.status === 401) {
-      clearSession();
-      return 'need-login';
-    }
-    if (!res.ok) throw new Error(String(res.status));
-    const data = (await res.json()) as StateResponse;
-    const { items } = data;
+  /** تطبيق نسخة الخادم (أو رفع بيانات الجهاز إن كان الخادم فارغًا). يعيد المفاتيح التي تغيّرت */
+  const adopt = (data: StateResponse): string[] => {
     setBlocked(data);
-
-    if (!Object.keys(items).length && data.admin) {
+    if (!Object.keys(data.items).length && data.admin) {
       // الخادم فارغ (أول استخدام): رفع كل البيانات الموجودة في هذا الجهاز.
       // لمدير النظام فقط: الحساب المقيّد يستلم مفاتيح أقسامه فقط وقد تبدو له النسخة فارغة
       const p = readPending();
       localSyncKeys().forEach(k => { p[k] = (p[k] || 0) + 1; });
       writePending(p);
-    } else {
-      applyServerState(items);
+      return [];
     }
-  } catch {
-    // جهاز بلا بيانات محلية ولم يصل الخادم: نعود لشاشة الدخول بدل البدء بالبيانات الافتراضية
-    if (freshDevice) return 'need-login';
-    // لا اتصال: نعمل بالنسخة المحلية وتُرسل التعديلات عند عودة الاتصال
-    setStatus('offline');
+    return applyServerState(data.items);
+  };
+
+  if (freshDevice) {
+    // جهاز بلا بيانات محلية: لا يُعرض التطبيق قبل وصول نسخة الخادم
+    try {
+      let res = await fetchState(30000);
+      for (let attempt = 1; !res.ok && res.status !== 401 && attempt < 5; attempt++) {
+        await new Promise(r => setTimeout(r, 2000));
+        res = await fetchState(30000);
+      }
+      if (res.status === 401) {
+        clearSession();
+        return 'need-login';
+      }
+      if (!res.ok) throw new Error(String(res.status));
+      adopt((await res.json()) as StateResponse);
+      rememberEtag(res);
+    } catch {
+      // لم يصل الخادم: نعود لشاشة الدخول بدل البدء بالبيانات الافتراضية
+      return 'need-login';
+    }
+    installInterceptors();
+    flush();
+  } else {
+    // جهاز فيه بيانات: يُعرض التطبيق فورًا بالنسخة المحلية، ونسخة الخادم تُطبَّق عند وصولها
+    // (كان العرض ينتظرها حتى 8 ثوانٍ عند كل فتح). التعديلات أثناء الانتظار تُعلَّم معلّقة فلا تُستبدل
+    installInterceptors();
+    void (async () => {
+      try {
+        const res = await fetchState(30000);
+        if (res.status === 401) {
+          clearSession();
+          location.reload();
+          return;
+        }
+        if (!res.ok) throw new Error(String(res.status));
+        const changed = adopt((await res.json()) as StateResponse);
+        rememberEtag(res);
+        if (changed.length) window.dispatchEvent(new CustomEvent(CLOUD_APPLIED_EVENT, { detail: changed }));
+        flush();
+      } catch {
+        // لا اتصال: نعمل بالنسخة المحلية، وعند عودة الاتصال تُجلب نسخة الخادم وتُرسل التعديلات
+        setStatus('offline');
+      }
+    })();
   }
 
-  installInterceptors();
-  flush();
-
-  window.addEventListener('online', () => flush());
+  // عودة الاتصال: إرسال التعديلات المعلّقة ثم جلب تعديلات الأجهزة الأخرى
+  window.addEventListener('online', async () => {
+    await flush();
+    if (Object.keys(readPending()).length) return;
+    try {
+      const res = await fetchState(15000, true);
+      if (!res.ok) return;
+      const { items } = (await res.json()) as { items: Record<string, string> };
+      if (Object.keys(readPending()).length) return;
+      const changed = applyServerState(items);
+      rememberEtag(res);
+      if (changed.length) window.dispatchEvent(new CustomEvent(CLOUD_APPLIED_EVENT, { detail: changed }));
+    } catch {
+      /* تجاهل: المحاولة التالية في المزامنة الدورية */
+    }
+  });
   // عند الإغلاق: محاولة أخيرة لإرسال ما تبقّى
   window.addEventListener('pagehide', () => {
     const pending = readPending();
@@ -331,12 +388,18 @@ export async function initCloudSync(): Promise<InitResult> {
   // عند العودة للتطبيق: جلب تعديلات الأجهزة الأخرى
   document.addEventListener('visibilitychange', async () => {
     if (document.visibilityState !== 'visible' || Object.keys(readPending()).length) return;
+    if (Date.now() - lastBackgroundSync < 10_000) return;
+    lastBackgroundSync = Date.now();
     try {
-      const res = await fetchState();
+      // 304 = لا جديد منذ آخر نسخة (res.ok خاطئ فيُتجاهل بلا تنزيل)
+      const res = await fetchState(8000, true);
       if (!res.ok) return;
       const { items } = (await res.json()) as { items: Record<string, string> };
       if (Object.keys(readPending()).length) return;
-      if (applyServerState(items).length) location.reload();
+      // الصفحات تحدّث نفسها من الحدث، فلا حاجة لإعادة تحميل الصفحة كاملة
+      const changed = applyServerState(items);
+      rememberEtag(res);
+      if (changed.length) window.dispatchEvent(new CustomEvent(CLOUD_APPLIED_EVENT, { detail: changed }));
     } catch {
       /* تجاهل */
     }
@@ -346,12 +409,14 @@ export async function initCloudSync(): Promise<InitResult> {
   // والصفحات المشتركة في الحدث تحدّث نفسها فورًا
   setInterval(async () => {
     if (document.visibilityState !== 'visible' || Object.keys(readPending()).length || flushing) return;
+    lastBackgroundSync = Date.now();
     try {
-      const res = await fetchState();
+      const res = await fetchState(8000, true);
       if (!res.ok) return;
       const { items } = (await res.json()) as { items: Record<string, string> };
       if (Object.keys(readPending()).length) return;
       const changed = applyServerState(items);
+      rememberEtag(res);
       if (changed.length) window.dispatchEvent(new CustomEvent(CLOUD_APPLIED_EVENT, { detail: changed }));
     } catch {
       /* تجاهل */

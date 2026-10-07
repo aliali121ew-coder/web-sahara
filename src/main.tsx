@@ -7,7 +7,7 @@ import './index.css';
 import { i18nReady } from './i18n';
 import { initCloudSync } from './lib/cloudSync';
 import { AppLogin } from './components/auth/AppLogin';
-import { refreshProfile } from './lib/session';
+import { getProfile, refreshProfile } from './lib/session';
 import { SyncBadge } from './components/auth/SyncBadge';
 
 // طلب تخزين دائم حتى لا يمسح المتصفح بيانات التطبيق تلقائيًا عند امتلاء المساحة أو إغلاقه
@@ -23,8 +23,10 @@ const start = async () => {
     root.render(<AppLogin onSuccess={start} />);
     return;
   }
-  // الصلاحيات تُجلب قبل عرض التطبيق حتى لا تظهر صفحات غير مسموحة للحظة
-  await refreshProfile();
+  // الصلاحيات: بنسخة محفوظة يُعرض التطبيق فورًا وتُحدَّث في الخلفية (الصفحات تتبع حدث session-profile)،
+  // فلا ينتظر الفتح الشبكة في الاتصال الضعيف أو المنقطع. بلا نسخة (أول دخول) تُجلب قبل العرض
+  if (getProfile()) void refreshProfile();
+  else await refreshProfile();
   const { default: App } = await import('./App');
   root.render(
     <React.StrictMode>

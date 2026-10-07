@@ -7,6 +7,7 @@
 import { COLLECTION_KEYS } from '../../src/lib/permCatalog';
 import type { D1Database, D1PreparedStatement, R2Bucket } from '../types';
 import { gzipJson } from '../system/compress';
+import { schemaGate } from './schema';
 
 export const isCollectionKey = (k: string) => (COLLECTION_KEYS as readonly string[]).includes(k);
 
@@ -18,21 +19,20 @@ export interface CollectionOps {
   remove?: string[];
 }
 
-let ready = false;
-export const ensureCollections = async (db: D1Database, backups?: R2Bucket) => {
-  if (ready) return;
+// زِد الإصدار عند تعديل الجداول أو العروض (VIEWS) أو إضافة مفتاح إلى COLLECTION_KEYS
+const COLLECTIONS_SCHEMA = '1';
+export const ensureCollections = (db: D1Database, backups?: R2Bucket) => schemaGate(db, 'collections', `${COLLECTIONS_SCHEMA}:${COLLECTION_KEYS.length}`, async () => {
   await db.exec('CREATE TABLE IF NOT EXISTS collection_items (key TEXT NOT NULL, id TEXT NOT NULL, pos REAL NOT NULL DEFAULT 0, data TEXT NOT NULL, updated_at INTEGER NOT NULL, updated_by TEXT NOT NULL DEFAULT \'\', PRIMARY KEY (key, id))');
   await db.exec('CREATE INDEX IF NOT EXISTS collection_items_order ON collection_items (key, pos, updated_at)');
   await db.exec('CREATE TABLE IF NOT EXISTS system_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL)');
   for (const key of COLLECTION_KEYS) await migrateKey(db, key, backups);
   await ensureViews(db);
-  ready = true;
-};
+});
 
 /**
  * عروض SQL بأعمدة حقيقية فوق collection_items (بدون نسخ البيانات): للتقارير والاستعلام،
  * وأساس جاهز للنقل إلى PostgreSQL لاحقًا (كل عرض يقابل جدولًا مستقبليًا).
- * تُعاد كتابتها عند كل تشغيل حتى تبقى مطابقة لآخر تعريف.
+ * تُعاد كتابتها عند تغيّر إصدار COLLECTIONS_SCHEMA حتى تبقى مطابقة لآخر تعريف.
  */
 const j = (field: string, as: string, cast?: 'REAL' | 'INTEGER') =>
   cast ? `CAST(json_extract(data, '$.${field}') AS ${cast}) AS ${as}` : `json_extract(data, '$.${field}') AS ${as}`;
@@ -101,6 +101,19 @@ const upsertStmt = (db: D1Database, key: string, id: string, pos: number, data: 
 export const readCollection = async (db: D1Database, key: string) => {
   const { results } = await db.prepare('SELECT data FROM collection_items WHERE key = ? ORDER BY pos, updated_at DESC').bind(key).all<{ data: string }>();
   return `[${results.map(r => r.data).join(',')}]`;
+};
+
+/**
+ * قراءة عدة مجموعات باستعلام واحد (بدل استعلام لكل مجموعة: كانت 17 رحلة متتالية إلى D1 عند كل فتح ومزامنة).
+ * يعيد لكل مفتاح مطلوب نص JSON بنفس شكل readCollection (والمجموعة الفارغة "[]")
+ */
+export const readCollections = async (db: D1Database, keys: string[]): Promise<Record<string, string>> => {
+  const out: Record<string, string[]> = Object.fromEntries(keys.map(k => [k, []]));
+  if (!keys.length) return {};
+  const { results } = await db.prepare(`SELECT key, data FROM collection_items WHERE key IN (${keys.map(() => '?').join(',')}) ORDER BY key, pos, updated_at DESC`)
+    .bind(...keys).all<{ key: string; data: string }>();
+  for (const r of results) out[r.key]?.push(r.data);
+  return Object.fromEntries(Object.entries(out).map(([k, rows]) => [k, `[${rows.join(',')}]`]));
 };
 
 /** عدد العناصر لكل مجموعة (للوحة الإدارة) */

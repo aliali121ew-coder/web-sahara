@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Fingerprint, ScanFace, Loader2, AlertCircle, CheckCircle2, X, Lock } from 'lucide-react';
+import { Fingerprint, ScanFace, Loader2, AlertCircle, CheckCircle2, X, Lock, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { errorText } from '../../i18n/errors';
 import {
@@ -10,7 +10,10 @@ import {
 import './auth.css';
 
 /** نص خطأ البصمة مع اسم الخطأ التقني من المتصفح (لمعرفة السبب الحقيقي عند «تعذّر الاستخدام») */
-export const bioErrorText = (e: unknown) => errorText(e) + (e instanceof AuthError && e.detail ? ` (${e.detail})` : '');
+// التفصيل التقني إنجليزي: يُعزل باتجاه LTR (LRI … PDI) حتى لا تختلط أقواسه بالنص العربي
+const LRI = String.fromCharCode(0x2066);
+const PDI = String.fromCharCode(0x2069);
+export const bioErrorText = (e: unknown) => errorText(e) + (e instanceof AuthError && e.detail ? ` ${LRI}(${e.detail})${PDI}` : '');
 
 /**
  * بيانات التسجيل مجلوبة مسبقًا عند فتح النافذة: طلب البصمة يُستدعى مباشرة عند الضغط
@@ -33,33 +36,55 @@ export const usePreparedBio = (active: boolean) => {
   return { ref, needPw, setNeedPw };
 };
 
+export type BioMethodKey = 'finger' | 'face';
+export type BioMethodSet = Record<BioMethodKey, boolean>;
+/** الطريقتان محددتان معًا افتراضيًا */
+export const useBioMethods = () => useState<BioMethodSet>({ finger: true, face: true });
+export const anyBioMethod = (m: BioMethodSet) => m.finger || m.face;
+
 /**
- * اختيار طريقة البصمة: الإصبع أو الوجه أو كلاهما — الضغط على أي منها يبدأ التفعيل.
- * المتصفح لا يسمح باختيار المستشعر نفسه (النظام يعرض ما فعّلته في إعدادات الجهاز)،
- * فالاختيار هنا يبدأ نفس التحقق، والجهاز يطلب الطريقة المتاحة لديه.
+ * تحديد طريقة البصمة: الإصبع والوجه يُحدَّدان معًا أو كل واحدة وحدها، ثم «تفعيل الآن».
+ * المتصفح لا يسمح باختيار المستشعر نفسه: مفتاح المرور واحد للجهاز ويفتحه أي قفل بيومتري
+ * مسجّل في إعداداته، فتحديد الطريقتين يفعّلهما معًا.
  */
-export const BioMethods: React.FC<{ onPick: () => void; disabled?: boolean }> = ({ onPick, disabled }) => {
+export const BioMethods: React.FC<{ value: BioMethodSet; onChange: (v: BioMethodSet) => void; disabled?: boolean }> = ({ value, onChange, disabled }) => {
   const { t } = useTranslation('auth');
   const items = [
-    { key: 'finger', icons: [Fingerprint] },
-    { key: 'face', icons: [ScanFace] },
-    { key: 'both', icons: [Fingerprint, ScanFace] },
+    { key: 'finger', Icon: Fingerprint },
+    { key: 'face', Icon: ScanFace },
   ] as const;
   return (
     <div className="mt-5">
-      <div className="grid grid-cols-3 gap-2">
-        {items.map(it => (
-          <button key={it.key} type="button" onClick={onPick} disabled={disabled}
-            className="auth-focus min-h-[88px] rounded-2xl p-3 flex flex-col items-center justify-center gap-2 bg-teal-50 ring-1 ring-teal-200 hover:bg-teal-100/70 active:scale-[.97] dark:bg-teal-500/10 dark:ring-teal-500/30 dark:hover:bg-teal-500/15 transition disabled:opacity-60">
-            <span className="flex items-center gap-1 text-teal-700 dark:text-teal-300">
-              {it.icons.map((Icon, i) => <Icon key={i} className="w-7 h-7" />)}
-            </span>
-            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{t(`bio.${it.key}`)}</span>
-          </button>
-        ))}
+      <div className="grid grid-cols-2 gap-2">
+        {items.map(({ key, Icon }) => {
+          const on = value[key];
+          return (
+            <button key={key} type="button" role="checkbox" aria-checked={on} disabled={disabled}
+              onClick={() => onChange({ ...value, [key]: !on })}
+              className={`auth-focus relative min-h-[64px] rounded-2xl p-2.5 flex flex-col items-center justify-center gap-1.5 transition active:scale-[.97] disabled:opacity-60 ${on
+                ? 'bg-teal-50 ring-2 ring-teal-500 dark:bg-teal-500/15 dark:ring-teal-400'
+                : 'bg-white ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:ring-slate-700 dark:hover:bg-slate-800'}`}>
+              <span className={`absolute top-1.5 end-1.5 w-4 h-4 rounded-full flex items-center justify-center ${on ? 'bg-teal-600 text-white' : 'ring-1 ring-slate-300 dark:ring-slate-600'}`}>
+                {on && <Check className="w-3 h-3" strokeWidth={3} />}
+              </span>
+              <Icon className={`w-5 h-5 ${on ? 'text-teal-700 dark:text-teal-300' : 'text-slate-400'}`} />
+              <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">{t(`bio.${key}`)}</span>
+            </button>
+          );
+        })}
       </div>
-      <p className="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">{t('bio.pickHint')}</p>
+      <BioSecureNote />
     </div>
+  );
+};
+
+/** سطر الأمان تحت أيقونة البصمة */
+export const BioSecureNote: React.FC = () => {
+  const { t } = useTranslation('auth');
+  return (
+    <p className="mt-3 inline-flex items-center justify-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+      <Lock className="w-3 h-3 shrink-0" /> {t('bio.secureNote')}
+    </p>
   );
 };
 
@@ -71,6 +96,7 @@ export const BiometricSettings: React.FC<{ username: string; onClose: () => void
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [password, setPassword] = useState('');
+  const [methods, setMethods] = useBioMethods();
   const { ref: prepared, needPw, setNeedPw } = usePreparedBio(avail === true && !enabledFor);
 
   useEffect(() => { biometricAvailable().then(setAvail); }, []);
@@ -123,8 +149,8 @@ export const BiometricSettings: React.FC<{ username: string; onClose: () => void
           className="auth-focus absolute top-4 end-4 w-11 h-11 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
           <X className="w-5 h-5" />
         </button>
-        <div className="mx-auto w-20 h-20 rounded-[24px] auth-bio-hero flex items-center justify-center text-white">
-          <Fingerprint className="w-10 h-10" />
+        <div className="mx-auto w-16 h-16 rounded-[20px] auth-bio-hero flex items-center justify-center text-white">
+          <Fingerprint className="w-8 h-8" />
         </div>
         <h2 id="bio-settings-title" className="mt-5 text-xl font-black text-slate-900 dark:text-white">{t('bio.settingsTitle')}</h2>
 
@@ -144,7 +170,7 @@ export const BiometricSettings: React.FC<{ username: string; onClose: () => void
           </>
         ) : (
           <>
-            <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">{t('bio.text')}</p>
+            <p className="mt-1.5 text-[13px] leading-6 text-slate-500 dark:text-slate-400">{t('bio.text')}</p>
             {needPw && (
               <label className="mt-5 flex items-center gap-2 h-12 px-4 rounded-2xl ring-1 ring-slate-200 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-teal-500 text-start">
                 <Lock className="w-4 h-4 text-slate-400 shrink-0" />
@@ -154,8 +180,11 @@ export const BiometricSettings: React.FC<{ username: string; onClose: () => void
                   className="flex-1 min-w-0 bg-transparent outline-none text-[15px] text-slate-900 dark:text-white placeholder:text-slate-400" />
               </label>
             )}
-            <BioMethods onPick={enable} disabled={busy || (needPw && !password)} />
-            {busy && <p className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-teal-700 dark:text-teal-300"><Loader2 className="w-4 h-4 animate-spin" /> {t('bio.waiting')}</p>}
+            <BioMethods value={methods} onChange={setMethods} disabled={busy} />
+            <button type="button" onClick={enable} disabled={busy || !anyBioMethod(methods) || (needPw && !password)}
+              className="auth-btn auth-focus mt-5 w-full h-12 rounded-2xl text-white font-bold text-[15px] flex items-center justify-center gap-2 disabled:opacity-60">
+              {busy ? <><Loader2 className="w-5 h-5 animate-spin" /> {t('bio.waiting')}</> : t('bio.enable')}
+            </button>
           </>
         )}
 

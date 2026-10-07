@@ -68,9 +68,10 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
   
   // String state for inputs to allow complete freedom of backspace, deletion, and comma formatting
-  const [capacityStr, setCapacityStr] = useState<string>('150,000');
-  const [storedStr, setStoredStr] = useState<string>('75,000');
-  const [levelStr, setLevelStr] = useState<string>('3.00');
+  // خزان جديد يبدأ بلا سعة (حقل إلزامي) وبمخزون ومنسوب صفريين، لا قيم افتراضية تُحفظ دون قصد
+  const [capacityStr, setCapacityStr] = useState<string>('');
+  const [storedStr, setStoredStr] = useState<string>('0');
+  const [levelStr, setLevelStr] = useState<string>('0.00');
   const [maxLevelStr, setMaxLevelStr] = useState<string>('6.00');
 
   const isEditing = Boolean(editingTank);
@@ -95,9 +96,9 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
         const currentSecKey = initialSectionKey && sections[initialSectionKey] ? initialSectionKey : sectionKeys[0] || '';
         setSectionKey(currentSecKey);
         setTankName('');
-        setCapacityStr('150,000');
-        setStoredStr('75,000');
-        setLevelStr('3.00');
+        setCapacityStr('');
+        setStoredStr('0');
+        setLevelStr('0.00');
         setMaxLevelStr('6.00');
 
         const sectionTanks = allTanks.filter(t => t.sectionKey === currentSecKey);
@@ -176,7 +177,8 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
     setStoredStr(formatted);
 
     const newStored = parseRawNumber(raw);
-    const cap = parseRawNumber(capacityStr) || 1;
+    // بلا سعة بعد لا يُحسب المنسوب (كانت السعة تُفترض 1 فيظهر منسوب هائل)
+    const cap = parseRawNumber(capacityStr);
     const currMax = parseRawNumber(maxLevelStr) || 6.0;
     if (cap > 0) {
       const calculatedLevel = Number(((newStored / cap) * currMax).toFixed(2));
@@ -215,8 +217,13 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
       alert(t('tanks:tank.nameRequired'));
       return;
     }
+    // السعة إلزامية: كانت تُحفظ 150,000 لتر تلقائيًا إن تُرك الحقل فارغًا
+    if (!(capacityNum > 0)) {
+      alert(t('tanks:tank.capacityRequired'));
+      return;
+    }
 
-    const finalCapacity = capacityNum || 150000;
+    const finalCapacity = capacityNum;
     const finalMaxLevel = maxLevelNum || 6.0;
     const finalLevel = Math.min(finalMaxLevel, parseRawNumber(levelStr));
 
@@ -370,7 +377,8 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
                 <input
                   type="text"
                   dir="rtl"
-                  placeholder="150,000"
+                  placeholder="0"
+                  required
                   value={capacityStr}
                   onChange={handleCapacityChange}
                   className="w-full px-3.5 py-2.5 pl-12 rounded-xl bg-slate-50 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-mono font-black text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all text-right"

@@ -520,7 +520,8 @@
     "tankCount_few": "{{count}} خزانات",
     "tankCount_many": "{{count}} خزانًا",
     "tankCount_other": "{{count}} خزان",
-    "iqdPerLiter": "د.ع / لتر"
+    "iqdPerLiter": "د.ع / لتر",
+    "noChartData": "لا توجد سجلات كافية للرسم بعد"
   },
   "tx": {
     "purchases": "المشتريات",
@@ -749,6 +750,7 @@
     "safetyDays_two": "<1>{{count}}</1> <2>يوم أمان كامل</2>",
     "safetyDays_few": "<1>{{count}}</1> <2>أيام أمان كاملة</2>",
     "safetyDays_many": "<1>{{count}}</1> <2>يومًا أمان كاملًا</2>",
-    "safetyDays_other": "<1>{{count}}</1> <2>يوم أمان كامل</2>"
+    "safetyDays_other": "<1>{{count}}</1> <2>يوم أمان كامل</2>",
+    "empty": "لا توجد مواقع احتياط مسجّلة بعد"
   }
 }

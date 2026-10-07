@@ -488,7 +488,8 @@
     "operatingTanks_other": "{{count}} operating tanks",
     "tankCount_one": "{{count}} tank",
     "tankCount_other": "{{count}} tanks",
-    "iqdPerLiter": "IQD / L"
+    "iqdPerLiter": "IQD / L",
+    "noChartData": "Not enough records to chart yet"
   },
   "tx": {
     "purchases": "Purchases",
@@ -689,6 +690,7 @@
     "pctCapacity": "{{pct}}% capacity",
     "covered100": "100% covered",
     "safetyDays_one": "<1>{{count}}</1> <2>full safety day</2>",
-    "safetyDays_other": "<1>{{count}}</1> <2>full safety days</2>"
+    "safetyDays_other": "<1>{{count}}</1> <2>full safety days</2>",
+    "empty": "No reserve sites recorded yet"
   }
 }

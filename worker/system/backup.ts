@@ -8,6 +8,7 @@
 import { codedError } from '../errors';
 import type { D1Database, Env } from '../types';
 import { gunzipText, gzipText, sha256Hex } from './compress';
+import { schemaGate } from '../storage/schema';
 
 export type BackupKind = 'daily' | 'manual' | 'pre-restore' | 'monthly';
 export interface BackupRow {
@@ -30,15 +31,12 @@ const IDENTITY_MERGE = new Set(['chat_users']);
 const SKIP_ON_BACKUP = new Set(['sahara_file_chunks', 'chat_file_chunks']);
 const PAGE = 500;
 
-let ready = false;
-export const ensureSystemTables = async (db: D1Database) => {
-  if (ready) return;
+export const ensureSystemTables = (db: D1Database) => schemaGate(db, 'system', '1', async () => {
   await db.exec("CREATE TABLE IF NOT EXISTS backups (id TEXT PRIMARY KEY, kind TEXT NOT NULL, r2_key TEXT NOT NULL, size INTEGER NOT NULL DEFAULT 0, raw_size INTEGER NOT NULL DEFAULT 0, rows INTEGER NOT NULL DEFAULT 0, tables INTEGER NOT NULL DEFAULT 0, sha256 TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'ok', note TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, created_by TEXT NOT NULL DEFAULT '')");
   await db.exec('CREATE INDEX IF NOT EXISTS backups_created ON backups (created_at)');
   await db.exec("CREATE TABLE IF NOT EXISTS system_jobs (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, started_at INTEGER NOT NULL, finished_at INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'running', details TEXT NOT NULL DEFAULT '', triggered_by TEXT NOT NULL DEFAULT '')");
   await db.exec('CREATE TABLE IF NOT EXISTS system_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL)');
-  ready = true;
-};
+});
 
 /** عروض SQL (للتصفح والتقارير فقط؛ لا تُنسخ ولا تُسترجع لأنها لا تحمل بيانات) */
 export const userViews = async (db: D1Database) => {

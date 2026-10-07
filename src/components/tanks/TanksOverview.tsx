@@ -139,6 +139,7 @@ const SECTION_CONFIGS: Record<string, TankSectionConfig> = {
 };
 
 // Exact Official Tank Data
+// تعريف الخزانات الرسمي (الرمز، الاسم، السعة، أقصى منسوب). المنسوب الحالي 0 حتى تُدخل القراءات الفعلية
 export const OFFICIAL_TABLE_TANK_UNITS: TankUnitRow[] = [
   // 📋 جدول 1: خزانات التشغيل اليومي (بفر / ديزل)
   {
@@ -148,11 +149,11 @@ export const OFFICIAL_TABLE_TANK_UNITS: TankUnitRow[] = [
     sectionKey: 'daily-buffer-diesel',
     sectionName: 'خزانات التشغيل اليومي - بفر وديزل',
     company: 'صحاري كربلاء',
-    levelMeters: 4.06,
+    levelMeters: 0,
     maxLevelMeters: 6.00,
     capacityLiters: 154722,
-    temperatureC: 27.5,
-    pressureBar: 1.08
+    temperatureC: 0,
+    pressureBar: 0
   },
   {
     id: 'tk-tbl-bf-01',
@@ -161,11 +162,11 @@ export const OFFICIAL_TABLE_TANK_UNITS: TankUnitRow[] = [
     sectionKey: 'daily-buffer-diesel',
     sectionName: 'خزانات التشغيل اليومي - بفر وديزل',
     company: 'صحاري كربلاء',
-    levelMeters: 2.98,
+    levelMeters: 0,
     maxLevelMeters: 6.00,
     capacityLiters: 107220,
-    temperatureC: 27.1,
-    pressureBar: 1.05
+    temperatureC: 0,
+    pressureBar: 0
   },
   {
     id: 'tk-tbl-bf-02',
@@ -174,11 +175,11 @@ export const OFFICIAL_TABLE_TANK_UNITS: TankUnitRow[] = [
     sectionKey: 'daily-buffer-diesel',
     sectionName: 'خزانات التشغيل اليومي - بفر وديزل',
     company: 'صحاري كربلاء',
-    levelMeters: 3.50,
+    levelMeters: 0,
     maxLevelMeters: 6.00,
     capacityLiters: 107220,
-    temperatureC: 27.3,
-    pressureBar: 1.06
+    temperatureC: 0,
+    pressureBar: 0
   },
   {
     id: 'tk-tbl-dz-01',
@@ -187,11 +188,11 @@ export const OFFICIAL_TABLE_TANK_UNITS: TankUnitRow[] = [
     sectionKey: 'daily-buffer-diesel',
     sectionName: 'خزانات التشغيل اليومي - بفر وديزل',
     company: 'صحاري كربلاء',
-    levelMeters: 3.50,
+    levelMeters: 0,
     maxLevelMeters: 6.00,
     capacityLiters: 154740,
-    temperatureC: 26.9,
-    pressureBar: 1.10
+    temperatureC: 0,
+    pressureBar: 0
   },
 
   // 📋 جدول 2: وحدة الكاز والبنزين وخزانات بيت الحاج
@@ -202,11 +203,11 @@ export const OFFICIAL_TABLE_TANK_UNITS: TankUnitRow[] = [
     sectionKey: 'gas-petrol-hajj',
     sectionName: 'وحدة الكاز والبنزين وخزانات بيت الحاج',
     company: 'صحاري كربلاء',
-    levelMeters: 18.80,
+    levelMeters: 0,
     maxLevelMeters: 20.00,
     capacityLiters: 4499480,
-    temperatureC: 28.2,
-    pressureBar: 1.18
+    temperatureC: 0,
+    pressureBar: 0
   },
   {
     id: 'tk-tbl-kz-02',
@@ -215,11 +216,11 @@ export const OFFICIAL_TABLE_TANK_UNITS: TankUnitRow[] = [
     sectionKey: 'gas-petrol-hajj',
     sectionName: 'وحدة الكاز والبنزين وخزانات بيت الحاج',
     company: 'صحاري كربلاء',
-    levelMeters: 18.50,
+    levelMeters: 0,
     maxLevelMeters: 20.00,
     capacityLiters: 4499480,
-    temperatureC: 28.0,
-    pressureBar: 1.16
+    temperatureC: 0,
+    pressureBar: 0
   },
   {
     id: 'tk-tbl-hj-01',
@@ -228,11 +229,11 @@ export const OFFICIAL_TABLE_TANK_UNITS: TankUnitRow[] = [
     sectionKey: 'gas-petrol-hajj',
     sectionName: 'وحدة الكاز والبنزين وخزانات بيت الحاج',
     company: 'صحاري كربلاء',
-    levelMeters: 4.00,
+    levelMeters: 0,
     maxLevelMeters: 5.00,
     capacityLiters: 10000,
-    temperatureC: 26.5,
-    pressureBar: 1.02
+    temperatureC: 0,
+    pressureBar: 0
   },
   {
     id: 'tk-tbl-bn-01',
@@ -241,11 +242,11 @@ export const OFFICIAL_TABLE_TANK_UNITS: TankUnitRow[] = [
     sectionKey: 'gas-petrol-hajj',
     sectionName: 'وحدة الكاز والبنزين وخزانات بيت الحاج',
     company: 'صحاري كربلاء',
-    levelMeters: 2.28,
+    levelMeters: 0,
     maxLevelMeters: 5.00,
     capacityLiters: 44000,
-    temperatureC: 25.8,
-    pressureBar: 1.04
+    temperatureC: 0,
+    pressureBar: 0
   },
 
   // 📋 جدول 3: عمليات الاتحاد (النفط الأسود)
@@ -256,11 +257,11 @@ export const OFFICIAL_TABLE_TANK_UNITS: TankUnitRow[] = [
     sectionKey: 'etihad-black-oil',
     sectionName: 'عمليات الاتحاد - النفط الأسود',
     company: 'شركة الاتحاد',
-    levelMeters: 14.68,
+    levelMeters: 0,
     maxLevelMeters: 20.00,
     capacityLiters: 6000000,
-    temperatureC: 44.0,
-    pressureBar: 1.35
+    temperatureC: 0,
+    pressureBar: 0
   },
   {
     id: 'tk-tbl-et-02',
@@ -269,11 +270,11 @@ export const OFFICIAL_TABLE_TANK_UNITS: TankUnitRow[] = [
     sectionKey: 'etihad-black-oil',
     sectionName: 'عمليات الاتحاد - النفط الأسود',
     company: 'شركة الاتحاد',
-    levelMeters: 9.36,
+    levelMeters: 0,
     maxLevelMeters: 20.00,
     capacityLiters: 10800000,
-    temperatureC: 45.2,
-    pressureBar: 1.38
+    temperatureC: 0,
+    pressureBar: 0
   },
   {
     id: 'tk-tbl-et-03',
@@ -282,11 +283,11 @@ export const OFFICIAL_TABLE_TANK_UNITS: TankUnitRow[] = [
     sectionKey: 'etihad-black-oil',
     sectionName: 'عمليات الاتحاد - النفط الأسود',
     company: 'شركة الاتحاد',
-    levelMeters: 18.46,
+    levelMeters: 0,
     maxLevelMeters: 20.00,
     capacityLiters: 39000000,
-    temperatureC: 46.5,
-    pressureBar: 1.45
+    temperatureC: 0,
+    pressureBar: 0
   },
 
   // 🛢️ مصفوفة النفط الأسود - شركة صحاري كربلاء (8 خزانات)
@@ -297,11 +298,11 @@ export const OFFICIAL_TABLE_TANK_UNITS: TankUnitRow[] = [
     sectionKey: 'sahara-gas-8',
     sectionName: 'النفط الأسود - شركة صحاري كربلاء',
     company: 'شركة صحاري كربلاء',
-    levelMeters: 7.40,
+    levelMeters: 0,
     maxLevelMeters: 20.00,
     capacityLiters: 4645536,
-    temperatureC: 28.4,
-    pressureBar: 1.15
+    temperatureC: 0,
+    pressureBar: 0
   },
   {
     id: 'tk-sh-kz-02',
@@ -310,11 +311,11 @@ export const OFFICIAL_TABLE_TANK_UNITS: TankUnitRow[] = [
     sectionKey: 'sahara-gas-8',
     sectionName: 'النفط الأسود - شركة صحاري كربلاء',
     company: 'شركة صحاري كربلاء',
-    levelMeters: 18.91,
+    levelMeters: 0,
     maxLevelMeters: 20.00,
     capacityLiters: 4618419,
-    temperatureC: 27.9,
-    pressureBar: 1.12
+    temperatureC: 0,
+    pressureBar: 0
   },
   {
     id: 'tk-sh-kz-03',
@@ -323,11 +324,11 @@ export const OFFICIAL_TABLE_TANK_UNITS: TankUnitRow[] = [
     sectionKey: 'sahara-gas-8',
     sectionName: 'النفط الأسود - شركة صحاري كربلاء',
     company: 'شركة صحاري كربلاء',
-    levelMeters: 7.80,
+    levelMeters: 0,
     maxLevelMeters: 20.00,
     capacityLiters: 4640400,
-    temperatureC: 29.1,
-    pressureBar: 1.08
+    temperatureC: 0,
+    pressureBar: 0
   },
   {
     id: 'tk-sh-kz-04',
@@ -336,11 +337,11 @@ export const OFFICIAL_TABLE_TANK_UNITS: TankUnitRow[] = [
     sectionKey: 'sahara-gas-8',
     sectionName: 'النفط الأسود - شركة صحاري كربلاء',
     company: 'شركة صحاري كربلاء',
-    levelMeters: 8.18,
+    levelMeters: 0,
     maxLevelMeters: 20.00,
     capacityLiters: 4628960,
-    temperatureC: 28.6,
-    pressureBar: 1.10
+    temperatureC: 0,
+    pressureBar: 0
   },
   {
     id: 'tk-sh-kz-05',
@@ -349,11 +350,11 @@ export const OFFICIAL_TABLE_TANK_UNITS: TankUnitRow[] = [
     sectionKey: 'sahara-gas-8',
     sectionName: 'النفط الأسود - شركة صحاري كربلاء',
     company: 'شركة صحاري كربلاء',
-    levelMeters: 18.56,
+    levelMeters: 0,
     maxLevelMeters: 20.00,
     capacityLiters: 4630420,
-    temperatureC: 26.5,
-    pressureBar: 1.18
+    temperatureC: 0,
+    pressureBar: 0
   },
   {
     id: 'tk-sh-kz-06',
@@ -362,11 +363,11 @@ export const OFFICIAL_TABLE_TANK_UNITS: TankUnitRow[] = [
     sectionKey: 'sahara-gas-8',
     sectionName: 'النفط الأسود - شركة صحاري كربلاء',
     company: 'شركة صحاري كربلاء',
-    levelMeters: 18.91,
+    levelMeters: 0,
     maxLevelMeters: 20.00,
     capacityLiters: 4618419,
-    temperatureC: 26.8,
-    pressureBar: 1.20
+    temperatureC: 0,
+    pressureBar: 0
   },
   {
     id: 'tk-sh-kz-07',
@@ -375,11 +376,11 @@ export const OFFICIAL_TABLE_TANK_UNITS: TankUnitRow[] = [
     sectionKey: 'sahara-gas-8',
     sectionName: 'النفط الأسود - شركة صحاري كربلاء',
     company: 'شركة صحاري كربلاء',
-    levelMeters: 10.00,
+    levelMeters: 0,
     maxLevelMeters: 20.00,
     capacityLiters: 4641000,
-    temperatureC: 29.5,
-    pressureBar: 1.05
+    temperatureC: 0,
+    pressureBar: 0
   },
   {
     id: 'tk-sh-kz-08',
@@ -388,11 +389,11 @@ export const OFFICIAL_TABLE_TANK_UNITS: TankUnitRow[] = [
     sectionKey: 'sahara-gas-8',
     sectionName: 'النفط الأسود - شركة صحاري كربلاء',
     company: 'شركة صحاري كربلاء',
-    levelMeters: 4.00,
+    levelMeters: 0,
     maxLevelMeters: 20.00,
     capacityLiters: 4641000,
-    temperatureC: 30.2,
-    pressureBar: 1.01
+    temperatureC: 0,
+    pressureBar: 0
   }
 ];
 

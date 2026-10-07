@@ -9,11 +9,12 @@ import { audit, handleChat, verifySession, type Session } from './chat';
 import { canCreateItems, canMarkRead, canReadKey, canWriteKey, canWriteSome, isServerForbiddenKey, keySectionLabel, levelOf } from '../src/lib/permCatalog';
 
 import { ensureFileColumns, loadFile, removeFile, storeFile } from './storage/files';
-import { applyCollectionOps, clearCollection, ensureCollections, isCollectionKey, limitedOpsAllowed, readCollection, replaceCollection, type CollectionOps } from './storage/collections';
+import { applyCollectionOps, clearCollection, ensureCollections, isCollectionKey, limitedOpsAllowed, readCollections, replaceCollection, type CollectionOps } from './storage/collections';
 import { COLLECTION_KEYS } from '../src/lib/permCatalog';
 import type { D1Database, D1PreparedStatement, Env, ExecutionContext, R2Bucket, ScheduledController } from './types';
 import { handleSystem } from './system/api';
 import { ensureSystemTables, getMaintenance } from './system/backup';
+import { schemaGate } from './storage/schema';
 import { onSchedule } from './system/maintenance';
 
 type StateRow = { key: string; value: string; updated_at: number };
@@ -26,22 +27,21 @@ const API_SECURITY_HEADERS = {
   'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
 };
 
+const toHex = (buf: ArrayBuffer) => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), {
     status,
     headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...API_SECURITY_HEADERS },
   });
 
-let tableReady = false;
-const ensureTable = async (db: D1Database) => {
-  if (tableReady) return;
+const ensureTable = (db: D1Database) => schemaGate(db, 'app_state', '1', async () => {
   await db.exec('CREATE TABLE IF NOT EXISTS app_state (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL)');
   // تنظيف مفاتيح سرّية خاصة بالأجهزة رُفعت قديمًا قبل استثنائها من المزامنة
   const { results } = await db.prepare('SELECT key FROM app_state').all<{ key: string }>();
   const leaked = results.map(r => r.key).filter(isServerForbiddenKey);
   if (leaked.length) await db.batch(leaked.map(k => db.prepare('DELETE FROM app_state WHERE key = ?').bind(k)));
-  tableReady = true;
-};
+});
 
 const MAX_STATE_BODY = 8 * 1024 * 1024;
 const MAX_IMAGE_BODY = 6 * 1024 * 1024;
@@ -174,16 +174,20 @@ export default {
       const visible = results.filter(r => canReadKey(session.perms, session.admin, r.key));
       const items: Record<string, string> = Object.fromEntries(visible.map(r => [r.key, r.value]));
       // المجموعات الكبيرة تُجمَّع من سطورها وتُعاد بنفس الشكل (نص JSON)
-      for (const key of COLLECTION_KEYS) {
-        if (canReadKey(session.perms, session.admin, key)) items[key] = await readCollection(env.DB, key);
-      }
-      return json({
+      Object.assign(items, await readCollections(env.DB, COLLECTION_KEYS.filter(key => canReadKey(session.perms, session.admin, key))));
+      const body = JSON.stringify({
         items,
         admin: session.admin,
         collections: COLLECTION_KEYS,
         // قراءة فقط = لا يملك أي نوع كتابة (الإضافة فقط أو تعليم المقروء يُرسلان ويتحقق منهما الخادم)
         readOnly: Object.keys(items).filter(k => !canWriteSome(session.perms, session.admin, k)),
       });
+      // بصمة النسخة: المزامنة الدورية ترسلها، فإن لم يتغيّر شيء يُرد 304 بلا جسم
+      // (كانت النسخة كاملة — أكثر من 1 ميغابايت — تُنزَّل كل 30 ثانية لكل جهاز مفتوح)
+      const etag = `"${toHex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(body))).slice(0, 32)}"`;
+      const headers = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', etag, ...API_SECURITY_HEADERS };
+      if (request.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers });
+      return new Response(body, { status: 200, headers });
     }
 
     if (url.pathname === '/api/state' && request.method === 'PUT') {

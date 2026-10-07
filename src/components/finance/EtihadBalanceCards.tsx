@@ -18,12 +18,16 @@ import { useTranslation, Trans } from 'react-i18next';
 
 interface EtihadBalanceCardsProps {
   metrics: EtihadSummaryMetrics;
+  /** أيام التغطية المحسوبة من متوسط الاستهلاك الفعلي (0 = لا تقدير) */
   coverageDays?: number;
+  /** السعة الفعلية لخزانات الكاز من منظومة الخزانات (مرجع نسبة الرصيد) */
+  capacityLiters?: number;
 }
 
 export const EtihadBalanceCards: React.FC<EtihadBalanceCardsProps> = ({
   metrics,
-  coverageDays = 107
+  coverageDays = 0,
+  capacityLiters = 0
 }) => {
   const { t } = useTranslation(['finance', 'common']);
 
@@ -35,18 +39,19 @@ export const EtihadBalanceCards: React.FC<EtihadBalanceCardsProps> = ({
     return 'text-2xl sm:text-3xl xl:text-3xl';
   };
 
-  const totalCost = (metrics.todayInbound > 0 ? metrics.todayInbound : metrics.totalPurchases) * (metrics.averagePrice || 554);
+  const totalCost = (metrics.todayInbound > 0 ? metrics.todayInbound : metrics.totalPurchases) * (metrics.averagePrice || 0);
 
   const currentDate = new Date();
   const securesUntilDate = new Date(currentDate.getTime() + (coverageDays * 24 * 60 * 60 * 1000));
   const y = securesUntilDate.getFullYear();
   const m = String(securesUntilDate.getMonth() + 1).padStart(2, '0');
   const d = String(securesUntilDate.getDate()).padStart(2, '0');
-  const formattedSecuresUntil = `${y}/${m}/${d}`;
+  const formattedSecuresUntil = coverageDays > 0 ? `${y}/${m}/${d}` : '—';
 
   const getBalanceStatus = (current: number) => {
-    const MAX_CAPACITY = 22000000;
-    const percentage = (current / MAX_CAPACITY) * 100;
+    // بلا سعة معرّفة لا يُحكم على الرصيد
+    if (capacityLiters <= 0) return { label: '—', color: 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 border-slate-200/50 dark:border-slate-700/40' };
+    const percentage = (current / capacityLiters) * 100;
 
     if (percentage >= 75) {
       return { label: t('finance:cards.excellent'), color: 'text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/50 border-teal-200/50 dark:border-teal-800/40' };
@@ -62,8 +67,7 @@ export const EtihadBalanceCards: React.FC<EtihadBalanceCardsProps> = ({
   const currentStatus = getBalanceStatus(metrics.currentBalance);
 
   // Calculate percentages
-  const MAX_CAPACITY = 22000000;
-  const inboundPercentage = ((metrics.todayInbound / MAX_CAPACITY) * 100).toFixed(2);
+  const inboundPercentage = capacityLiters > 0 ? ((metrics.todayInbound / capacityLiters) * 100).toFixed(2) : '0.00';
   const consumptionPercentage = metrics.currentBalance > 0
     ? ((metrics.todayConsumption / (metrics.currentBalance + metrics.todayConsumption)) * 100).toFixed(2)
     : '0.00';

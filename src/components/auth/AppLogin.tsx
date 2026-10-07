@@ -11,7 +11,8 @@ import {
   biometricAvailable, biometricUser, enableBiometric, loginWithBiometric, savedLogin, resumeLogin, forgetSavedLogin,
   BIO_DECLINED_PREFIX, type BioRegisterOptions,
 } from '../../lib/session';
-import { BioMethods, bioErrorText, usePreparedBio } from './BiometricSettings';
+import { RoutesMap } from './RoutesMap';
+import { BioMethods, anyBioMethod, bioErrorText, useBioMethods, usePreparedBio } from './BiometricSettings';
 import { PhoneFlow, type PhoneStep, type SupportKind } from './PhoneFlow';
 import './auth.css';
 
@@ -396,7 +397,7 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
   return (
     <div dir={pageDir} className="auth-page relative flex items-center justify-center p-5 lg:p-8">
       {offerEl}
-      <div className="relative w-full max-w-[1280px] rounded-[28px] bg-white/60 dark:bg-white/[.03] p-2.5 shadow-[0_30px_80px_-35px_rgba(15,23,42,.35)] ring-1 ring-white/80 dark:ring-white/5">
+      <div className="auth-glass-frame relative w-full max-w-[1280px] p-2">
         <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.12fr)] gap-2.5 lg:h-[min(840px,calc(100dvh-5rem))]">
 
           {/* ═════ بطاقة الدخول ═════ */}
@@ -458,6 +459,7 @@ const BioOffer: React.FC<{ onEnable: (prepared: BioRegisterOptions | null) => Pr
   const [error, setError] = useState('');
   // تُجلب بيانات التسجيل فور ظهور العرض ليبدأ طلب البصمة مباشرة عند الضغط (شرط Safari في iPhone)
   const { ref: prepared } = usePreparedBio(true);
+  const [methods, setMethods] = useBioMethods();
   const enable = async () => {
     setBusy(true);
     setError('');
@@ -475,20 +477,20 @@ const BioOffer: React.FC<{ onEnable: (prepared: BioRegisterOptions | null) => Pr
         <button type="button" onClick={onSkip} aria-label={t('common:actions.close')} className="auth-focus absolute top-4 end-4 w-11 h-11 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
           <X className="w-5 h-5" />
         </button>
-        <div className="mx-auto w-24 h-24 rounded-[28px] auth-bio-hero flex items-center justify-center text-white">
-          <Fingerprint className="w-12 h-12" />
+        <div className="mx-auto w-16 h-16 rounded-[20px] auth-bio-hero flex items-center justify-center text-white">
+          <Fingerprint className="w-8 h-8" />
         </div>
-        <h2 id="bio-title" className="mt-6 text-[22px] font-black text-slate-900 dark:text-white">{t('bio.title')}</h2>
-        <p className="mt-2 text-[15px] leading-7 text-slate-600 dark:text-slate-400">
+        <h2 id="bio-title" className="mt-5 text-[22px] font-black text-slate-900 dark:text-white">{t('bio.title')}</h2>
+        <p className="mt-1.5 text-[13px] leading-6 text-slate-500 dark:text-slate-400">
           {t('bio.text')}
         </p>
-        <BioMethods onPick={enable} disabled={busy} />
+        <BioMethods value={methods} onChange={setMethods} disabled={busy} />
         {error && (
           <p role="alert" className="mt-4 flex items-center justify-center gap-2 text-[13px] font-bold text-rose-700 dark:text-rose-300">
             <AlertCircle className="w-4 h-4" /> {error}
           </p>
         )}
-        <button type="button" onClick={enable} disabled={busy} autoFocus
+        <button type="button" onClick={enable} disabled={busy || !anyBioMethod(methods)} autoFocus
           className="auth-btn auth-focus mt-6 w-full h-14 rounded-2xl text-white font-bold text-base flex items-center justify-center gap-2 disabled:opacity-70">
           {busy ? <><Loader2 className="w-5 h-5 animate-spin" /> {t('bio.waiting')}</> : t('bio.enable')}
         </button>
@@ -628,27 +630,11 @@ const HelpView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   );
 };
 
-// ───── اللوحة الحيّة لمراقبة الأسطول ─────
-// أسماء المناطق في auth:showcase.stations.<key>
-const STATIONS = [
-  { x: 92, y: 74, key: 'husseiniya' },
-  { x: 470, y: 62, key: 'hurr' },
-  { x: 498, y: 252, key: 'tuwairij' },
-  { x: 104, y: 262, key: 'ainTamr' },
-  { x: 300, y: 36, key: 'jadwal' },
-];
-const DEPOT_1 = { x: 200, y: 160 };
-const DEPOT_2 = { x: 380, y: 160 };
-const route = (s: { x: number; y: number }, k: number) => {
-  const target = k % 2 === 0 ? DEPOT_1 : DEPOT_2;
-  const cx = (target.x + s.x) / 2 + (k % 2 ? 40 : -40);
-  const cy = (target.y + s.y) / 2 + (k % 2 ? -30 : 30);
-  return `M${target.x},${target.y} Q${cx},${cy} ${s.x},${s.y}`;
-};
+// أرقام تعريفية بالشركة (أكثر من…)، لا بيانات تشغيل حيّة: الشاشة قبل تسجيل الدخول
 const KPIS = [
-  { icon: Truck, value: 42, label: 'showcase.kpiVehicles' },
-  { icon: Building2, value: 18, label: 'showcase.kpiStations' },
-  { icon: Fuel, value: 705021, label: 'showcase.kpiFuel' },
+  { icon: Truck, value: 3600, label: 'showcase.kpiVehicles', plus: true },
+  { icon: Building2, value: 35, label: 'showcase.kpiStations', plus: true },
+  { icon: Fuel, value: 62570310, label: 'showcase.kpiFuel', plus: false },
 ];
 
 /** عدّاد يصعد بنعومة عند الظهور */
@@ -671,9 +657,8 @@ const CountUp: React.FC<{ to: number }> = ({ to }) => {
 };
 
 const FleetShowcase: React.FC = () => {
-  const { t, i18n } = useTranslation('auth');
+  const { t } = useTranslation('auth');
   const [time, setTime] = useState(() => new Date());
-  const motion = !reducedMotion();
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(t);
@@ -695,66 +680,19 @@ const FleetShowcase: React.FC = () => {
 
       {/* الخريطة المصغّرة */}
       <div className="relative flex-1 min-h-0 flex items-center justify-center py-6">
-        <div className="auth-glass w-full max-w-[600px] rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-2 px-1">
-            <span className="text-sm font-bold">{t('showcase.routes')}</span>
-            <span className="flex items-center gap-3 text-[11px] text-white/65">
-              <span className="flex items-center gap-1.5"><i className="w-2 h-2 rounded-full bg-amber-300" /> {t('showcase.tanker')}</span>
-              <span className="flex items-center gap-1.5"><i className="w-2 h-2 rounded-full ring-2 ring-teal-300" /> {t('showcase.station')}</span>
-            </span>
-          </div>
-          <svg viewBox="0 0 580 300" className="w-full h-auto" role="img" aria-label={t('showcase.mapLabel')}>
-            <defs>
-              <radialGradient id="auth-depot" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#5eead4" stopOpacity=".55" />
-                <stop offset="100%" stopColor="#5eead4" stopOpacity="0" />
-              </radialGradient>
-            </defs>
-            {/* طرق خلفية */}
-            <path d="M0,210 C120,190 200,240 330,215 S520,150 580,170" fill="none" stroke="rgba(255,255,255,.07)" strokeWidth="10" strokeLinecap="round" />
-            <path d="M40,0 C90,90 150,140 190,300" fill="none" stroke="rgba(255,255,255,.05)" strokeWidth="8" strokeLinecap="round" />
-            {STATIONS.map((s, k) => (
-              <path key={k} id={`auth-r${k}`} d={route(s, k)} fill="none" stroke="rgba(94,234,212,.45)" strokeWidth="1.6" className="auth-route" />
-            ))}
-            {/* الشركة الأولى */}
-            <circle cx={DEPOT_1.x} cy={DEPOT_1.y} r="34" fill="url(#auth-depot)" />
-            <circle cx={DEPOT_1.x} cy={DEPOT_1.y} r="9" fill="#14b8a6" stroke="#ccfbf1" strokeWidth="2.5" />
-            <text x={DEPOT_1.x} y={DEPOT_1.y + 28} textAnchor="middle" fill="#fff" fontSize="12" fontWeight="700">{t('showcase.depot')}</text>
-            {/* الشركة الثانية */}
-            <circle cx={DEPOT_2.x} cy={DEPOT_2.y} r="34" fill="url(#auth-depot)" />
-            <circle cx={DEPOT_2.x} cy={DEPOT_2.y} r="9" fill="#14b8a6" stroke="#ccfbf1" strokeWidth="2.5" />
-            <text x={DEPOT_2.x} y={DEPOT_2.y + 28} textAnchor="middle" fill="#fff" fontSize="12" fontWeight="700">{t('showcase.depot2')}</text>
-            {/* المحطات */}
-            {STATIONS.map((s, k) => (
-              <g key={s.key}>
-                <circle cx={s.x} cy={s.y} r="6" fill="none" stroke="#5eead4" strokeWidth="1.5" className="auth-station-ring" style={{ animationDelay: `${k * 0.45}s` }} />
-                <circle cx={s.x} cy={s.y} r="5" fill="#0b3f4a" stroke="#5eead4" strokeWidth="2" />
-                <text x={s.x} y={s.y - 12} textAnchor="middle" fill="rgba(255,255,255,.8)" fontSize="11" fontWeight="600">{t(`showcase.stations.${s.key}`)}</text>
-              </g>
-            ))}
-            {/* الصهاريج المتحركة */}
-            {STATIONS.map((_, k) => (
-              <g key={`t${k}`}>
-                <circle r="9" fill="rgba(252,211,77,.22)">
-                  {motion && <animateMotion dur={`${7 + k * 1.3}s`} repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear" begin={`${-k * 1.1}s`}><mpath href={`#auth-r${k}`} /></animateMotion>}
-                </circle>
-                <circle r="4" fill="#fcd34d" stroke="#fff7d6" strokeWidth="1.2">
-                  {motion && <animateMotion dur={`${7 + k * 1.3}s`} repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear" begin={`${-k * 1.1}s`}><mpath href={`#auth-r${k}`} /></animateMotion>}
-                </circle>
-              </g>
-            ))}
-          </svg>
-        </div>
+        <RoutesMap className="w-full max-w-[600px]" />
       </div>
 
       {/* المؤشرات */}
       <div className="relative grid grid-cols-3 gap-3">
-        {KPIS.map(({ icon: Icon, value, label }) => (
-          <div key={label} className="auth-glass rounded-2xl px-4 py-3.5">
-            <div className="flex items-center gap-2 text-white/70 text-xs font-semibold mb-1.5">
+        {KPIS.map(({ icon: Icon, value, label, plus }) => (
+          <div key={label} className="auth-glass rounded-2xl px-4 py-3.5 text-center">
+            <div className="flex items-center justify-center gap-2 text-white/70 text-xs font-semibold mb-1.5">
               <Icon className="w-4 h-4 text-teal-300" /> {t(label)}
             </div>
-            <div className="text-[22px] xl:text-2xl font-black tabular-nums" dir="ltr" style={{ textAlign: i18n.dir() === 'rtl' ? 'right' : 'left' }}><CountUp to={value} /></div>
+            {/* «أكثر من» تحت العنوان والرقم تحتها، بنفس الترتيب في البطاقات الثلاث */}
+            <div className="text-[11px] font-bold text-teal-200/90">{t('showcase.moreThan')}</div>
+            <div className="text-[22px] xl:text-2xl font-black tabular-nums"><span dir="ltr" className="inline-block"><CountUp to={value} />{plus && '+'}</span></div>
           </div>
         ))}
       </div>
