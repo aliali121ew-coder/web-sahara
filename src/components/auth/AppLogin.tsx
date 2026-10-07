@@ -397,7 +397,7 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
   return (
     <div dir={pageDir} className="auth-page relative flex items-center justify-center p-5 lg:p-8">
       {offerEl}
-      <div className="relative w-full max-w-[1280px] rounded-[28px] bg-white/60 dark:bg-white/[.03] p-2.5 shadow-[0_30px_80px_-35px_rgba(15,23,42,.35)] ring-1 ring-white/80 dark:ring-white/5">
+      <div className="auth-glass-frame relative w-full max-w-[1280px] rounded-[28px] p-2.5">
         <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.12fr)] gap-2.5 lg:h-[min(840px,calc(100dvh-5rem))]">
 
           {/* ═════ بطاقة الدخول ═════ */}

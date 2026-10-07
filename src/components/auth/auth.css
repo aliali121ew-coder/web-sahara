@@ -37,8 +37,19 @@
       linear-gradient(118deg, transparent 28%, rgba(255, 255, 255, .38) 38%, transparent 50%),
       linear-gradient(118deg, transparent 56%, rgba(255, 255, 255, .22) 64%, transparent 74%);
   }
-  /* ظل ناعم تحت البطاقة كأنها مرفوعة فوق السطح */
-  .auth-page > div { box-shadow: 0 40px 80px -30px rgba(11, 63, 74, .45), 0 12px 24px -12px rgba(11, 63, 74, .2); }
+  /* بقع ضوء ملوّنة ناعمة خلف الإطار الزجاجي: تظهر من خلاله مموّهة فيبدو زجاجًا */
+  .auth-page::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(22% 30% at 12% 78%, rgba(20, 184, 166, .38), transparent 70%),
+      radial-gradient(24% 32% at 88% 18%, rgba(14, 116, 144, .32), transparent 70%),
+      radial-gradient(18% 24% at 62% 96%, rgba(56, 189, 248, .22), transparent 70%);
+  }
+  .dark .auth-page::after { opacity: .45; }
+
   .dark .auth-page { background: linear-gradient(135deg, #070f14 0%, #0b1d24 45%, #0e2c35 100%); }
   .dark .auth-page::before {
     background:
@@ -47,6 +58,34 @@
       linear-gradient(118deg, transparent 56%, rgba(255, 255, 255, .03) 64%, transparent 74%);
   }
 }
+
+/* الإطار الزجاجي حول البطاقة: شفاف مع تمويه ما خلفه، حدّ داخلي فاتح، وانعكاس ضوء على الحافة العليا */
+.auth-glass-frame {
+  z-index: 1;
+  background: linear-gradient(135deg, rgba(255, 255, 255, .55), rgba(255, 255, 255, .22));
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, .65);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .9),
+    inset 0 -1px 0 rgba(255, 255, 255, .25),
+    0 40px 80px -30px rgba(11, 63, 74, .45),
+    0 12px 24px -12px rgba(11, 63, 74, .2);
+}
+.auth-glass-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(160deg, rgba(255, 255, 255, .55) 0%, rgba(255, 255, 255, 0) 32%);
+}
+.dark .auth-glass-frame {
+  background: linear-gradient(135deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .02));
+  border-color: rgba(255, 255, 255, .1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 40px 80px -30px rgba(0, 0, 0, .6);
+}
+.dark .auth-glass-frame::before { background: linear-gradient(160deg, rgba(255, 255, 255, .08) 0%, transparent 32%); }
 
 /* ───── الهاتف: رأس ملوّن + لوحة بيضاء ترتفع من الأسفل ───── */
 .auth-phone { --auth-brand: #0f766e; --auth-brand-2: #115e59; --auth-ring: rgba(15, 118, 110, .16); --auth-card: #ffffff; background: #ffffff; }
