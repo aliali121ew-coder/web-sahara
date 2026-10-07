@@ -19,11 +19,11 @@
     #050a13;
 }
 
-/* خلفية الحاسوب خلف البطاقة: تدرّج ناعم من الأبيض الرمادي إلى الأخضر الرمادي (Sage)
+/* خلفية الحاسوب خلف البطاقة: تدرّج ناعم من الأبيض الرمادي إلى الفيروزي المزرق (من ألوان البطاقة نفسها)
    مع انعكاسات ضوء قطرية هادئة، بلا نقوش حتى لا تتشوّه الخلفية */
 @media (min-width: 1024px) {
   .auth-page {
-    background: linear-gradient(135deg, #f4f6f5 0%, #e3e9e6 38%, #c9d5d0 70%, #a7b9b2 100%);
+    background: linear-gradient(135deg, #f5f8f9 0%, #e1eaed 38%, #bfd3d8 70%, #8db0b8 100%);
     overflow: hidden;
   }
   /* انعكاسات الضوء: حزمتان قطريتان شفافتان + وهج علوي */
@@ -38,8 +38,8 @@
       linear-gradient(118deg, transparent 56%, rgba(255, 255, 255, .22) 64%, transparent 74%);
   }
   /* ظل ناعم تحت البطاقة كأنها مرفوعة فوق السطح */
-  .auth-page > div { box-shadow: 0 40px 80px -30px rgba(30, 58, 52, .45), 0 12px 24px -12px rgba(30, 58, 52, .2); }
-  .dark .auth-page { background: linear-gradient(135deg, #0d1513 0%, #10201c 45%, #14302a 100%); }
+  .auth-page > div { box-shadow: 0 40px 80px -30px rgba(11, 63, 74, .45), 0 12px 24px -12px rgba(11, 63, 74, .2); }
+  .dark .auth-page { background: linear-gradient(135deg, #070f14 0%, #0b1d24 45%, #0e2c35 100%); }
   .dark .auth-page::before {
     background:
       radial-gradient(55% 45% at 18% 8%, rgba(94, 234, 212, .10), transparent 70%),
