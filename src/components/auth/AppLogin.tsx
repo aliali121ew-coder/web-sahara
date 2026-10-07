@@ -686,8 +686,8 @@ const FleetShowcase: React.FC = () => {
       {/* المؤشرات */}
       <div className="relative grid grid-cols-3 gap-3">
         {KPIS.map(({ icon: Icon, value, label, plus }) => (
-          <div key={label} className="auth-glass rounded-2xl px-4 py-3.5">
-            <div className="flex items-center gap-2 text-white/70 text-xs font-semibold mb-1.5">
+          <div key={label} className="auth-glass rounded-2xl px-4 py-3.5 text-center">
+            <div className="flex items-center justify-center gap-2 text-white/70 text-xs font-semibold mb-1.5">
               <Icon className="w-4 h-4 text-teal-300" /> {t(label)}
             </div>
             {/* «أكثر من» تحت العنوان والرقم تحتها، بنفس الترتيب في البطاقات الثلاث */}
