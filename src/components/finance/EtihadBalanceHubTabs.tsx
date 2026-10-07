@@ -23,10 +23,10 @@ interface EtihadBalanceHubTabsProps {
 export const EtihadBalanceHubTabs: React.FC<EtihadBalanceHubTabsProps> = ({
   activeSubtab,
   onSelectSubtab,
-  balanceLiters = 2795872,
-  tanksCapacity = 24000000,
-  blackOilLiters = 38401951,
-  reservesSitesCount = 4
+  balanceLiters = 0,
+  tanksCapacity = 0,
+  blackOilLiters = 0,
+  reservesSitesCount = 0
 }) => {
   const { t } = useTranslation(['finance', 'common']);
 

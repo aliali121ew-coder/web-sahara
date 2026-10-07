@@ -467,7 +467,8 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
       pricePerLiter: numericPrice,
       totalCostIqd: computedCost,
       receiptNumber: deliveryVoucher || `VCH-${Date.now().toString().slice(-4)}`,
-      driverPhone: '07801234567',
+      // لا حقل لهاتف السائق في النافذة: يبقى ما في السجل القديم بدل رقم افتراضي
+      driverPhone: editData?.driverPhone ?? '',
       status: 'تم الاستلام' as const,
       date: deliveryDate
         ? deliveryDate.split(' ')[0]

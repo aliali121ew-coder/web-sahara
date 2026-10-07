@@ -436,7 +436,7 @@ export const EtihadPrintReport: React.FC<EtihadPrintReportProps> = ({
                                 cellContent = <span className="font-black text-teal-900 text-[10.5px]">{formatNumber(record.currentBalance)}</span>;
                                 break;
                               case 'price':
-                                cellContent = <span>{record.currentPrice || 554}</span>;
+                                cellContent = <span>{record.currentPrice || 0}</span>;
                                 break;
                               case 'notes':
                                 cellContent = <span className="font-sans text-[9px] text-slate-600 line-clamp-1">{record.notes || '-'}</span>;

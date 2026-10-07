@@ -27,64 +27,8 @@ export interface ReserveSite {
   lastUpdated: string;
 }
 
-export const INITIAL_RESERVE_SITES: ReserveSite[] = [
-  {
-    id: 'site-01',
-    name: 'موقع مصفى كربلاء الدولي (موقع الاحتياط الرئيسي)',
-    location: 'كربلاء - طريق عين التمر',
-    fuelType: 'كاز استراتيجي',
-    currentReserveLiters: 2800000,
-    maxCapacityLiters: 3500000,
-    minimumThresholdLiters: 1000000,
-    managerName: 'م. علي الحسيني',
-    managerPhone: '0780 111 2233',
-    coverageDays: 35,
-    status: 'optimal',
-    lastUpdated: 'اليوم 09:15 ص'
-  },
-  {
-    id: 'site-02',
-    name: 'موقع مجمع معامل الاتحاد الصناعية',
-    location: 'بابل / المدحتية - المجمع الصناعي',
-    fuelType: 'كاز + زيوت',
-    currentReserveLiters: 2100000,
-    maxCapacityLiters: 2500000,
-    minimumThresholdLiters: 800000,
-    managerName: 'م. أحمد السعدي',
-    managerPhone: '0770 222 3344',
-    coverageDays: 28,
-    status: 'optimal',
-    lastUpdated: 'اليوم 08:30 ص'
-  },
-  {
-    id: 'site-03',
-    name: 'موقع الخزانات المركزية الجنوبية',
-    location: 'النجف الأشرف - مفرق الفرات الأوسط',
-    fuelType: 'كاز تشغيلي',
-    currentReserveLiters: 1250000,
-    maxCapacityLiters: 1500000,
-    minimumThresholdLiters: 500000,
-    managerName: 'م. كرار الموسوي',
-    managerPhone: '0781 444 5566',
-    coverageDays: 21,
-    status: 'optimal',
-    lastUpdated: 'اليوم 10:00 ص'
-  },
-  {
-    id: 'site-04',
-    name: 'موقع محطات المولدات والمشاريع الميدانية',
-    location: 'المزارع والمشاريع الخدمية الخارجية',
-    fuelType: 'كاز طوارئ',
-    currentReserveLiters: 700000,
-    maxCapacityLiters: 1000000,
-    minimumThresholdLiters: 300000,
-    managerName: 'م. حسين العامري',
-    managerPhone: '0771 555 6677',
-    coverageDays: 15,
-    status: 'optimal',
-    lastUpdated: 'اليوم 07:45 ص'
-  }
-];
+/** لا مواقع تجريبية: القائمة فارغة حتى تُسجّل مواقع الاحتياط الفعلية */
+export const INITIAL_RESERVE_SITES: ReserveSite[] = [];
 
 export const EtihadMultiSiteReservesView: React.FC = () => {
   const { t } = useTranslation(['finance', 'common']);
@@ -94,7 +38,9 @@ export const EtihadMultiSiteReservesView: React.FC = () => {
   const totalReserve = sites.reduce((acc, s) => acc + s.currentReserveLiters, 0);
   const totalCapacity = sites.reduce((acc, s) => acc + s.maxCapacityLiters, 0);
   const totalThreshold = sites.reduce((acc, s) => acc + s.minimumThresholdLiters, 0);
-  const overallSafetyPercent = Math.round((totalReserve / totalCapacity) * 100);
+  const overallSafetyPercent = totalCapacity > 0 ? Math.round((totalReserve / totalCapacity) * 100) : 0;
+  // أيام الأمان = أقل تغطية بين المواقع (أضعف موقع يحدد الاستمرارية)
+  const safetyDays = sites.length ? Math.min(...sites.map(s => s.coverageDays)) : 0;
 
   const filteredSites = sites.filter(s =>
     s.name.includes(searchQuery) ||
@@ -124,7 +70,7 @@ export const EtihadMultiSiteReservesView: React.FC = () => {
             <span className="text-xs font-bold text-amber-100">{t('common:units.liter')}</span>
           </div>
           <div className="mt-2 pt-2 border-t border-white/20 flex items-center justify-between text-[11px] text-amber-100">
-            <span>{t('finance:reservesView.distributed', { count: 4 })}</span>
+            <span>{t('finance:reservesView.distributed', { count: sites.length })}</span>
             <span className="font-mono font-black">{t('finance:reservesView.pctCapacity', { pct: overallSafetyPercent })}</span>
           </div>
         </div>
@@ -177,11 +123,11 @@ export const EtihadMultiSiteReservesView: React.FC = () => {
             <Clock className="w-4 h-4 text-emerald-500" />
           </div>
           <div className="flex items-baseline gap-1.5">
-            <Trans t={t} i18nKey="finance:reservesView.safetyDays" count={45} components={{ 1: <span className="text-xl sm:text-2xl font-black font-mono tracking-tight text-emerald-600 dark:text-emerald-400" />, 2: <span className="text-xs font-bold text-slate-400" /> }} />
+            <Trans t={t} i18nKey="finance:reservesView.safetyDays" count={safetyDays} components={{ 1: <span className="text-xl sm:text-2xl font-black font-mono tracking-tight text-emerald-600 dark:text-emerald-400" />, 2: <span className="text-xs font-bold text-slate-400" /> }} />
           </div>
           <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
             <span>{t('finance:reservesView.continuity')}</span>
-            <span className="font-bold text-emerald-600 dark:text-emerald-400">{t('finance:reservesView.covered100')}</span>
+            {sites.length > 0 && <span className="font-bold text-emerald-600 dark:text-emerald-400">{t('finance:reservesView.covered100')}</span>}
           </div>
         </div>
 
@@ -208,6 +154,11 @@ export const EtihadMultiSiteReservesView: React.FC = () => {
       </div>
 
       {/* 3. Site by Site Detailed Breakdown Cards */}
+      {filteredSites.length === 0 && (
+        <div className="p-8 rounded-2xl bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 text-center text-sm font-bold text-slate-400">
+          {t('finance:reservesView.empty')}
+        </div>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 sm:gap-3">
         {filteredSites.map((site) => {
           const fillRatio = Math.round((site.currentReserveLiters / site.maxCapacityLiters) * 100);

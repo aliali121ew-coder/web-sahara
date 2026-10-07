@@ -27,7 +27,10 @@ import { SaharaPetrolView } from './SaharaPetrolView';
 import { SaharaBlackOilView } from './SaharaBlackOilView';
 import { SaharaSiteFarmsView } from './SaharaSiteFarmsView';
 import { getBusinessDate } from '../../lib/utils';
-import { readEtihadLatestBalance, syncEtihadExtractionTank } from '../../lib/centralTanks';
+import { readEtihadLatestBalance, syncEtihadExtractionTank, useCentralTanks, resolveGasoilSectionKey } from '../../lib/centralTanks';
+import { useBlackOilLedger } from '../../lib/blackOilLedger';
+import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
+import { INITIAL_RESERVE_SITES } from './EtihadMultiSiteReservesView';
 
 type CompanyKey = 'etihad' | 'sahara';
 
@@ -199,6 +202,23 @@ export const FinanceBalance: React.FC = () => {
     return result;
   }, [records, filterRange, appliedStartDate, appliedEndDate]);
 
+  // أرقام البوابة من المصادر الفعلية (لا قيم ثابتة): سعة خزانات الاتحاد، سعة الكاز، رصيد النفط الأسود
+  const [centralTanks] = useCentralTanks(OFFICIAL_TABLE_TANK_UNITS);
+  const etihadTanksCapacity = useMemo(() => centralTanks.filter(t => t.company === 'شركة الاتحاد').reduce((a, t) => a + t.capacityLiters, 0), [centralTanks]);
+  const etihadGasoilCapacity = useMemo(() => {
+    const key = resolveGasoilSectionKey(centralTanks);
+    return key ? centralTanks.filter(t => t.sectionKey === key).reduce((a, t) => a + t.capacityLiters, 0) : 0;
+  }, [centralTanks]);
+  const etihadBlackOil = useBlackOilLedger('etihad');
+  // التغطية: الرصيد الحالي ÷ متوسط الاستهلاك اليومي لآخر 7 سجلات فيها استهلاك
+  const etihadCoverageDays = useMemo(() => {
+    const recent = [...records].sort((a, b) => b.date.localeCompare(a.date)).filter(r => (r.etihadExpense || 0) > 0).slice(0, 7);
+    if (!recent.length) return 0;
+    const avg = recent.reduce((a, r) => a + (r.etihadExpense || 0), 0) / recent.length;
+    const balance = [...records].sort((a, b) => b.date.localeCompare(a.date))[0]?.currentBalance || 0;
+    return avg > 0 ? Math.floor(balance / avg) : 0;
+  }, [records]);
+
   // 2. Compute live metrics based ONLY on dateFilteredRecords or activeRecordId
   const metrics: EtihadSummaryMetrics = useMemo(() => {
     // If a row is clicked, display its exact data in the cards
@@ -212,7 +232,7 @@ export const FinanceBalance: React.FC = () => {
           todayInbound: activeRecord.purchases || 0,
           todayConsumption: activeRecord.etihadExpense || 0,
           todaySales: totalSales,
-          averagePrice: activeRecord.currentPrice || 554,
+          averagePrice: activeRecord.currentPrice || 0,
           oilBalance: activeRecord.oilCurrentBalance || 0,
           averageCost: activeRecord.averageCost || 0,
           totalPurchases: activeRecord.purchases || 0,
@@ -244,14 +264,14 @@ export const FinanceBalance: React.FC = () => {
           const previousRecords = allSorted.filter(r => r.date < targetDate);
           if (previousRecords.length > 0) {
             lastKnownBalance = previousRecords[0].currentBalance;
-            lastKnownPrice = previousRecords[0].currentPrice || 554;
+            lastKnownPrice = previousRecords[0].currentPrice || 0;
           } else if (allSorted.length > 0) {
             lastKnownBalance = allSorted[0].currentBalance;
-            lastKnownPrice = allSorted[0].currentPrice || 554;
+            lastKnownPrice = allSorted[0].currentPrice || 0;
           }
         } else {
           lastKnownBalance = allSorted[0].currentBalance;
-          lastKnownPrice = allSorted[0].currentPrice || 554;
+          lastKnownPrice = allSorted[0].currentPrice || 0;
         }
       }
 
@@ -289,7 +309,7 @@ export const FinanceBalance: React.FC = () => {
       totalSales += ((r.saharaSales || 0) + (r.cablesSales || 0) + (r.specialSales || 0) + (r.otherSales || 0));
     });
 
-    const currentPrice = newestRecord.currentPrice || 554;
+    const currentPrice = newestRecord.currentPrice || 0;
 
     // Based on user request, the previous balance should reflect the previous balance 
     // of the NEWEST record (the last transaction), regardless of the math of totals.
@@ -448,9 +468,9 @@ export const FinanceBalance: React.FC = () => {
             <EtihadPortalHub
               onSelectModule={sub => { if (sub !== 'petrol') handleSelectSubpage(sub); }}
               balanceLiters={metrics.currentBalance}
-              tanksCapacity={24000000}
-              blackOilLiters={38401951}
-              reservesSitesCount={4}
+              tanksCapacity={etihadTanksCapacity}
+              blackOilLiters={etihadBlackOil.balance}
+              reservesSitesCount={INITIAL_RESERVE_SITES.length}
             />
           </div>
         ) : (
@@ -498,7 +518,7 @@ export const FinanceBalance: React.FC = () => {
               {activeSubtab === 'balance' && (
                 <div className="space-y-3 sm:space-y-3.5">
                   {/* 1. Top 8 Modern KPI Cards */}
-                  <EtihadBalanceCards metrics={metrics} coverageDays={107} />
+                  <EtihadBalanceCards metrics={metrics} coverageDays={etihadCoverageDays} capacityLiters={etihadGasoilCapacity} />
 
                   {/* 2. Interactive Ledger Table */}
                   <EtihadBalanceTable

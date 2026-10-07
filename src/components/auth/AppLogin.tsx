@@ -646,10 +646,11 @@ const route = (s: { x: number; y: number }, k: number) => {
   const cy = (target.y + s.y) / 2 + (k % 2 ? -30 : 30);
   return `M${target.x},${target.y} Q${cx},${cy} ${s.x},${s.y}`;
 };
+// أرقام تعريفية بالشركة (أكثر من…)، لا بيانات تشغيل حيّة: الشاشة قبل تسجيل الدخول
 const KPIS = [
-  { icon: Truck, value: 42, label: 'showcase.kpiVehicles' },
+  { icon: Truck, value: 3600, label: 'showcase.kpiVehicles' },
   { icon: Building2, value: 18, label: 'showcase.kpiStations' },
-  { icon: Fuel, value: 705021, label: 'showcase.kpiFuel' },
+  { icon: Fuel, value: 62570310, label: 'showcase.kpiFuel' },
 ];
 
 /** عدّاد يصعد بنعومة عند الظهور */
@@ -672,7 +673,7 @@ const CountUp: React.FC<{ to: number }> = ({ to }) => {
 };
 
 const FleetShowcase: React.FC = () => {
-  const { t, i18n } = useTranslation('auth');
+  const { t } = useTranslation('auth');
   const [time, setTime] = useState(() => new Date());
   const motion = !reducedMotion();
   useEffect(() => {
@@ -755,7 +756,10 @@ const FleetShowcase: React.FC = () => {
             <div className="flex items-center gap-2 text-white/70 text-xs font-semibold mb-1.5">
               <Icon className="w-4 h-4 text-teal-300" /> {t(label)}
             </div>
-            <div className="text-[22px] xl:text-2xl font-black tabular-nums" dir="ltr" style={{ textAlign: i18n.dir() === 'rtl' ? 'right' : 'left' }}><CountUp to={value} /></div>
+            <div className="flex items-baseline gap-1.5 flex-wrap">
+              <span className="text-[11px] font-bold text-teal-200/90">{t('showcase.moreThan')}</span>
+              <span className="text-[22px] xl:text-2xl font-black tabular-nums" dir="ltr"><CountUp to={value} /></span>
+            </div>
           </div>
         ))}
       </div>

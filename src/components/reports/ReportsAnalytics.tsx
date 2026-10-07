@@ -3,11 +3,14 @@ import { enumText } from '../../i18n/enums';
 import React from 'react';
 import { BarChart3, Download, Printer, ShieldCheck } from 'lucide-react';
 import { useFuelData } from '../../context/FuelDataContext';
-import { formatNumber } from '../../lib/utils';
+import { formatNumber, getBusinessDate } from '../../lib/utils';
 
 export const ReportsAnalytics: React.FC = () => {
   const { t } = useTranslation(['pages', 'common']);
   const { tanks, deliveries, supplyRequests } = useFuelData();
+  // تاريخ الإصدار ورقم المرجع من يوم العمل الحالي (لا تاريخ ثابت)
+  const issuedDate = getBusinessDate();
+  const reportRef = `SH-REP-${issuedDate.replace(/\D/g, '')}`;
 
   const totalFuelStored = tanks.reduce((acc, t) => acc + t.currentLiters, 0);
   const totalDeliveriesVol = deliveries.reduce((acc, d) => acc + (d.receivedQuantity ?? d.volumeLiters ?? 0), 0);
@@ -81,12 +84,12 @@ export const ReportsAnalytics: React.FC = () => {
               {t('pages:reports.docTitle')}
             </h3>
             <p className="text-xs text-slate-400 mt-1">
-              {t('pages:reports.ref')} <span className="font-mono text-slate-600 dark:text-slate-300">SH-REP-2026-0820</span>
+              {t('pages:reports.ref')} <span className="font-mono text-slate-600 dark:text-slate-300">{reportRef}</span>
             </p>
           </div>
 
           <div className="text-left sm:text-left text-xs text-slate-500">
-            <div>{t('pages:reports.issued')} <strong>2026/08/20</strong></div>
+            <div>{t('pages:reports.issued')} <strong>{issuedDate}</strong></div>
             <div>{t('pages:reports.issuer')} <strong>{t('pages:reports.issuerName')}</strong></div>
           </div>
         </div>

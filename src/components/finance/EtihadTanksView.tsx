@@ -18,31 +18,14 @@ import { Tank3DCard, CalculatedTankUnit } from '../tanks/Tank3DCard';
 import { TankGlobalSvgDefs } from '../tanks/TankGlobalSvgDefs';
 import { TankUnitRow, getFillLevelTheme, OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
 import { useCentralTanks, resolveGasoilSectionKey, resolveSaharaGasoilSectionKey } from '../../lib/centralTanks';
-import { BLACK_OIL_SECTION_KEYS } from '../../lib/blackOilLedger';
+import { BLACK_OIL_SECTION_KEYS, useBlackOilLedger } from '../../lib/blackOilLedger';
 import { Breadcrumb } from '../navigation/Breadcrumb';
 
 
 
-// ── Weekly Chart Presets for the 2 Core Sections ──
-const BLACK_OIL_CHART = [
-  { dayName: 'السبت', date: '09/04', balance: 44900000, inflow: 1100000, outflow: 480000 },
-  { dayName: 'الأحد', date: '09/05', balance: 45100000, inflow: 720000, outflow: 520000 },
-  { dayName: 'الإثنين', date: '09/06', balance: 45350000, inflow: 800000, outflow: 550000 },
-  { dayName: 'الثلاثاء', date: '09/07', balance: 45420000, inflow: 600000, outflow: 530000 },
-  { dayName: 'الأربعاء', date: '09/08', balance: 45480000, inflow: 580000, outflow: 520000 },
-  { dayName: 'الخميس', date: '09/09', balance: 45390000, inflow: 420000, outflow: 510000 },
-  { dayName: 'اليوم', date: '09/10', balance: 45455400, inflow: 570000, outflow: 504600 },
-];
-
-const GASOIL_CHART = [
-  { dayName: 'السبت', date: '09/04', balance: 18780000, inflow: 500000, outflow: 130000 },
-  { dayName: 'الأحد', date: '09/05', balance: 18905000, inflow: 295000, outflow: 170000 },
-  { dayName: 'الإثنين', date: '09/06', balance: 18990000, inflow: 280000, outflow: 195000 },
-  { dayName: 'الثلاثاء', date: '09/07', balance: 19075000, inflow: 255000, outflow: 170000 },
-  { dayName: 'الأربعاء', date: '09/08', balance: 19140000, inflow: 225000, outflow: 160000 },
-  { dayName: 'الخميس', date: '09/09', balance: 19170000, inflow: 190000, outflow: 160000 },
-  { dayName: 'اليوم', date: '09/10', balance: 19150000, inflow: 170000, outflow: 190000 },
-];
+// نقطة في الرسم الأسبوعي: من السجل اليومي الفعلي (لا بيانات تجريبية)
+interface ChartPoint { dayName: string; date: string; balance: number; inflow: number; outflow: number }
+const WEEKDAYS_AR = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
 interface SectionConfig {
   key: 'etihad-black-oil' | 'strategic-gasoil';
@@ -56,10 +39,9 @@ interface SectionConfig {
   badgeBg: string;
   badgeText: string;
   badgeBorder: string;
+  /** معدل الاستهلاك اليومي من السجل الفعلي (0 = لا سجل بعد) */
   dailyBurnRate: number; // L/day
-  coverageDays: number;
-  coverageDate: string;
-  chartData: typeof BLACK_OIL_CHART;
+  chartData: ChartPoint[];
 }
 
 interface EtihadTanksViewProps {
@@ -76,6 +58,13 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
   // النفط الأسود: قسم "عمليات الاتحاد - النفط الأسود"
   // الكاز والديزل: قسم كاز شركة الاتحاد (محفوظ بمعرّفه الثابت)
   const [centralTanks, setCentralTanks] = useCentralTanks(OFFICIAL_TABLE_TANK_UNITS);
+  // السجل اليومي للنفط الأسود: مصدر الرسم ومعدل الاستهلاك (الكاز بلا سجل يومي بعد فيبقى بلا رسم)
+  const blackOilLedger = useBlackOilLedger(company);
+  const blackOilChart: ChartPoint[] = useMemo(() => blackOilLedger.computed.slice(-7).map(r => {
+    const d = new Date(r.date.replace(/\//g, '-') + 'T12:00:00');
+    return { dayName: WEEKDAYS_AR[d.getDay()], date: r.date.slice(5), balance: r.current, inflow: r.inbound, outflow: r.consumption };
+  }), [blackOilLedger.computed]);
+  const blackOilBurn = blackOilLedger.latest ? blackOilLedger.avgDaily : 0;
 
   const tankUnits: TankUnitRow[] = useMemo(() => {
     // الصحاري: قسم "النفط الأسود - شركة صحاري كربلاء" وقسم "خزانات الكاز - شركة صحاري كربلاء"
@@ -103,10 +92,8 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
       badgeBg: 'bg-cyan-50 dark:bg-cyan-950/60',
       badgeText: 'text-cyan-700 dark:text-cyan-300',
       badgeBorder: 'border-cyan-200 dark:border-cyan-800',
-      dailyBurnRate: 520000,
-      coverageDays: 87,
-      coverageDate: fmtDate(new Date(2026, 11, 6), { dateStyle: 'long' }),
-      chartData: BLACK_OIL_CHART
+      dailyBurnRate: blackOilBurn,
+      chartData: blackOilChart
     },
     {
       key: 'strategic-gasoil',
@@ -120,12 +107,10 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
       badgeBg: 'bg-blue-50 dark:bg-blue-950/60',
       badgeText: 'text-blue-700 dark:text-blue-300',
       badgeBorder: 'border-blue-200 dark:border-blue-800',
-      dailyBurnRate: 175000,
-      coverageDays: 109,
-      coverageDate: fmtDate(new Date(2026, 11, 28), { dateStyle: 'long' }),
-      chartData: GASOIL_CHART
+      dailyBurnRate: 0,
+      chartData: []
     }
-  ], [t, isSahara]);
+  ], [t, isSahara, blackOilBurn, blackOilChart]);
 
   const [activeSectionKey, setActiveSectionKey] = useSessionState<'etihad-black-oil' | 'strategic-gasoil'>(isSahara ? 'sahara_tanks_section' : 'etihad_tanks_section', 'etihad-black-oil');
   const [activeChartMode, setActiveChartMode] = useState<'balance' | 'flow'>('balance');
@@ -182,11 +167,16 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
     return Math.max(0, sectionTotalCapacity - sectionTotalStored);
   }, [sectionTotalCapacity, sectionTotalStored]);
 
+  // التغطية من الرصيد الفعلي ÷ معدل الاستهلاك (بلا معدل مسجّل: لا تقدير)
+  const coverageDays = currentSection.dailyBurnRate > 0 ? Math.floor(sectionTotalStored / currentSection.dailyBurnRate) : 0;
+  const coverageDate = coverageDays > 0 ? fmtDate(new Date(Date.now() + coverageDays * 86_400_000), { dateStyle: 'long' }) : '—';
+
   // ── Chart SVG Calculations ──
   const chartPoints = currentSection.chartData;
-  const chartMaxBalance = Math.max(...chartPoints.map(p => p.balance)) * 1.05;
-  const chartMinBalance = Math.min(...chartPoints.map(p => p.balance)) * 0.95;
-  const chartMaxFlow = Math.max(...chartPoints.map(p => Math.max(p.inflow, p.outflow))) * 1.15;
+  const hasChart = chartPoints.length >= 2;
+  const chartMaxBalance = hasChart ? Math.max(...chartPoints.map(p => p.balance)) * 1.05 : 1;
+  const chartMinBalance = hasChart ? Math.min(...chartPoints.map(p => p.balance)) * 0.95 : 0;
+  const chartMaxFlow = hasChart ? Math.max(1, ...chartPoints.map(p => Math.max(p.inflow, p.outflow))) * 1.15 : 1;
 
   const chartWidth = 560;
   const chartHeight = 150;
@@ -357,19 +347,21 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
                   <ShieldCheck className="w-4 h-4 text-emerald-400" />
                   {t('finance:tanksView.opSafety')}
                 </span>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  {t('finance:tanksView.secured')}
-                </span>
+                {coverageDays > 0 && (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    {t('finance:tanksView.secured')}
+                  </span>
+                )}
               </div>
 
               <div className="space-y-1">
                 <span className="text-xs text-slate-400 font-bold block">{t('finance:saharaPetrol.coversUntil')}</span>
                 <div className="flex items-baseline gap-2">
-                  <Trans t={t} i18nKey="finance:tanksReport.coverageDays" count={currentSection.coverageDays} components={{ 1: <span className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-emerald-400" />, 2: <span className="text-sm font-bold text-slate-300" /> }} />
+                  <Trans t={t} i18nKey="finance:tanksReport.coverageDays" count={coverageDays} components={{ 1: <span className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-emerald-400" />, 2: <span className="text-sm font-bold text-slate-300" /> }} />
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-blue-200 font-bold mt-1">
                   <Calendar className="w-3.5 h-3.5 text-blue-400" />
-                  <span>{t('finance:tanksView.enoughUntil')}: {currentSection.coverageDate}</span>
+                  <span>{t('finance:tanksView.enoughUntil')}: {coverageDate}</span>
                 </div>
               </div>
             </div>
@@ -381,7 +373,7 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
                 {t('finance:ledger.dailyConsumption')}
               </span>
               <span className="font-mono font-bold text-rose-300">
-                -{formatNumber(currentSection.dailyBurnRate)} {t('finance:tanksView.litersPerDay')}
+                {currentSection.dailyBurnRate > 0 ? `-${formatNumber(currentSection.dailyBurnRate)} ${t('finance:tanksView.litersPerDay')}` : '—'}
               </span>
             </div>
           </div>
@@ -423,7 +415,9 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
 
             {/* Dynamic SVG Chart */}
             <div className="relative w-full h-[120px] flex items-center justify-center bg-slate-50/70 dark:bg-slate-800/40 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-2 overflow-hidden">
-              {activeChartMode === 'balance' ? (
+              {!hasChart ? (
+                <span className="text-xs font-bold text-slate-400">{t('finance:tanksView.noChartData')}</span>
+              ) : activeChartMode === 'balance' ? (
                 <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-full overflow-visible" preserveAspectRatio="none">
                   <defs>
                     <linearGradient id={`grad-${currentSection.key}`} x1="0" y1="0" x2="0" y2="1">
@@ -476,11 +470,13 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
             </div>
 
             <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800">
-              <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold">
-                <Sparkles className="w-3 h-3" />
-                {t('finance:tanksView.stability')}
-              </span>
-              <span className="font-mono">{t('finance:tanksView.recordedDays', { count: 7 })}</span>
+              {hasChart ? (
+                <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold">
+                  <Sparkles className="w-3 h-3" />
+                  {t('finance:tanksView.stability')}
+                </span>
+              ) : <span />}
+              <span className="font-mono">{t('finance:tanksView.recordedDays', { count: chartPoints.length })}</span>
             </div>
 
           </div>
