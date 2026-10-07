@@ -11,7 +11,7 @@ import {
   biometricAvailable, biometricUser, enableBiometric, loginWithBiometric, savedLogin, resumeLogin, forgetSavedLogin,
   BIO_DECLINED_PREFIX, type BioRegisterOptions,
 } from '../../lib/session';
-import { BioMethods, bioErrorText, usePreparedBio } from './BiometricSettings';
+import { BioMethods, anyBioMethod, bioErrorText, useBioMethods, usePreparedBio } from './BiometricSettings';
 import { PhoneFlow, type PhoneStep, type SupportKind } from './PhoneFlow';
 import './auth.css';
 
@@ -458,6 +458,7 @@ const BioOffer: React.FC<{ onEnable: (prepared: BioRegisterOptions | null) => Pr
   const [error, setError] = useState('');
   // تُجلب بيانات التسجيل فور ظهور العرض ليبدأ طلب البصمة مباشرة عند الضغط (شرط Safari في iPhone)
   const { ref: prepared } = usePreparedBio(true);
+  const [methods, setMethods] = useBioMethods();
   const enable = async () => {
     setBusy(true);
     setError('');
@@ -475,20 +476,20 @@ const BioOffer: React.FC<{ onEnable: (prepared: BioRegisterOptions | null) => Pr
         <button type="button" onClick={onSkip} aria-label={t('common:actions.close')} className="auth-focus absolute top-4 end-4 w-11 h-11 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
           <X className="w-5 h-5" />
         </button>
-        <div className="mx-auto w-24 h-24 rounded-[28px] auth-bio-hero flex items-center justify-center text-white">
-          <Fingerprint className="w-12 h-12" />
+        <div className="mx-auto w-16 h-16 rounded-[20px] auth-bio-hero flex items-center justify-center text-white">
+          <Fingerprint className="w-8 h-8" />
         </div>
-        <h2 id="bio-title" className="mt-6 text-[22px] font-black text-slate-900 dark:text-white">{t('bio.title')}</h2>
-        <p className="mt-2 text-[15px] leading-7 text-slate-600 dark:text-slate-400">
+        <h2 id="bio-title" className="mt-5 text-[22px] font-black text-slate-900 dark:text-white">{t('bio.title')}</h2>
+        <p className="mt-1.5 text-[13px] leading-6 text-slate-500 dark:text-slate-400">
           {t('bio.text')}
         </p>
-        <BioMethods onPick={enable} disabled={busy} />
+        <BioMethods value={methods} onChange={setMethods} disabled={busy} />
         {error && (
           <p role="alert" className="mt-4 flex items-center justify-center gap-2 text-[13px] font-bold text-rose-700 dark:text-rose-300">
             <AlertCircle className="w-4 h-4" /> {error}
           </p>
         )}
-        <button type="button" onClick={enable} disabled={busy} autoFocus
+        <button type="button" onClick={enable} disabled={busy || !anyBioMethod(methods)} autoFocus
           className="auth-btn auth-focus mt-6 w-full h-14 rounded-2xl text-white font-bold text-base flex items-center justify-center gap-2 disabled:opacity-70">
           {busy ? <><Loader2 className="w-5 h-5 animate-spin" /> {t('bio.waiting')}</> : t('bio.enable')}
         </button>

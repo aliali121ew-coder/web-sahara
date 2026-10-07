@@ -564,7 +564,10 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
       rp: { id: rpId, name: 'صحاري كربلاء' },
       user: { id: authId, name: results[0]?.username || authId, displayName: results[0]?.name || '' },
       pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
-      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'preferred' },
+      // مفتاح مرتبط بهذا الجهاز (غير قابل للاكتشاف): الدخول يرسل معرّفه في allowCredentials فلا حاجة لاكتشافه.
+      // 'preferred' كان يحوّل الطلب في أندرويد إلى Credential Manager فيفشل بـ NotReadableError
+      // عند أي خلل في مدير كلمات مرور Google؛ 'discouraged' يستخدم مسار البصمة المباشر في الجهاز
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'discouraged', requireResidentKey: false },
       excludeCredentials: creds.map(c => ({ type: 'public-key', id: c.id })),
       timeout: 60000,
       attestation: 'none',
