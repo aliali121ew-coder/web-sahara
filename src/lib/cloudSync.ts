@@ -21,6 +21,8 @@ const LOCAL_ONLY = new Set([
   LAST_NAME_KEY,
   BIO_USER_KEY,
   'sahara_bio_cred',
+  // طريقة البصمة المختارة خاصة بهذا الجهاز
+  'sahara_bio_method',
   'sahara_session_started',
   'sahara_session_resume',
   'sahara_remember_me',
