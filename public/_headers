@@ -9,3 +9,8 @@
   Permissions-Policy: camera=(self), microphone=(self), geolocation=(), payment=(), usb=()
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   Cross-Origin-Opener-Policy: same-origin
+
+# ملفات البناء تحمل بصمة محتواها في اسمها (index-Cm6Ab4S2.js…): تتغير مع كل تحديث،
+# فتُخزَّن في المتصفح سنة كاملة بلا إعادة تحقق (كانت max-age=0 فيُسأل الخادم عن كل ملف في كل زيارة)
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

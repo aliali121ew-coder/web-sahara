@@ -27,6 +27,7 @@ import { SaharaPetrolView } from './SaharaPetrolView';
 import { SaharaBlackOilView } from './SaharaBlackOilView';
 import { SaharaSiteFarmsView } from './SaharaSiteFarmsView';
 import { getBusinessDate } from '../../lib/utils';
+import { CLOUD_APPLIED_EVENT } from '../../lib/cloudSync';
 import { readEtihadLatestBalance, syncEtihadExtractionTank, useCentralTanks, resolveGasoilSectionKey } from '../../lib/centralTanks';
 import { useBlackOilLedger } from '../../lib/blackOilLedger';
 import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
@@ -159,6 +160,20 @@ export const FinanceBalance: React.FC = () => {
     }
     return []; // Empty initial state instead of INITIAL_ETIHAD_RECORDS
   });
+
+  // نسخة الخادم تصل بعد فتح الصفحة (المزامنة في الخلفية): تُعاد قراءة السجلات إن تغيّرت
+  useEffect(() => {
+    const onCloud = (e: Event) => {
+      const keys = (e as CustomEvent<string[]>).detail || [];
+      if (!keys.includes('sahara_etihad_balance_records_v2')) return;
+      try {
+        const parsed = JSON.parse(localStorage.getItem('sahara_etihad_balance_records_v2') || '[]');
+        if (Array.isArray(parsed)) setRecords(parsed);
+      } catch { /* تجاهل */ }
+    };
+    window.addEventListener(CLOUD_APPLIED_EVENT, onCloud);
+    return () => window.removeEventListener(CLOUD_APPLIED_EVENT, onCloud);
+  }, []);
 
   useEffect(() => {
     try {

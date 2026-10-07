@@ -103,6 +103,19 @@ export const readCollection = async (db: D1Database, key: string) => {
   return `[${results.map(r => r.data).join(',')}]`;
 };
 
+/**
+ * قراءة عدة مجموعات باستعلام واحد (بدل استعلام لكل مجموعة: كانت 17 رحلة متتالية إلى D1 عند كل فتح ومزامنة).
+ * يعيد لكل مفتاح مطلوب نص JSON بنفس شكل readCollection (والمجموعة الفارغة "[]")
+ */
+export const readCollections = async (db: D1Database, keys: string[]): Promise<Record<string, string>> => {
+  const out: Record<string, string[]> = Object.fromEntries(keys.map(k => [k, []]));
+  if (!keys.length) return {};
+  const { results } = await db.prepare(`SELECT key, data FROM collection_items WHERE key IN (${keys.map(() => '?').join(',')}) ORDER BY key, pos, updated_at DESC`)
+    .bind(...keys).all<{ key: string; data: string }>();
+  for (const r of results) out[r.key]?.push(r.data);
+  return Object.fromEntries(Object.entries(out).map(([k, rows]) => [k, `[${rows.join(',')}]`]));
+};
+
 /** عدد العناصر لكل مجموعة (للوحة الإدارة) */
 export const collectionCounts = async (db: D1Database) => {
   const { results } = await db.prepare('SELECT key, COUNT(*) AS n FROM collection_items GROUP BY key').all<{ key: string; n: number }>();
