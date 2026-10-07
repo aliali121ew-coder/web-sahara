@@ -58,7 +58,8 @@
     "permissionLimited": "محدد",
     "sections": "الأقسام",
     "sectionsAll": "الكل",
-    "session": "الجلسة"
+    "session": "الجلسة",
+    "biometric": "الدخول بالبصمة"
   },
   "commands": {
     "categories": {

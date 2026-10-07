@@ -9,7 +9,9 @@ import { LangToggle } from './LangToggle';
 import {
   authStatus, loginAccount, setupSystem, AuthError, LAST_USER_KEY, LAST_NAME_KEY,
   biometricAvailable, biometricUser, enableBiometric, loginWithBiometric, savedLogin, resumeLogin, forgetSavedLogin,
+  BIO_DECLINED_PREFIX,
 } from '../../lib/session';
+import { BioMethods } from './BiometricSettings';
 import { PhoneFlow, type PhoneStep, type SupportKind } from './PhoneFlow';
 import './auth.css';
 
@@ -28,7 +30,7 @@ const USERNAME_RE = /^[a-z0-9._-]{3,32}$/;
 const REMEMBER_KEY = 'sahara_remember_me';
 const WELCOME_KEY = 'sahara_welcome_seen';
 /** رفض عرض تفعيل البصمة لهذا الحساب على هذا الجهاز */
-const BIO_DECLINED_KEY = 'sahara_bio_declined_';
+const BIO_DECLINED_KEY = BIO_DECLINED_PREFIX;
 
 /** هل الشاشة بعرض هاتف؟ */
 const useIsPhone = () => {
@@ -478,10 +480,7 @@ const BioOffer: React.FC<{ onEnable: () => Promise<void>; onSkip: () => void }> 
         <p className="mt-2 text-[15px] leading-7 text-slate-600 dark:text-slate-400">
           {t('bio.text')}
         </p>
-        <div className="mt-5 flex justify-center gap-6 text-slate-500 dark:text-slate-400 text-xs font-bold">
-          <span className="flex flex-col items-center gap-1.5"><Fingerprint className="w-6 h-6 text-teal-600 dark:text-teal-400" /> {t('bio.finger')}</span>
-          <span className="flex flex-col items-center gap-1.5"><ScanFace className="w-6 h-6 text-teal-600 dark:text-teal-400" /> {t('bio.face')}</span>
-        </div>
+        <BioMethods onPick={enable} disabled={busy} />
         {error && (
           <p role="alert" className="mt-4 flex items-center justify-center gap-2 text-[13px] font-bold text-rose-700 dark:text-rose-300">
             <AlertCircle className="w-4 h-4" /> {error}

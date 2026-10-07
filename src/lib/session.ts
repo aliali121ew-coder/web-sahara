@@ -28,6 +28,8 @@ const RESUME_KEY = 'sahara_session_resume';
 /** بصمة هذا الجهاز: اسم المستخدم ومعرّف مفتاح البصمة المسجّل عليه */
 export const BIO_USER_KEY = 'sahara_bio_user';
 const BIO_CRED_KEY = 'sahara_bio_cred';
+/** رفض عرض تفعيل البصمة لحساب على هذا الجهاز (+ اسم المستخدم): خاص بالجهاز فلا يُزامَن */
+export const BIO_DECLINED_PREFIX = 'sahara_bio_declined_';
 
 export interface SessionProfile {
   id: string;

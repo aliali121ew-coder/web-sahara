@@ -12,15 +12,20 @@ import {
   ShieldCheck,
   LogOut,
   Globe,
-  Check
+  Check,
+  Fingerprint
 } from 'lucide-react';
 import { initials, logout, useSessionProfile } from '../../lib/session';
 import { useTheme } from '../../context/ThemeContext';
 import { useFuelData } from '../../context/FuelDataContext';
 import { useLanguage, ACTIVE_LANGUAGES } from '../../context/LanguageContext';
 import { useTranslation } from 'react-i18next';
+import { BiometricSettings } from '../auth/BiometricSettings';
 import { enumText } from '../../i18n/enums';
 import { fmtNumber } from '../../i18n/format';
+
+/** جرس الإشعارات: يُعاد تفعيله بعد بناء نظام الإشعارات الخاص */
+const NOTIFICATIONS_ENABLED = false;
 
 interface HeaderProps {
   onOpenQuickAction?: () => void;
@@ -49,6 +54,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [showNotifications, setShowNotifications] = useState<boolean>(false);
   const [showProfileMenu, setShowProfileMenu] = useState<boolean>(false);
   const [showLangMenu, setShowLangMenu] = useState<boolean>(false);
+  const [showBio, setShowBio] = useState<boolean>(false);
 
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -183,7 +189,8 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </button>
 
-          {/* Notifications Dropdown */}
+          {/* Notifications Dropdown — موقوفة مؤقتًا: بياناتها تجريبية حتى يُبنى نظام الإشعارات الفعلي */}
+          {NOTIFICATIONS_ENABLED && (
           <div className="relative" ref={notifRef}>
             <button
               onClick={() => setShowNotifications(!showNotifications)}
@@ -262,6 +269,7 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             )}
           </div>
+          )}
 
           {/* User Profile Avatar / Menu */}
           <div className="relative" ref={profileRef}>
@@ -296,6 +304,13 @@ export const Header: React.FC<HeaderProps> = ({
                     <span>{t('nav:profile.title')}</span>
                   </button>
                   <button
+                    onClick={() => { setShowProfileMenu(false); setShowBio(true); }}
+                    className="w-full text-right px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors flex items-center gap-2"
+                  >
+                    <Fingerprint className="w-3.5 h-3.5 text-slate-400" />
+                    <span>{t('nav:profile.biometric')}</span>
+                  </button>
+                  <button
                     onClick={() => logout()}
                     className="w-full text-right px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors flex items-center gap-2"
                   >
@@ -310,6 +325,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
       </div>
+      {showBio && <BiometricSettings username={profile?.username || ''} onClose={() => setShowBio(false)} />}
     </header>
   );
 };

@@ -54,7 +54,8 @@
     "permissionLimited": "Limited",
     "sections": "Sections",
     "sectionsAll": "All",
-    "session": "Session"
+    "session": "Session",
+    "biometric": "Biometric sign-in"
   },
   "commands": {
     "categories": {

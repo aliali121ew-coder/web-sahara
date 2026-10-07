@@ -183,7 +183,8 @@
 
 /* ───── زر الدخول ───── */
 .auth-btn {
-  background: linear-gradient(180deg, #14918a 0%, var(--auth-brand) 55%, var(--auth-brand-2) 100%);
+  /* قيم احتياطية: نافذة تفعيل البصمة تُعرض خارج .auth-phone في الهاتف، فبدونها يختفي لون الزر */
+  background: linear-gradient(180deg, #14918a 0%, var(--auth-brand, #0f766e) 55%, var(--auth-brand-2, #115e59) 100%);
   box-shadow: 0 10px 24px -12px rgba(15, 118, 110, .75), inset 0 1px 0 rgba(255, 255, 255, .2);
   transition: transform .18s ease, filter .18s ease, background .25s ease, box-shadow .25s ease;
 }
@@ -191,7 +192,7 @@
 .auth-btn:active:not(:disabled) { transform: scale(.985); }
 .auth-btn.success { background: linear-gradient(180deg, #22c55e, #16a34a); box-shadow: 0 10px 24px -12px rgba(22, 163, 74, .8); }
 
-.auth-focus:focus-visible { outline: 2px solid var(--auth-brand); outline-offset: 2px; }
+.auth-focus:focus-visible { outline: 2px solid var(--auth-brand, #0f766e); outline-offset: 2px; }
 .dark .auth-focus:focus-visible { outline-color: #2dd4bf; }
 
 .auth-shake { animation: auth-shake .42s cubic-bezier(.36, .07, .19, .97) both; }
