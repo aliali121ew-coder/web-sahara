@@ -26,7 +26,9 @@ export const PhoneFlow: React.FC<{
   setSupportKind: (k: SupportKind) => void;
   username: string;
   form: React.ReactNode;
-}> = ({ step, setStep: rawSetStep, setup, loading, dark, onToggleDark, supportKind, setSupportKind, username, form }) => {
+  /** يُستدعى مع «ابدأ الآن» (الدخول بالبصمة مباشرة إن كانت مفعّلة) */
+  onWelcomeStart?: () => void;
+}> = ({ step, setStep: rawSetStep, setup, loading, dark, onToggleDark, supportKind, setSupportKind, username, form, onWelcomeStart }) => {
   const { t, i18n } = useTranslation('auth');
   const rich = { b: <b />, br: <br /> };
   // انتقال سلس بين الشاشات: الرأس الملوّن يتقلص واللوحة البيضاء ترتفع (View Transitions عند توفرها)
@@ -38,7 +40,7 @@ export const PhoneFlow: React.FC<{
   return (
   <div dir={i18n.dir()} className="auth-phone min-h-[100dvh] flex flex-col">
     {step === 'intro' && <Onboarding onDone={() => setStep('welcome')} />}
-    {step === 'welcome' && <Welcome dark={dark} onToggleDark={onToggleDark} onStart={() => setStep('login')} />}
+    {step === 'welcome' && <Welcome dark={dark} onToggleDark={onToggleDark} onStart={() => { onWelcomeStart?.(); setStep('login'); }} />}
 
     {step === 'login' && (
       <Shell

@@ -9,11 +9,13 @@ import { LangToggle } from './LangToggle';
 import {
   authStatus, loginAccount, setupSystem, AuthError, LAST_USER_KEY, LAST_NAME_KEY,
   biometricAvailable, biometricUser, enableBiometric, loginWithBiometric, savedLogin, resumeLogin, forgetSavedLogin,
+  prepareBioLogin, bioAnimationKind, type BioLoginOptions,
   BIO_DECLINED_PREFIX, type BioRegisterOptions,
 } from '../../lib/session';
 import { RoutesMap } from './RoutesMap';
-import { BioMethods, anyBioMethod, bioErrorText, useBioMethods, usePreparedBio } from './BiometricSettings';
+import { BioMethods, anyBioMethod, bioErrorText, saveBioMethod, useBioMethods, usePreparedBio } from './BiometricSettings';
 import { PhoneFlow, type PhoneStep, type SupportKind } from './PhoneFlow';
+import { BioAuthOverlay, type BioPhase } from './BioAuthOverlay';
 import './auth.css';
 
 // ───── أدوات ─────
@@ -121,6 +123,11 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
   const [bioUser] = useState(biometricUser);
   const [bioOffer, setBioOffer] = useState(false);
   const [bioBusy, setBioBusy] = useState(false);
+  // حركة التحقق (الوجه من الأعلى أو الإصبع من الأسفل) وبيانات الدخول المجلوبة مسبقًا
+  const [bioPhase, setBioPhase] = useState<BioPhase | null>(null);
+  const bioPrepared = useRef<BioLoginOptions | null>(null);
+  const bioAbort = useRef<AbortController | null>(null);
+  const bioReady = bioAvail && !!bioUser;
   const lastName = (localStorage.getItem(LAST_NAME_KEY) || '').split(' ')[0];
   useEffect(() => { biometricAvailable().then(setBioAvail); }, []);
 
@@ -206,17 +213,35 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
     }
   };
 
+  // بيانات الدخول بالبصمة تُجلب مسبقًا وتُجدَّد قبل انتهاء صلاحيتها (دقيقتان)، فيبدأ طلب البصمة فور الضغط
+  const loadBioOptions = () => { prepareBioLogin(bioUser).then(o => { bioPrepared.current = o; }).catch(() => {}); };
+  useEffect(() => {
+    if (!bioReady || mode !== 'login') return;
+    loadBioOptions();
+    const t = setInterval(loadBioOptions, 80_000);
+    return () => clearInterval(t);
+  }, [bioReady, mode]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const bioLogin = async () => {
     if (bioBusy || btn !== 'idle') return;
     setError('');
     setBioBusy(true);
+    setBioPhase('scan');
+    const ctrl = new AbortController();
+    bioAbort.current = ctrl;
     try {
-      await loginWithBiometric(bioUser);
+      await loginWithBiometric(bioUser, bioPrepared.current, ctrl.signal);
+      bioPrepared.current = null;
+      setBioPhase('success');
       setBtn('success');
-      setTimeout(onSuccess, reducedMotion() ? 0 : 500);
+      // تبقى علامة الصح الخضراء لحظة ثم يُفتح التطبيق
+      setTimeout(onSuccess, reducedMotion() ? 300 : 1100);
     } catch (err) {
+      setBioPhase(null);
       if (!(err instanceof AuthError && err.code === 'cancelled')) fail(err);
+      loadBioOptions();
     } finally {
+      bioAbort.current = null;
       setBioBusy(false);
     }
   };
@@ -366,6 +391,8 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
     </>
   );
 
+  const bioEl = bioPhase && <BioAuthOverlay kind={bioAnimationKind()} phase={bioPhase} onCancel={() => bioAbort.current?.abort()} />;
+
   const offerEl = bioOffer && (
     <BioOffer
       onEnable={async prepared => { await enableBiometric(undefined, prepared); onSuccess(); }}
@@ -378,6 +405,7 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
     return (
       <>
       {offerEl}
+      {bioEl}
       <PhoneFlow
         step={setup ? 'login' : phoneStep}
         setStep={setPhoneStep}
@@ -389,6 +417,8 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
         setSupportKind={setSupportKind}
         username={username}
         form={renderForm(true)}
+        // «ابدأ الآن» مع بصمة مفعّلة: يبدأ التحقق بالوجه أو الإصبع مباشرة (والنموذج تحته إن أُلغي)
+        onWelcomeStart={bioReady && mode === 'login' ? bioLogin : undefined}
       />
       </>
     );
@@ -397,6 +427,7 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
   return (
     <div dir={pageDir} className="auth-page relative flex items-center justify-center p-5 lg:p-8">
       {offerEl}
+      {bioEl}
       <div className="auth-glass-frame relative w-full max-w-[1280px] p-2">
         <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.12fr)] gap-2.5 lg:h-[min(840px,calc(100dvh-5rem))]">
 
@@ -465,6 +496,7 @@ const BioOffer: React.FC<{ onEnable: (prepared: BioRegisterOptions | null) => Pr
     setError('');
     try {
       await onEnable(prepared.current);
+      saveBioMethod(methods);
     } catch (e) {
       setError(bioErrorText(e));
       setBusy(false);

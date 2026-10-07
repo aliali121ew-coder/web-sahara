@@ -4,7 +4,7 @@ import { Fingerprint, ScanFace, Loader2, AlertCircle, CheckCircle2, X, Lock, Che
 import { useTranslation } from 'react-i18next';
 import { errorText } from '../../i18n/errors';
 import {
-  AuthError, biometricAvailable, biometricUser, enableBiometric, disableBiometric, prepareBiometric, BIO_DECLINED_PREFIX,
+  AuthError, biometricAvailable, biometricUser, enableBiometric, disableBiometric, prepareBiometric, setBioMethod, BIO_DECLINED_PREFIX,
   type BioRegisterOptions,
 } from '../../lib/session';
 import './auth.css';
@@ -41,6 +41,8 @@ export type BioMethodSet = Record<BioMethodKey, boolean>;
 /** الطريقتان محددتان معًا افتراضيًا */
 export const useBioMethods = () => useState<BioMethodSet>({ finger: true, face: true });
 export const anyBioMethod = (m: BioMethodSet) => m.finger || m.face;
+/** حفظ الاختيار على هذا الجهاز: تحدد حركة شاشة الدخول (الوجه أو الإصبع) */
+export const saveBioMethod = (m: BioMethodSet) => setBioMethod(m.finger && m.face ? 'both' : m.face ? 'face' : 'finger');
 
 /**
  * تحديد طريقة البصمة: الإصبع والوجه يُحدَّدان معًا أو كل واحدة وحدها، ثم «تفعيل الآن».
@@ -120,6 +122,7 @@ export const BiometricSettings: React.FC<{ username: string; onClose: () => void
       }
       await enableBiometric(undefined, prepared.current);
       prepared.current = null;
+      saveBioMethod(methods);
       try { localStorage.removeItem(BIO_DECLINED_PREFIX + username.toLowerCase()); } catch { /* تجاهل */ }
       setEnabledFor(biometricUser());
     } catch (e) {

@@ -310,15 +310,40 @@ export async function disableBiometric() {
   }
   localStorage.removeItem(BIO_USER_KEY);
   localStorage.removeItem(BIO_CRED_KEY);
+  localStorage.removeItem(BIO_METHOD_KEY);
 }
 
+export interface BioLoginOptions {
+  challenge: string; rpId: string; timeout: number; allowCredentials: { type: 'public-key'; id: string }[];
+  fetchedAt: number;
+}
+/** جلب بيانات الدخول بالبصمة مسبقًا (قبل الضغط) حتى يبدأ طلب البصمة مباشرة عند الضغط — شرط Safari في iPhone */
+export async function prepareBioLogin(username: string): Promise<BioLoginOptions> {
+  const o = await post<Omit<BioLoginOptions, 'fetchedAt'>>('/api/chat/auth/webauthn/login-options', { username });
+  return { ...o, fetchedAt: Date.now() };
+}
+
+/** طريقة البصمة التي اختارها المستخدم عند التفعيل (لاختيار حركة الوجه أو الإصبع في شاشة الدخول) */
+export type BioMethod = 'face' | 'finger' | 'both';
+export const BIO_METHOD_KEY = 'sahara_bio_method';
+export const setBioMethod = (m: BioMethod) => { try { localStorage.setItem(BIO_METHOD_KEY, m); } catch { /* تجاهل */ } };
+/** الحركة المناسبة: الاختيار الصريح، وعند اختيار الاثنين: الوجه في iPhone/iPad والإصبع في غيرها */
+export const bioAnimationKind = (): 'face' | 'finger' => {
+  let m: string | null = null;
+  try { m = localStorage.getItem(BIO_METHOD_KEY); } catch { /* تجاهل */ }
+  if (m === 'face' || m === 'finger') return m;
+  return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ? 'face' : 'finger';
+};
+
 /** تسجيل الدخول بالبصمة أو بصمة الوجه */
-export async function loginWithBiometric(username: string) {
-  const o = await post<{ challenge: string; rpId: string; timeout: number; allowCredentials: { type: 'public-key'; id: string }[] }>(
-    '/api/chat/auth/webauthn/login-options', { username });
+export async function loginWithBiometric(username: string, prepared?: BioLoginOptions | null, signal?: AbortSignal) {
+  // التحدي صالح دقيقتين: المجلوب مسبقًا يُستخدم إن كان حديثًا، وإلا يُجلب الآن
+  const o = prepared && Date.now() - prepared.fetchedAt < 90_000 ? prepared : await prepareBioLogin(username);
   let cred: PublicKeyCredential;
   try {
     cred = (await navigator.credentials.get({
+      // زر «إلغاء» في حركة البصمة يوقف الطلب
+      signal,
       publicKey: {
         challenge: fromB64url(o.challenge),
         rpId: o.rpId,
