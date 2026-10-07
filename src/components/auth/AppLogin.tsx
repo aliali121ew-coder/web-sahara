@@ -233,10 +233,16 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
     try {
       await loginWithBiometric(bioUser, bioPrepared.current, ctrl.signal);
       bioPrepared.current = null;
-      setBioPhase('success');
       setBtn('success');
-      // تبقى علامة الصح الخضراء لحظة ثم يُفتح التطبيق
-      setTimeout(onSuccess, reducedMotion() ? 300 : 1100);
+      // بعد موافقة نافذة النظام: مشهد التعرّف (الوجه يلتفت / البصمة تُمسح) ثم علامة الصح الخضراء ثم يُفتح التطبيق
+      if (reducedMotion()) {
+        setBioPhase('success');
+        setTimeout(onSuccess, 400);
+      } else {
+        setBioPhase('verify');
+        setTimeout(() => setBioPhase('success'), 1350);
+        setTimeout(onSuccess, 1350 + 1000);
+      }
     } catch (err) {
       setBioPhase(null);
       if (!(err instanceof AuthError && err.code === 'cancelled')) fail(err);
@@ -392,7 +398,7 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
     </>
   );
 
-  const bioEl = bioPhase && <BioAuthOverlay kind={bioAnimationKind()} phase={bioPhase} onCancel={() => bioAbort.current?.abort()} />;
+  const bioEl = bioPhase && <BioAuthOverlay kind={bioAnimationKind()} phase={bioPhase} />;
 
   const offerEl = bioOffer && (
     <BioOffer

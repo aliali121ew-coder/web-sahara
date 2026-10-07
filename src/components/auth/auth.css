@@ -282,44 +282,69 @@
 }
 
 /* ═════ حركة التحقق الحيوي عند الدخول (BioAuthOverlay) ═════ */
-/* الوجه: لوحة داكنة تنزل من الأعلى بنابض خفيف */
+/* تُعرض بعد موافقة نافذة النظام: مشهد التعرّف (~1.3 ث) ثم علامة الصح (~0.9 ث) */
+
+/* ── الوجه: لوحة داكنة تنزل من الأعلى بنابض خفيف ── */
 .bio-face-hud {
-  background: rgba(18, 18, 20, .86);
+  background: rgba(18, 18, 20, .88);
   -webkit-backdrop-filter: blur(24px) saturate(160%);
   backdrop-filter: blur(24px) saturate(160%);
   box-shadow: 0 24px 60px -18px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .08);
-  animation: bio-hud-in .55s cubic-bezier(.2, 1.25, .35, 1) both;
+  animation: bio-hud-in .5s cubic-bezier(.2, 1.25, .35, 1) both;
 }
 @keyframes bio-hud-in { from { transform: translateY(-140%) scale(.92); opacity: 0; } to { transform: none; opacity: 1; } }
-/* زوايا الإطار تُرسم ثم تنبض، وملامح الوجه تظهر بعدها */
-.bio-face-corner { stroke-dasharray: 40; stroke-dashoffset: 40; animation: bio-draw .5s ease-out forwards, bio-pulse 1.4s ease-in-out .6s infinite; }
-.bio-face-part { stroke-dasharray: 40; stroke-dashoffset: 40; animation: bio-draw .45s ease-out .35s forwards; }
-@keyframes bio-draw { to { stroke-dashoffset: 0; } }
-@keyframes bio-pulse { 50% { opacity: .45; } }
-
-/* الإصبع: لوحة سفلية ترتفع، رمز البصمة يُرسم وخط مسح يمر عليه، وموجات حوله */
-.bio-sheet { animation: bio-sheet-in .45s cubic-bezier(.2, .9, .3, 1) both; }
-@keyframes bio-sheet-in { from { transform: translateY(100%); } to { transform: none; } }
-.bio-fp path { stroke-dasharray: 70; stroke-dashoffset: 70; animation: bio-draw 1.1s ease-out forwards; }
-.bio-scanline {
-  top: 12%;
-  background: linear-gradient(90deg, transparent, #14b8a6, transparent);
-  box-shadow: 0 0 12px 2px rgba(20, 184, 166, .55);
-  animation: bio-scan 1.6s ease-in-out infinite alternate;
+.bio-face-corner { stroke-dasharray: 40; stroke-dashoffset: 40; animation: bio-draw .45s ease-out forwards, bio-pulse 1.2s ease-in-out .5s infinite; }
+.bio-face-part { stroke-dasharray: 40; stroke-dashoffset: 40; animation: bio-draw .4s ease-out .3s forwards; }
+/* الملامح تلتفت يمينًا ويسارًا (تتبّع الوجه) */
+.bio-face-features { animation: bio-face-look 1s ease-in-out .55s both; transform-box: fill-box; transform-origin: 50% 50%; }
+@keyframes bio-face-look {
+  0%, 100% { transform: none; }
+  25% { transform: translateX(-4px) skewY(-2deg); }
+  60% { transform: translateX(4px) skewY(2deg); }
 }
-@keyframes bio-scan { to { top: 85%; } }
-.bio-ripple { border: 2px solid rgba(20, 184, 166, .35); animation: bio-ripple 1.8s ease-out infinite; }
-.bio-ripple.d2 { animation-delay: .9s; }
-@keyframes bio-ripple { from { transform: scale(.85); opacity: 1; } to { transform: scale(1.35); opacity: 0; } }
+/* عند النجاح: الزوايا تنطوي للداخل وتختفي بينما تُرسم الدائرة الخضراء */
+.bio-face { transition: transform .35s cubic-bezier(.4, 0, .2, 1), opacity .3s ease; }
+.bio-face-out { transform: scale(.55) rotate(45deg); opacity: 0; }
 
-/* علامة الصح: الدائرة تُرسم ثم الصح، مع نبضة صغيرة */
+/* ── الإصبع: لوحة سفلية، بصمة واقعية تُرسم ويمسحها خط مضيء ── */
+.bio-sheet { animation: bio-sheet-in .4s cubic-bezier(.2, .9, .3, 1) both; }
+@keyframes bio-sheet-in { from { transform: translateY(100%); } to { transform: none; } }
+.bio-print-pad {
+  background: linear-gradient(160deg, #f0fdfa, #ccfbf1);
+  box-shadow: inset 0 0 0 1px rgba(13, 148, 136, .18), 0 10px 24px -14px rgba(13, 148, 136, .55);
+  transition: background .35s ease, box-shadow .35s ease;
+}
+.dark .bio-print-pad { background: linear-gradient(160deg, rgba(20, 184, 166, .12), rgba(20, 184, 166, .04)); }
+.bio-print-pad-ok { background: linear-gradient(160deg, #f0fdf4, #dcfce7); box-shadow: inset 0 0 0 1px rgba(22, 163, 74, .25), 0 10px 24px -14px rgba(22, 163, 74, .6); }
+.dark .bio-print-pad-ok { background: rgba(22, 163, 74, .12); }
+/* خطوط الجلد تُرسم تباعًا */
+.bio-ridge { stroke-dasharray: 80; stroke-dashoffset: 80; animation: bio-draw .55s ease-out forwards; }
+/* القناع يكشف الخطوط الملوّنة مع مرور خط المسح */
+.bio-print-reveal { transform-box: fill-box; transform-origin: 50% 0; transform: scaleY(0); animation: bio-reveal 1s cubic-bezier(.45, 0, .2, 1) .3s forwards; }
+@keyframes bio-reveal { to { transform: scaleY(1); } }
+.bio-scanline {
+  top: 14%;
+  background: linear-gradient(90deg, transparent, #14b8a6, transparent);
+  box-shadow: 0 0 10px 2px rgba(20, 184, 166, .6);
+  opacity: 0;
+  animation: bio-scan 1s cubic-bezier(.45, 0, .2, 1) .3s forwards;
+}
+@keyframes bio-scan { 0% { top: 14%; opacity: 1; } 90% { opacity: 1; } 100% { top: 84%; opacity: 0; } }
+.bio-print { transition: transform .3s ease, opacity .25s ease; }
+.bio-print-out { transform: scale(.6); opacity: 0; }
+
+/* ── علامة الصح: الدائرة تُرسم ثم الصح، مع نبضة صغيرة ── */
 .bio-check { animation: bio-pop .45s cubic-bezier(.2, 1.4, .4, 1) both; }
-.bio-check-ring { stroke-dasharray: 252; stroke-dashoffset: 252; animation: bio-draw .45s ease-out forwards; transform: rotate(-90deg); transform-origin: 50% 50%; }
-.bio-check-mark { stroke-dasharray: 60; stroke-dashoffset: 60; animation: bio-draw .3s ease-out .35s forwards; }
+.bio-check-ring { stroke-dasharray: 252; stroke-dashoffset: 252; animation: bio-draw .45s ease-out .1s forwards; transform: rotate(-90deg); transform-origin: 50% 50%; }
+.bio-check-mark { stroke-dasharray: 60; stroke-dashoffset: 60; animation: bio-draw .3s ease-out .45s forwards; }
 @keyframes bio-pop { from { transform: scale(.7); } to { transform: none; } }
 
+@keyframes bio-draw { to { stroke-dashoffset: 0; } }
+@keyframes bio-pulse { 50% { opacity: .5; } }
+
 @media (prefers-reduced-motion: reduce) {
-  .bio-face-hud, .bio-sheet, .bio-check { animation: none; }
-  .bio-face-corner, .bio-face-part, .bio-fp path, .bio-check-ring, .bio-check-mark { animation: none; stroke-dashoffset: 0; }
-  .bio-scanline, .bio-ripple { display: none; }
+  .bio-face-hud, .bio-sheet, .bio-check, .bio-face-features { animation: none; }
+  .bio-face-corner, .bio-face-part, .bio-ridge, .bio-check-ring, .bio-check-mark { animation: none; stroke-dashoffset: 0; }
+  .bio-print-reveal { animation: none; transform: none; }
+  .bio-scanline { display: none; }
 }
