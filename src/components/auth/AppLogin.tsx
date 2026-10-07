@@ -226,7 +226,8 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
     if (bioBusy || btn !== 'idle') return;
     setError('');
     setBioBusy(true);
-    setBioPhase('scan');
+    // أثناء التحقق تُترك الشاشة لنافذة النظام (أندرويد / iPhone تعرض نافذتها الإلزامية للبصمة)،
+    // فحركة التطبيق تظهر بعد النجاح فقط ولا تتراكب فوق نافذة النظام
     const ctrl = new AbortController();
     bioAbort.current = ctrl;
     try {
