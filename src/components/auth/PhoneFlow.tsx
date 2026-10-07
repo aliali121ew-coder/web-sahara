@@ -94,7 +94,7 @@ const Shell: React.FC<{
   const Back = i18n.dir() === 'rtl' ? ArrowRight : ArrowLeft;
   return (
   <>
-    <div className="auth-phone-top relative overflow-hidden px-6 pt-[max(1.25rem,env(safe-area-inset-top))] pb-16 text-white" style={{ viewTransitionName: 'auth-top' }}>
+    <div className="auth-phone-top relative overflow-hidden px-6 pt-[max(1rem,env(safe-area-inset-top))] pb-14 text-white" style={{ viewTransitionName: 'auth-top' }}>
       <Swirls />
       <div className="relative flex items-center justify-between">
         {onBack ? (
@@ -105,9 +105,10 @@ const Shell: React.FC<{
         ) : <span className="w-11" />}
         <div className="flex items-center gap-1.5"><LangToggle onColor /><ToggleDark dark={dark} onToggle={onToggleDark} /></div>
       </div>
-      <p className="auth-headline relative mt-6 text-[26px] font-black leading-[1.45]">{headline}</p>
+      {/* عنوان أصغر يتكيّف مع عرض الشاشة: الأيقونات العلوية والنموذج يظهران معًا بلا تمرير في الشاشات القصيرة */}
+      <p className="auth-headline relative mt-4 text-[clamp(17px,5.4vw,22px)] font-black leading-[1.5]">{headline}</p>
     </div>
-    <div className="auth-sheet relative -mt-9 flex-1 rounded-t-[32px] bg-white dark:bg-slate-950 px-6 pt-8 pb-[max(1.5rem,env(safe-area-inset-bottom))]" style={{ viewTransitionName: 'auth-sheet' }}>
+    <div className="auth-sheet relative -mt-9 flex-1 rounded-t-[32px] bg-white dark:bg-slate-950 px-6 pt-7 pb-[max(1.5rem,env(safe-area-inset-bottom))]" style={{ viewTransitionName: 'auth-sheet' }}>
       <div className="max-w-[420px] mx-auto auth-fade">{children}</div>
     </div>
   </>
