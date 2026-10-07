@@ -163,7 +163,8 @@ async function flush(): Promise<void> {
   if (flushing || !getToken()) return;
   const pending = readPending();
   if (!Object.keys(pending).length) {
-    setStatus('saved');
+    // لا شيء للإرسال: «غير متصل» يبقى حتى يرد الخادم فعلًا (fetchState يعيدها «محفوظ»)
+    if (status !== 'offline') setStatus('saved');
     return;
   }
   flushing = true;
@@ -190,9 +191,10 @@ async function flush(): Promise<void> {
     flushing = false;
     if (Object.keys(latest).length) scheduleFlush(200);
     else setStatus('saved');
-  } catch {
+  } catch (e) {
     flushing = false;
-    setStatus(navigator.onLine ? 'error' : 'offline');
+    // فشل الاتصال نفسه (TypeError) = غير متصل، حتى لو ظن المتصفح أن الشبكة متاحة (إشارة ضعيفة أو الخادم لا يُصل)
+    setStatus(e instanceof TypeError || !navigator.onLine ? 'offline' : 'error');
     scheduleFlush(15000); // إعادة المحاولة لاحقًا، والتعديلات محفوظة محليًا حتى تصل
   }
 }
@@ -269,7 +271,13 @@ const fetchState = async (timeoutMs = 8000, conditional = false) => {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    return await api('/api/state', { signal: ctrl.signal, headers: conditional && stateEtag ? { 'if-none-match': stateEtag } : {} });
+    const res = await api('/api/state', { signal: ctrl.signal, headers: conditional && stateEtag ? { 'if-none-match': stateEtag } : {} });
+    // وصل الخادم بعد انقطاع (حتى لو لم يُطلق المتصفح حدث online): إرسال المعلّق وتحديث الحالة
+    if (status === 'offline') {
+      setStatus('saved');
+      void flush();
+    }
+    return res;
   } finally {
     clearTimeout(t);
   }
@@ -339,15 +347,30 @@ export async function initCloudSync(): Promise<InitResult> {
         const changed = adopt((await res.json()) as StateResponse);
         rememberEtag(res);
         if (changed.length) window.dispatchEvent(new CustomEvent(CLOUD_APPLIED_EVENT, { detail: changed }));
+        flush();
       } catch {
-        // لا اتصال: نعمل بالنسخة المحلية وتُرسل التعديلات عند عودة الاتصال
+        // لا اتصال: نعمل بالنسخة المحلية، وعند عودة الاتصال تُجلب نسخة الخادم وتُرسل التعديلات
         setStatus('offline');
       }
-      flush();
     })();
   }
 
-  window.addEventListener('online', () => flush());
+  // عودة الاتصال: إرسال التعديلات المعلّقة ثم جلب تعديلات الأجهزة الأخرى
+  window.addEventListener('online', async () => {
+    await flush();
+    if (Object.keys(readPending()).length) return;
+    try {
+      const res = await fetchState(15000, true);
+      if (!res.ok) return;
+      const { items } = (await res.json()) as { items: Record<string, string> };
+      if (Object.keys(readPending()).length) return;
+      const changed = applyServerState(items);
+      rememberEtag(res);
+      if (changed.length) window.dispatchEvent(new CustomEvent(CLOUD_APPLIED_EVENT, { detail: changed }));
+    } catch {
+      /* تجاهل: المحاولة التالية في المزامنة الدورية */
+    }
+  });
   // عند الإغلاق: محاولة أخيرة لإرسال ما تبقّى
   window.addEventListener('pagehide', () => {
     const pending = readPending();
