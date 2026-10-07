@@ -14,6 +14,7 @@ import { COLLECTION_KEYS } from '../src/lib/permCatalog';
 import type { D1Database, D1PreparedStatement, Env, ExecutionContext, R2Bucket, ScheduledController } from './types';
 import { handleSystem } from './system/api';
 import { ensureSystemTables, getMaintenance } from './system/backup';
+import { schemaGate } from './storage/schema';
 import { onSchedule } from './system/maintenance';
 
 type StateRow = { key: string; value: string; updated_at: number };
@@ -32,16 +33,13 @@ const json = (data: unknown, status = 200) =>
     headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...API_SECURITY_HEADERS },
   });
 
-let tableReady = false;
-const ensureTable = async (db: D1Database) => {
-  if (tableReady) return;
+const ensureTable = (db: D1Database) => schemaGate(db, 'app_state', '1', async () => {
   await db.exec('CREATE TABLE IF NOT EXISTS app_state (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL)');
   // تنظيف مفاتيح سرّية خاصة بالأجهزة رُفعت قديمًا قبل استثنائها من المزامنة
   const { results } = await db.prepare('SELECT key FROM app_state').all<{ key: string }>();
   const leaked = results.map(r => r.key).filter(isServerForbiddenKey);
   if (leaked.length) await db.batch(leaked.map(k => db.prepare('DELETE FROM app_state WHERE key = ?').bind(k)));
-  tableReady = true;
-};
+});
 
 const MAX_STATE_BODY = 8 * 1024 * 1024;
 const MAX_IMAGE_BODY = 6 * 1024 * 1024;

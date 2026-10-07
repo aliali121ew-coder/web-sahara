@@ -11,6 +11,7 @@
 
 import { checkPublicKey, parseClientData, randomChallenge, verifyAssertion } from './webauthn';
 import { ensureFileColumns, loadFile, removeFile, storeFile } from './storage/files';
+import { schemaGate } from './storage/schema';
 import type { D1Database, D1PreparedStatement, R2Bucket } from './types';
 import { levelOf, parsePerms, sanitizePerms, type Perms } from '../src/lib/permCatalog';
 
@@ -37,9 +38,9 @@ const json = (data: unknown, status = 200) =>
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max) : '');
 const uid = () => crypto.randomUUID();
 
-let ready = false;
-const ensureTables = async (db: ChatDB) => {
-  if (ready) return;
+// زِد الإصدار عند أي تعديل على التهيئة أدناه (راجع worker/storage/schema.ts)
+const CHAT_SCHEMA = '1';
+const ensureTables = (db: ChatDB) => schemaGate(db, 'chat', CHAT_SCHEMA, async () => {
   await db.exec("CREATE TABLE IF NOT EXISTS chat_users (id TEXT PRIMARY KEY, name TEXT NOT NULL, role TEXT NOT NULL DEFAULT '', bio TEXT NOT NULL DEFAULT '', avatar TEXT NOT NULL DEFAULT '', color TEXT NOT NULL DEFAULT '', last_seen INTEGER NOT NULL DEFAULT 0, typing_room TEXT NOT NULL DEFAULT '', typing_at INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL)");
   await db.exec("CREATE TABLE IF NOT EXISTS chat_rooms (id TEXT PRIMARY KEY, type TEXT NOT NULL, name TEXT NOT NULL DEFAULT '', description TEXT NOT NULL DEFAULT '', avatar TEXT NOT NULL DEFAULT '', created_by TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)");
   await db.exec("CREATE TABLE IF NOT EXISTS chat_members (room_id TEXT NOT NULL, user_id TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'member', last_read INTEGER NOT NULL DEFAULT 0, muted INTEGER NOT NULL DEFAULT 0, pinned INTEGER NOT NULL DEFAULT 0, joined_at INTEGER NOT NULL, PRIMARY KEY (room_id, user_id))");
@@ -90,8 +91,7 @@ const ensureTables = async (db: ChatDB) => {
   const now = Date.now();
   await db.prepare("INSERT OR IGNORE INTO chat_rooms (id, type, name, description, avatar, created_by, created_at, updated_at) VALUES (?1, 'group', ?2, ?3, '', '', ?4, ?4)")
     .bind(GENERAL_ROOM, 'غرفة العمليات العامة', 'القناة الرئيسية لكل فريق الموقع', now).run();
-  ready = true;
-};
+});
 
 const parseMessage = (m: MessageRow) => ({
   ...m,

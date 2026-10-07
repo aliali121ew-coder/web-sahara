@@ -6,6 +6,7 @@ import { ArrowRight, ArrowLeft, Fuel, Loader2, User, Phone, MessageSquareText, S
 import { sendSupportRequest } from '../../lib/session';
 import { Onboarding } from './Onboarding';
 import { LangToggle } from './LangToggle';
+import { RoutesMap } from './RoutesMap';
 
 export type PhoneStep = 'intro' | 'welcome' | 'login' | 'support';
 export type SupportKind = 'account' | 'password' | 'other';
@@ -146,8 +147,9 @@ const Welcome: React.FC<{ dark: boolean; onToggleDark: () => void; onStart: () =
         </span>
         <div className="flex items-center gap-1.5"><LangToggle onColor /><ToggleDark dark={dark} onToggle={onToggleDark} /></div>
       </div>
-      <div className="relative flex-1 flex items-center justify-center pt-2">
-        <WelcomeScene />
+      {/* خريطة مسارات نقل الوقود (بدل المشهد التوضيحي بأرقامه الثابتة) */}
+      <div className="relative flex-1 flex items-center justify-center pt-4">
+        <RoutesMap className="w-full max-w-[420px]" large />
       </div>
     </div>
 
@@ -179,115 +181,6 @@ const Welcome: React.FC<{ dark: boolean; onToggleDark: () => void; onStart: () =
       </button>
     </div>
   </>
-  );
-};
-
-/** مشهد الترحيب: محطة وقود ذكية + خزانات + صهريج حديث + بطاقات بيانات عائمة */
-const WelcomeScene = () => {
-  const { t } = useTranslation('auth');
-  return (
-  <div className="relative w-full max-w-[360px]">
-    {/* توهج خلف المشهد */}
-    <div className="auth-scene-glow absolute inset-x-6 top-10 bottom-6 rounded-full" aria-hidden />
-
-    <svg viewBox="0 0 360 250" className="relative w-full h-auto" role="img" aria-label={t('phone.sceneLabel')}>
-      <defs>
-        <linearGradient id="w-tank" x1="0" x2="1">
-          <stop offset="0" stopColor="#99f6e4" /><stop offset=".55" stopColor="#ecfeff" /><stop offset="1" stopColor="#5eead4" />
-        </linearGradient>
-        <linearGradient id="w-fuel" x1="0" x2="1">
-          <stop offset="0" stopColor="#0d9488" /><stop offset=".55" stopColor="#2dd4bf" /><stop offset="1" stopColor="#0f766e" />
-        </linearGradient>
-        <linearGradient id="w-trailer" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#ffffff" /><stop offset="1" stopColor="#cbd5e1" />
-        </linearGradient>
-        <linearGradient id="w-cab" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#fcd34d" /><stop offset="1" stopColor="#f59e0b" />
-        </linearGradient>
-      </defs>
-
-      {/* الأرض والطريق */}
-      <ellipse cx="180" cy="226" rx="170" ry="14" fill="rgba(255,255,255,.08)" />
-      <path d="M8 214 H352" stroke="rgba(255,255,255,.18)" strokeWidth="2" />
-      <path className="auth-road" d="M8 222 H352" stroke="rgba(255,255,255,.35)" strokeWidth="2" strokeDasharray="14 12" />
-
-      {/* الخزانات */}
-      <g>
-        <rect x="262" y="70" width="38" height="140" rx="12" fill="url(#w-tank)" />
-        <rect x="262" y="118" width="38" height="92" rx="12" fill="url(#w-fuel)" opacity=".9" />
-        <rect x="262" y="70" width="38" height="140" rx="12" fill="none" stroke="#134e4a" strokeWidth="2.5" />
-        <rect x="306" y="96" width="34" height="114" rx="11" fill="url(#w-tank)" />
-        <rect x="306" y="150" width="34" height="60" rx="11" fill="url(#w-fuel)" opacity=".9" />
-        <rect x="306" y="96" width="34" height="114" rx="11" fill="none" stroke="#134e4a" strokeWidth="2.5" />
-        <path d="M262 86 h38 M306 110 h34" stroke="#134e4a" strokeWidth="2" opacity=".4" />
-        <rect x="273" y="62" width="16" height="10" rx="3" fill="#134e4a" />
-        <rect x="315" y="88" width="16" height="10" rx="3" fill="#134e4a" />
-        {/* أنبوب بين الخزانين */}
-        <path d="M300 196 h6" stroke="#134e4a" strokeWidth="5" strokeLinecap="round" />
-      </g>
-
-      {/* المحطة الذكية */}
-      <g>
-        {/* المظلة */}
-        <rect x="24" y="52" width="150" height="16" rx="6" fill="#ecfeff" />
-        <rect className="auth-canopy-light" x="30" y="66" width="138" height="3" rx="1.5" fill="#5eead4" />
-        <rect x="24" y="52" width="150" height="16" rx="6" fill="none" stroke="#134e4a" strokeWidth="2.5" />
-        <rect x="40" y="68" width="8" height="146" fill="#ccfbf1" stroke="#134e4a" strokeWidth="2" />
-        <rect x="150" y="68" width="8" height="146" fill="#ccfbf1" stroke="#134e4a" strokeWidth="2" />
-        {/* المضخة */}
-        <rect x="78" y="118" width="46" height="96" rx="9" fill="#ffffff" stroke="#134e4a" strokeWidth="2.5" />
-        <rect x="85" y="126" width="32" height="24" rx="4" fill="#134e4a" />
-        <rect className="auth-pump-screen" x="89" y="131" width="24" height="5" rx="2" fill="#5eead4" />
-        <rect x="89" y="140" width="15" height="4" rx="2" fill="#2dd4bf" opacity=".6" />
-        <rect x="88" y="160" width="26" height="8" rx="3" fill="#ccfbf1" />
-        <circle cx="101" cy="186" r="7" fill="#fbbf24" stroke="#134e4a" strokeWidth="2" />
-        <path d="M124 150 c 14 0 14 26 2 34" fill="none" stroke="#134e4a" strokeWidth="3" strokeLinecap="round" />
-        <rect x="120" y="182" width="8" height="12" rx="2" fill="#134e4a" />
-      </g>
-
-      {/* الصهريج الحديث */}
-      <g className="auth-truck">
-        {/* المقطورة */}
-        <rect x="118" y="160" width="132" height="40" rx="20" fill="url(#w-trailer)" stroke="#134e4a" strokeWidth="2.5" />
-        <path d="M136 172 h96" stroke="#0f766e" strokeWidth="5" strokeLinecap="round" />
-        <path d="M136 184 h60" stroke="#99f6e4" strokeWidth="3" strokeLinecap="round" />
-        <rect x="170" y="152" width="22" height="9" rx="3" fill="#134e4a" />
-        {/* الكابينة */}
-        <path d="M250 168 h22 q8 0 12 7 l12 18 v13 h-46 z" fill="url(#w-cab)" stroke="#134e4a" strokeWidth="2.5" strokeLinejoin="round" />
-        <path d="M262 174 h11 q4 0 6 4 l7 11 h-24 z" fill="#ecfeff" stroke="#134e4a" strokeWidth="2" strokeLinejoin="round" />
-        <rect x="290" y="198" width="8" height="4" rx="2" fill="#fef3c7" />
-        {/* العجلات */}
-        {[146, 222, 282].map(cx => (
-          <g key={cx}>
-            <circle cx={cx} cy="208" r="11" fill="#0f172a" />
-            <circle cx={cx} cy="208" r="4.5" fill="#cbd5e1" />
-          </g>
-        ))}
-      </g>
-
-      {/* قطرة الوقود */}
-      <path className="auth-drop" d="M214 22 c 9 13 14 20 14 27 a14 14 0 0 1 -28 0 c0 -7 5 -14 14 -27z" fill="#fbbf24" stroke="#fff7d6" strokeWidth="2" />
-    </svg>
-
-    {/* بطاقات بيانات عائمة (عرض توضيحي) */}
-    <div className="auth-chip c1 absolute top-[2%] right-[2%]">
-      <span className="text-[10px] text-white/70">{t('phone.chipTank')}</span>
-      <span className="flex items-center gap-1.5 mt-0.5">
-        <b className="text-[13px]">82%</b>
-        <span className="w-12 h-1.5 rounded-full bg-white/20 overflow-hidden"><span className="block h-full w-[82%] bg-emerald-300 rounded-full" /></span>
-      </span>
-    </div>
-    <div className="auth-chip c2 absolute top-[0%] left-[0%]">
-      <span className="flex items-center gap-1.5 text-[11px] font-bold">
-        <span className="auth-live-dot w-1.5 h-1.5 rounded-full bg-amber-300 text-amber-300" /> {t('phone.chipTanker')}
-      </span>
-      <span className="text-[10px] text-white/70">{t('phone.chipEta')}</span>
-    </div>
-    <div className="auth-chip c3 absolute top-[33%] left-[38%]">
-      <span className="text-[10px] text-white/70">{t('phone.chipBalance')}</span>
-      <b className="text-[13px]" dir="ltr">705,021 L</b>
-    </div>
-  </div>
   );
 };
 
