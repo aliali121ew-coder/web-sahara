@@ -2,7 +2,8 @@ import React, { useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ShoppingCart, ChevronRight, ChevronLeft, CalendarDays } from 'lucide-react';
 import { useFuelData } from '../../context/FuelDataContext';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation, Trans } from 'react-i18next';
+import { enumText } from '../../i18n/enums';
 import { formatNumber, getBusinessDate } from '../../lib/utils';
 import { usePetrolLedger } from '../../lib/petrolLedger';
 import { useBlackOilLedger } from '../../lib/blackOilLedger';
@@ -41,7 +42,8 @@ const productBadge = (p: string) =>
  * 3) مؤشرات أسعار الشركات والموردين
  */
 export const PricesView: React.FC = () => {
-  const { tr } = useLanguage();
+  const { t, i18n } = useTranslation(['prices', 'common']);
+  const rtl = i18n.dir() === 'rtl';
   const { saharaDeliveries, etihadDeliveries } = useFuelData();
   const { publishedComputed: petrolDays } = usePetrolLedger();
   // وارد النفط الأسود من السجل اليومي لكل شركة (كشف الوارد خاص بالكاز) مع سعر اللتر المسجّل لكل يوم
@@ -150,7 +152,7 @@ export const PricesView: React.FC = () => {
   }, [allRows]);
   const allTotal = useMemo(() => allRows.reduce((a, r) => a + r.inbound, 0), [allRows]);
   const isAll = category === 'all';
-  const activeTitle = isAll ? 'كل المشتريات' : CATEGORIES.find(c => c.key === category)!.title;
+  const activeTitle = t(isAll ? 'prices:category.allPurchases' : `prices:category.${category}`);
 
   const totals = useMemo(() => {
     const inbound = rows.reduce((a, r) => a + r.inbound, 0);
@@ -181,15 +183,15 @@ export const PricesView: React.FC = () => {
                 <ShoppingCart className="w-4.5 h-4.5" />
               </div>
               <div>
-                <h2 className="text-base font-black text-slate-900 dark:text-white">{tr('سجل مشتريات الوقود')} <span className="text-slate-400 font-bold">— {tr(activeTitle)}</span></h2>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">{tr('الوارد اليومي مع متوسط سعر الشراء الموزون')}</p>
+                <h2 className="text-base font-black text-slate-900 dark:text-white">{t('prices:table.title')} <span className="text-slate-400 font-bold">— {activeTitle}</span></h2>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">{t('prices:table.subtitle')}</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center p-0.5 bg-slate-100 dark:bg-slate-800 rounded-xl">
-                {([['today', 'اليوم'], ['week', 'الأسبوع'], ['month', 'الشهر']] as const).map(([k, l]) => (
+                {(['today', 'week', 'month'] as const).map(k => (
                   <button key={k} type="button" onClick={() => { setRange(k); setPage(1); }} className={chip(range === k)}>
-                    {tr(l)}
+                    {t(`prices:range.${k}`)}
                   </button>
                 ))}
               </div>
@@ -198,9 +200,9 @@ export const PricesView: React.FC = () => {
                 type="button"
                 onClick={e => {
                   const r = e.currentTarget.getBoundingClientRect();
-                  setDatePop(p => (p ? null : { top: r.bottom + 8, left: Math.max(8, r.left) }));
+                  setDatePop(p => (p ? null : { top: r.bottom + 8, left: Math.max(8, Math.min(r.left, window.innerWidth - 308)) }));
                 }}
-                title={tr('تحديد فترة')}
+                title={t('prices:range.pick')}
                 className={`flex items-center gap-1.5 h-8 px-2.5 rounded-xl border text-[11px] font-bold cursor-pointer transition-colors ${
                   range === 'custom'
                     ? 'border-teal-400 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300'
@@ -208,7 +210,7 @@ export const PricesView: React.FC = () => {
                 }`}
               >
                 <CalendarDays className="w-4 h-4" />
-                {range === 'custom' ? <span className="font-mono">{fromDate || '…'} — {toDate || '…'}</span> : <span>{tr('التاريخ')}</span>}
+                {range === 'custom' ? <span className="font-mono">{fromDate || '…'} — {toDate || '…'}</span> : <span>{t('prices:range.date')}</span>}
               </button>
               {datePop && createPortal(
                 <>
@@ -229,7 +231,7 @@ export const PricesView: React.FC = () => {
 
           {/* كروت الأقسام الصغيرة المنزلقة: كل قسم وحده */}
           <div className="px-4 py-3 border-b border-slate-200/90 dark:border-slate-800 flex gap-2 overflow-x-auto snap-x snap-mandatory [scrollbar-width:thin]">
-            {[{ key: 'all' as const, title: 'عرض الكل' }, ...CATEGORIES].map(c => {
+            {[{ key: 'all' as const }, ...CATEGORIES].map(c => {
               const isActive = c.key === category;
               return (
                 <button
@@ -243,9 +245,9 @@ export const PricesView: React.FC = () => {
                   }`}
                 >
                   <div className="min-w-0 text-center">
-                    <div className={`text-[12px] font-black truncate ${isActive ? 'text-white' : 'text-slate-600 dark:text-slate-300'}`}>{tr(c.title)}</div>
+                    <div className={`text-[12px] font-black truncate ${isActive ? 'text-white' : 'text-slate-600 dark:text-slate-300'}`}>{t(`prices:category.${c.key}`)}</div>
                     <div className={`text-[10px] font-mono font-bold truncate ${isActive ? 'text-teal-100' : 'text-slate-400'}`}>
-                      {formatNumber(c.key === 'all' ? allTotal : categoryTotals[c.key] || 0)} <span className="font-sans">{tr('لتر')}</span>
+                      {formatNumber(c.key === 'all' ? allTotal : categoryTotals[c.key] || 0)} <span className="font-sans">{t('common:units.liter')}</span>
                     </div>
                   </div>
                 </button>
@@ -255,27 +257,27 @@ export const PricesView: React.FC = () => {
 
           {/* الجدول: ارتفاع ثابت بقدر 10 صفوف حتى لا يتغير حجم الكارت (والكروت الجانبية) عند قسم فارغ */}
           <div className="flex-1 min-h-[490px] overflow-x-auto">
-            <table className="w-full text-right text-xs border-collapse">
+            <table className="w-full text-start text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-100/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 text-[11px] font-extrabold whitespace-nowrap">
-                  <th className="px-4 py-3">{tr('الجهة المستلمة')}</th>
-                  <th className="px-4 py-3">{tr('نوع المنتج')}</th>
-                  <th className="px-4 py-3">{tr('الوارد')} <span className="font-medium text-slate-400">({tr('لتر')})</span></th>
-                  <th className="px-4 py-3">{tr('متوسط السعر')} <span className="font-medium text-slate-400">({tr('د.ع')})</span></th>
-                  <th className="px-4 py-3">{tr('تاريخ الشراء')}</th>
+                  <th className="px-4 py-3">{t('prices:table.receiver')}</th>
+                  <th className="px-4 py-3">{t('prices:table.product')}</th>
+                  <th className="px-4 py-3">{t('prices:table.inbound')} <span className="font-medium text-slate-400">({t('common:units.liter')})</span></th>
+                  <th className="px-4 py-3">{t('prices:table.avgPrice')} <span className="font-medium text-slate-400">({t('common:units.iqd')})</span></th>
+                  <th className="px-4 py-3">{t('prices:table.date')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
                 {pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-10 text-center text-sm text-slate-500 dark:text-slate-400">{tr((isAll ? allTotal : categoryTotals[category]) ? 'لا توجد مشتريات في هذه الفترة' : 'لا توجد مشتريات مسجلة لهذا القسم بعد')}</td>
+                    <td colSpan={5} className="p-10 text-center text-sm text-slate-500 dark:text-slate-400">{t((isAll ? allTotal : categoryTotals[category]) ? 'prices:table.emptyRange' : 'prices:table.emptyCategory')}</td>
                   </tr>
                 ) : (
                   pageRows.map(r => (
                     <tr key={r.key} className="hover:bg-teal-50/40 dark:hover:bg-teal-950/20 transition-colors whitespace-nowrap">
-                      <td className="px-4 py-2.5 font-bold text-slate-800 dark:text-slate-100">{tr(r.company)}</td>
+                      <td className="px-4 py-2.5 font-bold text-slate-800 dark:text-slate-100">{enumText(r.company)}</td>
                       <td className="px-4 py-2.5">
-                        <span className={`inline-block px-2 py-0.5 rounded-md text-[10.5px] font-black ring-1 ${productBadge(r.product)}`}>{tr(r.product)}</span>
+                        <span className={`inline-block px-2 py-0.5 rounded-md text-[10.5px] font-black ring-1 ${productBadge(r.product)}`}>{enumText(r.product)}</span>
                       </td>
                       <td className="px-4 py-2.5 font-mono font-black tabular-nums text-emerald-600 dark:text-emerald-400">{formatNumber(r.inbound)}</td>
                       <td className="px-4 py-2.5 font-mono font-bold tabular-nums text-slate-800 dark:text-slate-200">{fmtPrice(avgPrice(r))}</td>
@@ -287,7 +289,7 @@ export const PricesView: React.FC = () => {
               {rows.length > 0 && (
                 <tfoot>
                   <tr className="bg-slate-50 dark:bg-slate-800/60 border-t-2 border-slate-200 dark:border-slate-700 font-black text-slate-900 dark:text-white whitespace-nowrap">
-                    <td className="px-4 py-3" colSpan={2}>{tr('الإجمالي')} <span className="text-[10px] font-bold text-slate-400">({rows.length} {tr('سجل')})</span></td>
+                    <td className="px-4 py-3" colSpan={2}>{t('prices:table.total')} <span className="text-[10px] font-bold text-slate-400">({t('prices:records', { count: rows.length })})</span></td>
                     <td className="px-4 py-3 font-mono tabular-nums text-emerald-600 dark:text-emerald-400">{formatNumber(totals.inbound)}</td>
                     <td className="px-4 py-3 font-mono tabular-nums">{fmtPrice(totals.price)}</td>
                     <td className="px-4 py-3" />
@@ -302,16 +304,20 @@ export const PricesView: React.FC = () => {
           {(
             <div className="px-4 py-3 border-t border-slate-200/90 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 flex items-center justify-between gap-3 text-xs">
               <span className="text-slate-500 dark:text-slate-400">
-                {tr('عرض')} <b className="font-mono text-slate-900 dark:text-white">{rows.length ? startIndex + 1 : 0}–{startIndex + pageRows.length}</b> {tr('من أصل')}{' '}
-                <b className="font-mono text-teal-700 dark:text-teal-400">{rows.length}</b>
+                <Trans
+                  t={t}
+                  i18nKey="prices:table.showing"
+                  values={{ from: rows.length ? startIndex + 1 : 0, to: startIndex + pageRows.length, total: rows.length }}
+                  components={{ 1: <b className="font-mono text-slate-900 dark:text-white" />, 2: <b className="font-mono text-teal-700 dark:text-teal-400" /> }}
+                />
               </span>
               <div className="flex items-center gap-1.5">
-                <button type="button" onClick={() => setPage(safePage - 1)} disabled={safePage === 1} className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 disabled:opacity-40 cursor-pointer" aria-label={tr('السابق')}>
-                  <ChevronRight className="w-4 h-4" />
+                <button type="button" onClick={() => setPage(safePage - 1)} disabled={safePage === 1} className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 disabled:opacity-40 cursor-pointer" aria-label={t('prices:table.prev')}>
+                  {rtl ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
                 </button>
                 <span className="font-mono font-bold px-2">{safePage} / {totalPages}</span>
-                <button type="button" onClick={() => setPage(safePage + 1)} disabled={safePage === totalPages} className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 disabled:opacity-40 cursor-pointer" aria-label={tr('التالي')}>
-                  <ChevronLeft className="w-4 h-4" />
+                <button type="button" onClick={() => setPage(safePage + 1)} disabled={safePage === totalPages} className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 disabled:opacity-40 cursor-pointer" aria-label={t('prices:table.next')}>
+                  {rtl ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                 </button>
               </div>
             </div>

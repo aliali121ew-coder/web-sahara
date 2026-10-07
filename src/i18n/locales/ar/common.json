@@ -1,0 +1,323 @@
+{
+  "meta": {
+    "title": "منظومة وقود صحاري كربلاء",
+    "description": "منظومة إدارة الوقود والخزانات والأرصدة لشركة صحاري كربلاء وشركة الاتحاد"
+  },
+  "brand": {
+    "name": "صحاري كربلاء",
+    "subtitle": "محطة كربلاء المركزية",
+    "company": "صحاري كربلاء"
+  },
+  "actions": {
+    "close": "إغلاق",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "confirm": "تأكيد",
+    "logout": "تسجيل الخروج",
+    "clearFilter": "إلغاء التصفية",
+    "done": "تم",
+    "delete": "حذف",
+    "saveChanges": "حفظ التعديلات",
+    "edit": "تعديل"
+  },
+  "status": {
+    "online": "متصل",
+    "offline": "غير متصل",
+    "active": "نشط",
+    "disabled": "موقوف"
+  },
+  "units": {
+    "liter": "لتر",
+    "iqd": "د.ع",
+    "days_one": "يوم واحد",
+    "days_other": "{{count}} يوم",
+    "days_zero": "0 يوم",
+    "days_two": "يومان",
+    "days_few": "{{count}} أيام",
+    "days_many": "{{count}} يومًا",
+    "meter": "م"
+  },
+  "time": {
+    "minutesShort": "{{count}} د",
+    "hoursShort": "{{count}} س",
+    "hoursMinutesShort": "{{h}} س {{m}} د",
+    "now": "الآن"
+  },
+  "sync": {
+    "saved": "محفوظ",
+    "saving": "جارٍ الحفظ",
+    "offline": "بلا اتصال",
+    "error": "خطأ في الحفظ",
+    "savedHint": "محفوظ على الخادم",
+    "savingHint": "جارٍ الحفظ…",
+    "offlineHint": "بلا اتصال: محفوظ في الجهاز وسيُرفع عند عودة الاتصال",
+    "errorHint": "تعذّر الحفظ على الخادم، ستُعاد المحاولة تلقائيًا"
+  },
+  "language": {
+    "select": "اختر لغة المنظومة",
+    "count_zero": "لا توجد لغات",
+    "count_one": "لغة واحدة",
+    "count_two": "لغتان",
+    "count_few": "{{count}} لغات",
+    "count_many": "{{count}} لغة",
+    "count_other": "{{count}} لغة",
+    "current": "لغة المنظومة: {{code}}"
+  },
+  "enum": {
+    "weekday": {
+      "sat": "السبت",
+      "satShort": "السبت",
+      "sun": "الأحد",
+      "sunShort": "الأحد",
+      "mon": "الإثنين",
+      "monShort": "الإثنين",
+      "tue": "الثلاثاء",
+      "tueShort": "الثلاثاء",
+      "wed": "الأربعاء",
+      "wedShort": "الأربعاء",
+      "thu": "الخميس",
+      "thuShort": "الخميس",
+      "fri": "الجمعة",
+      "friShort": "الجمعة"
+    },
+    "company": {
+      "sahara": "صحاري كربلاء",
+      "etihad": "شركة الاتحاد",
+      "mainDepot": "المستودع الرئيسي",
+      "saharaCompany": "شركة صحاري كربلاء"
+    },
+    "product": {
+      "saharaGasoline": "بنزين الصحاري",
+      "saharaGasoil": "كاز الصحاري",
+      "stationGasoil": "كاز محطات",
+      "etihadGasoil": "كاز الاتحاد",
+      "blackOil": "نفط الأسود",
+      "gasoline": "بنزين",
+      "gasoil": "كاز",
+      "diesel": "ديزل",
+      "gasoilDiesel": "كاز / ديزل",
+      "premiumDiesel": "ديزل ممتاز"
+    },
+    "category": {
+      "all": "الكل",
+      "commercial": "تجاري",
+      "official": "رسمي",
+      "government": "حكومي"
+    },
+    "availability": {
+      "available": "متوفر",
+      "limited": "محدود",
+      "unavailable": "غير متوفر"
+    },
+    "flowTag": {
+      "none": "لا حركة",
+      "surplus": "فائض",
+      "draw": "سحب من الرصيد",
+      "balanced": "متوازن"
+    },
+    "site": {
+      "rayyan": "موقع الريان",
+      "sukkar": "موقع السكر",
+      "sahara": "موقع الصحاري"
+    },
+    "relative": {
+      "today": "اليوم",
+      "now": "الآن"
+    },
+    "color": {
+      "red": "احمر",
+      "yellow": "اصفر",
+      "honey": "عسلي",
+      "kerosene": "نفط ابيض",
+      "greenishYellow": "أصفر مخضر"
+    },
+    "shipment": {
+      "received": "تم الاستلام",
+      "enRoute": "في الطريق",
+      "inspection": "قيد الفحص",
+      "cancelled": "ملغي"
+    },
+    "supplier": {
+      "karbalaRefinery": "مصفى كربلاء الدولي",
+      "karbalaRefineryShort": "مصفى كربلاء"
+    },
+    "room": {
+      "general": "غرفة العمليات العامة",
+      "generalDesc": "القناة الرئيسية لكل فريق الموقع"
+    },
+    "task": {
+      "maintenance": "صيانة",
+      "unloading": "تفريغ",
+      "quality": "فحص جودة",
+      "inventory": "جرد"
+    },
+    "priority": {
+      "high": "عالية",
+      "medium": "متوسطة",
+      "low": "منخفضة"
+    },
+    "shift": {
+      "onDuty": "على رأس العمل",
+      "onBreak": "في استراحة",
+      "leave": "إجازة"
+    },
+    "level": {
+      "stable": "مستقر",
+      "high": "مرتفع",
+      "low": "منخفض",
+      "critical": "حرج"
+    },
+    "station": {
+      "taqa": "الطاقة",
+      "tasmeen": "التسمين",
+      "bayadh": "البياض",
+      "bawadi": "البوادي",
+      "umahatBayadh": "امهات البياض",
+      "umahat": "أمهات",
+      "ajdad": "الأجداد",
+      "asfalt": "الأسفلت",
+      "hujjaj": "مدينة الحجاج",
+      "tar": "الطار",
+      "istikhlas": "الاستخلاص"
+    },
+    "siteOf": "موقع {{name}}",
+    "term": {
+      "sahara": "صحاري",
+      "saharaKarbala": "صحاري كربلاء",
+      "saharaCompany": "شركة صحاري كربلاء",
+      "etihad": "الاتحاد",
+      "etihadCompany": "شركة الاتحاد",
+      "gasoil": "الكاز",
+      "gasoline": "البنزين",
+      "blackOil": "النفط الأسود",
+      "diesel": "الديزل",
+      "buffer": "البفر",
+      "dailyFuel": "الوقود اليومي",
+      "rubban": "الربان",
+      "sukkar": "السكر",
+      "rayyan": "الريان",
+      "oldTaqa": "الطاقة القديمة",
+      "newTaqa": "الطاقة الجديدة",
+      "baitHajj": "بيت الحاج أبو نور",
+      "reserve": "احتياط",
+      "mainDiesel": "الديزل الرئيسي",
+      "emergencyGasoil": "كاز الطوارئ",
+      "etihadStrategic": "الاتحاد الاستراتيجي",
+      "reserveGasoline": "البنزين الاحتياطي",
+      "etihadOps": "عمليات الاتحاد",
+      "dailyOps": "خزانات التشغيل اليومي",
+      "bufferDiesel": "بفر وديزل",
+      "gasPetrolHajj": "وحدة الكاز والبنزين وخزانات بيت الحاج",
+      "istikhlasTransport": "خزانات كاز الاستخلاص والنقل",
+      "companySites": "خزانات مواقع الشركة",
+      "extraSection": "قسم تشغيلي إضافي مخصص لمنظومة الخزانات"
+    },
+    "tankOf": "خزان {{name}}",
+    "tanksOf": "خزانات {{name}}"
+  },
+  "calendar": {
+    "lastDays_zero": "اليوم فقط",
+    "lastDays_one": "آخر يوم",
+    "lastDays_two": "آخر يومين",
+    "lastDays_few": "آخر {{count}} أيام",
+    "lastDays_many": "آخر {{count}} يومًا",
+    "lastDays_other": "آخر {{count}} يوم",
+    "prevMonth": "الشهر السابق",
+    "nextMonth": "الشهر التالي",
+    "from": "من",
+    "to": "إلى",
+    "apply": "تطبيق",
+    "today": "اليوم",
+    "clear": "مسح",
+    "weekdays": {
+      "sat": "سبت",
+      "sun": "أحد",
+      "mon": "إثنين",
+      "tue": "ثلاثاء",
+      "wed": "أربعاء",
+      "thu": "خميس",
+      "fri": "جمعة"
+    }
+  },
+  "print": {
+    "logo": {
+      "sama": "سما كربلاء",
+      "bawadi": "بوادي كربلاء",
+      "kac": "مدينة كربلاء الزراعية"
+    },
+    "groupName": "مجموعة شركات كربلاء للإنتاج الزراعي والحيواني",
+    "fuelDepartment": "الإدارة المركزية للوقود والمشتقات النفطية",
+    "etihadGroup": "مجموعة الاتحاد للصناعات",
+    "partner": "الشريك الاستراتيجي المعتمد",
+    "badgeOfficial": "وثيقة رسمية معتمدة",
+    "printDate": "تاريخ الطباعة: <1>{{date}}</1>",
+    "signature": "التوقيع والتاريخ",
+    "role": {
+      "tanks": "مسؤول الخزانات",
+      "site": "مدير الموقع",
+      "general": "المدير العام",
+      "accountant": "المحاسب"
+    },
+    "orientation": "الاتجاه",
+    "landscape": "أفقي بالعرض",
+    "portrait": "عمودي بالطول",
+    "print": "طباعة",
+    "rangeAll": "كل الأيام",
+    "rangeMonth": "آخر شهر",
+    "rangeWeek": "آخر أسبوع",
+    "rangeFromTo": "من {{from}} إلى {{to}}"
+  },
+  "pagination": {
+    "showing": "عرض السجلات من <1>{{from}}</1> إلى <1>{{to}}</1> من أصل <2>{{total}}</2> سجل",
+    "prev": "السابق",
+    "next": "التالي"
+  },
+  "notif": {
+    "inbound": {
+      "title": "شحنة واردة جديدة",
+      "message": "تم تسجيل وصول الشحنة وفوجر رقم {{voucher}} بحجم {{qty}} لتر لصالح {{company}}."
+    },
+    "supply": {
+      "title": "طلب تجهيز وقود جديد",
+      "message": "تم إرسال طلب تزويد {{qty}} لتر لصالح {{beneficiary}}."
+    }
+  },
+  "fileImport": {
+    "field": {
+      "generators": "المولدات",
+      "vehicles": "الآليات",
+      "farms": "المزارع",
+      "sentToFarms": "المرسل للمزارع",
+      "inboundInternal": "الوارد الداخلي",
+      "inboundEtihad": "وارد الاتحاد",
+      "inboundExternal": "الوارد الخارجي",
+      "previousCarried": "المدوّر السابق",
+      "currentInFile": "الرصيد الحالي"
+    },
+    "saharaNoItems": "لم يُعثر على بنود الكشف في الملف — تأكد أنه الكشف اليومي للصحاري",
+    "missing": "لم تُعثر في الملف على: {{list}}",
+    "noSitesTable": "لم يُعثر على جدول أرصدة المواقع (عمود الرصيد التراكمي) في الملف",
+    "scannedPdf": "ملف PDF هذا صورة ممسوحة بلا نص — استخدم رفع الصورة بدلًا منه",
+    "petrolNoItems": "لم يُعثر على جدول المحطات أو بنود الوارد في الملف — تأكد أنه كشف البنزين اليومي",
+    "stationsRead": "قُرئت {{matched}} من {{count}} محطة",
+    "noStationsTable": "لم يُعثر على جدول المحطات",
+    "scannedPdfManual": "ملف PDF هذا صورة ممسوحة بلا نص — استخدم ملف Excel أو الإدخال اليدوي",
+    "excelPdfOnly": "يُقبل ملف Excel أو PDF فقط",
+    "blackOilNoSites": "لم يُعثر على المواقف (موقف الريان / موقف السكر) وقيمها في الملف",
+    "noHeaderRow": "لم يُعثر على صف العناوين في الملف (اسم المجهز، رقم الفوجر، الكمية المستلمة...)",
+    "noHeaderRowPdf": "لم يُعثر على صف العناوين في ملف PDF (اسم المجهز، رقم الفوجر، الكمية المستلمة...)",
+    "sitesRead_zero": "لم يُقرأ أي موقع من عمود الرصيد التراكمي",
+    "sitesRead_one": "قُرئ موقع واحد من عمود الرصيد التراكمي",
+    "sitesRead_two": "قُرئ موقعان من عمود الرصيد التراكمي",
+    "sitesRead_few": "قُرئت {{count}} مواقع من عمود الرصيد التراكمي",
+    "sitesRead_many": "قُرئ {{count}} موقعًا من عمود الرصيد التراكمي",
+    "sitesRead_other": "قُرئ {{count}} موقع من عمود الرصيد التراكمي",
+    "noNumbers_zero": "قُرئت أرقام كل المحطات",
+    "noNumbers_one": "لم تُقرأ أرقام محطة واحدة (عمودا المصروف الفعلي والرصيد الحالي)",
+    "noNumbers_two": "لم تُقرأ أرقام محطتين (عمودا المصروف الفعلي والرصيد الحالي)",
+    "noNumbers_few": "لم تُقرأ أرقام {{count}} محطات (عمودا المصروف الفعلي والرصيد الحالي)",
+    "noNumbers_many": "لم تُقرأ أرقام {{count}} محطةً (عمودا المصروف الفعلي والرصيد الحالي)",
+    "noNumbers_other": "لم تُقرأ أرقام {{count}} محطة (عمودا المصروف الفعلي والرصيد الحالي)",
+    "alreadyUploaded": "مرفوع مسبقًا لهذا اليوم: {{list}}"
+  }
+}

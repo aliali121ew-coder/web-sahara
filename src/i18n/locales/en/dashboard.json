@@ -1,0 +1,199 @@
+{
+  "capacity": {
+    "remaining": "Remaining capacity",
+    "fill": "Fill level",
+    "title": "Storage capacity breakdown",
+    "titleShort": "Storage capacity",
+    "remainingShort": "Remaining",
+    "centralTanks": "Central tanks",
+    "totalColon": "Total capacity:",
+    "grandTotalColon": "Overall capacity:",
+    "remainingOfCapacity": "Capacity left",
+    "label": "Capacity",
+    "current": "Current level"
+  },
+  "flow": {
+    "inboundColon": "Inbound:",
+    "consumptionColon": "Consumption:",
+    "totalInbound": "Total inbound",
+    "received": "Deliveries received",
+    "consumption": "Consumption",
+    "inbound": "Inbound",
+    "sales": "Sales",
+    "actualDiff": "Actual consumption change",
+    "actual": "Actual consumption",
+    "directOutflow": "Direct outflow",
+    "totalInboundAll": "Total inbound",
+    "totalConsumption": "Total consumption",
+    "daily": "Daily consumption",
+    "actualDiffShort": "Consumption change",
+    "actualShort": "Consumption"
+  },
+  "compare": {
+    "prevDay": "vs. previous day",
+    "noPrevDay": "No previous day to compare",
+    "sevenDays": "7-day comparison"
+  },
+  "coverage": {
+    "until": "Covers",
+    "covers": "Covers",
+    "secured": "Covered",
+    "dueDate": "Expected due date:",
+    "runOutDate": "Expected run-out date:",
+    "smartTitle": "Smart coverage forecast",
+    "predictive": "Predictive"
+  },
+  "price": {
+    "change": "Change",
+    "average": "Average price",
+    "approved": "Approved",
+    "lastInboundAvg": "Average price of last inbound",
+    "buyAvg": "Average purchase price",
+    "todayBuy": "Today's purchase",
+    "twoDayAvg": "Two-day average",
+    "vsPrevBuy": "vs. the previous day's purchase price"
+  },
+  "balance": {
+    "actualCurrent": "Current actual balance",
+    "actual": "Actual balance",
+    "total": "Total balance"
+  },
+  "day": {
+    "yesterday": "Yesterday",
+    "today": "Today"
+  },
+  "stations": {
+    "title": "Stations & sites",
+    "showAll": "Show all sites",
+    "viewAll": "View all",
+    "fromTanks": "from the tank system",
+    "total": "Total",
+    "secured_one": "{{count}} covered",
+    "secured_other": "{{count}} covered",
+    "sites_one": "{{count}} site",
+    "sites_other": "{{count}} sites"
+  },
+  "blackOil": {
+    "details": "Black oil details",
+    "sahara": "Black oil – Sahara Karbala",
+    "etihad": "Black oil – Etihad Company",
+    "both": "Sahara Karbala + Etihad",
+    "combinedBalance": "Combined actual balance"
+  },
+  "companyTanks": {
+    "details": "Company tank details",
+    "sections_one": "{{count}} section",
+    "sections_other": "{{count}} sections",
+    "groups": {
+      "etihad": "Etihad Company",
+      "sahara": "Sahara Company",
+      "petrol": "Gasoline"
+    },
+    "names": {
+      "etihadGas": "Etihad gasoil",
+      "saharaGas": "Sahara gasoil",
+      "blackOil": "Black oil",
+      "petrol": "Gasoline"
+    }
+  },
+  "etihad": {
+    "title": "Gasoil – Etihad Company",
+    "totalBalance": "Total Etihad gasoil balance",
+    "tanks": "Tanks",
+    "weeklyInbound": "Weekly inbound",
+    "weeklyConsumption": "Weekly consumption",
+    "coverageTitle": "Etihad strategic coverage forecast",
+    "surplus": "Strategic surplus",
+    "operationalGas": "Operational gasoil",
+    "cleanGas": "Clean gasoil"
+  },
+  "purchases": {
+    "title": "Fuel & product purchases",
+    "longPress": "Press and hold to view the price",
+    "previous": "Previous:",
+    "down": "Price down",
+    "up": "Price up",
+    "stable": "Price stable",
+    "manual": "Manual",
+    "approvedPrice": "Approved price per liter",
+    "total": "Total purchased",
+    "lastPriceUpdate": "Price last updated"
+  },
+  "petrol": {
+    "surplusColon": "Surplus:",
+    "title": "Gasoline – Sahara Karbala 2026",
+    "balance": "Approved actual gasoline balance",
+    "active": "Active",
+    "readiness": "Operational coverage readiness",
+    "actualColon": "Actual:",
+    "targetColon": "Target:",
+    "required": "Quantity needed",
+    "boost": "Targeted strategic top-up",
+    "coverageFull": "Covers (overall)",
+    "balanceColon": "Balance:",
+    "analysis": "Inbound, consumption & flow analysis",
+    "neon": "Neon waves",
+    "bars": "3D bars",
+    "toggleInbound": "Click to show or hide inbound",
+    "inboundLegend": "Inbound",
+    "toggleConsumption": "Click to show or hide consumption",
+    "consumptionLegend": "Consumption",
+    "requiredShort": "Needed",
+    "coverageFullShort": "Covers"
+  },
+  "range": {
+    "d7": "7 days",
+    "d14": "14 days",
+    "monthly": "Monthly"
+  },
+  "popover": {
+    "quantity": "Quantity",
+    "literPrice": "Price per liter",
+    "lastUpdateDate": "Last updated on",
+    "standaloneNote": "This card isn't linked to any inbound or ledger: values are entered manually and shown as is.",
+    "manualEntry": "Manual entry",
+    "autoFromInbound": "Auto from inbound",
+    "fromSuppliers": "From supplier table",
+    "editPrice": "Edit price",
+    "inboundPrice": "Inbound price",
+    "lastUpdate": "Last updated",
+    "manualNote": "The manual price stays until the next inbound, then switches back to the inbound price automatically.",
+    "autoNote": "Updates automatically with every new inbound (weighted average of the last inbound day).",
+    "lastInbound": "Last inbound",
+    "recentDays": "Recent inbound days",
+    "noInbound": "No priced inbound for this product yet",
+    "backToAuto": "Back to the automatic price"
+  },
+  "priceIndex": {
+    "title": "Company & supplier price index",
+    "supplier": "Equipper",
+    "product": "Product",
+    "category": "Category",
+    "current": "Current price",
+    "previous": "Previous price",
+    "change": "Change",
+    "availability": "Availability",
+    "empty": "No results match the current filters",
+    "receiver": {
+      "sahara": "Sahara inbound",
+      "etihad": "Etihad inbound"
+    },
+    "density": "Density",
+    "color": "Color",
+    "diff": "Difference"
+  },
+  "sahara": {
+    "sectors": {
+      "vehicles": "Vehicles",
+      "generators": "Generators",
+      "farms": "Farms"
+    },
+    "title": "Gasoil – Sahara Karbala",
+    "balance": "Sahara gasoil balance",
+    "actual": "Actual",
+    "consumptionSplit": "Consumption breakdown",
+    "totalPercent": "100% total",
+    "weekData": "Weekly data",
+    "consumedQty": "Consumed:"
+  }
+}

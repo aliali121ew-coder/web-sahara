@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Download, Play, Pause, Loader2, Mic } from 'lucide-react';
 import { downloadFile, fileUrl, type Attachment } from './chatApi';
 import { fileVisual, formatDuration, formatSize, isAudio, isImage, isVideo, isViewable } from './chatUtils';
@@ -19,6 +20,7 @@ const SPEEDS = [1, 1.5, 2];
 
 /** مشغّل البصمات الصوتية بموجة تفاعلية */
 export const VoicePlayer: React.FC<{ a: Attachment; mine: boolean; avatar?: React.ReactNode }> = ({ a, mine, avatar }) => {
+  const { t } = useTranslation(['chat', 'common']);
   const [want, setWant] = useState(false);
   const url = useFileUrl(a, want);
   const audio = useRef<HTMLAudioElement | null>(null);
@@ -70,9 +72,9 @@ export const VoicePlayer: React.FC<{ a: Attachment; mine: boolean; avatar?: Reac
         onClick={toggle}
         className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90"
         style={{ background: mine ? 'rgba(255,255,255,.22)' : 'linear-gradient(135deg,var(--accent),var(--accent2))', color: '#fff' }}
-        aria-label={playing ? 'إيقاف' : 'تشغيل'}
+        aria-label={playing ? t('chat:pause') : t('chat:play')}
       >
-        {loading || !a.fileId ? <Loader2 className="w-5 h-5 animate-spin" /> : playing ? <Pause className="w-5 h-5" fill="currentColor" /> : <Play className="w-5 h-5 -mr-0.5" fill="currentColor" />}
+        {loading || !a.fileId ? <Loader2 className="w-5 h-5 animate-spin" /> : playing ? <Pause className="w-5 h-5" fill="currentColor" /> : <Play className="w-5 h-5 -ms-0.5" fill="currentColor" />}
       </button>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-[2px] h-8 cursor-pointer" onClick={seek} dir="rtl">
@@ -134,7 +136,7 @@ const MediaTile: React.FC<{ a: Attachment; single: boolean; more: number; onOpen
           <span className="w-12 h-12 rounded-full bg-black/55 backdrop-blur flex items-center justify-center text-white">
             <Play className="w-5 h-5" fill="currentColor" />
           </span>
-          {a.duration ? <span className="absolute bottom-1.5 left-1.5 text-[10px] font-mono bg-black/60 text-white rounded-md px-1.5">{formatDuration(a.duration)}</span> : null}
+          {a.duration ? <span className="absolute bottom-1.5 end-1.5 text-[10px] font-mono bg-black/60 text-white rounded-md px-1.5">{formatDuration(a.duration)}</span> : null}
         </span>
       )}
       {more > 0 && <span className="absolute inset-0 bg-black/55 flex items-center justify-center text-white text-2xl font-black">+{more}</span>}
@@ -161,6 +163,7 @@ export const ProgressRing: React.FC<{ value: number; size?: number }> = ({ value
 
 /** بطاقة ملف عام (PDF، Excel، ZIP ...) */
 export const FileCard: React.FC<{ a: Attachment; mine: boolean; progress?: number; onOpen?: () => void }> = ({ a, mine, progress, onOpen }) => {
+  const { t } = useTranslation(['chat', 'common']);
   const v = fileVisual(a.name, a.type);
   const Icon = v.icon;
   const [busy, setBusy] = useState(false);
@@ -180,7 +183,7 @@ export const FileCard: React.FC<{ a: Attachment; mine: boolean; progress?: numbe
         <span className="text-[8px] font-black mt-0.5 tracking-wide">{v.label.slice(0, 4)}</span>
       </button>
       <div className="flex-1 min-w-0">
-        <button onClick={canPreview ? onOpen : get} className="block max-w-full text-right text-[13px] font-bold truncate hover:underline" title={canPreview ? 'عرض الملف' : a.name} dir="auto">{a.name}</button>
+        <button onClick={canPreview ? onOpen : get} className="block max-w-full text-start text-[13px] font-bold truncate hover:underline" title={canPreview ? t('chat:viewFile') : a.name} dir="auto">{a.name}</button>
         <p className="text-[10.5px] mt-0.5 font-mono" style={{ color: mine ? 'var(--out-muted)' : 'var(--muted)' }}>
           {progress !== undefined && !a.fileId ? `${Math.round(progress * 100)}% · ` : ''}{formatSize(a.size)}
         </p>
@@ -191,7 +194,7 @@ export const FileCard: React.FC<{ a: Attachment; mine: boolean; progress?: numbe
         )}
       </div>
       {a.fileId && (
-        <button onClick={get} className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors" style={{ background: mine ? 'rgba(255,255,255,.2)' : 'var(--panel2)' }} title="تنزيل">
+        <button onClick={get} className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors" style={{ background: mine ? 'rgba(255,255,255,.2)' : 'var(--panel2)' }} title={t('chat:download')}>
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
         </button>
       )}
@@ -204,9 +207,9 @@ export const FileCard: React.FC<{ a: Attachment; mine: boolean; progress?: numbe
       <button onClick={canPreview ? onOpen : get} className="relative block w-full rounded-2xl overflow-hidden border group/pv" style={{ borderColor: mine ? 'rgba(255,255,255,.2)' : 'var(--border)' }}>
         <img src={a.thumb} alt={a.name} className="w-full max-h-[260px] object-cover object-top bg-white" draggable={false} />
         <span className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
-        <span className="absolute bottom-2 right-2 left-2 flex items-center justify-between text-white text-[11px] font-bold">
-          <span className="px-2 py-0.5 rounded-full bg-black/45 backdrop-blur">{a.pages ? `${a.pages} صفحة` : 'PDF'}</span>
-          <span className="px-2.5 py-1 rounded-full bg-white/90 text-slate-900 opacity-0 group-hover/pv:opacity-100 transition">عرض الملف</span>
+        <span className="absolute bottom-2 start-2 end-2 flex items-center justify-between text-white text-[11px] font-bold">
+          <span className="px-2 py-0.5 rounded-full bg-black/45 backdrop-blur">{a.pages ? t('chat:pages', { count: a.pages }) : 'PDF'}</span>
+          <span className="px-2.5 py-1 rounded-full bg-white/90 text-slate-900 opacity-0 group-hover/pv:opacity-100 transition">{t('chat:viewFile')}</span>
         </span>
       </button>
       {card}

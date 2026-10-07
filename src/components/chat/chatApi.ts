@@ -1,3 +1,6 @@
+import { serverText } from '../../i18n/errors';
+import i18n from '../../i18n';
+import type { Perms } from '../../lib/permCatalog';
 import { sessionHeaders } from '../../lib/session';
 
 export interface ChatUser {
@@ -25,6 +28,19 @@ export interface Account {
   disabled: number;
   last_seen: number;
   updated_at: number;
+  /** صلاحيات الأقسام (راجع src/lib/permCatalog.ts) */
+  perms?: Perms;
+}
+
+/** سطر في سجل عمليات المستخدمين */
+export interface AuditEntry {
+  id: number;
+  at: number;
+  user_id: string;
+  username: string;
+  action: string;
+  detail: string;
+  ip: string;
 }
 
 /** طلب دعم مُرسل من شاشة الدخول */
@@ -111,7 +127,7 @@ export interface SyncPayload {
 }
 
 
-/** ترويسات جلسة الحساب الحالية (المعرّف + رمز الجلسة) */
+/** ترويسة جلسة الحساب الحالية (المعرّف؛ رمز الجلسة نفسه في كوكي HttpOnly) */
 const authHeaders = sessionHeaders;
 
 export class ChatApiError extends Error {
@@ -128,7 +144,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers: { 'content-type': 'application/json', ...authHeaders(), ...(init.headers || {}) },
   });
   const data = (await res.json().catch(() => ({}))) as T & { error?: string; code?: string; retryAt?: number };
-  if (!res.ok) throw new ChatApiError(data.error || 'تعذّر الاتصال بالخادم', res.status, data.code, data.retryAt);
+  if (!res.ok) throw new ChatApiError(serverText(data, i18n.t('chat:err.connect')), res.status, data.code, data.retryAt);
   return data;
 }
 
@@ -144,10 +160,15 @@ export const chatApi = {
   changePassword: (current: string, next: string) => call('/auth/password', send('POST', { current, next })),
   // ───── إدارة الحسابات (للمدير) ─────
   adminUsers: () => call<{ items: Account[]; max: number }>('/admin/users'),
-  adminCreate: (body: { username: string; password: string; name: string; role: string; is_admin: boolean }) => call<{ id: string }>('/admin/users', send('POST', body)),
+  adminCreate: (body: { username: string; password: string; name: string; role: string; is_admin: boolean; perms?: Perms; avatar?: string }) => call<{ id: string }>('/admin/users', send('POST', body)),
   adminSupport: () => call<{ items: SupportRequest[] }>('/admin/support'),
+  adminAuditStats: () => call<{ since: number; items: { action: string; n: number; users: number }[] }>('/admin/audit/stats'),
+  adminAudit: (q: { user?: string; action?: string; q?: string; since?: number; before?: number; limit?: number } = {}) => {
+    const p = new URLSearchParams(Object.entries(q).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)]));
+    return call<{ items: AuditEntry[]; more: boolean }>(`/admin/audit?${p}`);
+  },
   adminSupportStatus: (id: string, status: 'open' | 'done') => call(`/admin/support/${encodeURIComponent(id)}`, send('PATCH', { status })),
-  adminUpdate: (id: string, body: { name?: string; role?: string; password?: string; is_admin?: boolean; disabled?: boolean }) =>
+  adminUpdate: (id: string, body: { name?: string; role?: string; password?: string; is_admin?: boolean; disabled?: boolean; perms?: Perms; avatar?: string }) =>
     call(`/admin/users/${encodeURIComponent(id)}`, send('PATCH', body)),
   typing: (me: string, room: string) => call('/typing', send('POST', { me, room })),
   read: (me: string, room: string, at: number) => call('/read', send('POST', { me, room, at })),
@@ -179,12 +200,12 @@ export const uploadFile = (file: Blob, name: string, onProgress?: (p: number) =>
       try {
         const data = JSON.parse(xhr.responseText);
         if (xhr.status >= 200 && xhr.status < 300) resolve(data.item);
-        else reject(new Error(data.error || 'فشل رفع الملف'));
+        else reject(new Error(serverText(data, i18n.t('chat:err.upload'))));
       } catch {
-        reject(new Error('فشل رفع الملف'));
+        reject(new Error(i18n.t('chat:err.upload')));
       }
     };
-    xhr.onerror = () => reject(new Error('انقطع الاتصال أثناء الرفع'));
+    xhr.onerror = () => reject(new Error(i18n.t('chat:err.uploadLost')));
     xhr.send(file);
   });
 
@@ -195,7 +216,7 @@ export const fileUrl = (fileId: string, type: string) => {
   if (!p) {
     p = fetch(`/api/chat/files/${encodeURIComponent(fileId)}`, { headers: authHeaders() })
       .then(r => {
-        if (!r.ok) throw new Error('الملف غير متاح');
+        if (!r.ok) throw new Error(i18n.t('chat:err.unavailable'));
         return r.blob();
       })
       .then(b => URL.createObjectURL(new Blob([b], { type: type || b.type })));

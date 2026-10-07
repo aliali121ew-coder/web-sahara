@@ -1,29 +1,71 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Menu, ChevronLeft, ChevronRight } from 'lucide-react';
-import { ThemeProvider } from './context/ThemeContext';
+import React, { useState, useEffect, useRef, Suspense, Activity } from 'react';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { FuelDataProvider, useFuelData } from './context/FuelDataContext';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { QuickActionContext } from './context/QuickActionContext';
+import { getAmbientGradientStyle, getAmbientBgColor } from './lib/themeGradients';
 
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
 import { QuickActionModal } from './components/layout/QuickActionModal';
 import { CommandPalette } from './components/navigation/CommandPalette';
-import { MainDashboard } from './components/dashboard/MainDashboard';
-import { TanksOverview } from './components/tanks/TanksOverview';
-import { PricesView } from './components/prices/PricesView';
-import { InboundDeliveries } from './components/deliveries/InboundDeliveries';
-import { FinanceBalance } from './components/finance/FinanceBalance';
-import { SiteManagers } from './components/managers/SiteManagers';
-import { TasksLogistics } from './components/tasks/TasksLogistics';
-import { ReportsAnalytics } from './components/reports/ReportsAnalytics';
-import { ChatApp } from './components/chat/ChatApp';
-import { SettingsView } from './components/settings/SettingsView';
+import { lazyPage } from './lib/lazyPage';
+import { NoAccess } from './components/auth/NoAccess';
+import { useCanOpenTab, TAB_SECTION } from './lib/usePermission';
+import type { NavTabId } from './types';
+
+// كل صفحة في ملف مستقل يُحمَّل عند أول زيارة، ويُجلب مسبقاً وقت الخمول بعد ظهور الصفحة الأولى
+const MainDashboard = lazyPage(() => import('./components/dashboard/MainDashboard'), 'MainDashboard');
+const TanksOverview = lazyPage(() => import('./components/tanks/TanksOverview'), 'TanksOverview');
+const PricesView = lazyPage(() => import('./components/prices/PricesView'), 'PricesView');
+const SuppliersView = lazyPage(() => import('./components/suppliers/SuppliersView'), 'SuppliersView');
+const InboundDeliveries = lazyPage<{ onOpenModal: (data?: any) => void }>(() => import('./components/deliveries/InboundDeliveries'), 'InboundDeliveries');
+const FinanceBalance = lazyPage(() => import('./components/finance/FinanceBalance'), 'FinanceBalance');
+const SiteManagers = lazyPage(() => import('./components/managers/SiteManagers'), 'SiteManagers');
+const TasksLogistics = lazyPage(() => import('./components/tasks/TasksLogistics'), 'TasksLogistics');
+const ReportsAnalytics = lazyPage(() => import('./components/reports/ReportsAnalytics'), 'ReportsAnalytics');
+const ChatApp = lazyPage(() => import('./components/chat/ChatApp'), 'ChatApp');
+const SettingsView = lazyPage(() => import('./components/settings/SettingsView'), 'SettingsView');
+
+const PAGE_PRELOADERS: Record<string, { preload: () => void }> = {
+  dashboard: MainDashboard, tanks: TanksOverview, prices: PricesView, suppliers: SuppliersView,
+  deliveries: InboundDeliveries, 'deliveries-sahara': InboundDeliveries, 'deliveries-etihad': InboundDeliveries,
+  finance: FinanceBalance, 'finance-etihad': FinanceBalance, 'finance-sahara': FinanceBalance,
+  managers: SiteManagers, tasks: TasksLogistics, reports: ReportsAnalytics, chat: ChatApp, settings: SettingsView,
+};
 
 const AppContent: React.FC = () => {
-  const { activeTab } = useFuelData();
-  const { tr, direction } = useLanguage();
+  const { themeMode, bgGradient, gradientIntensity, shadeLevel } = useTheme();
+  const { activeTab, setActiveTab } = useFuelData();
+  const canOpenTab = useCanOpenTab();
+  const firstAllowed = Object.keys(TAB_SECTION).find(canOpenTab) as NavTabId | undefined;
+
+  // صفحة غير مسموحة (رابط قديم أو صفحة البداية الافتراضية): الانتقال لأول صفحة مسموحة
+  useEffect(() => {
+    if (!canOpenTab(activeTab) && firstAllowed) setActiveTab(firstAllowed);
+  }, [activeTab, firstAllowed]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { direction } = useLanguage();
+
+  // جلب باقي الصفحات في الخلفية وقت الخمول (صفحة المستخدم الحالية أولاً) فيصبح التنقل فورياً
+  useEffect(() => {
+    const ric: (cb: () => void) => any = (window as any).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 400));
+    const queue = [activeTab, ...Object.keys(PAGE_PRELOADERS)];
+    const seen = new Set<unknown>();
+    let cancelled = false;
+    const next = () => {
+      if (cancelled) return;
+      const k = queue.shift();
+      if (!k) return;
+      const p = PAGE_PRELOADERS[k];
+      if (p && !seen.has(p)) { seen.add(p); p.preload(); }
+      ric(next);
+    };
+    ric(next);
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(true);
+  const toggleSidebarCollapsed = () => setSidebarCollapsed(prev => !prev);
   const [quickActionOpen, setQuickActionOpen] = useState(false);
   const [quickActionData, setQuickActionData] = useState<any>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -57,19 +99,15 @@ const AppContent: React.FC = () => {
     isNavigatingRef.current = true;
     const targetY = scrollPositions.current[activeTab] ?? 0;
 
-    // Apply scroll immediately and after frame render
+    // Apply scroll immediately
     window.scrollTo({ top: targetY, left: 0, behavior: 'instant' as ScrollBehavior });
 
-    const raf1 = requestAnimationFrame(() => {
-      window.scrollTo({ top: targetY, left: 0, behavior: 'instant' as ScrollBehavior });
-      const raf2 = requestAnimationFrame(() => {
-        window.scrollTo({ top: targetY, left: 0, behavior: 'instant' as ScrollBehavior });
-        isNavigatingRef.current = false;
-      });
-      return () => cancelAnimationFrame(raf2);
-    });
+    // Allow render to complete before accepting new scroll positions
+    const timer = setTimeout(() => {
+      isNavigatingRef.current = false;
+    }, 100);
 
-    return () => cancelAnimationFrame(raf1);
+    return () => clearTimeout(timer);
   }, [activeTab]);
 
   const handleOpenQuickAction = (data?: any) => {
@@ -83,7 +121,6 @@ const AppContent: React.FC = () => {
     setQuickActionOpen(true);
   };
 
-  const isRtl = direction === 'rtl';
 
   // Global Ctrl + K / Cmd + K Shortcut Listener
   useEffect(() => {
@@ -97,14 +134,25 @@ const AppContent: React.FC = () => {
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, []);
 
-  const renderActiveView = () => {
-    switch (activeTab) {
+  // الصفحات التي زارها المستخدم تبقى محفوظة (Activity): العودة إليها فورية بحالتها كما تركها،
+  // وتتوقف مؤثراتها وتتأجل تحديثاتها وهي مخفية فلا تستهلك المعالج
+  const [visited, setVisited] = useState<NavTabId[]>(() => [activeTab]);
+  useEffect(() => {
+    setVisited(prev => (prev.includes(activeTab) ? prev : [...prev, activeTab]));
+  }, [activeTab]);
+  const mountedTabs = visited.includes(activeTab) ? visited : [...visited, activeTab];
+
+  const renderTab = (tab: NavTabId) => {
+    if (!canOpenTab(tab)) return <NoAccess hasAny={!!firstAllowed} />;
+    switch (tab) {
       case 'dashboard':
         return <MainDashboard />;
       case 'tanks':
         return <TanksOverview />;
       case 'prices':
         return <PricesView />;
+      case 'suppliers':
+        return <SuppliersView />;
       case 'deliveries':
       case 'deliveries-sahara':
       case 'deliveries-etihad':
@@ -129,55 +177,42 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#090E17] text-slate-800 dark:text-slate-100 flex flex-col print:bg-white print:min-h-0">
+    <div
+      className="min-h-screen text-slate-800 dark:text-slate-100 flex flex-row print:bg-white print:min-h-0 transition-colors duration-300 relative w-full overflow-x-clip"
+      dir={direction}
+      style={{
+        backgroundColor: getAmbientBgColor(bgGradient, themeMode, shadeLevel),
+        backgroundImage: getAmbientGradientStyle(bgGradient, gradientIntensity, themeMode, shadeLevel),
+        backgroundAttachment: 'fixed',
+        backgroundRepeat: 'no-repeat',
+        backgroundSize: 'cover',
+      }}
+    >
       
-      {/* 🌟 Floating Sidebar Navigation Overlay */}
-      <div className="no-print">
+      {/* 🌟 Embedded In-Page Sidebar Navigation (Desktop embedded & sticky, Mobile drawer) */}
+      <div className="no-print shrink-0 md:w-[54px]">
         <Sidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
+          isCollapsed={sidebarCollapsed}
+          onToggleCollapse={toggleSidebarCollapsed}
         />
       </div>
 
-      {/* Sleek Floating Edge Tab to Open Sidebar if Closed */}
-      {!sidebarOpen && (
-        <button
-          onClick={() => setSidebarOpen(true)}
-          title={tr('فتح القائمة الجانبية (شريط العمليات)')}
-          className={`no-print fixed top-1/2 -translate-y-1/2 z-40 w-6 hover:w-8 h-14 bg-gradient-to-b from-blue-700 to-indigo-600 text-white shadow-xl flex items-center justify-center transition-all duration-200 cursor-pointer group border-y border-white/20 hover:shadow-blue-500/30 ${
-            isRtl ? 'right-0 rounded-l-xl border-l' : 'left-0 rounded-r-xl border-r'
-          }`}
-        >
-          {isRtl ? (
-            <ChevronLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
-          ) : (
-            <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-          )}
-        </button>
-      )}
-
-      {/* Main Workspace Container - 100% Expansive Full Width */}
+      {/* Main Workspace Container - Expansive Full Width beside sidebar */}
       <div className="flex-1 flex flex-col min-w-0 w-full transition-all duration-300 print:p-0 print:m-0">
         
-        {/* Mobile Header Bar & Hamburger */}
-        <div className="no-print lg:hidden p-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between sticky top-0 z-40">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            <Menu className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-          </button>
-          <span className="font-extrabold text-sm text-slate-900 dark:text-white">
-            {tr('منظومة وقود صحاري كربلاء 2026')}
-          </span>
-          <div className="w-6" />
-        </div>
-
         {/* Global Enterprise Header */}
         <div className="no-print">
           <Header
             onOpenQuickAction={handleOpenQuickAction}
-            onToggleSidebar={() => setSidebarOpen(prev => !prev)}
+            onToggleSidebar={() => {
+              if (window.innerWidth >= 768) {
+                toggleSidebarCollapsed();
+              } else {
+                setSidebarOpen(prev => !prev);
+              }
+            }}
             onOpenCommandPalette={() => setCommandPaletteOpen(true)}
           />
         </div>
@@ -188,7 +223,13 @@ const AppContent: React.FC = () => {
           {/* Active View Container */}
           <div className="flex-1 flex flex-col print:animate-none">
             <QuickActionContext.Provider value={handleOpenQuickAction}>
-              {renderActiveView()}
+              <Suspense fallback={null}>
+                {mountedTabs.map(tab => (
+                  <Activity key={tab} mode={tab === activeTab ? 'visible' : 'hidden'}>
+                    {renderTab(tab)}
+                  </Activity>
+                ))}
+              </Suspense>
             </QuickActionContext.Provider>
           </div>
         </main>

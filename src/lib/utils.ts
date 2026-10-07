@@ -1,29 +1,32 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import i18n from '../i18n';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 /**
- * Format numbers with Arabic locale separators (e.g. 705,021)
+ * أرقام بفواصل الآلاف وأرقام غربية في اللغتين (705,021)
  */
+// منسّق واحد يُعاد استخدامه: إنشاء Intl.NumberFormat في كل استدعاء كان يبطئ الجداول والرسوم الكبيرة
+const NUMBER_FMT = new Intl.NumberFormat('en-US');
 export function formatNumber(value: number): string {
-  return new Intl.NumberFormat('en-US').format(value);
+  return NUMBER_FMT.format(value);
 }
 
 /**
  * Format currency with IQD abbreviation (د.ع)
  */
 export function formatIQD(value: number): string {
-  return `${formatNumber(value)} د.ع`;
+  return `${formatNumber(value)} ${i18n.t('common:units.iqd')}`;
 }
 
 /**
  * Format volume in liters with (لتر)
  */
 export function formatLiters(value: number): string {
-  return `${formatNumber(value)} لتر`;
+  return `${formatNumber(value)} ${i18n.t('common:units.liter')}`;
 }
 
 /**

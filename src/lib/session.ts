@@ -1,12 +1,17 @@
+import i18n from '../i18n';
+import { serverText } from '../i18n/errors';
+import type { Perms } from './permCatalog';
 import { useEffect, useState } from 'react';
 
 /**
  * جلسة الدخول للبرنامج: حساب معتمد (اسم مستخدم + كلمة مرور) يصدره مدير النظام.
- * الجلسة نفسها تفتح البرنامج والمحادثة معًا، وتُرسل مع كل طلب للخادم في الترويسات.
+ * الجلسة نفسها تفتح البرنامج والمحادثة معًا. رمزها السرّي في كوكي HttpOnly يديره الخادم والمتصفح
+ * (لا تقرؤه سكربتات الصفحة)، ويحفظ التطبيق محليًا معرّف الحساب ووقت بدء الجلسة فقط.
  */
 
 export const SESSION_USER_KEY = 'sahara_chat_me';
-export const SESSION_KEY = 'sahara_chat_key';
+/** مكان رمز الجلسة قديمًا (قبل الكوكي): يُمسح فقط */
+const LEGACY_SESSION_KEY = 'sahara_chat_key';
 /** نسخة محلية من بيانات الحساب لعرضها فورًا (الاسم، الوظيفة، الصلاحية) */
 export const SESSION_PROFILE_KEY = 'sahara_session_profile';
 export const LAST_USER_KEY = 'sahara_last_username';
@@ -15,6 +20,11 @@ export const LAST_NAME_KEY = 'sahara_last_name';
 /** وقت بدء الجلسة: تنتهي بعد 24 ساعة ويُطلب تسجيل الدخول من جديد */
 const SESSION_STARTED_KEY = 'sahara_session_started';
 export const SESSION_MAX_MS = 24 * 3600_000;
+/**
+ * الدخول المحفوظ بضغطة واحدة: اسم المستخدم ووقت انتهاء رمز المتابعة (72 ساعة من آخر إدخال لكلمة المرور).
+ * الرمز نفسه في كوكي HttpOnly يديره الخادم؛ هذه مجرد علامة لتعرف شاشة الدخول أنه متاح
+ */
+const RESUME_KEY = 'sahara_session_resume';
 /** بصمة هذا الجهاز: اسم المستخدم ومعرّف مفتاح البصمة المسجّل عليه */
 export const BIO_USER_KEY = 'sahara_bio_user';
 const BIO_CRED_KEY = 'sahara_bio_cred';
@@ -27,20 +37,24 @@ export interface SessionProfile {
   avatar: string;
   color: string;
   is_admin: number;
+  /** صلاحيات الأقسام (راجع permCatalog.ts) */
+  perms?: Perms;
 }
 
 /**
- * «تذكّرني»: الجلسة في localStorage (تبقى بعد إغلاق المتصفح).
- * بدونه: في sessionStorage (تنتهي بإغلاق التبويب).
+ * «تذكّرني»: معرّف الجلسة في localStorage (يبقى بعد إغلاق المتصفح).
+ * بدونه: في sessionStorage (ينتهي بإغلاق التبويب).
  */
 const read = (k: string) => {
   try { return localStorage.getItem(k) || sessionStorage.getItem(k) || ''; } catch { return ''; }
 };
 export const getSessionUser = () => read(SESSION_USER_KEY);
+/** وقت بدء الجلسة الحالية (ms) أو 0 */
+export const getSessionStarted = () => Number(read(SESSION_STARTED_KEY)) || 0;
 
 /** هل توجد جلسة صالحة؟ الجلسة الأقدم من 24 ساعة تُمسح حتى بدون اتصال بالخادم */
 export const hasSession = () => {
-  if (!(read(SESSION_USER_KEY) && read(SESSION_KEY))) return false;
+  if (!read(SESSION_USER_KEY)) return false;
   const started = Number(read(SESSION_STARTED_KEY)) || 0;
   if (Date.now() - started > SESSION_MAX_MS) {
     clearSession();
@@ -49,9 +63,9 @@ export const hasSession = () => {
   return true;
 };
 
+/** ترويسة معرّف الحساب: يطابقها الخادم مع كوكي الجلسة (ترويسة مخصّصة = حماية من تزوير الطلبات من مواقع أخرى) */
 export const sessionHeaders = (): Record<string, string> => ({
   'x-chat-user': read(SESSION_USER_KEY),
-  'x-chat-key': read(SESSION_KEY),
 });
 
 export const getProfile = (): SessionProfile | null => {
@@ -72,37 +86,74 @@ async function post<T>(path: string, body: unknown, headers: Record<string, stri
       body: JSON.stringify(body),
     });
   } catch {
-    throw new AuthError('لا يوجد اتصال بالخادم. تحقّق من الإنترنت وحاول مجددًا', 'offline');
+    throw new AuthError(i18n.t('auth:errors.offline'), 'offline');
   }
   const data = (await res.json().catch(() => ({}))) as T & { error?: string; code?: string; retryAt?: number };
-  if (!res.ok) throw new AuthError(data.error || 'تعذّر الاتصال بالخادم', data.code, data.retryAt);
+  if (!res.ok) throw new AuthError(serverText(data, i18n.t('server:errors.network')), data.code || (data.error ? undefined : 'network'), data.retryAt);
   return data;
 }
 
-const store = (r: { id: string; key: string }, remember: boolean) => {
+/** الخادم وضع رمز الجلسة في الكوكي؛ نحفظ هنا المعرّف ووقت البدء فقط */
+const store = (r: { id: string }, remember: boolean) => {
   clearSession();
   const target = remember ? localStorage : sessionStorage;
   target.setItem(SESSION_USER_KEY, r.id);
-  target.setItem(SESSION_KEY, r.key);
   target.setItem(SESSION_STARTED_KEY, String(Date.now()));
+};
+
+/** اسم المستخدم المحفوظ للدخول بضغطة واحدة ('' = غير متاح أو انتهت مهلته) */
+export const savedLogin = (): string => {
+  try {
+    const r = JSON.parse(localStorage.getItem(RESUME_KEY) || 'null') as { u?: string; until?: number } | null;
+    return r?.u && (r.until || 0) > Date.now() ? r.u : '';
+  } catch { return ''; }
+};
+const setSavedLogin = (username: string, until?: number) => {
+  try {
+    if (username && until) localStorage.setItem(RESUME_KEY, JSON.stringify({ u: username, until }));
+    else localStorage.removeItem(RESUME_KEY);
+  } catch { /* تجاهل */ }
 };
 
 /** هل النظام بحاجة لإعداد أول (لا توجد حسابات بعد)؟ */
 export async function authStatus(): Promise<{ setup: boolean }> {
   const res = await fetch('/api/chat/auth/status', { cache: 'no-store' });
-  if (!res.ok) throw new AuthError('تعذّر الاتصال بالخادم');
+  if (!res.ok) throw new AuthError('تعذّر الاتصال بالخادم', 'network');
   return res.json();
 }
 
 export async function loginAccount(username: string, password: string, remember = true) {
-  store(await post<{ id: string; key: string }>('/api/chat/auth/login', { username, password }), remember);
+  const r = await post<{ id: string; resumeUntil?: number }>('/api/chat/auth/login', { username, password, remember });
+  store(r, remember);
   localStorage.setItem(LAST_USER_KEY, username);
+  setSavedLogin(username, r.resumeUntil);
+}
+
+/** الدخول المحفوظ: زر «تسجيل الدخول» فقط، بلا كلمة مرور، خلال 72 ساعة من آخر إدخال لها */
+export async function resumeLogin() {
+  const username = savedLogin();
+  try {
+    const r = await post<{ id: string; resumeUntil?: number }>('/api/chat/auth/resume', {});
+    store(r, true);
+    setSavedLogin(username, r.resumeUntil);
+  } catch (e) {
+    if (e instanceof AuthError && e.code === 'resume_expired') setSavedLogin('');
+    throw e;
+  }
+}
+
+/** نسيان الدخول المحفوظ على هذا الجهاز (الدخول بحساب آخر) */
+export async function forgetSavedLogin() {
+  setSavedLogin('');
+  await post('/api/chat/auth/resume/forget', {}).catch(() => {});
 }
 
 /** الإعداد الأول: إنشاء حساب مدير النظام برمز تفعيل النظام */
 export async function setupSystem(code: string, body: { username: string; password: string; name: string }) {
-  store(await post<{ id: string; key: string }>('/api/chat/auth/setup', body, { 'x-app-token': code }), true);
+  const r = await post<{ id: string; resumeUntil?: number }>('/api/chat/auth/setup', body, { 'x-app-token': code });
+  store(r, true);
   localStorage.setItem(LAST_USER_KEY, body.username);
+  setSavedLogin(body.username, r.resumeUntil);
 }
 
 /** إرسال طلب دعم لمدير النظام من شاشة الدخول */
@@ -129,17 +180,24 @@ export async function refreshProfile(): Promise<SessionProfile | null> {
 export const clearSession = () => {
   for (const s of [localStorage, sessionStorage]) {
     s.removeItem(SESSION_USER_KEY);
-    s.removeItem(SESSION_KEY);
+    s.removeItem(LEGACY_SESSION_KEY);
     s.removeItem(SESSION_STARTED_KEY);
   }
   localStorage.removeItem(SESSION_PROFILE_KEY);
 };
 
-/** تسجيل الخروج: إلغاء الجلسة على الخادم ثم العودة لشاشة الدخول */
+// جلسة قديمة كان رمزها في التخزين المحلي: لا تصلح مع الكوكي، فتُمسح ويُطلب الدخول مرة واحدة
+try {
+  if (localStorage.getItem(LEGACY_SESSION_KEY) || sessionStorage.getItem(LEGACY_SESSION_KEY)) clearSession();
+} catch { /* تجاهل */ }
+
+/** تسجيل الخروج: إلغاء الجلسة على الخادم (ومسح الكوكي) ثم العودة لشاشة الدخول */
 export async function logout() {
   try {
     await fetch('/api/chat/auth/logout', { method: 'POST', headers: { 'content-type': 'application/json', ...sessionHeaders() }, body: '{}' });
   } catch { /* الجلسة تُمسح محليًا في كل الأحوال */ }
+  // الخروج المتعمَّد يُلغي الدخول المحفوظ أيضًا: الدخول التالي بكلمة المرور
+  setSavedLogin('');
   clearSession();
   location.reload();
 }
@@ -167,7 +225,7 @@ const bioError = (e: unknown) => {
   const name = (e as Error)?.name;
   if (name === 'NotAllowedError' || name === 'AbortError') return new AuthError('تم إلغاء التحقق بالبصمة', 'cancelled');
   if (name === 'InvalidStateError') return new AuthError('البصمة مفعّلة مسبقًا على هذا الجهاز', 'exists');
-  return e instanceof AuthError ? e : new AuthError('تعذّر استخدام البصمة على هذا الجهاز');
+  return e instanceof AuthError ? e : new AuthError('تعذّر استخدام البصمة على هذا الجهاز', 'bio_device');
 };
 
 /** هل يدعم الجهاز البصمة أو بصمة الوجه (مستشعر مدمج)؟ */
@@ -181,14 +239,17 @@ export async function biometricAvailable() {
 /** اسم المستخدم المفعّل له الدخول بالبصمة على هذا الجهاز */
 export const biometricUser = () => { try { return localStorage.getItem(BIO_USER_KEY) || ''; } catch { return ''; } };
 
-/** تفعيل البصمة لحسابي على هذا الجهاز (يتطلب جلسة) */
-export async function enableBiometric() {
+/**
+ * تفعيل البصمة لحسابي على هذا الجهاز (يتطلب جلسة).
+ * الخادم يشترط دخولًا بكلمة المرور خلال آخر 10 دقائق، وإلا تُمرَّر كلمة المرور هنا (رمز الخطأ reauth_required)
+ */
+export async function enableBiometric(password?: string) {
   const headers = sessionHeaders();
   const o = await post<{
     challenge: string; rp: { id: string; name: string }; user: { id: string; name: string; displayName: string };
     pubKeyCredParams: PublicKeyCredentialParameters[]; authenticatorSelection: AuthenticatorSelectionCriteria;
     excludeCredentials: { type: 'public-key'; id: string }[]; timeout: number;
-  }>('/api/chat/auth/webauthn/register-options', {}, headers);
+  }>('/api/chat/auth/webauthn/register-options', password ? { password } : {}, headers);
   let cred: PublicKeyCredential;
   try {
     cred = (await navigator.credentials.create({
@@ -208,7 +269,7 @@ export async function enableBiometric() {
   }
   const res = cred.response as AuthenticatorAttestationResponse;
   const spki = res.getPublicKey?.();
-  if (!spki) throw new AuthError('هذا المتصفح لا يدعم الدخول بالبصمة، حدّثه وحاول مجددًا');
+  if (!spki) throw new AuthError('هذا المتصفح لا يدعم الدخول بالبصمة، حدّثه وحاول مجددًا', 'bio_unsupported');
   await post('/api/chat/auth/webauthn/register', {
     id: cred.id,
     clientDataJSON: toB64url(res.clientDataJSON),
@@ -250,7 +311,7 @@ export async function loginWithBiometric(username: string) {
   }
   const res = cred.response as AuthenticatorAssertionResponse;
   try {
-    store(await post<{ id: string; key: string }>('/api/chat/auth/webauthn/login', {
+    store(await post<{ id: string }>('/api/chat/auth/webauthn/login', {
       id: cred.id,
       clientDataJSON: toB64url(res.clientDataJSON),
       authenticatorData: toB64url(res.authenticatorData),
@@ -276,4 +337,4 @@ export function useSessionProfile() {
 }
 
 /** الحرف الأول من الاسم للصورة الرمزية */
-export const initials = (name?: string) => (name || '').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('') || '؟';
+export const initials = (name?: string) => (name || '').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('') || (document.documentElement.lang === 'ar' ? '؟' : '?');

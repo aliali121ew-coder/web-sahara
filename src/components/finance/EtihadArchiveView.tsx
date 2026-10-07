@@ -18,6 +18,7 @@ import {
 import { EtihadBalanceRecord } from '../../types/finance';
 import { formatNumber } from '../../lib/utils';
 import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation, Trans } from 'react-i18next';
 import { EtihadPrintModal } from './EtihadPrintModal';
 import { Breadcrumb } from '../navigation/Breadcrumb';
 
@@ -46,7 +47,9 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
   setIsEditMode,
   embedded = false,
 }) => {
-  const { tr, isRTL } = useLanguage();
+  const { isRTL } = useLanguage();
+
+  const { t } = useTranslation(['finance', 'common']);
 
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -161,14 +164,14 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
 
 
   const filterDateLabelText = useMemo(() => {
-    if (dateRangeType === 'today') return tr('سجلات اليوم');
-    if (dateRangeType === 'week') return tr('آخر أسبوع');
-    if (dateRangeType === 'month') return tr('آخر شهر');
+    if (dateRangeType === 'today') return t('finance:hub.filterToday');
+    if (dateRangeType === 'week') return t('common:print.rangeWeek');
+    if (dateRangeType === 'month') return t('common:print.rangeMonth');
     if (dateRangeType === 'custom' && (startDate || endDate)) {
-      return `${startDate || '...'} إلى ${endDate || '...'}`;
+      return t('common:print.rangeFromTo', { from: startDate || '...', to: endDate || '...' });
     }
-    return tr('كافة السجلات التراكمية');
-  }, [dateRangeType, startDate, endDate, tr]);
+    return t('finance:etihadArchive.allCumulative');
+  }, [dateRangeType, startDate, endDate, t]);
 
   return (
     <>
@@ -181,8 +184,8 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
         {!embedded && (
           <Breadcrumb
             items={[
-              { label: tr('رصيد الشركة'), onClick: onBack },
-              { label: tr('الأرشيف') }
+              { label: t('finance:hub.companyBalance'), onClick: onBack },
+              { label: t('finance:etihadArchive.archive') }
             ]}
           />
         )}
@@ -198,11 +201,11 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
             <div>
               <div className="flex flex-wrap items-center gap-2.5">
                 <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-                  {tr('أرشيف حركات وسجلات رصيد الاتحاد')}
+                  {t('finance:etihadArchive.title')}
                 </h2>
               </div>
               <p className="text-xs sm:text-[13px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                {tr('السجل التراكمي الكامل لكافة عمليات الوارد، المصروفات، المبيعات اليومية، والرصيد الختامي مع الترقيم والتصدير')}
+                {t('finance:etihadArchive.subtitle')}
               </p>
             </div>
           </div>
@@ -215,60 +218,60 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
         {/* Card 1: عدد الحركات */}
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-soft-card flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-xs font-bold">{tr('الحركات المندرجة')}</span>
+            <span className="text-xs font-bold">{t('finance:etihadArchive.listed')}</span>
             <Database className="w-4 h-4 text-teal-600 dark:text-teal-400" />
           </div>
           <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono">
             {formatNumber(summary.count)}{' '}
-            <span className="text-xs font-bold text-teal-600 font-sans">{tr('حركة')}</span>
+            <span className="text-xs font-bold text-teal-600 font-sans">{t('finance:etihadArchive.txUnit')}</span>
           </div>
         </div>
 
         {/* Card 2: إجمالي المشتريات / الوارد */}
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-soft-card flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-xs font-bold">{tr('إجمالي الوارد')}</span>
+            <span className="text-xs font-bold">{t('finance:etihadArchive.totalInbound')}</span>
             <Fuel className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
             {formatNumber(summary.totalPurchases)}{' '}
-            <span className="text-xs font-bold text-slate-500 font-sans">{tr('لتر')}</span>
+            <span className="text-xs font-bold text-slate-500 font-sans">{t('common:units.liter')}</span>
           </div>
         </div>
 
         {/* Card 3: إجمالي مصروف الاتحاد */}
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-soft-card flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-xs font-bold">{tr('مصروف الاتحاد')}</span>
+            <span className="text-xs font-bold">{t('finance:tx.etihadExpense')}</span>
             <TrendingDown className="w-4 h-4 text-rose-600 dark:text-rose-400" />
           </div>
           <div className="text-xl sm:text-2xl font-black text-rose-600 dark:text-rose-400 font-mono">
             {formatNumber(summary.totalExpense)}{' '}
-            <span className="text-xs font-bold text-slate-500 font-sans">{tr('لتر')}</span>
+            <span className="text-xs font-bold text-slate-500 font-sans">{t('common:units.liter')}</span>
           </div>
         </div>
 
         {/* Card 4: إجمالي المبيعات */}
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-soft-card flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-xs font-bold">{tr('إجمالي المبيعات')}</span>
+            <span className="text-xs font-bold">{t('finance:etihadArchive.totalSales')}</span>
             <DollarSign className="w-4 h-4 text-amber-500 dark:text-amber-400" />
           </div>
           <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono">
             {formatNumber(summary.totalSales)}{' '}
-            <span className="text-xs font-bold text-slate-500 font-sans">{tr('لتر')}</span>
+            <span className="text-xs font-bold text-slate-500 font-sans">{t('common:units.liter')}</span>
           </div>
         </div>
 
         {/* Card 5: الرصيد الختامي */}
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-soft-card flex flex-col justify-between col-span-2 lg:col-span-1">
           <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-xs font-bold">{tr('الرصيد المقيّد')}</span>
+            <span className="text-xs font-bold">{t('finance:etihadArchive.bookedBalance')}</span>
             <Layers className="w-4 h-4 text-teal-600 dark:text-teal-400" />
           </div>
           <div className="text-xl sm:text-2xl font-black text-teal-700 dark:text-teal-300 font-mono">
             {formatNumber(summary.latestBalance)}{' '}
-            <span className="text-xs font-bold text-teal-600 font-sans">{tr('لتر')}</span>
+            <span className="text-xs font-bold text-teal-600 font-sans">{t('common:units.liter')}</span>
           </div>
         </div>
       </div>
@@ -287,7 +290,7 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={tr('بحث شامل بالتاريخ، الأرقام، أو البيان...')}
+              placeholder={t('finance:etihadArchive.search')}
               className={`w-full ${isRTL ? 'pr-10 pl-3.5' : 'pl-10 pr-3.5'} py-2 text-xs sm:text-sm rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-teal-500 shadow-2xs`}
             />
           </div>
@@ -300,7 +303,7 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  if (window.confirm(`هل أنت متأكد من رغبتك في حذف ${selectedRows.size} سجلات محددة؟`)) {
+                  if (window.confirm(t('finance:etihadArchive.confirmDeleteSelected', { count: selectedRows.size }))) {
                     onDeleteMany(Array.from(selectedRows));
                     setSelectedRows(new Set());
                   }
@@ -308,7 +311,7 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-xl font-bold text-xs transition-colors shadow-2xs cursor-pointer active:scale-95"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>{tr('حذف المحدد')} ({selectedRows.size})</span>
+                <span>{t('finance:etihadArchive.deleteSelected')} ({selectedRows.size})</span>
               </button>
             )}
 
@@ -323,7 +326,7 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                 }`}
               >
-                {tr('الكل')}
+                {t('common:enum.category.all')}
               </button>
 
               <button
@@ -335,7 +338,7 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                 }`}
               >
-                {tr('آخر شهر')}
+                {t('common:print.rangeMonth')}
               </button>
 
               <button
@@ -347,7 +350,7 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                 }`}
               >
-                {tr('آخر أسبوع')}
+                {t('common:print.rangeWeek')}
               </button>
 
               {/* Custom Date Dropdown Button */}
@@ -362,14 +365,14 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
                   }`}
                 >
                   <Calendar className="w-3.5 h-3.5" />
-                  <span>{tr('مخصص')}</span>
+                  <span>{t('finance:etihadArchive.custom')}</span>
                 </button>
 
                 {showDatePicker && (
                   <div className="absolute top-full mt-2 left-0 sm:right-0 sm:left-auto w-64 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-3.5 z-50 animate-in zoom-in-95">
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">{tr('من تاريخ')}</label>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">{t('finance:etihadArchive.fromDate')}</label>
                         <input
                           type="date"
                           value={startDate}
@@ -378,7 +381,7 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">{tr('إلى تاريخ')}</label>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">{t('finance:etihadArchive.toDate')}</label>
                         <input
                           type="date"
                           value={endDate}
@@ -397,7 +400,7 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
                           }}
                           className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg cursor-pointer"
                         >
-                          {tr('إلغاء')}
+                          {t('common:actions.cancel')}
                         </button>
                         <button
                           type="button"
@@ -407,7 +410,7 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
                           }}
                           className="px-3.5 py-1.5 text-xs bg-teal-600 text-white font-bold rounded-lg hover:bg-teal-700 cursor-pointer shadow-xs"
                         >
-                          {tr('تطبيق')}
+                          {t('common:calendar.apply')}
                         </button>
                       </div>
                     </div>
@@ -420,7 +423,7 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
             <button
               type="button"
               onClick={() => setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc')}
-              title={tr('ترتيب حسب التاريخ')}
+              title={t('finance:etihadArchive.sortByDate')}
               className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
             >
               <ArrowUpDown className="w-4 h-4" />
@@ -437,7 +440,7 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
               }`}
             >
               <Edit3 className="w-3.5 h-3.5" />
-              <span>{isEditMode ? tr('إخفاء أدوات التحكم') : tr('تعديل وحذف')}</span>
+              <span>{isEditMode ? t('finance:etihadArchive.hideControls') : t('finance:etihadArchive.editDelete')}</span>
             </button>
 
           </div>
@@ -445,41 +448,41 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
 
         {/* Paginated Corporate Table */}
         <div className="overflow-x-auto w-full">
-          <table className="w-full min-w-[950px] text-right text-xs border-collapse">
+          <table className="w-full min-w-[950px] text-start text-xs border-collapse">
             <thead>
               <tr className="bg-[#eef2f8] dark:bg-[#1c2b44] text-[#1c3b6f] dark:text-blue-100 border-b-2 border-[#1c3b6f]/70 dark:border-blue-900 font-black text-[11.5px] whitespace-nowrap font-sans select-none">
                 <th className="p-3 text-center w-12 font-mono">#</th>
-                <th className="p-3">{tr('التاريخ')}</th>
-                <th className="p-3 font-mono">{tr('الرصيد السابق')}</th>
+                <th className="p-3">{t('finance:blackOil.col.date')}</th>
+                <th className="p-3 font-mono">{t('finance:ledger.previousBalance')}</th>
                 <th className="p-3 font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20">
-                  {tr('المشتريات / الوارد')}
+                  {t('finance:etihadArchive.col.purchases')}
                 </th>
                 <th className="p-3 font-mono text-rose-700 dark:text-rose-400 bg-rose-50/40 dark:bg-rose-950/20">
-                  {tr('مصروف الاتحاد')}
+                  {t('finance:tx.etihadExpense')}
                 </th>
                 <th className="p-3 font-mono text-rose-700 dark:text-rose-400 bg-rose-50/40 dark:bg-rose-950/20">
-                  {tr('مبيعات صحاري')}
+                  {t('finance:tx.saharaSales')}
                 </th>
                 <th className="p-3 font-mono text-rose-700 dark:text-rose-400 bg-rose-50/40 dark:bg-rose-950/20">
-                  {tr('مبيعات كبلات')}
+                  {t('finance:tx.cableSales')}
                 </th>
                 <th className="p-3 font-mono text-rose-700 dark:text-rose-400 bg-rose-50/40 dark:bg-rose-950/20">
-                  {tr('مبيعات أخرى')}
+                  {t('finance:tx.otherSales')}
                 </th>
                 <th className="p-3 font-mono text-teal-700 dark:text-teal-300 font-black bg-teal-50/50 dark:bg-teal-950/30">
-                  {tr('الرصيد الحالي')}
+                  {t('finance:ledger.currentBalance')}
                 </th>
                 {isEditMode && (
                   <th className="p-3 text-center animate-in fade-in zoom-in duration-200">
                     <div className="inline-flex items-center justify-center gap-1.5 min-h-[28px]">
                       <div className="w-14 flex items-center justify-center shrink-0 text-center">
-                        <span>{tr('إجراءات')}</span>
+                        <span>{t('finance:archive.actions')}</span>
                       </div>
                       <div className="w-px h-4 mx-0.5 opacity-0 shrink-0"></div>
                       <div className="w-6 flex items-center justify-center shrink-0">
                         <input
                           type="checkbox"
-                          title={tr('تحديد كل صفحة الأرشيف')}
+                          title={t('finance:etihadArchive.selectPage')}
                           className="w-3.5 h-3.5 rounded-sm border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
                           checked={paginatedRecords.length > 0 && paginatedRecords.every(r => selectedRows.has(r.id))}
                           onChange={(e) => {
@@ -553,7 +556,7 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
                                   e.stopPropagation();
                                   onEdit(r);
                                 }}
-                                title={tr('تعديل')}
+                                title={t('common:actions.edit')}
                                 className="p-1 rounded-lg text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/60 transition-colors cursor-pointer"
                               >
                                 <Edit3 className="w-3.5 h-3.5" />
@@ -565,7 +568,7 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
                                   e.stopPropagation();
                                   onDelete(r.id);
                                 }}
-                                title={tr('حذف')}
+                                title={t('common:actions.delete')}
                                 className="p-1 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors cursor-pointer"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -602,7 +605,7 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
                         <Archive className="w-6 h-6" />
                       </div>
                       <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                        {tr('لا توجد سجلات تطابق شروط البحث أو التصفية')}
+                        {t('finance:etihadArchive.empty')}
                       </p>
                       <button
                         type="button"
@@ -610,7 +613,7 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
                         className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        <span>{tr('إضافة حركة جديدة في الأرشيف')}</span>
+                        <span>{t('finance:etihadArchive.add')}</span>
                       </button>
                     </div>
                   </td>
@@ -627,13 +630,12 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
           {/* Summary Indicator */}
           <div className="text-slate-600 dark:text-slate-400 flex items-center gap-2">
             <span>
-              {tr('عرض السجلات من')}{' '}
-              <strong className="font-bold text-slate-900 dark:text-white font-mono">{filteredRecords.length > 0 ? startIndex + 1 : 0}</strong>{' '}
-              {tr('إلى')}{' '}
-              <strong className="font-bold text-slate-900 dark:text-white font-mono">{endIndex}</strong>{' '}
-              {tr('من أصل')}{' '}
-              <strong className="font-bold text-teal-700 dark:text-teal-400 font-mono">{filteredRecords.length}</strong>{' '}
-              {tr('سجل')}
+              <Trans
+                t={t}
+                i18nKey="common:pagination.showing"
+                values={{ from: filteredRecords.length > 0 ? startIndex + 1 : 0, to: endIndex, total: filteredRecords.length }}
+                components={{ 1: <strong className="font-bold text-slate-900 dark:text-white font-mono" />, 2: <strong className="font-bold text-teal-700 dark:text-teal-400 font-mono" /> }}
+              />
             </span>
           </div>
 
@@ -646,7 +648,7 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
               className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-bold disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
             >
               <ChevronRight className="w-4 h-4 rtl:rotate-0 rotate-180" />
-              <span>{tr('السابق')}</span>
+              <span>{t('common:pagination.prev')}</span>
             </button>
 
             {/* Page number indicators */}
@@ -687,7 +689,7 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
               disabled={currentPage === totalPages}
               className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-bold disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
             >
-              <span>{tr('التالي')}</span>
+              <span>{t('common:pagination.next')}</span>
               <ChevronLeft className="w-4 h-4 rtl:rotate-0 rotate-180" />
             </button>
           </div>

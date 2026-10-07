@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { CLOUD_APPLIED_EVENT } from './cloudSync';
 
 /**
  * السجل اليومي للنفط الأسود — المصدر المركزي لبيانات النفط الأسود.
@@ -165,11 +166,15 @@ export const useBlackOilLedger = (company: BlackOilCompany = 'etihad') => {
     const refresh = () => setRecords(readBlackOilRecords(company));
     refresh();
     const onStorage = (e: StorageEvent) => { if (e.key === STORAGE_KEYS[company]) refresh(); };
+    // تعديلات من متصفح/جهاز آخر وصلت من السحابة أثناء فتح الصفحة
+    const onCloud = (e: Event) => { const keys = (e as CustomEvent<string[]>).detail ?? []; if (keys.includes(STORAGE_KEYS[company])) refresh(); };
     window.addEventListener(SYNC_EVENT, refresh);
     window.addEventListener('storage', onStorage);
+    window.addEventListener(CLOUD_APPLIED_EVENT, onCloud);
     return () => {
       window.removeEventListener(SYNC_EVENT, refresh);
       window.removeEventListener('storage', onStorage);
+      window.removeEventListener(CLOUD_APPLIED_EVENT, onCloud);
     };
   }, [company]);
 

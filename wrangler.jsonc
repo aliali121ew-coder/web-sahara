@@ -17,5 +17,30 @@
       "binding": "DB",
       "database_name": "etihad-company-data"
     }
-  ]
+  ],
+  // R2: الملفات (مرفقات الصحاري والمحادثة) في حاوية، والنسخ الاحتياطية والأرشيف في حاوية منفصلة
+  "r2_buckets": [
+    { "binding": "FILES", "bucket_name": "etihad-files" },
+    { "binding": "BACKUPS", "bucket_name": "etihad-backups" }
+  ],
+  // نسخة احتياطية يومية 00:00 UTC (03:00 بتوقيت العراق)، والصيانة الشهرية تُشغَّل من نفس المهمة في أول كل شهر
+  "triggers": {
+    "crons": ["0 0 * * *"]
+  },
+  // بيئة التجربة: Worker وقاعدة D1 وحاويات R2 منفصلة تمامًا عن التشغيل الفعلي
+  // النشر: npx wrangler deploy --env staging   (الروابط لا تُورَث بين البيئات فتُعرَّف هنا كاملة)
+  "env": {
+    "staging": {
+      "name": "etihad-company-staging",
+      "d1_databases": [
+        { "binding": "DB", "database_name": "etihad-company-data-staging" }
+      ],
+      "r2_buckets": [
+        { "binding": "FILES", "bucket_name": "etihad-files-staging" },
+        { "binding": "BACKUPS", "bucket_name": "etihad-backups-staging" }
+      ],
+      // بلا مهام مجدولة في التجربة (تُشغَّل يدويًا من لوحة إدارة النظام عند الحاجة)
+      "triggers": { "crons": [] }
+    }
+  }
 }

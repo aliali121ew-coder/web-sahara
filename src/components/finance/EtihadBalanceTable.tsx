@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { EtihadBalanceRecord, DateFilterRange } from '../../types/finance';
 import { formatNumber } from '../../lib/utils';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
 
 interface EtihadBalanceTableProps {
   records: EtihadBalanceRecord[];
@@ -45,7 +45,7 @@ export const EtihadBalanceTable: React.FC<EtihadBalanceTableProps> = ({
   isEditMode,
   maxRows,
 }) => {
-  const { tr } = useLanguage();
+  const { t } = useTranslation(['finance', 'common']);
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -97,11 +97,11 @@ export const EtihadBalanceTable: React.FC<EtihadBalanceTableProps> = ({
         <div>
           <div className="flex items-center gap-2">
             <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-              {tr('سجل الوارد والحركات اليومية')}
+              {t('finance:table.title')}
             </h3>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            {tr('بيان حركة إضافات وخصومات رصيد الاتحاد والمبيعات اليومية')}
+            {t('finance:table.subtitle')}
           </p>
         </div>
 
@@ -112,7 +112,7 @@ export const EtihadBalanceTable: React.FC<EtihadBalanceTableProps> = ({
           {selectedRows.size > 0 && onDeleteMany && (
             <button
               onClick={() => {
-                if (window.confirm(`هل أنت متأكد من مسح ${selectedRows.size} سجلات؟`)) {
+                if (window.confirm(t('finance:etihadArchive.confirmDeleteSelected', { count: selectedRows.size }))) {
                   onDeleteMany(Array.from(selectedRows));
                   setSelectedRows(new Set());
                 }
@@ -120,7 +120,7 @@ export const EtihadBalanceTable: React.FC<EtihadBalanceTableProps> = ({
               className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 rounded-xl font-bold text-xs transition-colors shadow-xs"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span>{tr('مسح المحدد')} ({selectedRows.size})</span>
+              <span>{t('finance:table.deleteSelected')} ({selectedRows.size})</span>
             </button>
           )}
 
@@ -131,7 +131,7 @@ export const EtihadBalanceTable: React.FC<EtihadBalanceTableProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={tr('بحث بالتاريخ أو البيان...')}
+              placeholder={t('finance:table.search')}
               className="w-full sm:w-52 md:w-60 lg:w-64 text-xs py-1.5 pr-8 pl-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 shadow-2xs"
             />
           </div>
@@ -149,14 +149,14 @@ export const EtihadBalanceTable: React.FC<EtihadBalanceTableProps> = ({
                 }`}
               >
                 <Calendar className="w-3 h-3" />
-                <span>{tr('التاريخ')}</span>
+                <span>{t('finance:blackOil.col.date')}</span>
               </button>
 
               {showDatePicker && (
                 <div className="absolute top-full right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-3 z-50">
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-xs text-slate-500 mb-1">{tr('من تاريخ')}</label>
+                      <label className="block text-xs text-slate-500 mb-1">{t('finance:etihadArchive.fromDate')}</label>
                       <input 
                         type="date" 
                         value={tempStartDate}
@@ -165,7 +165,7 @@ export const EtihadBalanceTable: React.FC<EtihadBalanceTableProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-slate-500 mb-1">{tr('إلى تاريخ')}</label>
+                      <label className="block text-xs text-slate-500 mb-1">{t('finance:etihadArchive.toDate')}</label>
                       <input 
                         type="date" 
                         value={tempEndDate}
@@ -185,7 +185,7 @@ export const EtihadBalanceTable: React.FC<EtihadBalanceTableProps> = ({
                         }}
                         className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg cursor-pointer"
                       >
-                        {tr('إلغاء')}
+                        {t('common:actions.cancel')}
                       </button>
                       <button 
                         onClick={() => {
@@ -196,7 +196,7 @@ export const EtihadBalanceTable: React.FC<EtihadBalanceTableProps> = ({
                         }}
                         className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer"
                       >
-                        {tr('تطبيق')}
+                        {t('common:calendar.apply')}
                       </button>
                     </div>
                   </div>
@@ -213,7 +213,7 @@ export const EtihadBalanceTable: React.FC<EtihadBalanceTableProps> = ({
                   : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
               }`}
             >
-              {tr('آخر أسبوع')}
+              {t('common:print.rangeWeek')}
             </button>
 
             <button
@@ -225,7 +225,7 @@ export const EtihadBalanceTable: React.FC<EtihadBalanceTableProps> = ({
                   : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
               }`}
             >
-              {tr('اليوم')}
+              {t('common:calendar.today')}
             </button>
           </div>
 
@@ -233,7 +233,7 @@ export const EtihadBalanceTable: React.FC<EtihadBalanceTableProps> = ({
           <button
             type="button"
             onClick={() => setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc')}
-            title={tr('ترتيب حسب التاريخ')}
+            title={t('finance:etihadArchive.sortByDate')}
             className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
           >
             <ArrowUpDown className="w-4 h-4" />
@@ -244,41 +244,41 @@ export const EtihadBalanceTable: React.FC<EtihadBalanceTableProps> = ({
 
       {/* Main Table Responsive Viewport */}
       <div className="overflow-x-auto w-full">
-        <table className="w-full min-w-[850px] text-right text-xs border-collapse">
+        <table className="w-full min-w-[850px] text-start text-xs border-collapse">
           <thead>
             <tr className="bg-slate-100/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-800 font-extrabold text-[11px] whitespace-nowrap">
               <th className="p-3 text-center w-10">#</th>
-              <th className="p-3">{tr('التاريخ')}</th>
-              <th className="p-3 font-mono">{tr('الرصيد السابق')}</th>
+              <th className="p-3">{t('finance:blackOil.col.date')}</th>
+              <th className="p-3 font-mono">{t('finance:ledger.previousBalance')}</th>
               <th className="p-3 font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20">
-                {tr('المشتريات')}
+                {t('finance:tx.purchases')}
               </th>
               <th className="p-3 font-mono text-rose-700 dark:text-rose-400 bg-rose-50/40 dark:bg-rose-950/20">
-                {tr('مصروف الاتحاد')}
+                {t('finance:tx.etihadExpense')}
               </th>
               <th className="p-3 font-mono text-rose-700 dark:text-rose-400 bg-rose-50/40 dark:bg-rose-950/20">
-                {tr('مبيعات صحاري')}
+                {t('finance:tx.saharaSales')}
               </th>
               <th className="p-3 font-mono text-rose-700 dark:text-rose-400 bg-rose-50/40 dark:bg-rose-950/20">
-                {tr('مبيعات كبلات')}
+                {t('finance:tx.cableSales')}
               </th>
               <th className="p-3 font-mono text-rose-700 dark:text-rose-400 bg-rose-50/40 dark:bg-rose-950/20">
-                {tr('مبيعات أخرى')}
+                {t('finance:tx.otherSales')}
               </th>
               <th className="p-3 font-mono text-teal-700 dark:text-teal-300 font-black bg-teal-50/50 dark:bg-teal-950/30">
-                {tr('الرصيد الحالي')}
+                {t('finance:ledger.currentBalance')}
               </th>
               {isEditMode && (
                 <th className="p-3 text-center animate-in fade-in zoom-in duration-200">
                   <div className="inline-flex items-center justify-center gap-1.5 min-h-[28px]">
                     <div className="w-14 flex items-center justify-center shrink-0 text-center">
-                      <span>{tr('إجراءات')}</span>
+                      <span>{t('finance:archive.actions')}</span>
                     </div>
                     <div className="w-px h-4 mx-0.5 opacity-0 shrink-0"></div>
                     <div className="w-6 flex items-center justify-center shrink-0">
                       <input
                         type="checkbox"
-                        title="تحديد الكل"
+                        title={t('finance:table.selectAll')}
                         className="w-3.5 h-3.5 rounded-sm border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                         checked={displayedRecords.length > 0 && selectedRows.size === displayedRecords.length}
                         onChange={(e) => {
@@ -345,7 +345,7 @@ export const EtihadBalanceTable: React.FC<EtihadBalanceTableProps> = ({
                               e.stopPropagation();
                               onEdit(r);
                             }}
-                            title={tr('تعديل')}
+                            title={t('common:actions.edit')}
                             className="p-1 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/60 transition-colors cursor-pointer"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
@@ -356,7 +356,7 @@ export const EtihadBalanceTable: React.FC<EtihadBalanceTableProps> = ({
                               e.stopPropagation();
                               onDelete(r.id);
                             }}
-                            title={tr('حذف')}
+                            title={t('common:actions.delete')}
                             className="p-1 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -390,7 +390,7 @@ export const EtihadBalanceTable: React.FC<EtihadBalanceTableProps> = ({
                       <Inbox className="w-6 h-6" />
                     </div>
                     <p className="text-sm font-bold text-slate-600 dark:text-slate-300">
-                      {tr('لا توجد سجلات للتاريخ المحدد')}
+                      {t('finance:table.empty')}
                     </p>
                     <button
                       type="button"
@@ -398,7 +398,7 @@ export const EtihadBalanceTable: React.FC<EtihadBalanceTableProps> = ({
                       className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>{tr('إضافة بيانات جديدة الآن')}</span>
+                      <span>{t('finance:table.addNow')}</span>
                     </button>
                   </div>
                 </td>

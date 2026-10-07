@@ -28,6 +28,7 @@ import {
 import { EtihadBalanceRecord } from '../../types/finance';
 import { formatNumber, getBusinessDate } from '../../lib/utils';
 import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
 
 interface EtihadTransactionModalProps {
   isOpen: boolean;
@@ -46,7 +47,8 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
   lastRecordedPrice = 0,
   defaultPreviousBalance = 0
 }) => {
-  const { tr, direction } = useLanguage();
+  const { direction } = useLanguage();
+  const { t, i18n } = useTranslation(['finance', 'common']);
   const isRTL = direction === 'rtl';
 
   // Helper to format input string with commas
@@ -174,10 +176,10 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
 
   // Chart data: المشتريات (أخضر)، المبيعات (رصاصي)، مصروف الاتحاد (أحمر)
   const chartData = useMemo(() => [
-    { name: tr('المشتريات'), val: calcPurchases, fill: '#10b981' },
-    { name: tr('المبيعات'), val: totalSalesDeductions, fill: '#64748b' },
-    { name: tr('مصروف الاتحاد'), val: calcEtihadExpense, fill: '#ef4444' }
-  ], [calcPurchases, totalSalesDeductions, calcEtihadExpense, tr]);
+    { name: t('finance:tx.purchases'), val: calcPurchases, fill: '#10b981' },
+    { name: t('finance:tx.sales'), val: totalSalesDeductions, fill: '#64748b' },
+    { name: t('finance:tx.etihadExpense'), val: calcEtihadExpense, fill: '#ef4444' }
+  ], [calcPurchases, totalSalesDeductions, calcEtihadExpense, t]);
 
   if (!isOpen) return null;
 
@@ -215,7 +217,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
   return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-y-auto bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
-      dir="rtl"
+      dir={i18n.dir()}
     >
       <div
         className="relative w-full max-w-5xl my-auto flex flex-col bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-2xl overflow-hidden"
@@ -230,14 +232,14 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white tracking-tight">
-                  {editRecord ? tr('تعديل حركة مسجلة') : tr('تسجيل حركة رصيد جديدة')}
+                  {editRecord ? t('finance:tx.editTitle') : t('finance:tx.newTitle')}
                 </h3>
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                  {tr('شركة الاتحاد الصناعية')}
+                  {t('finance:tx.etihadIndustrial')}
                 </span>
               </div>
               <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">
-                {tr('أدخل بيانات اليوم ليقوم النظام بحساب وتحديث الأرصدة فورياً وتلقائياً')}
+                {t('finance:tx.subtitle')}
               </p>
             </div>
           </div>
@@ -245,7 +247,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            aria-label="إغلاق"
+            aria-label={t('common:actions.close')}
             className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer border border-slate-200/80 dark:border-slate-700"
           >
             <X className="w-4 h-4 stroke-[2.5]" />
@@ -268,25 +270,25 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                     <div className="flex items-center gap-2 text-xs font-black text-blue-800 dark:text-blue-400 mb-2 pb-1 border-b border-slate-100 dark:border-slate-800">
                       <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-sans font-bold">1</span>
                       <Building2 className="w-3.5 h-3.5" />
-                      <span className="text-xs sm:text-sm">{tr('بيانات الجهة والحساب')}</span>
+                      <span className="text-xs sm:text-sm">{t('finance:tx.accountData')}</span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {/* الجهة المستلمة */}
                       <div className="space-y-1">
                         <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                          {tr('الجهة / الحساب')}
+                          {t('finance:tx.account')}
                         </label>
                         <div className="w-full h-10 sm:h-10.5 px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/80 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 flex items-center gap-2 font-bold text-xs">
                           <Building2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                          <span className="truncate">{tr('شركة الاتحاد الصناعية')}</span>
+                          <span className="truncate">{t('finance:tx.etihadIndustrial')}</span>
                         </div>
                       </div>
 
                       {/* تاريخ الحركة */}
                       <div className="space-y-1">
                         <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                          {tr('تاريخ الحركة')}
+                          {t('finance:tx.date')}
                         </label>
                         <div className="relative">
                           <Calendar className={`w-4 h-4 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-3' : 'left-3'} text-slate-400`} />
@@ -309,10 +311,10 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                       <div className="flex items-center gap-2 text-xs font-black text-blue-800 dark:text-blue-400">
                         <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-sans font-bold">2</span>
                         <PlusCircle className="w-3.5 h-3.5" />
-                        <span className="text-xs sm:text-sm">{tr('أضافة وارد وحركة الرصيد')}</span>
+                        <span className="text-xs sm:text-sm">{t('finance:tx.addInbound')}</span>
                       </div>
                       <span className="text-[10px] font-medium text-slate-400">
-                        {tr('الرصيد السابق والوارد الجديد')}
+                        {t('finance:tx.prevAndNew')}
                       </span>
                     </div>
 
@@ -321,10 +323,10 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                       <div className="space-y-1 opacity-80 hover:opacity-100 transition-opacity">
                         <div className="flex items-center justify-between">
                           <label className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                            {tr('الرصيد السابق')}
+                            {t('finance:ledger.previousBalance')}
                           </label>
                           <span className="text-[10px] text-slate-400 font-normal">
-                            ({tr('مرجعي')})
+                            ({t('finance:tx.reference')})
                           </span>
                         </div>
                         <div className="relative">
@@ -337,7 +339,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                             className={`w-full h-10 sm:h-10.5 ${isRTL ? 'pr-3 pl-12' : 'pl-3 pr-12'} py-1.5 text-xs rounded-xl border border-slate-200/70 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-900/60 text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-blue-400 outline-none font-sans font-medium tabular-nums transition-all text-left`}
                           />
                           <span className={`text-xs text-slate-400 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-3' : 'right-3'}`}>
-                            {tr('لتر')}
+                            {t('common:units.liter')}
                           </span>
                         </div>
                       </div>
@@ -345,7 +347,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                       {/* المشتريات */}
                       <div className="space-y-1">
                         <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                          {tr('المشتريات')}
+                          {t('finance:tx.purchases')}
                         </label>
                         <div className="relative">
                           <input
@@ -357,7 +359,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                             className={`w-full h-10 sm:h-10.5 ${isRTL ? 'pr-3 pl-12' : 'pl-3 pr-12'} py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 outline-none font-sans font-black tabular-nums transition-all text-left`}
                           />
                           <span className={`text-xs font-bold text-slate-400 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-3' : 'right-3'}`}>
-                            {tr('لتر')}
+                            {t('common:units.liter')}
                           </span>
                         </div>
                       </div>
@@ -370,10 +372,10 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                       <div className="flex items-center gap-2 text-xs font-black text-slate-800 dark:text-slate-300">
                         <span className="w-4 h-4 rounded-full bg-slate-700 text-white flex items-center justify-center text-[10px] font-sans font-bold">3</span>
                         <MinusCircle className="w-3.5 h-3.5 text-slate-500" />
-                        <span className="text-xs sm:text-sm">{tr('الاستهلاك الكلي')}</span>
+                        <span className="text-xs sm:text-sm">{t('finance:archive.col.totalConsumption')}</span>
                       </div>
                       <span className="text-xs font-sans font-black text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-xl border border-slate-200 dark:border-slate-700 tabular-nums">
-                        {tr('المجموع')}: {formatNumber(totalDeductions)} {tr('لتر')}
+                        {t('finance:saharaPetrol.total')}: {formatNumber(totalDeductions)} {t('common:units.liter')}
                       </span>
                     </div>
 
@@ -381,7 +383,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                       {/* مصروف الاتحاد */}
                       <div className="space-y-1">
                         <label className="text-[10.5px] font-bold text-slate-700 dark:text-slate-200 truncate block">
-                          {tr('مصروف الاتحاد')}
+                          {t('finance:tx.etihadExpense')}
                         </label>
                         <div className="relative">
                           <input
@@ -393,7 +395,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                             className={`w-full h-9 ${isRTL ? 'pr-2.5 pl-9' : 'pl-2.5 pr-9'} py-1 text-xs rounded-xl border ${isOverDeducted ? 'border-rose-400 dark:border-rose-600 bg-rose-50/40 dark:bg-rose-950/40' : 'border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900'} text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-500 focus:bg-white dark:focus:bg-slate-900 outline-none font-sans font-bold tabular-nums transition-all text-left`}
                           />
                           <span className={`text-[10px] font-bold text-slate-400 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-2' : 'right-2'}`}>
-                            {tr('لتر')}
+                            {t('common:units.liter')}
                           </span>
                         </div>
                       </div>
@@ -401,7 +403,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                       {/* مبيعات الصحاري */}
                       <div className="space-y-1">
                         <label className="text-[10.5px] font-bold text-slate-700 dark:text-slate-200 truncate block">
-                          {tr('مبيعات الصحاري')}
+                          {t('finance:tx.saharaSales')}
                         </label>
                         <div className="relative">
                           <input
@@ -413,7 +415,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                             className={`w-full h-9 ${isRTL ? 'pr-2.5 pl-9' : 'pl-2.5 pr-9'} py-1 text-xs rounded-xl border ${isOverDeducted ? 'border-rose-400 dark:border-rose-600 bg-rose-50/40 dark:bg-rose-950/40' : 'border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900'} text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-500 focus:bg-white dark:focus:bg-slate-900 outline-none font-sans font-bold tabular-nums transition-all text-left`}
                           />
                           <span className={`text-[10px] font-bold text-slate-400 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-2' : 'right-2'}`}>
-                            {tr('لتر')}
+                            {t('common:units.liter')}
                           </span>
                         </div>
                       </div>
@@ -421,7 +423,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                       {/* مبيعات الكبيلات */}
                       <div className="space-y-1">
                         <label className="text-[10.5px] font-bold text-slate-700 dark:text-slate-200 truncate block">
-                          {tr('مبيعات الكبيلات')}
+                          {t('finance:tx.cableSales')}
                         </label>
                         <div className="relative">
                           <input
@@ -433,7 +435,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                             className={`w-full h-9 ${isRTL ? 'pr-2.5 pl-9' : 'pl-2.5 pr-9'} py-1 text-xs rounded-xl border ${isOverDeducted ? 'border-rose-400 dark:border-rose-600 bg-rose-50/40 dark:bg-rose-950/40' : 'border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900'} text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-500 focus:bg-white dark:focus:bg-slate-900 outline-none font-sans font-bold tabular-nums transition-all text-left`}
                           />
                           <span className={`text-[10px] font-bold text-slate-400 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-2' : 'right-2'}`}>
-                            {tr('لتر')}
+                            {t('common:units.liter')}
                           </span>
                         </div>
                       </div>
@@ -441,7 +443,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                       {/* مبيعات أخرى */}
                       <div className="space-y-1">
                         <label className="text-[10.5px] font-bold text-slate-700 dark:text-slate-200 truncate block">
-                          {tr('مبيعات أخرى')}
+                          {t('finance:tx.otherSales')}
                         </label>
                         <div className="relative">
                           <input
@@ -453,7 +455,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                             className={`w-full h-9 ${isRTL ? 'pr-2.5 pl-9' : 'pl-2.5 pr-9'} py-1 text-xs rounded-xl border ${isOverDeducted ? 'border-rose-400 dark:border-rose-600 bg-rose-50/40 dark:bg-rose-950/40' : 'border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900'} text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-500 focus:bg-white dark:focus:bg-slate-900 outline-none font-sans font-bold tabular-nums transition-all text-left`}
                           />
                           <span className={`text-[10px] font-bold text-slate-400 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-2' : 'right-2'}`}>
-                            {tr('لتر')}
+                            {t('common:units.liter')}
                           </span>
                         </div>
                       </div>
@@ -462,20 +464,20 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                     {isOverDeducted && (
                       <div className="mt-2 p-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 flex items-center gap-2 text-rose-700 dark:text-rose-300 text-xs font-bold">
                         <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-                        <span>{tr('تحذير: مجموع الاستهلاك الكلي يتجاوز الرصيد المتوفر والمشتريات!')}</span>
+                        <span>{t('finance:tx.overWarning')}</span>
                       </div>
                     )}
 
                     {/* كاز تشغيلي وكاز نظيف: للعرض فقط، لا يدخلان في المجموع ولا الرصيد */}
                     <div className="mt-2.5 pt-2.5 border-t border-dashed border-slate-200 dark:border-slate-700">
                       <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">{tr('بيانات للعرض فقط')}</span>
-                        <span className="text-[9.5px] font-bold text-slate-400">{tr('لا تؤثر على الرصيد')}</span>
+                        <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">{t('finance:tx.displayOnly')}</span>
+                        <span className="text-[9.5px] font-bold text-slate-400">{t('finance:tx.noEffect')}</span>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         {([
-                          [tr('كاز تشغيلي'), operationalGas, setOperationalGas],
-                          [tr('كاز نظيف'), cleanGas, setCleanGas],
+                          [t('finance:tx.operationalGas'), operationalGas, setOperationalGas],
+                          [t('finance:tx.cleanGas'), cleanGas, setCleanGas],
                         ] as const).map(([label, value, setter]) => (
                           <div key={label} className="space-y-1">
                             <label className="text-[10.5px] font-bold text-slate-700 dark:text-slate-200 truncate block">{label}</label>
@@ -489,7 +491,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                                 className={`w-full h-9 ${isRTL ? 'pr-2.5 pl-9' : 'pl-2.5 pr-9'} py-1 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:bg-white dark:focus:bg-slate-900 outline-none font-sans font-bold tabular-nums transition-all text-left`}
                               />
                               <span className={`text-[10px] font-bold text-slate-400 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-2' : 'right-2'}`}>
-                                {tr('لتر')}
+                                {t('common:units.liter')}
                               </span>
                             </div>
                           </div>
@@ -503,16 +505,16 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                     <div className="flex items-center gap-2 text-xs font-black text-slate-800 dark:text-slate-300 mb-2 pb-1 border-b border-slate-100 dark:border-slate-800">
                       <span className="w-4 h-4 rounded-full bg-slate-600 text-white flex items-center justify-center text-[10px] font-sans font-bold">4</span>
                       <DollarSign className="w-3.5 h-3.5" />
-                      <span className="text-xs sm:text-sm">{tr('بيانات التسعير')}</span>
+                      <span className="text-xs sm:text-sm">{t('finance:tx.pricing')}</span>
                     </div>
 
                     <div className="space-y-1">
                       <div className="flex items-center justify-between">
                         <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                          {tr('سعر اللتر الحالي')}
+                          {t('finance:tx.currentPrice')}
                         </label>
                         <span className="text-[10.5px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-200/60 dark:border-slate-700">
-                          {tr('السعر السابق')}: {formatNumber(lastRecordedPrice)} {tr('د.ع')}
+                          {t('finance:saharaBalance.previousPrice')}: {formatNumber(lastRecordedPrice)} {t('common:units.iqd')}
                         </span>
                       </div>
                       <div className="relative">
@@ -525,7 +527,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                           className={`w-full h-10 sm:h-10.5 ${isRTL ? 'pr-3 pl-11' : 'pl-3 pr-11'} py-1.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 outline-none font-sans font-black tabular-nums transition-all text-center`}
                         />
                         <span className={`text-xs font-bold text-slate-400 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-3' : 'right-3'}`}>
-                          {tr('د.ع')}
+                          {t('common:units.iqd')}
                         </span>
                       </div>
                     </div>
@@ -546,12 +548,12 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                         <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
                           <Layers className="w-4 h-4 text-emerald-400" />
                         </div>
-                        {tr('الرصيد المتوفر الآن')}
+                        {t('finance:tx.availableNow')}
                       </span>
                       <div className="flex flex-col items-end gap-1.5 mt-1">
                         <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950/90 text-emerald-300 border border-emerald-800/70 shadow-2xs">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                          {tr('معالجة فورية')}
+                          {t('finance:tx.instant')}
                         </span>
                       </div>
                     </div>
@@ -561,24 +563,24 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                         {formatNumber(netAvailableBalance)}
                       </div>
                       <span className="text-[10px] sm:text-[11px] font-bold text-emerald-400 font-cairo bg-emerald-950/60 px-3 py-0.5 rounded-md border border-emerald-800/60 shrink-0">
-                        {tr('لتر متاح')}
+                        {t('finance:tx.litersAvailable')}
                       </span>
                     </div>
 
                     {/* سطر الفرق عن الرصيد السابق (▲ / ▼) */}
                     <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs sm:text-[13px] relative z-10">
-                      <span className="text-slate-400 font-medium">{tr('التغير عن الرصيد السابق')}:</span>
+                      <span className="text-slate-400 font-medium">{t('finance:tx.changeFromPrev')}:</span>
                       {balanceDelta === 0 ? (
-                        <span className="text-slate-400 font-bold font-sans text-xs">0 لتر (بدون تغيير)</span>
+                        <span className="text-slate-400 font-bold font-sans text-xs">{t('finance:tx.noChangeLiters')}</span>
                       ) : balanceDelta > 0 ? (
                         <span className="text-emerald-400 font-black font-sans text-xs flex items-center gap-1">
                           <ArrowUpRight className="w-3.5 h-3.5 stroke-[3]" />
-                          +{formatNumber(balanceDelta)} {tr('لتر')}
+                          +{formatNumber(balanceDelta)} {t('common:units.liter')}
                         </span>
                       ) : (
                         <span className="text-rose-400 font-black font-sans text-xs flex items-center gap-1">
                           <ArrowDownRight className="w-3.5 h-3.5 stroke-[3]" />
-                          {formatNumber(Math.abs(balanceDelta))} {tr('لتر')}
+                          {formatNumber(Math.abs(balanceDelta))} {t('common:units.liter')}
                         </span>
                       )}
                     </div>
@@ -589,10 +591,10 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                     <div className="flex items-center justify-between pb-1 mb-1 border-b border-slate-100 dark:border-slate-800 shrink-0">
                       <div className="flex items-center gap-1.5 text-[11px] font-black text-slate-800 dark:text-slate-200">
                         <BarChart2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                        <span>{tr('مقارنة التوريد والاستهلاك والمبيعات')}</span>
+                        <span>{t('finance:tx.chartTitle')}</span>
                       </div>
                       <span className="text-[9px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-md">
-                        {tr('حجم التدفق')}
+                        {t('finance:tx.flowVolume')}
                       </span>
                     </div>
 
@@ -604,7 +606,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                           <XAxis hide dataKey="name" height={0} />
                           <YAxis hide domain={[0, 'auto']} />
                           <Tooltip
-                            formatter={(val: number) => [`${formatNumber(val)} لتر`, tr('الكمية')]}
+                            formatter={(val: number) => [`${formatNumber(val)} ${t('common:units.liter')}`, t('finance:tx.quantity')]}
                             contentStyle={{
                               backgroundColor: '#0f172a',
                               borderRadius: '8px',
@@ -627,26 +629,26 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                     {/* إحصائيات المقارنة الثلاثية المباشرة (قاعدة الأعمدة تماماً) */}
                     <div className="grid grid-cols-3 gap-1.5 pt-1 border-t border-slate-100 dark:border-slate-800/80 text-center shrink-0" dir="ltr">
                       {/* المشتريات (تحت المستطيل الأخضر تماماً) */}
-                      <div className="p-1 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/40" dir="rtl">
-                        <span className="block text-[9px] text-emerald-700 dark:text-emerald-400 font-bold">{tr('المشتريات')}</span>
+                      <div className="p-1 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/40" dir={i18n.dir()}>
+                        <span className="block text-[9px] text-emerald-700 dark:text-emerald-400 font-bold">{t('finance:tx.purchases')}</span>
                         <span className="text-[11px] font-black font-sans text-emerald-800 dark:text-emerald-300 tabular-nums">
-                          {formatNumber(calcPurchases)} {tr('لتر')}
+                          {formatNumber(calcPurchases)} {t('common:units.liter')}
                         </span>
                       </div>
 
                       {/* المبيعات (تحت المستطيل الرمادي تماماً) */}
-                      <div className="p-1 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800" dir="rtl">
-                        <span className="block text-[9px] text-slate-600 dark:text-slate-400 font-bold">{tr('المبيعات')}</span>
+                      <div className="p-1 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800" dir={i18n.dir()}>
+                        <span className="block text-[9px] text-slate-600 dark:text-slate-400 font-bold">{t('finance:tx.sales')}</span>
                         <span className="text-[11px] font-black font-sans text-slate-800 dark:text-slate-200 tabular-nums">
-                          {formatNumber(totalSalesDeductions)} {tr('لتر')}
+                          {formatNumber(totalSalesDeductions)} {t('common:units.liter')}
                         </span>
                       </div>
 
                       {/* مصروف الاتحاد (تحت المستطيل الأحمر تماماً) */}
-                      <div className="p-1 rounded-lg bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-900/40" dir="rtl">
-                        <span className="block text-[9px] text-rose-700 dark:text-rose-400 font-bold">{tr('مصروف الاتحاد')}</span>
+                      <div className="p-1 rounded-lg bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-900/40" dir={i18n.dir()}>
+                        <span className="block text-[9px] text-rose-700 dark:text-rose-400 font-bold">{t('finance:tx.etihadExpense')}</span>
                         <span className="text-[11px] font-black font-sans text-rose-800 dark:text-rose-300 tabular-nums">
-                          {formatNumber(calcEtihadExpense)} {tr('لتر')}
+                          {formatNumber(calcEtihadExpense)} {t('common:units.liter')}
                         </span>
                       </div>
                     </div>
@@ -665,7 +667,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                 onClick={onClose}
                 className="px-5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-95"
               >
-                {tr('إلغاء')}
+                {t('common:actions.cancel')}
               </button>
 
               <button
@@ -678,7 +680,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                 } text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2`}
               >
                 <Check className="w-4.5 h-4.5 stroke-[2.2]" />
-                <span>{editRecord ? tr('حفظ التعديلات') : tr('حفظ السجل')}</span>
+                <span>{editRecord ? t('common:actions.saveChanges') : t('finance:tx.saveRecord')}</span>
               </button>
             </div>
 

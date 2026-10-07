@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
 
 interface NavPoint {
   key: string;
@@ -26,7 +26,7 @@ type DragMode = 'left' | 'right' | 'window';
  * السحب: المقابض تغيّر الطول، النافذة تتحرك كاملة، النقر خارجها ينقلها، والنقر المزدوج يعيد الفترة كاملة.
  */
 export const RangeNavigator: React.FC<Props> = ({ data, start, end, onChange, insetLeft = 0, insetRight = 0 }) => {
-  const { tr } = useLanguage();
+  const { t } = useTranslation('prices');
   const trackRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ mode: DragMode; grab: number; s: number; e: number } | null>(null);
   const [dragging, setDragging] = useState<DragMode | null>(null);
@@ -106,7 +106,7 @@ export const RangeNavigator: React.FC<Props> = ({ data, start, end, onChange, in
         dragging === side ? 'ring-teal-500 scale-110' : 'ring-slate-300 dark:ring-slate-500 hover:ring-teal-500'
       } flex items-center justify-center gap-[2px] cursor-ew-resize transition-transform`}
       role="slider"
-      aria-label={tr(side === 'left' ? 'بداية النافذة' : 'نهاية النافذة')}
+      aria-label={t(side === 'left' ? 'navigator.start' : 'navigator.end')}
     >
       <span className="w-px h-3.5 bg-slate-400 rounded" />
       <span className="w-px h-3.5 bg-slate-400 rounded" />
@@ -124,7 +124,7 @@ export const RangeNavigator: React.FC<Props> = ({ data, start, end, onChange, in
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
         onDoubleClick={() => onChange(null)}
-        title={tr('اسحب لتحديد الفترة · نقر مزدوج لعرض الكل')}
+        title={t('navigator.hint')}
         className="relative h-11 rounded-xl bg-slate-50 dark:bg-slate-800/60 ring-1 ring-slate-200 dark:ring-slate-700/80 outline-none focus-visible:ring-2 focus-visible:ring-teal-500 touch-none"
       >
         {/* الأعمدة المصغرة */}

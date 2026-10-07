@@ -1,0 +1,303 @@
+{
+  "meta": {
+    "title": "Sahara Karbala Fuel System",
+    "description": "Fuel, tank and balance management for Sahara Karbala and Etihad Company"
+  },
+  "brand": {
+    "name": "Sahara Karbala",
+    "subtitle": "Karbala Central Terminal",
+    "company": "Sahara Karbala"
+  },
+  "actions": {
+    "close": "Close",
+    "cancel": "Cancel",
+    "save": "Save",
+    "confirm": "Confirm",
+    "logout": "Sign out",
+    "clearFilter": "Clear filter",
+    "done": "Done",
+    "delete": "Delete",
+    "saveChanges": "Save changes",
+    "edit": "Edit"
+  },
+  "status": {
+    "online": "Online",
+    "offline": "Offline",
+    "active": "Active",
+    "disabled": "Suspended"
+  },
+  "units": {
+    "liter": "L",
+    "iqd": "IQD",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days",
+    "meter": "m"
+  },
+  "time": {
+    "minutesShort": "{{count}} min",
+    "hoursShort": "{{count}} h",
+    "hoursMinutesShort": "{{h}} h {{m}} min",
+    "now": "Just now"
+  },
+  "sync": {
+    "saved": "Saved",
+    "saving": "Saving",
+    "offline": "Offline",
+    "error": "Save failed",
+    "savedHint": "Saved to the server",
+    "savingHint": "Saving…",
+    "offlineHint": "Offline: saved on this device and will upload when you're back online",
+    "errorHint": "Couldn't save to the server. Retrying automatically"
+  },
+  "language": {
+    "select": "Choose system language",
+    "count_one": "{{count}} language",
+    "count_other": "{{count}} languages",
+    "current": "System language: {{code}}"
+  },
+  "enum": {
+    "weekday": {
+      "sat": "Saturday",
+      "satShort": "Sat",
+      "sun": "Sunday",
+      "sunShort": "Sun",
+      "mon": "Monday",
+      "monShort": "Mon",
+      "tue": "Tuesday",
+      "tueShort": "Tue",
+      "wed": "Wednesday",
+      "wedShort": "Wed",
+      "thu": "Thursday",
+      "thuShort": "Thu",
+      "fri": "Friday",
+      "friShort": "Fri"
+    },
+    "company": {
+      "sahara": "Sahara Karbala",
+      "etihad": "Etihad Company",
+      "mainDepot": "Main depot",
+      "saharaCompany": "Sahara Karbala Company"
+    },
+    "product": {
+      "saharaGasoline": "Sahara gasoline",
+      "saharaGasoil": "Sahara gasoil",
+      "stationGasoil": "Station gasoil",
+      "etihadGasoil": "Etihad gasoil",
+      "blackOil": "Black oil",
+      "gasoline": "Gasoline",
+      "gasoil": "Gasoil",
+      "diesel": "Diesel",
+      "gasoilDiesel": "Gasoil / diesel",
+      "premiumDiesel": "Premium diesel"
+    },
+    "category": {
+      "all": "All",
+      "commercial": "Commercial",
+      "official": "Official",
+      "government": "Government"
+    },
+    "availability": {
+      "available": "Available",
+      "limited": "Limited",
+      "unavailable": "Unavailable"
+    },
+    "flowTag": {
+      "none": "No movement",
+      "surplus": "Surplus",
+      "draw": "Drawn from balance",
+      "balanced": "Balanced"
+    },
+    "site": {
+      "rayyan": "Al-Rayyan site",
+      "sukkar": "Al-Sukkar site",
+      "sahara": "Sahara site"
+    },
+    "relative": {
+      "today": "Today",
+      "now": "Just now"
+    },
+    "color": {
+      "red": "Red",
+      "yellow": "Yellow",
+      "honey": "Amber",
+      "kerosene": "Kerosene (white)",
+      "greenishYellow": "Greenish yellow"
+    },
+    "shipment": {
+      "received": "Received",
+      "enRoute": "En route",
+      "inspection": "Under inspection",
+      "cancelled": "Cancelled"
+    },
+    "supplier": {
+      "karbalaRefinery": "Karbala International Refinery",
+      "karbalaRefineryShort": "Karbala Refinery"
+    },
+    "room": {
+      "general": "General operations room",
+      "generalDesc": "The main channel for the whole site team"
+    },
+    "task": {
+      "maintenance": "Maintenance",
+      "unloading": "Unloading",
+      "quality": "Quality check",
+      "inventory": "Inventory"
+    },
+    "priority": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "shift": {
+      "onDuty": "On duty",
+      "onBreak": "On break",
+      "leave": "On leave"
+    },
+    "level": {
+      "stable": "Stable",
+      "high": "High",
+      "low": "Low",
+      "critical": "Critical"
+    },
+    "station": {
+      "taqa": "Al-Taqa",
+      "tasmeen": "Al-Tasmeen",
+      "bayadh": "Al-Bayadh",
+      "bawadi": "Al-Bawadi",
+      "umahatBayadh": "Umahat Al-Bayadh",
+      "umahat": "Umahat",
+      "ajdad": "Al-Ajdad",
+      "asfalt": "Al-Asfalt",
+      "hujjaj": "Madinat Al-Hujjaj",
+      "tar": "Al-Tar",
+      "istikhlas": "Al-Istikhlas"
+    },
+    "siteOf": "{{name}} site",
+    "term": {
+      "sahara": "Sahara",
+      "saharaKarbala": "Sahara Karbala",
+      "saharaCompany": "Sahara Karbala Company",
+      "etihad": "Etihad",
+      "etihadCompany": "Etihad Company",
+      "gasoil": "Gasoil",
+      "gasoline": "Gasoline",
+      "blackOil": "Black oil",
+      "diesel": "Diesel",
+      "buffer": "Buffer",
+      "dailyFuel": "Daily fuel",
+      "rubban": "Al-Rubban",
+      "sukkar": "Al-Sukkar",
+      "rayyan": "Al-Rayyan",
+      "oldTaqa": "Old Al-Taqa",
+      "newTaqa": "New Al-Taqa",
+      "baitHajj": "Bait Al-Hajj Abu Noor",
+      "reserve": "Reserve",
+      "mainDiesel": "Main diesel",
+      "emergencyGasoil": "Emergency gasoil",
+      "etihadStrategic": "Etihad strategic",
+      "reserveGasoline": "Reserve gasoline",
+      "etihadOps": "Etihad operations",
+      "dailyOps": "Daily operation tanks",
+      "bufferDiesel": "Buffer & diesel",
+      "gasPetrolHajj": "Gasoil & gasoline unit and Bait Al-Hajj tanks",
+      "istikhlasTransport": "Al-Istikhlas and transport gasoil tanks",
+      "companySites": "Company site tanks",
+      "extraSection": "Additional operational section for the tank system"
+    },
+    "tankOf": "{{name}} tank",
+    "tanksOf": "{{name}} tanks"
+  },
+  "calendar": {
+    "lastDays_one": "Last day",
+    "lastDays_other": "Last {{count}} days",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "from": "From",
+    "to": "To",
+    "apply": "Apply",
+    "today": "Today",
+    "clear": "Clear",
+    "weekdays": {
+      "sat": "Sa",
+      "sun": "Su",
+      "mon": "Mo",
+      "tue": "Tu",
+      "wed": "We",
+      "thu": "Th",
+      "fri": "Fr"
+    }
+  },
+  "print": {
+    "logo": {
+      "sama": "Sama Karbala",
+      "bawadi": "Bawadi Karbala",
+      "kac": "Karbala Agricultural City"
+    },
+    "groupName": "Karbala Group for Agricultural and Livestock Production",
+    "fuelDepartment": "Central Department of Fuel and Petroleum Products",
+    "etihadGroup": "Etihad Industries Group",
+    "partner": "Accredited strategic partner",
+    "badgeOfficial": "Approved official document",
+    "printDate": "Printed on: <1>{{date}}</1>",
+    "signature": "Signature and date",
+    "role": {
+      "tanks": "Tanks officer",
+      "site": "Site manager",
+      "general": "General manager",
+      "accountant": "Accountant"
+    },
+    "orientation": "Orientation",
+    "landscape": "Landscape",
+    "portrait": "Portrait",
+    "print": "Print",
+    "rangeAll": "All days",
+    "rangeMonth": "Last month",
+    "rangeWeek": "Last week",
+    "rangeFromTo": "From {{from}} to {{to}}"
+  },
+  "pagination": {
+    "showing": "Showing records <1>{{from}}</1> to <1>{{to}}</1> of <2>{{total}}</2>",
+    "prev": "Previous",
+    "next": "Next"
+  },
+  "notif": {
+    "inbound": {
+      "title": "New inbound shipment",
+      "message": "Shipment with voucher {{voucher}} ({{qty}} L) was received for {{company}}."
+    },
+    "supply": {
+      "title": "New fuel supply request",
+      "message": "A supply request for {{qty}} L was sent for {{beneficiary}}."
+    }
+  },
+  "fileImport": {
+    "field": {
+      "generators": "Generators",
+      "vehicles": "Vehicles",
+      "farms": "Farms",
+      "sentToFarms": "Sent to farms",
+      "inboundInternal": "Internal inbound",
+      "inboundEtihad": "Etihad inbound",
+      "inboundExternal": "External inbound",
+      "previousCarried": "Carried-over balance",
+      "currentInFile": "Current balance"
+    },
+    "saharaNoItems": "The statement items weren’t found in the file — make sure it’s the Sahara daily statement",
+    "missing": "Not found in the file: {{list}}",
+    "noSitesTable": "The site balances table (cumulative balance column) wasn’t found in the file",
+    "scannedPdf": "This PDF is a scanned image without text — upload an image instead",
+    "petrolNoItems": "The stations table or inbound items weren’t found in the file — make sure it’s the daily gasoline statement",
+    "stationsRead": "Read {{matched}} of {{count}} stations",
+    "noStationsTable": "The stations table wasn’t found",
+    "scannedPdfManual": "This PDF is a scanned image without text — use an Excel file or manual entry",
+    "excelPdfOnly": "Only Excel or PDF files are accepted",
+    "blackOilNoSites": "The sites (Al-Rayyan / Al-Sukkar) and their values weren’t found in the file",
+    "noHeaderRow": "The header row wasn’t found in the file (supplier name, voucher number, quantity received…)",
+    "noHeaderRowPdf": "The header row wasn’t found in the PDF (supplier name, voucher number, quantity received…)",
+    "sitesRead_one": "Read {{count}} site from the cumulative balance column",
+    "sitesRead_other": "Read {{count}} sites from the cumulative balance column",
+    "noNumbers_one": "Couldn’t read the numbers for {{count}} station (actual consumption and current balance columns)",
+    "noNumbers_other": "Couldn’t read the numbers for {{count}} stations (actual consumption and current balance columns)",
+    "alreadyUploaded": "Already uploaded for this day: {{list}}"
+  }
+}

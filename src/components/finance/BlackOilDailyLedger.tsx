@@ -4,7 +4,9 @@ import { Droplets, Plus, Save, X, Pencil, Trash2, CalendarDays, Printer, Chevron
 import { OfficialReportHeaderRow } from '../print/OfficialReportHeader';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
 import { formatNumber, getBusinessDate } from '../../lib/utils';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation, Trans } from 'react-i18next';
+import { fmtList, fmtDate } from '../../i18n/format';
+import { enumText } from '../../i18n/enums';
 import { useBlackOilLedger, BlackOilRecord, BLACK_OIL_SITES, BLACK_OIL_SECTION_KEYS, type BlackOilCompany, type BlackOilSiteEntry, type ComputedBlackOilRecord } from '../../lib/blackOilLedger';
 import { readCentralTanks, useCentralTanks } from '../../lib/centralTanks';
 import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
@@ -51,14 +53,14 @@ interface SiteForm {
 const emptySiteForm = (): SiteForm => ({ inbound: '', consumption: '', actual: '', empty: '' });
 
 export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; company?: BlackOilCompany }> = ({ variant = 'recent', company = 'etihad' }) => {
-  const { tr } = useLanguage();
+  const { t, i18n } = useTranslation(['finance', 'common']);
   const isArchive = variant === 'archive';
   const { records, computed, avgDaily, update } = useBlackOilLedger(company);
   // عنوان الطباعة: الصحاري لها كشفها الخاص
   // مواقع التخزين لهذه الشركة (الاتحاد: موقع الريان، موقع السكر)
   const sites = BLACK_OIL_SITES[company];
   const hasSites = sites.length > 0;
-  const printTitle = company === 'sahara' ? 'كشف السجل اليومي للنفط الأسود - شركة الصحاري' : 'كشف السجل اليومي للنفط الأسود';
+  const printTitle = t(company === 'sahara' ? 'finance:blackOil.print.titleSahara' : 'finance:blackOil.print.title');
   // صفحة النفط الأسود: آخر 7 أيام فقط، والأرشيف الكامل في صفحة التقارير
   const [range, setRange] = useState<'all' | 'week' | 'month' | 'custom'>(isArchive ? 'all' : 'week');
   // فترة مخصصة (من / إلى) في الأرشيف
@@ -206,7 +208,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
       });
       setReportState({ status: 'done', fileName: file.name, found: sites.filter(x => report[x.key]).map(x => x.name) });
     } catch (err) {
-      setReportState({ status: 'error', message: err instanceof Error ? err.message : 'تعذّر قراءة الملف' });
+      setReportState({ status: 'error', message: err instanceof Error ? err.message : t('finance:blackOil.readFailed') });
     }
   };
 
@@ -261,7 +263,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
       const allEmpty = lines.every(l => l.empty !== null);
       const allCap = lines.every(l => l.capacity !== null);
       lines.push({
-        kind: 'total', key: 'total', name: 'إجمالي اليوم',
+        kind: 'total', key: 'total', name: t('finance:blackOil.dayTotal'),
         previous: sum(l => l.previous), inbound: sum(l => l.inbound), consumption: sum(l => l.consumption),
         current: sum(l => l.current), diff: sum(l => l.diff),
         empty: allEmpty ? sum(l => l.empty as number) : null,
@@ -271,17 +273,16 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
     return lines;
   };
   const fillPct = (l: Line) => (l.capacity ? (l.current / l.capacity) * 100 : null);
-  const WEEKDAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-  const weekday = (d: string) => WEEKDAYS[new Date(d.replace(/\//g, '-') + 'T12:00:00').getDay()];
+  const weekday = (d: string) => fmtDate(d.replace(/\//g, '-') + 'T12:00:00', { weekday: 'long' });
   /** الفرق: سالب = نقص (أحمر)، موجب = زيادة (أخضر)، صفر = مطابق */
   const diffCell = (v: number) =>
     Math.abs(v) < 1 ? (
-      <span className="text-slate-400" title={tr('الرصيد الحقيقي مطابق للمحسوب')}>0</span>
+      <span className="text-slate-400" title={t('finance:blackOil.diffMatch')}>0</span>
     ) : (
       <span
         dir="ltr"
         className={`font-bold ${v < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}
-        title={tr(v < 0 ? 'نقص: الرصيد الحقيقي أقل من المحسوب' : 'زيادة: الرصيد الحقيقي أكثر من المحسوب')}
+        title={v < 0 ? t('finance:blackOil.diffShort') : t('finance:blackOil.diffOver')}
       >
         {v > 0 ? '+' : '−'}{formatNumber(Math.abs(v))}
       </span>
@@ -289,19 +290,19 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
 
   // نسخة الطباعة الرسمية للأرشيف (كل الأيام حسب الفلتر)
   const sheet = (
-      <div className={`print-page-box bg-white text-slate-900 w-full ${orientation === 'landscape' ? 'min-h-[196mm]' : 'min-h-[279mm]'} flex flex-col gap-3 text-right font-cairo`} dir="rtl">
+      <div className={`print-page-box bg-white text-slate-900 w-full ${orientation === 'landscape' ? 'min-h-[196mm]' : 'min-h-[279mm]'} flex flex-col gap-3 text-start font-cairo`} dir={i18n.dir()}>
         <header className="print-header border-b-[3px] border-double border-slate-900 pb-2">
-          <OfficialReportHeaderRow compact={orientation === 'portrait'} badge="وثيقة رسمية معتمدة" title={printTitle} />
+          <OfficialReportHeaderRow compact={orientation === 'portrait'} badge={t('common:print.badgeOfficial')} title={printTitle} />
           <div className="mt-2 flex justify-between border border-slate-300 px-2.5 py-1 text-[9.5px]">
-            <span className="text-slate-500 font-bold">{range === 'all' ? 'كل الأيام' : range === 'month' ? 'آخر شهر' : range === 'week' ? 'آخر أسبوع' : `من ${fromDate || '—'} إلى ${toDate || '—'}`}</span>
+            <span className="text-slate-500 font-bold">{range === 'all' ? t('common:print.rangeAll') : range === 'month' ? t('common:print.rangeMonth') : range === 'week' ? t('common:print.rangeWeek') : t('common:print.rangeFromTo', { from: fromDate || '—', to: toDate || '—' })}</span>
             <span className="font-mono font-black">{visible.length ? `${visible[visible.length - 1].date} — ${visible[0].date}` : ''}</span>
-            <span className="text-slate-500">تاريخ الطباعة: <span className="font-mono font-black text-slate-900">{getBusinessDate()}</span></span>
+            <span className="text-slate-500"><Trans t={t} i18nKey="common:print.printDate" values={{ date: getBusinessDate() }} components={{ 1: <span className="font-mono font-black text-slate-900" /> }} /></span>
           </div>
         </header>
         <table className="w-full border-collapse text-[10px]">
           <thead>
             <tr>
-              {['التاريخ', ...(hasSites ? ['موقع التخزين'] : []), 'الكمية السابقة', 'الوارد', 'سعر اللتر', 'الاستهلاك', 'الكمية الحالية', 'الفرق', ...(hasSites ? ['فراغ الخزان'] : []), 'نسبة الامتلاء'].map(h => (
+              {[t('finance:blackOil.col.date'), ...(hasSites ? [t('finance:blackOil.col.site')] : []), t('finance:blackOil.col.previous'), t('finance:blackOil.col.inbound'), t('finance:blackOil.col.price'), t('finance:blackOil.col.consumption'), t('finance:blackOil.col.current'), t('finance:blackOil.col.diff'), ...(hasSites ? [t('finance:blackOil.col.empty')] : []), t('finance:blackOil.col.fill')].map(h => (
                 <th key={h} className="bg-slate-900 text-white px-2 py-1.5 text-[9.5px] font-black text-center border border-slate-900">{h}</th>
               ))}
             </tr>
@@ -315,7 +316,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
                 return (
                   <tr key={`${r.id}-${l.key}`} className={isTotal ? 'bg-slate-100 font-black' : i % 2 ? 'bg-slate-50' : 'bg-white'}>
                     {j === 0 && <td rowSpan={lines.length} className="px-2 py-1 text-center font-mono font-bold border border-slate-200">{r.date}<div className="text-[8.5px] font-sans text-slate-500">{weekday(r.date)}</div></td>}
-                    {hasSites && <td className="px-2 py-1 text-center font-bold border border-slate-200">{l.name}</td>}
+                    {hasSites && <td className="px-2 py-1 text-center font-bold border border-slate-200">{enumText(l.name)}</td>}
                     <td className="px-2 py-1 text-center font-mono border border-slate-200">{formatNumber(l.previous)}</td>
                     <td className="px-2 py-1 text-center font-mono border border-slate-200">{formatNumber(l.inbound)}</td>
                     {j === 0 && <td rowSpan={lines.length} className="px-2 py-1 text-center font-mono border border-slate-200">{r.price ? formatNumber(r.price) : '—'}</td>}
@@ -331,11 +332,11 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
           </tbody>
         </table>
         <div className="grid grid-cols-3 gap-2 text-center mt-auto pt-4">
-          {['مسؤول الخزانات', 'مدير الموقع', 'المدير العام'].map(role => (
+          {[t('common:print.role.tanks'), t('common:print.role.site'), t('common:print.role.general')].map(role => (
             <div key={role} className="border border-dashed border-slate-400 rounded p-1">
               <span className="text-[8.5px] font-black text-slate-800 block">{role}</span>
               <div className="h-5 border-b border-slate-200 my-0.5" />
-              <span className="text-[7.5px] text-slate-500 block">التوقيع والتاريخ</span>
+              <span className="text-[7.5px] text-slate-500 block">{t('common:print.signature')}</span>
             </div>
           ))}
         </div>
@@ -351,24 +352,24 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
   );
 
   const previewModal = isArchive && showPreview && createPortal(
-    <div className="no-print fixed inset-0 z-[200] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6" dir="rtl" onClick={() => setShowPreview(false)}>
+    <div className="no-print fixed inset-0 z-[200] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6" dir={i18n.dir()} onClick={() => setShowPreview(false)}>
       <div onClick={e => e.stopPropagation()} className="w-full max-w-6xl max-h-full flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-50 dark:bg-slate-900">
           <div className="flex items-center gap-2 font-black text-slate-900 dark:text-white">
             <Printer className="w-5 h-5 text-purple-600" />
-            {tr('معاينة كشف السجل اليومي للنفط الأسود')}
+            {t('finance:blackOil.print.preview')}
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-2 py-1 rounded-xl border border-slate-300 dark:border-slate-700">
               <LayoutTemplate className="w-3.5 h-3.5 text-indigo-600" />
-              <span className="text-slate-500 dark:text-slate-400 font-bold text-[11px]">{tr('الاتجاه')}:</span>
+              <span className="text-slate-500 dark:text-slate-400 font-bold text-[11px]">{t('common:print.orientation')}:</span>
               <select
                 value={orientation}
                 onChange={e => setOrientation(e.target.value as 'landscape' | 'portrait')}
                 className="bg-transparent text-slate-800 dark:text-slate-200 font-black focus:outline-none cursor-pointer text-xs"
               >
-                <option value="landscape" className="dark:bg-slate-800">{tr('أفقي بالعرض')}</option>
-                <option value="portrait" className="dark:bg-slate-800">{tr('عمودي بالطول')}</option>
+                <option value="landscape" className="dark:bg-slate-800">{t('common:print.landscape')}</option>
+                <option value="portrait" className="dark:bg-slate-800">{t('common:print.portrait')}</option>
               </select>
             </div>
             <button
@@ -377,9 +378,9 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-md cursor-pointer"
             >
               <Printer className="w-4 h-4" />
-              {tr('طباعة')}
+              {t('common:print.print')}
             </button>
-            <button type="button" onClick={() => setShowPreview(false)} className="p-2 rounded-xl text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 cursor-pointer" title={tr('إغلاق')}>
+            <button type="button" onClick={() => setShowPreview(false)} className="p-2 rounded-xl text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 cursor-pointer" title={t('common:actions.close')}>
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -403,25 +404,25 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
     {printDoc}
     {previewModal}
     {confirmDel && createPortal(
-      <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm animate-in fade-in duration-150" dir="rtl" onClick={() => setConfirmDel(null)}>
+      <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm animate-in fade-in duration-150" dir={i18n.dir()} onClick={() => setConfirmDel(null)}>
         <div onClick={e => e.stopPropagation()} className="w-full max-w-sm rounded-3xl bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
           <div className="p-5 flex items-start gap-3.5">
             <div className="w-11 h-11 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
               <Trash2 className="w-5 h-5" />
             </div>
             <div className="min-w-0 space-y-1">
-              <div className="font-black text-slate-900 dark:text-white">{tr('حذف يوم')} <span className="font-mono">{confirmDel.date}</span>{tr('؟')}</div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{tr('يُحذف من السجل اليومي ومن أرشيف تقرير النفط الأسود، ويُعاد حساب الكميات للأيام التي بعده.')}</p>
-              <p className="text-[11px] text-rose-600 dark:text-rose-400 font-bold">{tr('لا يمكن التراجع عن الحذف')}</p>
+              <div className="font-black text-slate-900 dark:text-white"><Trans t={t} i18nKey="finance:blackOil.deleteDay" values={{ date: confirmDel.date }} components={{ 1: <span className="font-mono" /> }} /></div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{t('finance:blackOil.deleteText')}</p>
+              <p className="text-[11px] text-rose-600 dark:text-rose-400 font-bold">{t('finance:blackOil.deleteWarning')}</p>
             </div>
           </div>
           <div className="px-5 pb-5 grid grid-cols-[auto_1fr] gap-2.5">
             <button type="button" autoFocus onClick={() => setConfirmDel(null)} className="px-5 h-11 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold cursor-pointer">
-              {tr('إلغاء')}
+              {t('common:actions.cancel')}
             </button>
             <button type="button" onClick={doRemove} className="h-11 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-black flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] transition-all">
               <Trash2 className="w-4 h-4" />
-              {tr('نعم، احذف')}
+              {t('finance:blackOil.deleteYes')}
             </button>
           </div>
         </div>
@@ -433,17 +434,17 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
         <div>
           <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
             <Droplets className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-            <span>{tr(isArchive ? 'أرشيف السجل اليومي للنفط الأسود' : 'السجل اليومي للنفط الأسود')}</span>
+            <span>{isArchive ? t('finance:blackOil.archiveTitle') : t('finance:blackOil.title')}</span>
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            {tr(isArchive ? 'كل الأيام المسجلة: الكمية السابقة + الوارد − الاستهلاك = الكمية الحالية' : 'آخر 7 أيام — الأرشيف الكامل في صفحة التقارير ← تقرير النفط الأسود')}
+            {isArchive ? t('finance:blackOil.archiveHint') : t('finance:blackOil.hint')}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {isArchive && (
             <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs">
-              {([['all', 'الكل'], ['month', 'آخر شهر'], ['week', 'آخر أسبوع']] as const).map(([k, l]) => (
+              {([['all', t('common:enum.category.all')], ['month', t('common:print.rangeMonth')], ['week', t('common:print.rangeWeek')]] as const).map(([k, l]) => (
                 <button
                   key={k}
                   type="button"
@@ -452,7 +453,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
                     range === k ? 'bg-purple-600 text-white' : 'text-slate-600 dark:text-slate-300'
                   }`}
                 >
-                  {tr(l)}
+                  {l}
                 </button>
               ))}
             </div>
@@ -471,7 +472,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
                     ? 'border-purple-400 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300'
                     : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                 }`}
-                title={tr('تحديد فترة')}
+                title={t('finance:blackOil.pickRange')}
               >
                 <CalendarDays className="w-4 h-4" />
                 {range === 'custom' && <span className="font-mono">{fromDate || '…'} — {toDate || '…'}</span>}
@@ -500,7 +501,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 disabled:opacity-40 text-white text-xs font-bold shadow-md active:scale-95 transition-all cursor-pointer"
             >
               <Printer className="w-4 h-4" />
-              {tr('طباعة')}
+              {t('common:print.print')}
             </button>
           ) : (
           <>
@@ -508,7 +509,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
             type="button"
             onClick={() => setManage(m => !m)}
             disabled={!visible.length && !manage}
-            title={tr(manage ? 'إنهاء التعديل' : 'تعديل أو حذف الأيام')}
+            title={manage ? t('finance:blackOil.finishEditing') : t('finance:blackOil.manageDays')}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
               manage
                 ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-purple-500/20'
@@ -516,7 +517,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
             }`}
           >
             {manage ? <Check className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
-            {tr(manage ? 'تم' : 'تعديل')}
+            {manage ? t('common:actions.done') : t('common:actions.edit')}
           </button>
           <button
             type="button"
@@ -524,7 +525,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-md shadow-purple-500/20 active:scale-95 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            {tr('تسجيل يوم')}
+            {t('finance:blackOil.recordDay')}
           </button>
           </>
           )}
@@ -535,16 +536,16 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
         <table className="w-full text-center text-xs border-collapse font-mono">
           <thead>
             <tr className="bg-[#eef2f8] dark:bg-[#1c2b44] text-[#1c3b6f] dark:text-blue-100 border-b-2 border-[#1c3b6f]/70 dark:border-blue-900 font-black text-[11.5px] whitespace-nowrap font-sans select-none">
-              <th className={th}>{tr('التاريخ')}</th>
-              {hasSites && <th className={th}>{tr('موقع التخزين')}</th>}
-              <th className={th}>{tr('الكمية السابقة')}</th>
-              <th className={th}>{tr('الوارد')}</th>
-              <th className={th}>{tr('سعر اللتر')}</th>
-              <th className={th}>{tr('الاستهلاك')}</th>
-              <th className={th}>{tr('الكمية الحالية')}</th>
-              <th className={th} title={tr('الرصيد الحقيقي − (السابقة + الوارد − الاستهلاك)')}>{tr('الفرق')}</th>
-              {hasSites && <th className={th}>{tr('فراغ الخزان')}</th>}
-              <th className={th}>{tr('نسبة الامتلاء')}</th>
+              <th className={th}>{t('finance:blackOil.col.date')}</th>
+              {hasSites && <th className={th}>{t('finance:blackOil.col.site')}</th>}
+              <th className={th}>{t('finance:blackOil.col.previous')}</th>
+              <th className={th}>{t('finance:blackOil.col.inbound')}</th>
+              <th className={th}>{t('finance:blackOil.col.price')}</th>
+              <th className={th}>{t('finance:blackOil.col.consumption')}</th>
+              <th className={th}>{t('finance:blackOil.col.current')}</th>
+              <th className={th} title={t('finance:blackOil.col.diffHint')}>{t('finance:blackOil.col.diff')}</th>
+              {hasSites && <th className={th}>{t('finance:blackOil.col.empty')}</th>}
+              <th className={th}>{t('finance:blackOil.col.fill')}</th>
               <th className={th}></th>
             </tr>
           </thead>
@@ -552,7 +553,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
             {visible.length === 0 ? (
               <tr>
                 <td colSpan={hasSites ? 11 : 9} className="p-10 text-center text-sm text-slate-500 dark:text-slate-400 font-sans">
-                  {tr('لا توجد سجلات بعد. اضغط "تسجيل يوم" لإضافة أول يوم.')}
+                  {t('finance:blackOil.empty')}
                 </td>
               </tr>
             ) : (
@@ -575,15 +576,15 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
                       {j === 0 && (
                         <td rowSpan={lines.length} className="p-3.5 font-sans align-middle border-l border-slate-100 dark:border-slate-800">
                           <div className="font-bold text-slate-900 dark:text-white font-mono">{r.date}</div>
-                          <div className="text-[10.5px] text-slate-400">{tr(weekday(r.date))}</div>
+                          <div className="text-[10.5px] text-slate-400">{weekday(r.date)}</div>
                         </td>
                       )}
                       {hasSites && (
                         <td className="p-3.5 font-sans">
                           {l.kind === 'site' ? (
-                            <span className="font-bold text-slate-800 dark:text-slate-100">{tr(l.name)}</span>
+                            <span className="font-bold text-slate-800 dark:text-slate-100">{enumText(l.name)}</span>
                           ) : isTotal ? (
-                            <span className="font-black text-slate-900 dark:text-white">{tr(l.name)}</span>
+                            <span className="font-black text-slate-900 dark:text-white">{enumText(l.name)}</span>
                           ) : <span className="text-slate-400">—</span>}
                         </td>
                       )}
@@ -591,7 +592,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
                       <td className="p-3.5 font-bold text-emerald-600 dark:text-emerald-400">{formatNumber(l.inbound)}</td>
                       {j === 0 && (
                         <td rowSpan={lines.length} className="p-3.5 align-middle font-bold text-slate-900 dark:text-white border-x border-slate-100 dark:border-slate-800">
-                          {r.price ? <>{formatNumber(r.price)} <span className="text-[10px] font-sans font-bold text-slate-400">{tr('د.ع')}</span></> : <span className="text-slate-400">—</span>}
+                          {r.price ? <>{formatNumber(r.price)} <span className="text-[10px] font-sans font-bold text-slate-400">{t('common:units.iqd')}</span></> : <span className="text-slate-400">—</span>}
                         </td>
                       )}
                       <td className="p-3.5 font-bold text-red-600 dark:text-red-400">{formatNumber(l.consumption)}</td>
@@ -615,11 +616,11 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
                         {f === null ? (
                           <span className="text-slate-400">—</span>
                         ) : (
-                          <div className="flex items-center justify-center gap-2.5 min-w-[140px]" title={`${tr('السعة')}: ${formatNumber(l.capacity ?? 0)} ${tr('لتر')}`}>
+                          <div className="flex items-center justify-center gap-2.5 min-w-[140px]" title={`${t('finance:blackOil.capacity')}: ${formatNumber(l.capacity ?? 0)} ${t('common:units.liter')}`}>
                             <div className="flex-1 h-2.5 rounded-full bg-slate-200/80 dark:bg-slate-700/70 overflow-hidden">
                               <div className="h-full rounded-full bg-gradient-to-l from-purple-600 to-indigo-500" style={{ width: `${Math.min(100, Math.max(0, f))}%` }} />
                             </div>
-                            <span className="w-12 text-left font-black tabular-nums text-slate-900 dark:text-white">{f.toFixed(1)}%</span>
+                            <span className="w-12 text-end font-black tabular-nums text-slate-900 dark:text-white">{f.toFixed(1)}%</span>
                           </div>
                         )}
                       </td>
@@ -627,10 +628,10 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
                         <td rowSpan={lines.length} className="p-3.5 align-middle">
                           {showActions && (
                           <div className="flex items-center gap-1 justify-center animate-in fade-in duration-150">
-                            <button type="button" onClick={() => openEdit(r.id)} className="p-1.5 rounded-lg text-slate-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/40 cursor-pointer" title={tr('تعديل')}>
+                            <button type="button" onClick={() => openEdit(r.id)} className="p-1.5 rounded-lg text-slate-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/40 cursor-pointer" title={t('common:actions.edit')}>
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
-                            <button type="button" onClick={() => remove(r.id)} className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer" title={tr('حذف')}>
+                            <button type="button" onClick={() => remove(r.id)} className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer" title={t('common:actions.delete')}>
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -651,9 +652,9 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
             return (
               <tfoot>
                 <tr className="bg-slate-50 dark:bg-slate-800/60 border-t-2 border-slate-300 dark:border-slate-700 font-black text-slate-900 dark:text-white whitespace-nowrap">
-                  <td className="p-3.5 font-sans" colSpan={hasSites ? 3 : 2}>{tr('الإجمالي')} <span className="text-[10px] font-bold text-slate-400">({visible.length} {tr('يوم')})</span></td>
+                  <td className="p-3.5 font-sans" colSpan={hasSites ? 3 : 2}>{t('finance:blackOil.total')} <span className="text-[10px] font-bold text-slate-400">({t('common:units.days', { count: visible.length })})</span></td>
                   <td className="p-3.5 text-emerald-600 dark:text-emerald-400">{formatNumber(totals.inbound)}</td>
-                  <td className="p-3.5" title={tr('متوسط السعر الموزون بالوارد')}>
+                  <td className="p-3.5" title={t('finance:blackOil.totalPriceHint')}>
                     {(() => {
                       const priced = visible.filter(r => r.price && r.inbound > 0);
                       const q = priced.reduce((a, r) => a + r.inbound, 0);
@@ -661,12 +662,12 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
                     })()}
                   </td>
                   <td className="p-3.5 text-red-600 dark:text-red-400">{formatNumber(totals.consumption)}</td>
-                  <td className="p-3.5" title={tr('الكمية الحالية لآخر يوم')}>{formatNumber(latest.current)}</td>
-                  <td className="p-3.5" title={tr('مجموع الفروقات في الفترة')}>{diffCell(diffSum)}</td>
-                  {hasSites && <td className="p-3.5 text-slate-900 dark:text-white" title={tr('فراغ الخزانات لآخر يوم')}>{latest.empty !== null ? formatNumber(latest.empty) : '—'}</td>}
+                  <td className="p-3.5" title={t('finance:blackOil.totalCurrentHint')}>{formatNumber(latest.current)}</td>
+                  <td className="p-3.5" title={t('finance:blackOil.totalDiffHint')}>{diffCell(diffSum)}</td>
+                  {hasSites && <td className="p-3.5 text-slate-900 dark:text-white" title={t('finance:blackOil.totalEmptyHint')}>{latest.empty !== null ? formatNumber(latest.empty) : '—'}</td>}
                   <td className="p-3.5 font-sans text-[11px] text-slate-500" colSpan={2}>
-                    {tr('متوسط الاستهلاك المعتمد')}: <span className="font-mono font-black text-slate-900 dark:text-white">{formatNumber(avgDaily)}</span> {tr('لتر')}
-                    <span className="text-slate-400 mr-2">({tr('الفعلي')}: <span className="font-mono">{formatNumber(totals.actualAvg)}</span>)</span>
+                    {t('finance:blackOil.approvedAvg')}: <span className="font-mono font-black text-slate-900 dark:text-white">{formatNumber(avgDaily)}</span> {t('common:units.liter')}
+                    <span className="text-slate-400 ms-2">({t('finance:blackOil.actual')}: <span className="font-mono">{formatNumber(totals.actualAvg)}</span>)</span>
                   </td>
                 </tr>
               </tfoot>
@@ -678,9 +679,12 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
       {isArchive && visible.length > 0 && (
         <div className="p-4 sm:p-5 border-t border-slate-200/90 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
           <div className="text-slate-600 dark:text-slate-400">
-            {tr('عرض السجلات من')} <strong className="font-bold text-slate-900 dark:text-white font-mono">{startIndex + 1}</strong> {tr('إلى')}{' '}
-            <strong className="font-bold text-slate-900 dark:text-white font-mono">{endIndex}</strong> {tr('من أصل')}{' '}
-            <strong className="font-bold text-purple-700 dark:text-purple-400 font-mono">{visible.length}</strong> {tr('سجل')}
+            <Trans
+              t={t}
+              i18nKey="common:pagination.showing"
+              values={{ from: startIndex + 1, to: endIndex, total: visible.length }}
+              components={{ 1: <strong className="font-bold text-slate-900 dark:text-white font-mono" />, 2: <strong className="font-bold text-purple-700 dark:text-purple-400 font-mono" /> }}
+            />
           </div>
           <div className="flex items-center gap-1.5">
             <button
@@ -689,8 +693,8 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
               disabled={safePage === 1}
               className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-bold disabled:opacity-40 disabled:pointer-events-none cursor-pointer flex items-center gap-1"
             >
-              <ChevronRight className="w-4 h-4" />
-              <span>{tr('السابق')}</span>
+              <ChevronRight className="w-4 h-4 ltr:rotate-180" />
+              <span>{t('common:pagination.prev')}</span>
             </button>
             <div className="flex items-center gap-1 mx-1">
               {Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -718,8 +722,8 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
               disabled={safePage === totalPages}
               className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-bold disabled:opacity-40 disabled:pointer-events-none cursor-pointer flex items-center gap-1"
             >
-              <span>{tr('التالي')}</span>
-              <ChevronLeft className="w-4 h-4" />
+              <span>{t('common:pagination.next')}</span>
+              <ChevronLeft className="w-4 h-4 ltr:rotate-180" />
             </button>
           </div>
         </div>
@@ -729,7 +733,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
       {form && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-3 bg-slate-950/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setForm(null)}>
           <div
-            dir="rtl"
+            dir={i18n.dir()}
             onClick={e => e.stopPropagation()}
             className="relative w-[min(880px,94vw)] max-h-[96vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200/90 dark:border-slate-800 flex flex-col overflow-hidden font-cairo animate-in zoom-in-95 duration-150"
           >
@@ -742,14 +746,14 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white tracking-tight">
-                      {tr(form.id ? 'تعديل سجل يوم النفط الأسود' : 'تسجيل يوم جديد للنفط الأسود')}
+                      {form.id ? t('finance:blackOil.form.editTitle') : t('finance:blackOil.form.newTitle')}
                     </h3>
                     <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 font-mono">
                       {form.date}
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                    {tr('الكمية السابقة + الوارد − الاستهلاك = الكمية الحالية، وتُحفظ مناسيب الخزانات مع العملية')}
+                    {t('finance:blackOil.form.formula')}
                   </p>
                 </div>
               </div>
@@ -759,17 +763,17 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border cursor-pointer transition-all ${
                     reportState.status === 'reading' ? 'opacity-60 pointer-events-none' : ''
                   } bg-purple-700 hover:bg-purple-800 text-white border-purple-700 shadow-sm`}
-                  title={tr('يقرأ ملف التقرير اليومي ويملأ قيم موقع الريان وموقع السكر')}
+                  title={t('finance:blackOil.form.fillHint')}
                 >
                   {reportState.status === 'reading' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileUp className="w-3.5 h-3.5" />}
-                  {tr('تعبئة من ملف التقرير')}
+                  {t('finance:blackOil.form.fill')}
                   <input type="file" accept=".xlsx,.xls,.csv,.pdf" className="hidden" onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) fillFromReport(f); }} />
                 </label>
               )}
               <button
                 type="button"
                 onClick={() => setForm(null)}
-                aria-label={tr('إغلاق')}
+                aria-label={t('common:actions.close')}
                 className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700 cursor-pointer transition-all"
               >
                 <X className="w-4.5 h-4.5 stroke-[2.5]" />
@@ -783,13 +787,13 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
               {reportState.status === 'done' && (
                 <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 text-emerald-700 dark:text-emerald-300 text-xs font-bold">
                   <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  <span>{tr('تمت التعبئة من')} <span className="font-mono">{reportState.fileName}</span> — {reportState.found.map(n => tr(n)).join('، ')}. {tr('راجع القيم ثم احفظ.')}</span>
+                  <span><Trans t={t} i18nKey="finance:blackOil.form.filledFrom" values={{ file: reportState.fileName, sites: fmtList(reportState.found.map(n => enumText(n))) }} components={{ 1: <span className="font-mono" /> }} /></span>
                 </div>
               )}
               {reportState.status === 'error' && (
                 <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs font-bold">
                   <AlertTriangle className="w-4 h-4 shrink-0" />
-                  {tr(reportState.message)}
+                  {reportState.message}
                 </div>
               )}
               {/* 1. بيانات اليوم */}
@@ -797,16 +801,16 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
                 <div className={cardTitle}>
                   <span className={cardNum}>1</span>
                   <CalendarDays className="w-3.5 h-3.5" />
-                  <span>{tr('بيانات اليوم والرصيد الافتتاحي')}</span>
+                  <span>{t('finance:blackOil.form.dayData')}</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <label className="space-y-1">
-                    <div className="h-5 flex items-center"><span className={fieldLabel}>{tr('التاريخ')}</span></div>
+                    <div className="h-5 flex items-center"><span className={fieldLabel}>{t('finance:blackOil.col.date')}</span></div>
                     <input type="date" className={field} value={toInputDate(form.date)} onChange={e => setForm({ ...form, date: fromInputDate(e.target.value) })} />
                   </label>
                   <div className="space-y-1">
                     <div className="h-5 flex items-center justify-between">
-                      <span className={fieldLabel}>{tr('الكمية السابقة (لتر)')}</span>
+                      <span className={fieldLabel}>{t('finance:blackOil.form.previousL')}</span>
                       {autoPrevious !== null && (
                         <button
                           type="button"
@@ -814,7 +818,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
                           className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-0.5 cursor-pointer"
                         >
                           <Pencil className="w-3 h-3" />
-                          {tr(form.editPrevious ? 'تلقائي' : 'تصحيح')}
+                          {form.editPrevious ? t('finance:blackOil.form.auto') : t('finance:blackOil.form.correct')}
                         </button>
                       )}
                     </div>
@@ -824,8 +828,8 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
                       className={field}
                       disabled={!form.editPrevious}
                       value={form.editPrevious ? form.previous : autoPrevious !== null ? formatNumber(autoPrevious) : ''}
-                      placeholder={derivedPrevious !== null && autoPrevious === null ? `${formatNumber(derivedPrevious)} (${tr('من التقرير')})` : tr('الرصيد الافتتاحي')}
-                      title={!form.editPrevious && autoPrevious !== null ? tr('تلقائيًا من الكمية الحالية لآخر يوم مسجّل') : undefined}
+                      placeholder={derivedPrevious !== null && autoPrevious === null ? t('finance:blackOil.form.fromReport', { value: formatNumber(derivedPrevious) }) : t('finance:blackOil.form.openingBalance')}
+                      title={!form.editPrevious && autoPrevious !== null ? t('finance:blackOil.form.autoHint') : undefined}
                       onChange={e => setForm({ ...form, previous: withCommas(e.target.value) })}
                     />
                   </div>
@@ -837,7 +841,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
                 <div className={cardTitle}>
                   <span className={cardNum}>2</span>
                   <Droplets className="w-3.5 h-3.5" />
-                  <span>{tr('حركة اليوم')}</span>
+                  <span>{t('finance:blackOil.form.dayMovement')}</span>
                 </div>
                 {hasSites && (
                   <div className="space-y-3 mb-3.5">
@@ -847,17 +851,17 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
                       return (
                         <div key={x.key} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/40 p-3">
                           <div className="flex items-center gap-1.5 mb-2 text-xs font-black text-slate-800 dark:text-slate-100">
-                            <Warehouse className="w-3.5 h-3.5 text-purple-600" />{tr(x.name)}
+                            <Warehouse className="w-3.5 h-3.5 text-purple-600" />{enumText(x.name)}
                           </div>
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                             {([
-                              ['actual', 'الرصيد الحقيقي بالخزانات'],
-                              ['empty', 'مستوى الفارغ الحالي'],
-                              ['inbound', 'الوارد'],
-                              ['consumption', 'الاستهلاك']
+                              ['actual', t('finance:blackOil.form.actual')],
+                              ['empty', t('finance:blackOil.form.empty')],
+                              ['inbound', t('finance:blackOil.col.inbound')],
+                              ['consumption', t('finance:blackOil.col.consumption')]
                             ] as const).map(([k, label]) => (
                               <label key={k} className="space-y-1">
-                                <span className="block text-[11px] font-bold text-slate-600 dark:text-slate-300">{tr(label)} <span className="text-slate-400">({tr('لتر')})</span></span>
+                                <span className="block text-[11px] font-bold text-slate-600 dark:text-slate-300">{label} <span className="text-slate-400">({t('common:units.liter')})</span></span>
                                 <input inputMode="numeric" dir="ltr" className={field} value={f[k]} placeholder="0" onChange={e => setSite(k, e.target.value)} />
                               </label>
                             ))}
@@ -869,26 +873,26 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                   <label className="space-y-1">
-                    <div className="h-5 flex items-center"><span className={fieldLabel}>{tr(hasSites ? 'إجمالي الوارد (لتر)' : 'الوارد (لتر)')}</span></div>
+                    <div className="h-5 flex items-center"><span className={fieldLabel}>{hasSites ? t('finance:blackOil.form.totalInboundL') : t('finance:blackOil.form.inboundL')}</span></div>
                     <input inputMode="numeric" dir="ltr" autoFocus={!hasSites} disabled={hasSites} className={field} value={hasSites ? formatNumber(fInbound) : form.inbound} placeholder="0" onChange={e => setForm({ ...form, inbound: withCommas(e.target.value) })} />
                   </label>
                   <label className="space-y-1">
-                    <div className="h-5 flex items-center"><span className={fieldLabel}>{tr(hasSites ? 'إجمالي الاستهلاك (لتر)' : 'الاستهلاك (لتر)')}</span></div>
+                    <div className="h-5 flex items-center"><span className={fieldLabel}>{hasSites ? t('finance:blackOil.form.totalConsumptionL') : t('finance:blackOil.form.consumptionL')}</span></div>
                     <input inputMode="numeric" dir="ltr" disabled={hasSites} className={field} value={hasSites ? formatNumber(fConsumption ?? 0) : form.consumption} placeholder="0" onChange={e => setForm({ ...form, consumption: withCommas(e.target.value) })} />
                   </label>
                   <label className="space-y-1">
-                    <div className="h-5 flex items-center"><span className={fieldLabel}>{tr('متوسط الاستهلاك اليومي المعتمد (لتر)')}</span></div>
+                    <div className="h-5 flex items-center"><span className={fieldLabel}>{t('finance:blackOil.form.avgDailyL')}</span></div>
                     <input inputMode="numeric" dir="ltr" className={field} value={form.avgDaily} onChange={e => setForm({ ...form, avgDaily: withCommas(e.target.value) })} />
                   </label>
                   <label className="space-y-1">
-                    <div className="h-5 flex items-center"><span className={fieldLabel}>{tr('سعر اللتر (د.ع)')}</span></div>
+                    <div className="h-5 flex items-center"><span className={fieldLabel}>{t('finance:blackOil.form.priceIqd')}</span></div>
                     <input
                       inputMode="decimal"
                       dir="ltr"
                       className={field}
                       value={form.price}
                       placeholder="0"
-                      title={tr('سعر شراء لتر النفط الأسود لهذا اليوم — يظهر في كارت الأسعار وصفحة المشتريات')}
+                      title={t('finance:blackOil.form.priceHint')}
                       onChange={e => setForm({ ...form, price: e.target.value.replace(/[^\d.,]/g, '') })}
                     />
                   </label>
@@ -900,44 +904,44 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
                 <div className={cardTitle}>
                   <span className={cardNum}>3</span>
                   <Save className="w-3.5 h-3.5" />
-                  <span>{tr('النتيجة المحسوبة تلقائيًا')}</span>
+                  <span>{t('finance:blackOil.form.result')}</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200/70 dark:border-purple-900/50 p-3">
-                    <div className="text-[11px] font-bold text-purple-700/80 dark:text-purple-300/80">{tr('الكمية الحالية (لتر)')}</div>
+                    <div className="text-[11px] font-bold text-purple-700/80 dark:text-purple-300/80">{t('finance:blackOil.form.currentL')}</div>
                     <div className={`text-xl font-black font-mono ${fCurrent !== null && fCurrent < 0 ? 'text-red-600' : 'text-slate-900 dark:text-white'}`}>
                       {fCurrent === null ? '0' : formatNumber(fCurrent)}
                     </div>
                   </div>
                   <div className="rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3">
-                    <div className="text-[11px] font-bold text-slate-500">{tr('نسبة الاستهلاك')}</div>
+                    <div className="text-[11px] font-bold text-slate-500">{t('finance:blackOil.form.consumptionRate')}</div>
                     <div className="text-xl font-black font-mono text-slate-900 dark:text-white">{fPct === null ? '—' : `${fPct.toFixed(1)}%`}</div>
                   </div>
                   <div className="rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3">
-                    <div className="text-[11px] font-bold text-slate-500">{tr('أيام التغطية المتوقعة')}</div>
+                    <div className="text-[11px] font-bold text-slate-500">{t('finance:blackOil.form.coverageDays')}</div>
                     <div className="text-xl font-black font-mono text-slate-900 dark:text-white">
-                      {fCurrent !== null && fAvg ? Math.max(0, Math.floor(fCurrent / fAvg)) : '—'} <span className="text-xs font-bold text-slate-400 font-sans">{tr('يوم')}</span>
+                      {fCurrent !== null && fAvg ? Math.max(0, Math.floor(fCurrent / fAvg)) : '—'} <span className="text-xs font-bold text-slate-400 font-sans">{t('finance:blackOil.form.daysUnit')}</span>
                     </div>
                   </div>
                 </div>
-                {dateTaken && <p className="mt-2 text-xs font-bold text-red-600">{tr('يوجد سجل لهذا التاريخ، عدّله من الجدول.')}</p>}
-                {fCurrent !== null && fCurrent < 0 && <p className="mt-2 text-xs font-bold text-red-600">{tr('الاستهلاك أكبر من الكمية المتاحة (السابقة + الوارد).')}</p>}
+                {dateTaken && <p className="mt-2 text-xs font-bold text-red-600">{t('finance:blackOil.form.duplicate')}</p>}
+                {fCurrent !== null && fCurrent < 0 && <p className="mt-2 text-xs font-bold text-red-600">{t('finance:blackOil.form.negative')}</p>}
               </div>
             </div>
 
             {/* شريط الأزرار الثابت */}
             <div className="px-5 py-3 bg-white dark:bg-slate-900 border-t border-slate-200/90 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0">
               <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200/80 dark:border-purple-800/80 text-purple-700 dark:text-purple-300 text-xs font-bold">
-                    <span className="text-[11px]">{tr('الكمية الحالية')}:</span>
-                    <span className="font-mono font-black">{fCurrent === null ? '0' : formatNumber(fCurrent)} {tr('لتر')}</span>
+                    <span className="text-[11px]">{t('finance:blackOil.col.current')}:</span>
+                    <span className="font-mono font-black">{fCurrent === null ? '0' : formatNumber(fCurrent)} {t('common:units.liter')}</span>
               </div>
-              <div className="flex items-center gap-2.5 mr-auto">
+              <div className="flex items-center gap-2.5 ms-auto">
                 <button
                   type="button"
                   onClick={() => setForm(null)}
                   className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 text-xs font-bold cursor-pointer active:scale-95 transition-all"
                 >
-                  {tr('إلغاء')}
+                  {t('common:actions.cancel')}
                 </button>
                 <button
                   type="button"
@@ -946,7 +950,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
                   className="px-6 sm:px-8 py-2.5 rounded-xl bg-gradient-to-r from-purple-700 via-purple-800 to-indigo-800 hover:from-purple-800 hover:to-indigo-900 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-black shadow-lg shadow-purple-900/25 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
                 >
                   <Save className="w-4 h-4" />
-                  <span>{tr(form.id ? 'حفظ التعديلات' : 'تأكيد حفظ اليوم')}</span>
+                  <span>{form.id ? t('common:actions.saveChanges') : t('finance:ledger.form.saveDay')}</span>
                 </button>
               </div>
             </div>

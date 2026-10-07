@@ -1,3 +1,5 @@
+import { enumText } from '../../i18n/enums';
+import i18n from '../../i18n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { clearSession, getSessionUser, hasSession, logout as appLogout } from '../../lib/session';
 import { chatApi, isChatAuthError, uploadFile, primeFileUrl, type Attachment, type ChatMember, type ChatMessage, type ChatRoom, type ChatUser, type SyncPayload, type Account } from './chatApi';
@@ -78,7 +80,7 @@ export function useChat() {
   const meNameRef = useRef('');
 
   const sinceRef = useRef(0);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const inflight = useRef<AbortController | null>(null);
   const activeRoomRef = useRef('');
   const soundRef = useRef(sound);
@@ -137,7 +139,7 @@ export function useChat() {
       if (soundRef.current) chime();
       if (document.visibilityState === 'hidden' && 'Notification' in window && Notification.permission === 'granted') {
         try {
-          new Notification(mentionsMe(inc.text, meNameRef.current) ? 'أشار إليك أحدهم' : 'رسالة جديدة', { body: inc.text || '📎 مرفق', icon: '/icon-192.png', tag: inc.room_id });
+          new Notification(i18n.t(mentionsMe(inc.text, meNameRef.current) ? 'chat:notif.mention' : 'chat:notif.newMessage'), { body: inc.text || `📎 ${i18n.t('chat:attachment')}`, icon: '/icon-192.png', tag: inc.room_id });
         } catch {
           /* تجاهل */
         }
@@ -272,7 +274,7 @@ export function useChat() {
     if (opts.voice) {
       const { blob, duration, peaks } = opts.voice;
       const ext = blob.type.includes('ogg') ? 'ogg' : blob.type.includes('mp4') ? 'm4a' : 'webm';
-      const name = `بصمة-صوتية-${new Date(now).toISOString().slice(0, 19).replace(/[:T]/g, '-')}.${ext}`;
+      const name = `${i18n.t('chat:voiceFile')}-${new Date(now).toISOString().slice(0, 19).replace(/[:T]/g, '-')}.${ext}`;
       uploadFile(blob, name, p => patchLocal(room, msg.id, { progress: p }))
         .then(up => {
           primeFileUrl(up.id, blob);
@@ -397,7 +399,7 @@ export function useChat() {
         .filter((u): u is ChatUser => !!u && u.id !== meId && u.typing_room === room.id && now - u.typing_at < TYPING_MS);
       return {
         room, members: ms, myMember, last, unread, mentioned, typing, peer,
-        title: room.type === 'direct' ? peer?.name || 'محادثة خاصة' : room.name,
+        title: room.type === 'direct' ? peer?.name || i18n.t('chat:directChat') : enumText(room.name),
         avatar: room.type === 'direct' ? peer?.avatar || '' : room.avatar,
         color: room.type === 'direct' ? peer?.color || '' : '',
         online: room.type === 'direct'

@@ -1,7 +1,8 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Zap, PenLine, RotateCcw, Check, Truck, Info } from 'lucide-react';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
+import { enumText } from '../../i18n/enums';
 import { formatNumber } from '../../lib/utils';
 
 export interface PriceDay {
@@ -26,6 +27,10 @@ interface Props {
   days: PriceDay[];
   /** السعر اليدوي الساري (null = تلقائي) */
   manual: { price: number; setAt: string } | null;
+  /** كارت يدوي بالكامل (غير مرتبط بالوارد): يعدّل السعر والكمية والتاريخ معًا */
+  /** عرض فقط: بلا تعديل ولا رجوع للتلقائي (الصفحة الرئيسية) */
+  readOnly?: boolean;
+  standalone?: { volume: number; date: string; onSave: (v: { price: number; volume: number; date: string }) => void };
   onSave: (price: number) => void;
   onReset: () => void;
   onClose: () => void;
@@ -33,14 +38,27 @@ interface Props {
 
 const WIDTH = 360;
 const EST_HEIGHT = 470;
+const toInputDate = (d: string) => (/^\d{4}\/\d{2}\/\d{2}$/.test(d) ? d.replace(/\//g, '-') : '');
 
 /** نافذة سعر المنتج: تنفتح في مكان الكارت بحركة تكبير، وفيها تعديل السعر يدويًا أو إرجاعه للتلقائي */
-export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon: Icon, iconClass, price, autoPrice, autoDate, days, manual, onSave, onReset, onClose }) => {
-  const { tr } = useLanguage();
+export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon: Icon, iconClass, price, autoPrice, autoDate, days, manual, standalone, readOnly, onSave, onReset, onClose }) => {
+  const { t } = useTranslation(['dashboard', 'common']);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(String(price));
   const inputRef = useRef<HTMLInputElement>(null);
+  // نموذج الكارت اليدوي
+  const [fPrice, setFPrice] = useState(String(price || ''));
+  const [fVolume, setFVolume] = useState(String(standalone?.volume || ''));
+  const [fDate, setFDate] = useState(toInputDate(standalone?.date ?? '') || new Date().toISOString().slice(0, 10));
+  const fPriceNum = Number(fPrice.replace(/[^\d.]/g, ''));
+  const fVolumeNum = Number(fVolume.replace(/[^\d.]/g, ''));
+  const fValid = fPriceNum >= 0 && fVolumeNum >= 0 && fDate !== '';
+  const saveStandalone = () => {
+    if (!standalone || !fValid) return;
+    standalone.onSave({ price: Math.round(fPriceNum * 100) / 100, volume: Math.round(fVolumeNum), date: fDate.replace(/-/g, '/') });
+    close();
+  };
 
   // الموضع: متمركز على الكارت أفقيًا، ويبدأ من أعلاه، ومحصور داخل الشاشة
   const vw = window.innerWidth, vh = window.innerHeight;
@@ -86,7 +104,7 @@ export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon
       <div
         dir="rtl"
         role="dialog"
-        aria-label={tr(title)}
+        aria-label={enumText(title)}
         className="fixed z-[181] rounded-[22px] bg-[#fcfdff] dark:bg-slate-900 border border-slate-200/90 dark:border-slate-700 shadow-[0_24px_60px_-12px_rgba(15,23,42,0.35)] overflow-hidden"
         style={{
           top, left, width,
@@ -103,30 +121,66 @@ export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon
               <Icon className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <div className="font-black text-slate-900 dark:text-white truncate">{tr(title)}</div>
-              <div className="text-[11px] font-bold text-slate-400">{tr(company)}</div>
+              <div className="font-black text-slate-900 dark:text-white truncate">{enumText(title)}</div>
+              <div className="text-[11px] font-bold text-slate-400">{enumText(company)}</div>
             </div>
           </div>
-          <button type="button" onClick={close} aria-label={tr('إغلاق')} className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
+          <button type="button" onClick={close} aria-label={t('common:actions.close')} className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
 
+        {standalone && !readOnly ? (
+          <>
+            <div className="mx-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 p-3.5 space-y-3">
+              <label className="block">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{t('dashboard:popover.literPrice')} ({t('common:units.iqd')})</span>
+                <input inputMode="decimal" dir="ltr" value={fPrice} onChange={e => setFPrice(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveStandalone(); }}
+                  className="mt-1 w-full h-11 px-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-teal-500 bg-white dark:bg-slate-900 text-xl font-black font-mono text-slate-900 dark:text-white outline-none" />
+              </label>
+              <label className="block">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{t('dashboard:popover.quantity')} ({t('common:units.liter')})</span>
+                <input inputMode="numeric" dir="ltr" value={fVolume} onChange={e => setFVolume(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveStandalone(); }}
+                  className="mt-1 w-full h-11 px-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-teal-500 bg-white dark:bg-slate-900 text-xl font-black font-mono text-slate-900 dark:text-white outline-none" />
+              </label>
+              <label className="block">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{t('dashboard:popover.lastUpdateDate')}</span>
+                <input type="date" dir="ltr" value={fDate} onChange={e => setFDate(e.target.value)}
+                  className="mt-1 w-full h-11 px-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-teal-500 bg-white dark:bg-slate-900 text-base font-bold font-mono text-slate-900 dark:text-white outline-none" />
+              </label>
+            </div>
+            <div className="mx-4 mt-2.5 flex items-start gap-1.5 text-[10.5px] leading-relaxed text-slate-500 dark:text-slate-400">
+              <Info className="w-3.5 h-3.5 shrink-0 mt-px" />
+              <span>{t('dashboard:popover.standaloneNote')}</span>
+            </div>
+            <div className="mt-3.5 px-4 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+              <button type="button" onClick={close} className="px-3 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">{t('common:actions.cancel')}</button>
+              <button type="button" onClick={saveStandalone} disabled={!fValid} className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-40 text-white text-xs font-bold cursor-pointer active:scale-95 transition-all inline-flex items-center gap-1.5">
+                <Check className="w-4 h-4" />{t('common:actions.save')}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
         {/* السعر الحالي ومصدره */}
         <div className="mx-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 p-3.5">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{tr('سعر اللتر المعتمد')}</span>
-            {manual ? (
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{t('dashboard:purchases.approvedPrice')}</span>
+            {standalone ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10.5px] font-black">
+                <PenLine className="w-3 h-3" />{t('dashboard:popover.manualEntry')}
+              </span>
+            ) : manual ? (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 text-[10.5px] font-black ring-1 ring-amber-200 dark:ring-amber-900">
-                <PenLine className="w-3 h-3" />{tr('يدوي')}
+                <PenLine className="w-3 h-3" />{t('dashboard:purchases.manual')}
               </span>
             ) : autoPrice ? (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10.5px] font-black ring-1 ring-emerald-200 dark:ring-emerald-900">
-                <Zap className="w-3 h-3" />{tr('تلقائي من الوارد')}
+                <Zap className="w-3 h-3" />{t('dashboard:popover.autoFromInbound')}
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10.5px] font-black">
-                {tr('من جدول الموردين')}
+                {t('dashboard:popover.fromSuppliers')}
               </span>
             )}
           </div>
@@ -142,8 +196,8 @@ export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon
                 onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { e.stopPropagation(); setEditing(false); } }}
                 className="flex-1 min-w-0 h-11 px-3 rounded-xl border-2 border-teal-500 bg-white dark:bg-slate-900 text-2xl font-black font-mono text-slate-900 dark:text-white outline-none"
               />
-              <span className="text-xs font-bold text-slate-400">{tr('د.ع')}</span>
-              <button type="button" onClick={save} disabled={!valid} className="h-11 w-11 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-40 text-white flex items-center justify-center cursor-pointer active:scale-95 transition-all" title={tr('حفظ')}>
+              <span className="text-xs font-bold text-slate-400">{t('common:units.iqd')}</span>
+              <button type="button" onClick={save} disabled={!valid} className="h-11 w-11 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-40 text-white flex items-center justify-center cursor-pointer active:scale-95 transition-all" title={t('common:actions.save')}>
                 <Check className="w-5 h-5" />
               </button>
             </div>
@@ -151,22 +205,24 @@ export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon
             <div className="mt-1 flex items-end justify-between gap-2">
               <div className="flex items-baseline gap-1.5">
                 <span className="text-4xl font-black font-mono tracking-tight text-slate-900 dark:text-white">{formatNumber(price)}</span>
-                <span className="text-xs font-bold text-slate-400">{tr('د.ع')}</span>
+                <span className="text-xs font-bold text-slate-400">{t('common:units.iqd')}</span>
               </div>
+              {!readOnly && (
               <button
                 type="button"
                 onClick={() => { setValue(String(price)); setEditing(true); }}
                 className="mb-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-teal-400 hover:text-teal-700 cursor-pointer active:scale-95 transition-all"
               >
-                <PenLine className="w-3.5 h-3.5" />{tr('تعديل السعر')}
+                <PenLine className="w-3.5 h-3.5" />{t('dashboard:popover.editPrice')}
               </button>
+              )}
             </div>
           )}
 
           {/* المقارنة بالتلقائي عند السعر اليدوي */}
           {manual && autoPrice !== null && (
             <div className="mt-2 pt-2 border-t border-dashed border-slate-200 dark:border-slate-700 flex items-center justify-between text-[11px]">
-              <span className="text-slate-500">{tr('السعر من الوارد')}: <b className="font-mono text-slate-800 dark:text-slate-200">{formatNumber(autoPrice)}</b></span>
+              <span className="text-slate-500">{t('dashboard:popover.inboundPrice')}: <b className="font-mono text-slate-800 dark:text-slate-200">{formatNumber(autoPrice)}</b></span>
               {diffVsAuto !== null && Math.abs(diffVsAuto) >= 0.05 && (
                 <span dir="ltr" className={`font-mono font-bold ${diffVsAuto > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{diffVsAuto > 0 ? '+' : ''}{diffVsAuto.toFixed(1)}%</span>
               )}
@@ -174,21 +230,38 @@ export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon
           )}
         </div>
 
+        {standalone ? (
+          <div className="mx-4 mt-3 grid grid-cols-2 gap-2 text-center">
+            <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 py-2">
+              <div className="text-[10.5px] font-bold text-slate-400">{t('dashboard:popover.quantity')}</div>
+              <div className="font-mono font-black text-slate-900 dark:text-white">{formatNumber(standalone.volume)} <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span></div>
+            </div>
+            <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 py-2">
+              <div className="text-[10.5px] font-bold text-slate-400">{t('dashboard:popover.lastUpdate')}</div>
+              <div className="font-mono font-black text-slate-900 dark:text-white">{standalone.date}</div>
+            </div>
+          </div>
+        ) : null}
+
         {/* ملاحظة سلوك التحديث */}
+        {!standalone && (
         <div className="mx-4 mt-2.5 flex items-start gap-1.5 text-[10.5px] leading-relaxed text-slate-500 dark:text-slate-400">
           <Info className="w-3.5 h-3.5 shrink-0 mt-px" />
           {manual
-            ? <span>{tr('السعر اليدوي يبقى حتى أول عملية وارد جديدة، ثم يعود تلقائيًا من الوارد.')}</span>
-            : <span>{tr('يُحدَّث تلقائيًا مع كل عملية وارد جديدة (متوسط موزون لآخر يوم وارد).')}{autoDate ? <> {tr('آخر وارد')}: <b className="font-mono">{autoDate}</b></> : null}</span>}
+            ? <span>{t('dashboard:popover.manualNote')}</span>
+            : <span>{t('dashboard:popover.autoNote')}{autoDate ? <> {t('dashboard:popover.lastInbound')}: <b className="font-mono">{autoDate}</b></> : null}</span>}
         </div>
 
+        )}
+
         {/* آخر أيام الوارد */}
+        {!standalone && (
         <div className="mx-4 mt-3">
           <div className="flex items-center gap-1.5 text-[11px] font-black text-slate-700 dark:text-slate-200 mb-1.5">
-            <Truck className="w-3.5 h-3.5 text-slate-400" />{tr('آخر أيام الوارد')}
+            <Truck className="w-3.5 h-3.5 text-slate-400" />{t('dashboard:popover.recentDays')}
           </div>
           {days.length === 0 ? (
-            <div className="text-[11px] text-slate-400 py-3 text-center rounded-xl bg-slate-50 dark:bg-slate-800/40">{tr('لا يوجد وارد مسعّر لهذا المنتج بعد')}</div>
+            <div className="text-[11px] text-slate-400 py-3 text-center rounded-xl bg-slate-50 dark:bg-slate-800/40">{t('dashboard:popover.noInbound')}</div>
           ) : (
             <div className="space-y-1">
               {days.slice(0, 5).map((d, i) => {
@@ -201,7 +274,7 @@ export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon
                     style={{ animationDelay: `${120 + i * 45}ms`, animationDuration: '260ms' }}
                   >
                     <span className="font-mono text-slate-500">{d.date.slice(2)}</span>
-                    <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden" title={`${formatNumber(d.qty)} ${tr('لتر')}`}>
+                    <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden" title={`${formatNumber(d.qty)} ${t('common:units.liter')}`}>
                       <div className="h-full rounded-full bg-slate-300 dark:bg-slate-600" style={{ width: `${Math.max(6, (d.qty / maxQty) * 100)}%` }} />
                     </div>
                     <span className="font-mono font-black text-slate-900 dark:text-white">{formatNumber(d.price)}</span>
@@ -215,17 +288,21 @@ export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon
           )}
         </div>
 
+        )}
+
         {/* الأزرار */}
         <div className="mt-3.5 px-4 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-          {manual ? (
+          {manual && !readOnly ? (
             <button type="button" onClick={onReset} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
-              <RotateCcw className="w-3.5 h-3.5" />{tr('رجوع للسعر التلقائي')}
+              <RotateCcw className="w-3.5 h-3.5" />{t('dashboard:popover.backToAuto')}
             </button>
           ) : <span />}
           <button type="button" onClick={close} className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold cursor-pointer active:scale-95 transition-all">
-            {tr('تم')}
+            {t('common:actions.done')}
           </button>
         </div>
+          </>
+        )}
       </div>
     </>,
     document.body

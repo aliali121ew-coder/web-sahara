@@ -1,0 +1,53 @@
+# ترجمة المنظومة (i18n): ما بقي وكيف يُكمَل
+
+آخر تحديث: 2026-10-05 — الفرع `develop`
+
+## ما اكتمل
+- الأساس: `src/i18n/` (i18next + ملفات JSON + `format.ts` + `errors.ts` + `enums.ts` + `glossary.json`) وفحص البناء `scripts/i18n-check.mjs`.
+- الهيكل العام: القائمة الجانبية، الهيدر، بطاقة الملف الشخصي، مؤشر الحفظ، لوحة الأوامر، شريط المسار.
+- تسجيل الدخول (الحاسوب والهاتف والدعم والشرائح) + زر اللغة.
+- الإعدادات، وإدارة المستخدمين كاملة.
+- لوحة القيادة.
+- الخزانات كاملة.
+- الأسعار (`prices`) والتقويم المشترك `ui/DateRangeCalendar.tsx` (مفاتيحه في `common.calendar`).
+- رصيد الصحاري (`finance`): النصوص المشتركة بين سجلات الأيام في `finance:ledger.*`، والأرشيفات في `finance:archive.*`. ترويسة الطباعة الرسمية `print/OfficialReportHeader.tsx` وعناصر الطباعة المشتركة (التوقيعات، تاريخ الطباعة، الاتجاه) في `common.print`، وترقيم الصفحات في `common.pagination`.
+- رصيد الاتحاد (`finance`): البوابة والتبويبات (`finance:hub.*`)، الحركات والأرشيف والطباعة (`tx`, `etihadArchive`, `etihadPrint`)، جرد الخزانات (`tanksReport`, `tanksView`)، الاحتياطي (`reservesView`). بيانات المواقع التجريبية الثابتة في `EtihadMultiSiteReservesView` (أسماء ومواقع ومسؤولون) تُركت بيانات كما هي.
+- الوارد والنافذة السريعة (`deliveries`): الصفحة وكشف الطباعة ونافذة التسجيل/الاستيراد. القيم المخزّنة (الشركات، المجهز الافتراضي، ألوان المنتج، حالات الشحنة، «الكل» في الفلاتر) تبقى بالعربية في البيانات وتُعرض عبر `enumText`. قائمة رموز المحافظات `IRAQ_PROVINCE_CODES` غير مستخدمة حاليًا.
+- المحادثات (`chat`): كل المكوّنات، و`chatUtils` (`lastSeenText`, `formatDay`, `formatClock` عبر `format.ts`)، وأسماء الثيمات والفقاعات والأحجام ومجموعات الرموز بمفاتيح (`chat:theme.<id>` ...). رمز الإشارة `@الكل` بروتوكول مخزّن في نص الرسائل فبقي كما هو. الأصناف الفيزيائية (`pr/pl/right/left`) حُوّلت إلى منطقية في ملفات المحادثات.
+- إدارة النظام (`system`): أسماء الجداول والمجلدات وأنواع النسخ والمهام عبر `tableLabel/prefixLabel/kindLabel/jobLabel` في `systemUi.tsx`. سبب الصيانة اليدوية وكلمة `confirm: 'استرجاع'` المرسلة للخادم قيم بروتوكول بقيت كما هي.
+- الصفحات المخفية (`pages`): التقارير التحليلية والمهام والمدراء؛ القيم التجريبية (تصنيفات المهام، الأولوية، حالة المناوبة، مستوى الخزان) عبر `enumText`.
+- رسائل الخادم: كل خطأ يعيده الخادم يحمل `code` (و`codedError` في `worker/errors.ts` للأخطاء المرمية)، والواجهة تعرضه عبر `serverText(data, fallback)` من `src/i18n/errors.ts` بمفاتيح `server:errors.<code>` (العربية تعرض نص الخادم كما هو). رسائل النظام في المحادثات تُترجم عند العرض عبر `systemText`. تفاصيل سجل العمليات (`audit detail`) ما زالت نصًا عربيًا مخزّنًا.
+- حُذف النظام القديم: `src/lib/translations.ts` و`translateDomTree` و`t`/`tr` من `LanguageContext` (يبقى `direction`/`isRTL`/`setLanguage` مبنية على i18next). الإشعارات الجديدة تُخزّن `key` و`params` وتُترجم عند العرض؛ القديمة تُعرض بنصها.
+- رسائل أخطاء وملاحظات قراءة الملفات في `src/lib/*ReportFile.ts` و`inboundImport.ts` و`saharaFiles.ts` في `common.fileImport` (أنماط مطابقة العناوين العربية تبقى لأنها تطابق نصوص الملفات).
+- ضمان الجودة:
+  - `npm run lint:i18n` (ESLint + `eslint-plugin-i18next`): يمنع النص العربي المكتوب مباشرة في JSX وفي `title/placeholder/alt/aria-label`. يعمل ضمن `npm run build`. القيمة المخزّنة المقصودة تُستثنى بتعليق `eslint-disable-next-line i18next/no-literal-string -- السبب`.
+  - `npm test` (Vitest): تبديل اللغة والاتجاه، الجمع العربي، الأرقام الغربية، `enumText`، `serverText`، ووجود كل مفتاح `t('ns:key')` مستخدم في الشيفرة باللغتين.
+  - `npm run spell` (cspell): تدقيق إملاء ملفات الإنجليزية؛ الأسماء الخاصة في `cspell.json`.
+
+## ما بقي
+لا شيء من الخطة الأصلية. مكوّنان غير مستخدمين (`dashboard/ConsumptionChart.tsx`، `supply/SupplyOrders.tsx`) ونسخ `*backup.tsx` القديمة غير مترجمة ومستثناة من الفحص.
+
+## قواعد إلزامية
+1. ملفات الترجمة: `src/i18n/locales/{ar,en}/<namespace>.json`، مفاتيح وصفية (مثل `balance.totalInbound`) وليست نصوصًا.
+2. في المكوّن: `const { t } = useTranslation(['<ns>', 'common'])` ثم `t('<ns>:key')`. احذف `tr` من `useLanguage()` عندما لا يعود مستخدمًا.
+3. المشترك من `common`: `units.liter|iqd|meter|days`، `actions.save|cancel|delete|close|done|edit|saveChanges|confirm`، `status.*`، `time.*`.
+4. الجمع: العربية 6 صيغ (`_zero _one _two _few _many _other`)، الإنجليزية (`_one _other`). مثال صحيح: «3 أيام»، «15 يومًا»، «100 يوم».
+5. جملة يتوسطها اسم أو رقم → جملة كاملة بـ `<Trans t={t} i18nKey="..." values={{ name }} components={{ 1: <strong /> }} />`، لا تركيب أجزاء.
+6. القيم الثابتة المخزّنة بالعربية في البيانات (أيام، شركات، أصناف، تصنيفات، حالات) → `enumText(value)` من `src/i18n/enums.ts` (أضف القيمة إلى `SLUG` ومفتاحها في `common.enum`). ما يدخله المستخدم (أسماء محطات/موردين/خزانات/ملاحظات) يُعرض كما هو. لا تغيّر قيم البيانات ولا المقارنات (`=== 'حكومي'`).
+7. الأرقام والتواريخ: `src/i18n/format.ts` (`fmtNumber`, `fmtDate`, `fmtTime`, `fmtRelative`, `fmtDayLabel`)، أرقام غربية دائمًا. `formatNumber/formatIQD/formatLiters` في `src/lib/utils.ts` تتبع اللغة.
+8. الاتجاه: `start/end`, `ms/me`, `ps/pe`, `text-start/end`, `border-s/e` بدل left/right. الأسهم حسب `i18n.dir()`. الحقول `dir="ltr"` تحسب الجهات من اتجاه الصفحة. لا تستخدم أسماء أصناف Tailwind مركّبة ديناميكيًا (`pl-${x}`).
+9. العربية: فصحى سليمة (الهمزات، التنوين «يومًا»، «تحديث» لا «تحديت»). الإنجليزية: Sentence case، طبيعية لا حرفية، طبقًا لـ `src/i18n/glossary.json`.
+10. ترجم أيضًا: `placeholder`, `title`, `aria-label`, `alt`, رسائل `alert/confirm`, رؤوس CSV وأسماء الملفات المصدَّرة.
+11. عند البحث الآلي عن `tr(` قيّده بكلمة مستقلة `(?<![\w.])tr\(` حتى لا يلتقط `setCapacityStr(`.
+12. نصوص كتبها المستخدم يدويًا (مثل مسافات زائدة أو صياغة خاصة) احترمها: نظّف المسافات فقط وأبقِ الصياغة، وأضف مقابلها الإنجليزي.
+
+## التحقق بعد كل مرحلة
+```
+npm run i18n:check
+npm run build
+```
+ثم في المتصفح على `http://localhost:3715`: بدّل اللغة إلى English، وافتح الصفحة، وتأكد ألا يبقى نص عربي إلا البيانات. فحص سريع من Console:
+```js
+[...document.querySelectorAll('main *')].filter(e=>!e.children.length&&/[؀-ۿ]/.test(e.textContent)&&e.getClientRects().length).map(e=>e.textContent.trim()).slice(0,50)
+```
+بعد كل مرحلة: commit منفصل ثم `git push origin develop` (لا دمج إلى main).

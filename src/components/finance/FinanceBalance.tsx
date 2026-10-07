@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { usePermissions } from '../../lib/usePermission';
 import { useSessionState } from '../../lib/useSessionState';
 import { Wallet } from 'lucide-react';
 import { useFuelData } from '../../context/FuelDataContext';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
 import { EtihadBalanceRecord, EtihadSummaryMetrics } from '../../types/finance';
 import { EtihadBalanceCards } from './EtihadBalanceCards';
 import { EtihadBalanceTable } from './EtihadBalanceTable';
@@ -32,7 +33,7 @@ type CompanyKey = 'etihad' | 'sahara';
 
 export const FinanceBalance: React.FC = () => {
   const { activeTab, setCurrentSubpage } = useFuelData();
-  const { tr } = useLanguage();
+  const { t } = useTranslation(['finance', 'common']);
 
   // Determine active company based on activeTab
   const [selectedCompany, setSelectedCompany] = useState<CompanyKey>(() => {
@@ -52,13 +53,19 @@ export const FinanceBalance: React.FC = () => {
   // صفحة الصحاري الفرعية المفتوحة (reserves = مزارع الموقع عند الصحاري)
   type SaharaSubtab = 'balance' | 'tanks' | 'black-oil' | 'reserves' | 'reports' | 'petrol';
   const [saharaSubtab, setSaharaSubtab] = useSessionState<SaharaSubtab | null>('sahara_subtab', null);
+  // صفحة فرعية محفوظة من جلسة سابقة ولم تعد مسموحة لهذا الحساب: العودة لبطاقات الشركة
+  const perms = usePermissions();
+  useEffect(() => {
+    if (activeSubtab && !perms.canView(`etihad.${activeSubtab}`)) setActiveSubtabState(null);
+    if (saharaSubtab && !perms.canView(`sahara.${saharaSubtab}`)) setSaharaSubtab(null);
+  }, [activeSubtab, saharaSubtab]); // eslint-disable-line react-hooks/exhaustive-deps
   const saharaTitles: Record<SaharaSubtab, string> = {
-    balance: tr('رصيد شركة الصحاري'),
-    tanks: tr('خزانات الصحاري'),
-    'black-oil': tr('نفط أسود'),
-    reserves: tr('مزارع الموقع'),
-    reports: tr('تقارير الصحاري'),
-    petrol: tr('بنزين الصحاري')
+    balance: t('finance:hub.saharaBalance'),
+    tanks: t('finance:hub.saharaTanks'),
+    'black-oil': t('finance:hub.blackOil'),
+    reserves: t('finance:siteFarms.title'),
+    reports: t('finance:hub.saharaReports'),
+    petrol: t('common:enum.product.saharaGasoline')
   };
 
   const handleBackToSaharaHub = () => {
@@ -87,7 +94,7 @@ export const FinanceBalance: React.FC = () => {
       setCurrentSubpage(saharaSubtab
         ? {
             title: saharaTitles[saharaSubtab],
-            category: tr('شركة الصحاري'),
+            category: t('finance:hub.saharaCompany'),
             parentTab: 'finance-sahara',
             onBack: () => {
               setSaharaSubtab(null);
@@ -97,17 +104,17 @@ export const FinanceBalance: React.FC = () => {
         : null);
     } else if (activeSubtab) {
       const titlesMap: Record<EtihadSubtabKey, string> = {
-        balance: tr('رصيد الشركة'),
-        tanks: tr('خزانات الاتحاد'),
-        'black-oil': tr('نفط أسود'),
-        reserves: tr('رصيد الاحتياطي'),
-        archive: tr('أرشيف حركات رصيد الاتحاد'),
-        reports: tr('تقارير الاتحاد')
+        balance: t('finance:hub.companyBalance'),
+        tanks: t('finance:hub.etihadTanks'),
+        'black-oil': t('finance:hub.blackOil'),
+        reserves: t('finance:hub.reserves'),
+        archive: t('finance:hub.etihadArchive'),
+        reports: t('finance:hub.etihadReports')
       };
 
       setCurrentSubpage({
         title: titlesMap[activeSubtab],
-        category: tr('شركة الاتحاد'),
+        category: t('common:enum.company.etihad'),
         parentTab: 'finance-etihad',
         onBack: () => {
           setActiveSubtab(null);
@@ -117,7 +124,7 @@ export const FinanceBalance: React.FC = () => {
     } else {
       setCurrentSubpage(null);
     }
-  }, [activeSubtab, saharaSubtab, selectedCompany, tr, setCurrentSubpage]);
+  }, [activeSubtab, saharaSubtab, selectedCompany, t, setCurrentSubpage]);
 
   // Sync if activeTab changes from external navigation (e.g. sidebar)
   // (لا يُعاد الضبط عند أول تحميل حتى تبقى الصفحة الفرعية بعد التحديث)
@@ -314,17 +321,17 @@ export const FinanceBalance: React.FC = () => {
     setActiveSubtab(subtab);
 
     const titlesMap: Record<EtihadSubtabKey, string> = {
-      balance: tr('رصيد الشركة'),
-      tanks: tr('خزانات الاتحاد'),
-      'black-oil': tr('نفط أسود'),
-      reserves: tr('رصيد الاحتياطي'),
-      archive: tr('أرشيف حركات رصيد الاتحاد'),
-      reports: tr('تقارير الاتحاد')
+      balance: t('finance:hub.companyBalance'),
+      tanks: t('finance:hub.etihadTanks'),
+      'black-oil': t('finance:hub.blackOil'),
+      reserves: t('finance:hub.reserves'),
+      archive: t('finance:hub.etihadArchive'),
+      reports: t('finance:hub.etihadReports')
     };
 
     setCurrentSubpage({
       title: titlesMap[subtab],
-      category: tr('شركة الاتحاد'),
+      category: t('common:enum.company.etihad'),
       parentTab: 'finance-etihad',
       onBack: () => {
         setActiveSubtab(null);
@@ -363,7 +370,7 @@ export const FinanceBalance: React.FC = () => {
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm('هل أنت متأكد من رغبتك في حذف هذا السجل؟')) {
+    if (window.confirm(t('finance:hub.confirmDeleteRecord'))) {
       setRecords(prev => prev.filter(r => r.id !== id));
       if (activeRecordId === id) setActiveRecordId(null);
     }
@@ -392,30 +399,30 @@ export const FinanceBalance: React.FC = () => {
     setRecords(imported);
   };
 
-  const companyTitle = selectedCompany === 'etihad' ? tr('رصيد شركة الاتحاد') : tr('رصيد شركة الصحاري');
+  const companyTitle = selectedCompany === 'etihad' ? t('finance:hub.etihadBalance') : t('finance:hub.saharaBalance');
 
   const subpageTitlesMap: Record<EtihadSubtabKey, string> = {
     balance: companyTitle,
-    tanks: tr('خزانات الاتحاد'),
-    'black-oil': tr('نفط أسود'),
-    reserves: tr('رصيد الاحتياطي'),
-    archive: tr('أرشيف حركات رصيد الاتحاد'),
-    reports: tr('تقارير الاتحاد')
+    tanks: t('finance:hub.etihadTanks'),
+    'black-oil': t('finance:hub.blackOil'),
+    reserves: t('finance:hub.reserves'),
+    archive: t('finance:hub.etihadArchive'),
+    reports: t('finance:hub.etihadReports')
   };
 
   const subpageDescriptionsMap: Record<EtihadSubtabKey, string> = {
-    balance: tr('لوحة متابعة شاملة لأرصدة شركة الاتحاد، الخزانات، النفط الأسود، ورصيد الاحتياطي المتعدد'),
-    tanks: tr('متابعة سعات الخزانات الاستراتيجية، مقاييس السوائل البصرية، وحساسات الحرارة والضغط.'),
-    'black-oil': tr('المخزون الاستراتيجي المعتمد للنفط الأسود وتجهيز خطوط الإنتاج وأفران المعامل.'),
-    reserves: tr('تأمين الاحتياطي الإستراتيجي الموزع على المواقع التشغيلية مع حدود الأمان الإلزامية.'),
-    archive: tr('كشوفات الحسابات الدورية، المطابقة والتدقيق المالي، ومؤشرات الاستهلاك.'),
-    reports: tr('المرجع الرسمي الموحّد لطباعة كشوفات وتقارير الشركة')
+    balance: t('finance:hub.etihadOverview'),
+    tanks: t('finance:hub.tanksDesc'),
+    'black-oil': t('finance:hub.blackOilDesc'),
+    reserves: t('finance:hub.reservesDesc'),
+    archive: t('finance:hub.archiveDesc'),
+    reports: t('finance:hub.reportsDesc')
   };
 
   const activeSubpageTitle = activeSubtab ? subpageTitlesMap[activeSubtab] : companyTitle;
   const activeSubpageDescription = activeSubtab
     ? subpageDescriptionsMap[activeSubtab]
-    : tr('لوحة متابعة شاملة لأرصدة شركة الاتحاد، الخزانات، النفط الأسود، ورصيد الاحتياطي المتعدد');
+    : t('finance:hub.etihadOverview');
 
   return (
     <div className="flex-1 flex flex-col space-y-2">
@@ -425,7 +432,7 @@ export const FinanceBalance: React.FC = () => {
         <div className="print-only">
           <EtihadPrintReport
             records={dateFilteredRecords}
-            filterDateLabel={filterRange === 'today' ? tr('سجلات اليوم') : filterRange === 'week' ? tr('آخر أسبوع') : tr('كافة السجلات')}
+            filterDateLabel={filterRange === 'today' ? t('finance:hub.filterToday') : filterRange === 'week' ? t('common:print.rangeWeek') : t('finance:hub.filterAll')}
           />
         </div>
       )}
@@ -455,7 +462,7 @@ export const FinanceBalance: React.FC = () => {
             {activeSubtab !== 'tanks' && activeSubtab !== 'archive' && (
               <Breadcrumb
                 items={[
-                  { label: tr('شركة الاتحاد'), onClick: handleBackToHub },
+                  { label: t('common:enum.company.etihad'), onClick: handleBackToHub },
                   { label: activeSubpageTitle }
                 ]}
               />
@@ -581,7 +588,7 @@ export const FinanceBalance: React.FC = () => {
             {saharaSubtab !== 'tanks' && (
               <Breadcrumb
                 items={[
-                  { label: tr('شركة الصحاري'), onClick: handleBackToSaharaHub },
+                  { label: t('finance:hub.saharaCompany'), onClick: handleBackToSaharaHub },
                   { label: saharaTitles[saharaSubtab] }
                 ]}
               />
@@ -615,7 +622,7 @@ export const FinanceBalance: React.FC = () => {
         isOpen={isPrintModalOpen}
         onClose={() => setIsPrintModalOpen(false)}
         records={dateFilteredRecords}
-        filterDateLabel={filterRange === 'today' ? tr('سجلات اليوم') : filterRange === 'week' ? tr('آخر أسبوع') : tr('كافة السجلات')}
+        filterDateLabel={filterRange === 'today' ? t('finance:hub.filterToday') : filterRange === 'week' ? t('common:print.rangeWeek') : t('finance:hub.filterAll')}
       />
     </div>
   );

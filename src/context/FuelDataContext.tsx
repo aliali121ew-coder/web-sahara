@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, startTransition } from 'react';
+import { CLOUD_APPLIED_EVENT } from '../lib/cloudSync';
 import {
   TankItem,
   FuelProductMetric,
@@ -16,12 +17,20 @@ import {
   INITIAL_TANKS,
   INITIAL_FUEL_METRICS,
   INITIAL_SUPPLIER_PRICES,
+  INITIAL_SUPPLIER_PRICES_MOCK,
   INITIAL_SUPPLY_REQUESTS,
   INITIAL_MANAGERS,
   INITIAL_TASKS,
   INITIAL_MESSAGES,
   INITIAL_NOTIFICATIONS
 } from '../lib/mockData';
+import { logPrice } from '../lib/priceLog';
+import { buildArchiveSuppliers, sameSupplier, deliveriesOfSupplier, archiveValue, recordColor } from '../lib/archiveSuppliers';
+
+const MOCK_SUPPLIERS_REMOVED_KEY = 'sahara_supplier_mock_removed';
+const SUPPLIER_NAMES_REPAIRED_KEY = 'sahara_supplier_names_repaired';
+const SUPPLIER_SOURCE_V2_KEY = 'sahara_supplier_source_v2';
+const SUPPLIER_COLOR_YELLOW_KEY = 'sahara_supplier_color_yellow_v1';
 
 interface FuelDataContextType {
   activeTab: NavTabId;
@@ -56,12 +65,16 @@ interface FuelDataContextType {
   markAllNotificationsRead: () => void;
   updateTankLevel: (tankId: string, deltaLiters: number) => void;
   refreshAllData: () => void;
+  /** إضافة مورد أو تعديله؛ تغيير السعر يحدّث السعر السابق ونسبة التغير وسجل الأسعار فيظهر فورًا في مؤشر الأسعار */
+  saveSupplier: (supplier: SupplierPriceRecord) => void;
+  deleteSupplier: (id: string) => void;
 }
 
 const VALID_TABS: NavTabId[] = [
   'dashboard',
   'tanks',
   'prices',
+  'suppliers',
   'deliveries',
   'deliveries-sahara',
   'deliveries-etihad',
@@ -76,8 +89,15 @@ const VALID_TABS: NavTabId[] = [
 ];
 
 /** معرّف فريد للشحنة (الاستيراد يضيف عشرات الشحنات في نفس الجزء من الثانية، فالوقت + رقم عشوائي صغير كان يتكرر) */
-const newDeliveryId = (): string =>
-  `del-${Date.now()}-${typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 10)}`;
+const randomTag = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 10));
+const newDeliveryId = (): string => `del-${Date.now()}-${randomTag()}`;
+/** معرّف فريد (الوقت وحده يتكرر عند إنشاء عنصرين في نفس الجزء من الثانية، وكان يكرر الإشعارات) */
+const newId = (prefix: string) => `${prefix}-${Date.now()}-${randomTag()}`;
+/** حذف العناصر المكررة بنفس المعرّف (يُبقى أول ظهور) */
+const dedupeById = <T extends { id: string }>(list: T[]): T[] => {
+  const seen = new Set<string>();
+  return list.filter(x => (seen.has(x.id) ? false : (seen.add(x.id), true)));
+};
 
 /** الشحنات التجريبية القديمة (del-1 … del-50) تُحذف؛ المرفوعة من الإكسل أو المضافة يدويًا معرّفها del-<وقت>-… */
 const isRealDelivery = (d: InboundDelivery) => !/^del-\d{1,3}$/.test(d.id || '');
@@ -124,8 +144,10 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [currentSubpage, setCurrentSubpage] = useState<SubpageInfo | null>(null);
 
   const setActiveTab = useCallback((tab: NavTabId) => {
-    setActiveTabState(tab);
-    setCurrentSubpage(null); // Automatically reset subpage when navigating tabs
+    startTransition(() => {
+      setActiveTabState(tab);
+      setCurrentSubpage(null); // Automatically reset subpage when navigating tabs
+    });
     try {
       localStorage.setItem('sahara_active_tab', tab);
       if (typeof window !== 'undefined' && window.location.hash !== `#${tab}`) {
@@ -160,8 +182,10 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const handleHashChange = () => {
         const hash = window.location.hash.replace(/^#/, '');
         if (VALID_TABS.includes(hash as NavTabId)) {
-          setActiveTabState(hash as NavTabId);
-          setCurrentSubpage(null);
+          startTransition(() => {
+            setActiveTabState(hash as NavTabId);
+            setCurrentSubpage(null);
+          });
           try {
             localStorage.setItem('sahara_active_tab', hash);
           } catch (e) {}
@@ -327,8 +351,40 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const [notifications, setNotifications] = useState<SystemNotification[]>(() => {
     const saved = localStorage.getItem('sahara_notifications');
-    return saved ? JSON.parse(saved) : INITIAL_NOTIFICATIONS;
+    return saved ? dedupeById(JSON.parse(saved)) : INITIAL_NOTIFICATIONS;
   });
+
+  // تعديلات من متصفح/جهاز آخر وصلت من السحابة أثناء فتح الصفحة: تُعاد قراءة المفاتيح التي تغيّرت فقط،
+  // بنفس تنظيف التحميل الأول، فتبقى القيمة المحفوظة كما هي ولا يُعاد رفعها
+  useEffect(() => {
+    const parse = <T,>(key: string): T | null => {
+      try {
+        const saved = localStorage.getItem(key);
+        return saved ? (JSON.parse(saved) as T) : null;
+      } catch {
+        return null;
+      }
+    };
+    const onCloud = (e: Event) => {
+      const keys = (e as CustomEvent<string[]>).detail ?? [];
+      const has = (k: string) => keys.includes(k);
+      if (has('sahara_tanks')) { const v = parse<TankItem[]>('sahara_tanks'); if (Array.isArray(v)) setTanks(v); }
+      if (has('sahara_fuel_metrics')) {
+        const v = parse<FuelProductMetric[]>('sahara_fuel_metrics');
+        if (Array.isArray(v)) setFuelMetrics(v.map(item => { const initial = INITIAL_FUEL_METRICS.find(i => i.id === item.id); return initial ? { ...item, name: initial.name } : item; }));
+      }
+      if (has('sahara_supplier_prices')) { const v = parse<SupplierPriceRecord[]>('sahara_supplier_prices'); if (Array.isArray(v)) setSupplierPrices(v); }
+      if (has('sahara_inbound_deliveries')) { const v = parse<InboundDelivery[]>('sahara_inbound_deliveries'); if (Array.isArray(v)) setSaharaDeliveries(dedupeIds(v.filter(isRealDelivery).map(normalizeDeliveryItem))); }
+      if (has('etihad_inbound_deliveries')) { const v = parse<InboundDelivery[]>('etihad_inbound_deliveries'); if (Array.isArray(v)) setEtihadDeliveries(dedupeIds(v.filter(isRealDelivery).map(normalizeDeliveryItem))); }
+      if (has('sahara_supply_requests')) { const v = parse<SupplyRequest[]>('sahara_supply_requests'); if (Array.isArray(v)) setSupplyRequests(v); }
+      if (has('sahara_tasks')) { const v = parse<OperationalTask[]>('sahara_tasks'); if (Array.isArray(v)) setTasks(v); }
+      if (has('sahara_messages')) { const v = parse<DispatchMessage[]>('sahara_messages'); if (Array.isArray(v)) setMessages(v); }
+      if (has('sahara_notifications')) { const v = parse<SystemNotification[]>('sahara_notifications'); if (Array.isArray(v)) setNotifications(dedupeById(v)); }
+    };
+    window.addEventListener(CLOUD_APPLIED_EVENT, onCloud);
+    return () => window.removeEventListener(CLOUD_APPLIED_EVENT, onCloud);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Save changes to localStorage
   useEffect(() => {
@@ -342,6 +398,83 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     localStorage.setItem('sahara_supplier_prices', JSON.stringify(supplierPrices));
   }, [supplierPrices]);
+
+  // الموردون الحقيقيون من أرشيف الوارد: يُحذف التجريبيون مرة واحدة (ما لم يعدّلهم المستخدم)،
+  // ويُضاف أي مورد جديد يظهر في الوارد تلقائيًا بسعر آخر شحنة له
+  useEffect(() => {
+    if (!saharaDeliveries.length && !etihadDeliveries.length) return;
+    setSupplierPrices(prev => {
+      let list = prev;
+      if (!localStorage.getItem(MOCK_SUPPLIERS_REMOVED_KEY)) {
+        const seed = new Map(INITIAL_SUPPLIER_PRICES_MOCK.map(m => [m.id, m.supplierName]));
+        list = list.filter(s => seed.get(s.id) !== s.supplierName);
+        localStorage.setItem(MOCK_SUPPLIERS_REMOVED_KEY, '1');
+      }
+      // فصل الصحاري عن الاتحاد: السجلات المستخرجة قبل الفصل (بلا شركة) تُستبدل بسجل لكل شركة،
+      // مع نقل ما أدخله المستخدم (الهاتف، الموقع، المندوب، الشعار، التصنيف)
+      const legacy = list.filter(s => s.id.startsWith('sup-a-') && !s.company);
+      if (legacy.length) list = list.filter(s => !legacy.includes(s));
+      const missing = buildArchiveSuppliers(saharaDeliveries, etihadDeliveries)
+        .filter(a => !list.some(s => (!s.company || s.company === a.company) && sameSupplier(s.supplierName, a.supplierName)))
+        .map(a => {
+          const old = legacy.find(l => sameSupplier(l.supplierName, a.supplierName));
+          return old ? { ...a, phone: old.phone, location: old.location, contactName: old.contactName, contactRole: old.contactRole, logo: old.logo, category: old.category } : a;
+        });
+      // إصلاح لمرة واحدة: نقل الأسماء أثناء الفصل أعطى بعض السجلات اسم مورد قريب؛ يُعاد لكل سجل أرشيف اسمه الأصلي
+      if (!localStorage.getItem(SUPPLIER_NAMES_REPAIRED_KEY)) {
+        const built = new Map(buildArchiveSuppliers(saharaDeliveries, etihadDeliveries).map(b => [b.id, b.supplierName]));
+        list = list.map(x => (built.has(x.id) && built.get(x.id) !== x.supplierName ? { ...x, supplierName: built.get(x.id)! } : x));
+        localStorage.setItem(SUPPLIER_NAMES_REPAIRED_KEY, '1');
+      }
+      // لمرة واحدة: المورد صار يُؤخذ من «اسم المجهز» أولًا ثم «الشركة المجهزة»؛ يُعاد حساب سجلات الأرشيف بهذه القاعدة.
+      // يُحذف السجل الذي لم يعد له وارد (ما لم يُدخل له المستخدم بيانات)، ويُبقى السعر الذي عدّله المستخدم بعد آخر وارد
+      if (!localStorage.getItem(SUPPLIER_SOURCE_V2_KEY)) {
+        const built = new Map(buildArchiveSuppliers(saharaDeliveries, etihadDeliveries).map(b => [b.id, b]));
+        const hasUserData = (x: SupplierPriceRecord) => !!(x.phone || x.location || x.contactName || x.logo);
+        list = list
+          .filter(x => !x.id.startsWith('sup-a-') || built.has(x.id) || hasUserData(x))
+          .map(x => {
+            const b = built.get(x.id);
+            if (!b) return x;
+            const manual = (x.lastUpdated || '').replace(/-/g, '/') > b.lastUpdated;
+            return manual ? x : { ...x, priceIqd: b.priceIqd, previousPriceIqd: b.previousPriceIqd, changePercent: b.changePercent, lastUpdated: b.lastUpdated, history: b.history, product: b.product || x.product };
+          });
+        localStorage.setItem(SUPPLIER_SOURCE_V2_KEY, '1');
+      }
+      // مورد أُدخل يدويًا بلا شركة: يُنسب للشركة التي ورد إليها أكثر
+      if (list.some(x => !x.company)) {
+        list = list.map(x => {
+          if (x.company) return x;
+          const n = (ds: InboundDelivery[]) => deliveriesOfSupplier(ds, d => d, x.supplierName).length;
+          const sa = n(saharaDeliveries), et = n(etihadDeliveries);
+          return sa || et ? { ...x, company: et > sa ? 'etihad' : 'sahara' } : x;
+        });
+      }
+      // الكثافة واللون: تُملأ مرة من الأرشيف للسجلات التي لم تُضبط فيها بعد
+      // (قيم الأرشيف الفارغة «_»/«0» التي نُسخت سابقًا تُعامل كغير مضبوطة)
+      const unset = (v?: string) => v === undefined || (v !== '' && !archiveValue(v));
+      if (list.some(x => unset(x.density) || unset(x.color))) {
+        const built = buildArchiveSuppliers(saharaDeliveries, etihadDeliveries);
+        let touched = false;
+        const filled = list.map(x => {
+          if (!unset(x.density) && !unset(x.color)) return x;
+          const b = built.find(a => a.id === x.id) ?? built.find(a => a.company === x.company && sameSupplier(a.supplierName, x.supplierName));
+          if (!b) return x;
+          const density = unset(x.density) ? b.density : x.density, color = unset(x.color) ? b.color : x.color;
+          if (density === x.density && color === x.color) return x;
+          touched = true;
+          return { ...x, density, color };
+        });
+        if (touched) list = filled;
+      }
+      // لمرة واحدة: «أصفر مخضر» المنسوخ من الأرشيف يصبح «أصفر» في سجلات الأسعار
+      if (!localStorage.getItem(SUPPLIER_COLOR_YELLOW_KEY)) {
+        if (list.some(x => recordColor(x.color) !== x.color)) list = list.map(x => (recordColor(x.color) !== x.color ? { ...x, color: recordColor(x.color) } : x));
+        localStorage.setItem(SUPPLIER_COLOR_YELLOW_KEY, '1');
+      }
+      return missing.length || list !== prev ? [...list, ...missing] : prev;
+    });
+  }, [saharaDeliveries, etihadDeliveries]);
 
   useEffect(() => {
     localStorage.setItem('sahara_inbound_deliveries', JSON.stringify(saharaDeliveries));
@@ -416,9 +549,11 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // Add notification
     const newNotif: SystemNotification = {
-      id: `notif-${Date.now()}`,
+      id: newId('notif'),
       title: 'شحنة واردة جديدة',
       message: `تم تسجيل وصول الشحنة وفوجر رقم ${voucher} بحجم ${qty.toLocaleString()} لتر لصالح ${assignedCompany}.`,
+      key: 'inbound',
+      params: { voucher, qty, company: assignedCompany },
       timestamp: 'الآن',
       read: false,
       type: 'success',
@@ -467,14 +602,16 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const addSupplyRequest = (request: Omit<SupplyRequest, 'id'>) => {
     const newRequest: SupplyRequest = {
       ...request,
-      id: `req-${Date.now()}`,
+      id: newId('req'),
     };
     setSupplyRequests((prev) => [newRequest, ...prev]);
 
     const newNotif: SystemNotification = {
-      id: `notif-${Date.now()}`,
+      id: newId('notif'),
       title: 'طلب تجهيز وقود جديد',
       message: `تم إرسال طلب تزويد ${request.volumeLiters.toLocaleString()} لتر لصالح ${request.beneficiary}.`,
+      key: 'supply',
+      params: { qty: request.volumeLiters, beneficiary: request.beneficiary },
       timestamp: 'الآن',
       read: false,
       type: 'info',
@@ -484,7 +621,7 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const addMessage = (text: string, isEmergency = false) => {
     const newMsg: DispatchMessage = {
-      id: `msg-${Date.now()}`,
+      id: newId('msg'),
       sender: 'ali - مدير النظام',
       role: 'الإدارة المركزية',
       text,
@@ -532,6 +669,51 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
   };
 
+  const saveSupplier = (supplier: SupplierPriceRecord) => {
+    // السجل: يُكتب خارج دالة التحديث (قد تُستدعى مرتين في وضع التطوير)
+    const before = supplierPrices.find(s => s.id === supplier.id);
+    const fields: [keyof SupplierPriceRecord, string][] = [['supplierName', 'name'], ['product', 'product'], ['density', 'density'], ['color', 'color'], ['priceIqd', 'price'], ['company', 'company'], ['category', 'category'], ['phone', 'phone'], ['location', 'location'], ['logo', 'logo']];
+    const changes = before ? fields.filter(([k]) => (before[k] ?? '') !== (supplier[k] ?? '')).map(([, n]) => n) : [];
+    if (!before || changes.length) {
+      logPrice({
+        source: 'suppliers', action: before ? 'update' : 'create', key: supplier.id, name: supplier.supplierName,
+        company: supplier.company, product: supplier.product, density: supplier.density, color: supplier.color,
+        prevPrice: before ? before.priceIqd : null, price: supplier.priceIqd, changes,
+      });
+    }
+    const d = new Date();
+    const today = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+    setSupplierPrices(prev => {
+      const old = prev.find(s => s.id === supplier.id);
+      if (!old) {
+        const rec = { ...supplier, previousPriceIqd: supplier.previousPriceIqd || supplier.priceIqd, changePercent: 0, lastUpdated: today, history: [{ date: today, price: supplier.priceIqd }] };
+        return [...prev, rec];
+      }
+      const priceChanged = old.priceIqd !== supplier.priceIqd;
+      const next: SupplierPriceRecord = priceChanged
+        ? {
+            ...supplier,
+            previousPriceIqd: old.priceIqd,
+            changePercent: old.priceIqd ? Math.round(((supplier.priceIqd - old.priceIqd) / old.priceIqd) * 10000) / 100 : 0,
+            lastUpdated: today,
+            history: [{ date: today, price: supplier.priceIqd }, ...(old.history ?? [{ date: old.lastUpdated, price: old.priceIqd }])].slice(0, 60),
+          }
+        : { ...supplier, history: old.history };
+      return prev.map(s => (s.id === supplier.id ? next : s));
+    });
+  };
+
+  const deleteSupplier = (id: string) => {
+    const before = supplierPrices.find(s => s.id === id);
+    if (before) {
+      logPrice({
+        source: 'suppliers', action: 'delete', key: id, name: before.supplierName, company: before.company,
+        product: before.product, density: before.density, color: before.color, prevPrice: before.priceIqd, price: null,
+      });
+    }
+    setSupplierPrices(prev => prev.filter(s => s.id !== id));
+  };
+
   const refreshAllData = () => {
     setTanks([...INITIAL_TANKS]);
     setFuelMetrics([...INITIAL_FUEL_METRICS]);
@@ -576,6 +758,8 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         markAllNotificationsRead,
         updateTankLevel,
         refreshAllData,
+        saveSupplier,
+        deleteSupplier,
       }}
     >
       {children}

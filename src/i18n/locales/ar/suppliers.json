@@ -1,0 +1,247 @@
+{
+  "csvFile": "الموردين",
+  "empty": "لا يوجد موردون مطابقون",
+  "units": {
+    "iqdPerLiter": "د.ع / لتر"
+  },
+  "header": {
+    "representative": "المندوب",
+    "noContact": "لم يُحدَّد"
+  },
+  "fields": {
+    "name": "اسم المورد",
+    "product": "المنتج",
+    "phone": "رقم الهاتف",
+    "location": "الموقع",
+    "category": "التصنيف",
+    "density": "الكثافة",
+    "color": "اللون"
+  },
+  "cards": {
+    "current": "السعر الحالي",
+    "previous": "السعر السابق",
+    "change": "نسبة التغيّر",
+    "lastInbound": "آخر وارد",
+    "updatedOn": "آخر تحديث",
+    "difference": "الفرق",
+    "vsPrevious": "عن السعر السابق",
+    "lastChange": "آخر تغيير",
+    "vsMarket": "عن متوسط السوق",
+    "viewDetails": "عرض التفاصيل",
+    "noInbound": "لا توجد شحنات واردة مسجلة",
+    "tankers": "عدد الصهاريج",
+    "lastDay": "آخر يوم وارد",
+    "totalTankers": "الإجمالي",
+    "lastDayOn": "آخر وارد في {{date}}",
+    "diffFromCurrent": "الفرق عن الحالي",
+    "marketAvgOf": "متوسط {{company}} · {{period}}"
+  },
+  "change": {
+    "up": "ارتفاع",
+    "down": "انخفاض",
+    "stable": "ثابت"
+  },
+  "tabs": {
+    "all": "كل الموردين ({{count}})"
+  },
+  "toolbar": {
+    "search": "ابحث عن مورد",
+    "sortBy": "ترتيب حسب",
+    "actions": "إجراءات",
+    "add": "إضافة مورد",
+    "export": "تصدير CSV"
+  },
+  "sort": {
+    "name": "الاسم",
+    "priceDesc": "السعر: الأعلى أولًا",
+    "priceAsc": "السعر: الأقل أولًا",
+    "change": "نسبة التغيّر",
+    "updated": "آخر تحديث"
+  },
+  "table": {
+    "supplier": "المورد",
+    "current": "السعر الحالي",
+    "previous": "السعر السابق",
+    "change": "التغيّر",
+    "updated": "آخر تحديث",
+    "action": "إجراء",
+    "view": "عرض",
+    "inbound": "الوارد",
+    "tankers": "عدد الصهاريج",
+    "receiver": "الشركة المستلمة",
+    "product": "نوع المنتج",
+    "density": "الكثافة",
+    "color": "اللون"
+  },
+  "modal": {
+    "addTitle": "إضافة مورد",
+    "editTitle": "تعديل بيانات المورد",
+    "logo": "رفع شعار",
+    "removeLogo": "إزالة الشعار",
+    "priceNote": "سيصبح {{old}} السعر السابق، ويتحدّث مؤشر الأسعار في الرئيسية مباشرة",
+    "sectionBasic": "البيانات الأساسية",
+    "sectionPrice": "السعر والشركة المستلمة",
+    "sectionContact": "التواصل",
+    "newHint": "مورد جديد",
+    "deleteAsk": "حذف المورد نهائيًا؟"
+  },
+  "pager": {
+    "label": "التنقل بين الصفحات",
+    "prev": "السابق",
+    "next": "التالي",
+    "range": "{{from}}–{{to}} من {{total}}"
+  },
+  "receiver": {
+    "sahara": "الصحاري",
+    "etihad": "الاتحاد"
+  },
+  "profile": {
+    "cardLabel": "ملف المورد",
+    "back": "الموردين",
+    "subtitle": "وارد الصحاري والاتحاد من الأرشيف",
+    "highest": "أعلى سعر",
+    "lowest": "أدنى سعر",
+    "tapToFilter": "اضغط للتصفية",
+    "totalInbound": "الوارد الكلي",
+    "tankersTotal_zero": "لا صهاريج",
+    "tankersTotal_one": "صهريج واحد",
+    "tankersTotal_two": "صهريجان",
+    "tankersTotal_few": "{{count}} صهاريج",
+    "tankersTotal_many": "{{count}} صهريجًا",
+    "tankersTotal_other": "{{count}} صهريج",
+    "archiveTitle": "سجل الوارد",
+    "archiveSummary": "{{count}} شحنة · {{qty}} لتر",
+    "empty": "لا توجد شحنات",
+    "col": {
+      "date": "التاريخ",
+      "equipper": "الشركة المجهزة",
+      "driver": "السائق",
+      "truck": "رقم العجلة",
+      "qty": "الكمية",
+      "price": "السعر"
+    },
+    "statTankers": "الصهاريج",
+    "statEquippers": "الشركات المجهزة",
+    "statLast": "آخر وارد",
+    "equippersCount_zero": "لا شركات",
+    "equippersCount_one": "شركة مجهزة واحدة",
+    "equippersCount_two": "شركتان مجهزتان",
+    "equippersCount_few": "{{count}} شركات مجهزة",
+    "equippersCount_many": "{{count}} شركة مجهزة",
+    "equippersCount_other": "{{count}} شركة مجهزة",
+    "tankersShort": "صهريج",
+    "showAll": "عرض كل الوارد",
+    "priceRange": "نطاق السعر",
+    "tankersByCompany": "الصهاريج حسب الشركة",
+    "lastPrice": "آخر سعر: {{price}}",
+    "avgPrice": "متوسط السعر",
+    "chartTitle": "الوارد الشهري",
+    "expand": "تكبير الرسم",
+    "analysisTitle": "تحليل وارد المورد",
+    "period": {
+      "d30": "30 يومًا",
+      "d90": "90 يومًا",
+      "m6": "6 أشهر",
+      "m12": "12 شهرًا",
+      "all": "الكل"
+    },
+    "metric": {
+      "qty": "الكمية",
+      "tankers": "الصهاريج",
+      "price": "السعر"
+    },
+    "mode": {
+      "waves": "أمواج",
+      "bars": "أعمدة"
+    },
+    "peakDay": "أعلى يوم",
+    "peakMonth": "أعلى شهر",
+    "avgLine": "خط المتوسط",
+    "toggleSeries": "إظهار أو إخفاء",
+    "zoomIn": "تكبير (تفاصيل أدق)",
+    "zoomOut": "تصغير (تفاصيل أعم)",
+    "allEquippers": "كل المجهزين",
+    "gran": {
+      "month": "شهري",
+      "week": "أسبوعي",
+      "day": "يومي",
+      "shipment": "كل شحنة"
+    },
+    "monthlyChange": "نسبة التغيّر الشهرية",
+    "noPrevMonth": "لا وارد قبل هذا الشهر"
+  },
+  "compare": {
+    "button": "مقارنة",
+    "title": "مقارنة الموردين",
+    "subtitle_zero": "لا موردين في هذه الفترة",
+    "subtitle_one": "مورد واحد في هذه الفترة",
+    "subtitle_two": "موردان في هذه الفترة",
+    "subtitle_few": "{{count}} موردين في هذه الفترة",
+    "subtitle_many": "{{count}} موردًا في هذه الفترة",
+    "subtitle_other": "{{count}} مورد في هذه الفترة",
+    "allCompanies": "كل الشركات",
+    "others": "باقي الموردين",
+    "pick": "الموردون ({{count}}/{{max}})",
+    "total": "الإجمالي",
+    "suppliersCount": "الموردون",
+    "leaderShare": "حصة الأول",
+    "clickMonth": "اضغط لفتح الشهر يومًا بيوم",
+    "rankingLabel": "ترتيب الموردين"
+  },
+  "log": {
+    "button": "السجل",
+    "title": "سجل الأسعار والمشتريات",
+    "subtitle": "{{count}} عملية مسجّلة",
+    "search": "ابحث بالاسم أو المنتج أو المستخدم",
+    "empty": "لا توجد عمليات مسجّلة بعد",
+    "tab": {
+      "ops": "العمليات",
+      "match": "المطابقة"
+    },
+    "source": {
+      "all": "الكل",
+      "suppliers": "كل الموردين",
+      "purchases": "أسعار المشتريات"
+    },
+    "action": {
+      "create": "إضافة",
+      "update": "تعديل",
+      "delete": "حذف",
+      "reset": "إرجاع للتلقائي",
+      "snapshot": "تثبيت"
+    },
+    "field": {
+      "name": "الاسم",
+      "product": "المنتج",
+      "density": "الكثافة",
+      "color": "اللون",
+      "price": "السعر",
+      "company": "الشركة",
+      "category": "التصنيف",
+      "phone": "الهاتف",
+      "location": "الموقع",
+      "logo": "الشعار"
+    },
+    "col": {
+      "when": "التاريخ والوقت",
+      "section": "القسم",
+      "action": "العملية",
+      "name": "المورد / الصنف",
+      "newPrice": "السعر الجديد",
+      "by": "بواسطة",
+      "current": "السعر في الجدول",
+      "logged": "آخر سعر في السجل",
+      "lastOp": "آخر عملية",
+      "status": "الحالة"
+    },
+    "status": {
+      "ok": "مطابق",
+      "diff": "مختلف",
+      "none": "غير مسجّل"
+    },
+    "matchHint": "{{count}} سطر لا يطابق السجل (تغيّر بلا عملية مسجّلة أو لم يُسجّل بعد)",
+    "allMatch": "الجدولان مطابقان للسجل",
+    "snapshot": "تثبيت الحالة الحالية",
+    "statusHelp": "مطابق: السعر الحالي هو آخر سعر مسجّل · مختلف: تغيّر السعر دون عملية حفظ (مثل تحديث تلقائي من الوارد) · غير مسجّل: لم تُجرَ عليه أي عملية بعد. إجمالي العمليات: {{n}}"
+  }
+}

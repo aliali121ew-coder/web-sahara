@@ -4,13 +4,13 @@ import { formatNumber, getBusinessDate } from '../../lib/utils';
 import { useBlackOilLedger, BLACK_OIL_SECTION_KEYS, type BlackOilCompany } from '../../lib/blackOilLedger';
 import { useCentralTanks } from '../../lib/centralTanks';
 import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
 import { BlackOilDailyLedger } from './BlackOilDailyLedger';
 
 
 /** صفحة النفط الأسود (الاتحاد أو الصحاري): نفس التصميم، ولكل شركة سجلها وخزاناتها */
 export const EtihadBlackOilView: React.FC<{ company?: BlackOilCompany }> = ({ company = 'etihad' }) => {
-  const { tr } = useLanguage();
+  const { t } = useTranslation(['finance', 'common']);
 
   // البطاقات تقرأ من السجل اليومي (المصدر المركزي للنفط الأسود)
   const { balance, avgDaily, coverageDays, latest } = useBlackOilLedger(company);
@@ -38,7 +38,7 @@ export const EtihadBlackOilView: React.FC<{ company?: BlackOilCompany }> = ({ co
         <div className="p-5 rounded-3xl bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 text-white border border-purple-900/50 shadow-soft-card relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
           <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-xs font-bold text-purple-200">{tr('إجمالي رصيد النفط الأسود')}</span>
+            <span className="text-xs font-bold text-purple-200">{t('finance:hub.bo.total')}</span>
             <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center">
               <Droplets className="w-4 h-4" />
             </div>
@@ -47,48 +47,48 @@ export const EtihadBlackOilView: React.FC<{ company?: BlackOilCompany }> = ({ co
             <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white">
               {formatNumber(etihadTotalBalance)}
             </span>
-            <span className="text-xs font-bold text-purple-300">{tr('لتر')}</span>
+            <span className="text-xs font-bold text-purple-300">{t('common:units.liter')}</span>
           </div>
           <div className="mt-3 pt-2.5 border-t border-purple-800/40 flex items-center justify-between text-[11px] text-purple-300">
-            <span>{tr('المخزون الاستراتيجي المعتمد')}</span>
-            <span className="font-mono font-bold text-emerald-400">{latest ? latest.date : tr('لا يوجد سجل')}</span>
+            <span>{t('finance:hub.bo.strategic')}</span>
+            <span className="font-mono font-bold text-emerald-400">{latest ? latest.date : t('finance:hub.bo.noRecord')}</span>
           </div>
         </div>
 
         {/* Card 2: Total Capacity & Remaining */}
         <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-soft-card">
           <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{tr('السعة الاستيعابية الكلية')}</span>
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{t('finance:hub.bo.capacity')}</span>
             <span className="font-mono text-xs font-bold text-purple-600 dark:text-purple-400">{etihadFill}%</span>
           </div>
           <div className="flex items-baseline gap-1.5">
             <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-slate-900 dark:text-white">
               {formatNumber(etihadCapacity)}
             </span>
-            <span className="text-xs font-bold text-slate-400">{tr('لتر')}</span>
+            <span className="text-xs font-bold text-slate-400">{t('common:units.liter')}</span>
           </div>
           <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full mt-3 overflow-hidden">
             <div className="bg-gradient-to-r from-purple-600 to-indigo-600 h-full rounded-full" style={{ width: `${etihadFill}%` }} />
           </div>
           <span className="text-[11px] text-slate-400 mt-2 block">
-            {tr('سعة متبقية فارغة')}: {formatNumber(etihadRemainingCapacity)} {tr('لتر')}
+            {t('finance:hub.bo.remaining')}: {formatNumber(etihadRemainingCapacity)} {t('common:units.liter')}
           </span>
         </div>
 
         {/* Card 3: Coverage Days */}
         <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-soft-card">
           <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{tr('أيام التغطية التشغيلية')}</span>
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{t('finance:hub.bo.coverage')}</span>
             <Calendar className="w-4 h-4 text-purple-600 dark:text-purple-400" />
           </div>
           <div className="flex items-baseline gap-1.5">
             <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-purple-600 dark:text-purple-400">
               {etihadCoverageDays}
             </span>
-            <span className="text-xs font-bold text-slate-400">{tr('يوم')}</span>
+            <span className="text-xs font-bold text-slate-400">{t('finance:blackOil.form.daysUnit')}</span>
           </div>
           <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-            <span>{tr('تاريخ النفاذ التقديري')}</span>
+            <span>{t('finance:hub.bo.runOut')}</span>
             <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{etihadCoverageDate}</span>
           </div>
         </div>
@@ -96,17 +96,17 @@ export const EtihadBlackOilView: React.FC<{ company?: BlackOilCompany }> = ({ co
         {/* Card 4: Operating Status */}
         <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-soft-card">
           <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{tr('حالة أمان النفط الأسود')}</span>
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{t('finance:hub.bo.safety')}</span>
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
           </div>
           <div className="flex items-baseline gap-1.5">
             <span className={`text-xl sm:text-2xl font-black ${safe ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-              {tr(safe ? 'مستقر وآمن' : 'يحتاج تعزيز')}
+              {safe ? t('finance:hub.bo.safe') : t('finance:hub.bo.needsTopUp')}
             </span>
           </div>
           <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-            <span>{tr('متوسط الاستهلاك المعتمد')}</span>
-            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{formatNumber(avgDaily)} {tr('لتر')}</span>
+            <span>{t('finance:blackOil.approvedAvg')}</span>
+            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{formatNumber(avgDaily)} {t('common:units.liter')}</span>
           </div>
         </div>
 

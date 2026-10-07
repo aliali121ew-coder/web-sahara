@@ -1,0 +1,32 @@
+{
+  "_note": "قاموس المصطلحات الموحّد: كل ترجمة إنجليزية لهذه المصطلحات يجب أن تطابقه. لا تُترجم أسماء العلامات والبيانات التي يدخلها المستخدمون.",
+  "terms": {
+    "كاز": "Gasoil",
+    "بنزين": "Gasoline",
+    "نفط أسود": "Black oil",
+    "وارد": "Inbound",
+    "الواردات": "Inbound deliveries",
+    "رصيد": "Balance",
+    "خزان": "Tank",
+    "الخزانات": "Tanks",
+    "محطة": "Station",
+    "مورد": "Supplier",
+    "مجهز": "Supplier",
+    "فوجر": "Voucher",
+    "استهلاك": "Consumption",
+    "مبيعات": "Sales",
+    "سعة": "Capacity",
+    "السعة المتبقية": "Remaining capacity",
+    "نسبة الامتلاء": "Fill level",
+    "الاحتياطي": "Reserves",
+    "الأرشيف": "Archive",
+    "التقارير": "Reports",
+    "لتر": "L",
+    "د.ع": "IQD",
+    "صحاري كربلاء": "Sahara Karbala",
+    "شركة الاتحاد": "Etihad Company",
+    "مدير النظام": "System administrator",
+    "الصلاحيات": "Permissions"
+  },
+  "doNotTranslate": ["Sahara Karbala", "Etihad", "IQD", "Ctrl K", "{{name}}", "{{count}}"]
+}

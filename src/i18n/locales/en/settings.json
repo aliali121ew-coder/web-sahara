@@ -1,0 +1,107 @@
+{
+  "title": "Settings",
+  "subtitle": "Choose the section you want to manage",
+  "back": "Back to settings",
+  "adminOnly": "System administrator only",
+  "sections": {
+    "users": { "title": "User management", "desc": "Accounts, permissions, staff requests and the activity log" },
+    "system": { "title": "System management", "desc": "Database and files, backups and restore, and maintenance" },
+    "appearance": { "title": "Appearance & navigation", "desc": "Light or dark mode, and the side menu's style and colors" },
+    "data": { "title": "Data management", "desc": "Reset data and clear the cache" }
+  },
+  "preview": {
+    "title": "Live preview",
+    "live": "Live",
+    "text": "See how lighting, background and the navigation bar look on your workspace instantly",
+    "toggleTheme": "Quick lighting switch",
+    "toLight": "Light mode",
+    "toDark": "Dark mode",
+    "reset": "Restore defaults",
+    "resetHint": "Reset all theme settings to their defaults",
+    "appName": "Sahara Karbala System 2026",
+    "mode": "Mode:",
+    "modeDark": "Dark",
+    "modeLight": "Light",
+    "background": "Background:",
+    "layer": "Layer:",
+    "home": "Home",
+    "dashboard": "Live control & monitoring",
+    "stock": "{{value}} stock",
+    "tank": "Sahara Tank 1",
+    "flow": "Current flow rate",
+    "pumps": "Unloading pumps active"
+  },
+  "theme": {
+    "title": "Lighting & appearance",
+    "text": "Choose the lighting theme that's easiest on your eyes during work hours",
+    "light": { "title": "Light mode", "desc": "Bright backgrounds and eye-friendly colors for clear daytime reading", "tag": "Bright daytime" },
+    "dark": { "title": "Dark mode", "desc": "Deep navy backgrounds that save energy and are easy on the eyes in control rooms at night", "tag": "Energy-saving night" }
+  },
+  "backgrounds": {
+    "title": "Backgrounds & color gradients",
+    "pro": "Pro feature",
+    "text": "Soft color gradients that give your workspace a comfortable depth, with full control over brightness (6 layers)",
+    "layer": "Layer:",
+    "sliderHint": "Quickly move between layers",
+    "subtle": "Soft & calm",
+    "vibrant": "Vibrant",
+    "active": "Active",
+    "layersTitle": "Six layers (from lightest to slightly deeper)",
+    "layersCurrent": "Pick the layer that's easiest on your eyes — current:",
+    "layerOf": "Layer {{n}} of 5 ({{name}})",
+    "quickLight": "Light & calm (0–1)",
+    "quickBalanced": "Balanced (2–3)",
+    "quickDeep": "Slightly deeper (4–5)",
+    "min": "Layer 0: lightest and calmest",
+    "selected": "Selected: {{n}} / 5 ({{name}})",
+    "max": "Layer 5: slightly deeper"
+  },
+  "shades": {
+    "label": "Layer {{n}}",
+    "0": "Extra light",
+    "1": "Bright & calm",
+    "2": "Soft light",
+    "3": "Balanced",
+    "4": "Rich",
+    "5": "Highest contrast"
+  },
+  "gradients": {
+    "none": { "title": "Auto", "short": "Auto", "desc": "Default: a calm background that follows light or dark mode automatically", "tag": "Default" },
+    "titanium-slate": { "title": "Titanium Slate", "short": "Titanium", "desc": "A calm gray gradient that's easy on the eyes and suits engineering interfaces", "tag": "Calm gray" },
+    "petrol-blue": { "title": "Royal Petroleum", "short": "Petroleum", "desc": "A calm royal blend of royal blue, deep navy and indigo for the energy sector", "tag": "Energy sector" },
+    "frost-snow": { "title": "Arctic Frost", "short": "Frost", "desc": "A crisp, pure snowy gradient inspired by ice crystals and easy on the eyes", "tag": "Pure frost" },
+    "emerald-flow": { "title": "Industrial Emerald", "short": "Emerald", "desc": "A modern emerald and teal gradient reflecting efficiency and sustainability", "tag": "Modern & sustainable" },
+    "glacier-blue": { "title": "Glacier Blue", "short": "Glacier", "desc": "A cool, soft gradient that reduces eye strain during long work sessions", "tag": "Cool & clean" },
+    "ocean-cyan": { "title": "Cyan Electric", "short": "Cyan", "desc": "A bright, fresh sky-blue gradient that gives the interface a striking clarity", "tag": "Bright waves" },
+    "royal-violet": { "title": "Twilight Aurora", "short": "Aurora", "desc": "A night gradient blending velvet violet and indigo for high visual comfort", "tag": "Velvet twilight" }
+  },
+  "sidebar": {
+    "title": "Navigation bar & side menu",
+    "text": "Choose the side menu's style and background color to suit your taste",
+    "bar": "Navigation bar",
+    "liveMatch": "Live match ({{name}})",
+    "styles": {
+      "match-bg": { "title": "Match background", "desc": "The navigation bar automatically takes the background color, gradient and layer you choose" },
+      "unified": { "title": "Unified auto", "desc": "The menu color follows the page mode automatically (light by day, navy by night)", "badge": "Smart auto" },
+      "navy": { "title": "Dark navy", "desc": "The standard style for control rooms and the energy sector, with high contrast and classic elegance", "badge": "Default" },
+      "light": { "title": "Clean light", "desc": "A pure white standalone menu for a simple, bright design", "badge": "Classic white" },
+      "gradient": { "title": "Royal gradient", "desc": "An attractive gradient from deep navy to modern indigo", "badge": "Deep gradient" }
+    }
+  },
+  "extras": {
+    "title": "Advanced options",
+    "text": "Options to refine the look and data density",
+    "glass": "Glass effect",
+    "glassText": "A light blur behind cards for better harmony with gradients",
+    "density": "Display density",
+    "densityText": "Switch between comfortable and compact layouts",
+    "standard": "Standard",
+    "compact": "Compact"
+  },
+  "data": {
+    "title": "Factory reset",
+    "text": "Restore the initial default data and clear the cache",
+    "reset": "Reset data",
+    "confirm": "Reset all sample data and theme settings to their original state?"
+  }
+}

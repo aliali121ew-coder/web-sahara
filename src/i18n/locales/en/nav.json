@@ -1,0 +1,169 @@
+{
+  "groups": {
+    "operations": "Operations & inventory",
+    "management": "Management & finance",
+    "analytics": "Analytics & tracking"
+  },
+  "items": {
+    "dashboard": "Dashboard",
+    "tanks": "Tanks",
+    "prices": "Prices",
+    "finance": "Company balance",
+    "financeEtihad": "Etihad Company",
+    "financeSahara": "Sahara Company",
+    "chat": "Chat & operations",
+    "settings": "Settings",
+    "suppliers": "Suppliers"
+  },
+  "sidebar": {
+    "label": "Main navigation",
+    "expand": "Expand menu",
+    "collapse": "Collapse menu",
+    "open": "Open side menu",
+    "toggle": "Open or collapse the side menu",
+    "search": "Search menu…",
+    "clearSearch": "Clear search",
+    "noResults": "No matching results",
+    "selected": "Current"
+  },
+  "header": {
+    "search": "Search or run a command…",
+    "darkMode": "Switch to dark mode",
+    "lightMode": "Switch to light mode"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "new_one": "{{count}} new",
+    "new_other": "{{count}} new",
+    "markAllRead": "Mark all as read",
+    "empty": "No notifications right now"
+  },
+  "profile": {
+    "title": "Profile",
+    "fullAccess": "Full admin access",
+    "admin": "System administrator",
+    "user": "User",
+    "updateInfo": "Update info",
+    "accountSettings": "Profile & account",
+    "nameRequired": "Name is required",
+    "name": "Name",
+    "changePhoto": "Change photo",
+    "removePhoto": "Remove photo",
+    "permission": "Access",
+    "permissionFull": "Full",
+    "permissionLimited": "Limited",
+    "sections": "Sections",
+    "sectionsAll": "All",
+    "session": "Session"
+  },
+  "commands": {
+    "categories": {
+      "pages": "Pages",
+      "tanks": "Tanks",
+      "actions": "Actions"
+    },
+    "modes": {
+      "light": "light mode",
+      "dark": "dark mode"
+    },
+    "search": "Search for a page, tank, action or command…",
+    "escHint": "ESC to close",
+    "empty": "No results match your search",
+    "emptyHint": "Try a page name like “Tanks” or a tank code like “TK-SH-01”",
+    "navigate": "to navigate",
+    "select": "to select",
+    "page-dashboard": {
+      "title": "Main dashboard",
+      "subtitle": "An overview with live fuel consumption and stock indicators"
+    },
+    "page-tanks": {
+      "title": "Tank system (3D SCADA)",
+      "subtitle": "Monitor all tanks and the black oil, gasoil and gasoline levels",
+      "badge_one": "{{count}} tank",
+      "badge_other": "{{count}} tanks"
+    },
+    "page-deliveries": {
+      "title": "Inbound & shipments",
+      "subtitle": "Tanker log, unloading and vehicle numbers"
+    },
+    "page-deliveries-sahara": {
+      "title": "Sahara inbound",
+      "subtitle": "Sahara Karbala tanker shipments and deliveries"
+    },
+    "page-deliveries-etihad": {
+      "title": "Etihad inbound",
+      "subtitle": "Etihad Company tanker shipments and deliveries"
+    },
+    "page-finance-etihad": {
+      "title": "Etihad Company balance",
+      "subtitle": "Accounts, strategic stock and approvals for Etihad Company"
+    },
+    "page-finance-sahara": {
+      "title": "Sahara Company balance",
+      "subtitle": "Cash flow, stock and sales for Sahara Karbala"
+    },
+    "page-managers": {
+      "title": "Site managers & teams",
+      "subtitle": "Permissions, shifts and field supervisor records"
+    },
+    "page-tasks": {
+      "title": "Tasks & logistics",
+      "subtitle": "Track preventive maintenance and field tasks"
+    },
+    "page-reports": {
+      "title": "Analytics & reports",
+      "subtitle": "Charts, periodic consumption reports and data export"
+    },
+    "page-chat": {
+      "title": "Chat & live coordination",
+      "subtitle": "Instant communication between control rooms and field supervisors"
+    },
+    "page-settings": {
+      "title": "System & appearance settings",
+      "subtitle": "Themes, menu styles and engineering options"
+    },
+    "tank-sh-01": {
+      "title": "Sahara Tank 1 (TK-SH-01)",
+      "subtitle": "Black oil – Sahara Karbala | Capacity: {{capacity}} L"
+    },
+    "tank-sh-02": {
+      "title": "Sahara Tank 2 (TK-SH-02)",
+      "subtitle": "Black oil – Sahara Karbala | Capacity: {{capacity}} L"
+    },
+    "tank-sh-03": {
+      "title": "Sahara Tank 3 (TK-SH-03)",
+      "subtitle": "Black oil – Sahara Karbala | Capacity: {{capacity}} L"
+    },
+    "tank-et-01": {
+      "title": "Old Energy Tank (TK-ET-01)",
+      "subtitle": "Etihad operations – Black oil | Capacity: {{capacity}} L"
+    },
+    "tank-et-02": {
+      "title": "New Energy Tank (TK-ET-02)",
+      "subtitle": "Etihad operations – Black oil | Capacity: {{capacity}} L"
+    },
+    "tank-kz-01": {
+      "title": "Main Gasoil Tank 1 (TK-KZ-01)",
+      "subtitle": "Gasoil & gasoline unit | Capacity: {{capacity}} L"
+    },
+    "action-new-delivery": {
+      "title": "Record a new inbound unloading",
+      "subtitle": "Enter tanker details and unload fuel into the tanks",
+      "badge": "Quick action"
+    },
+    "action-toggle-theme": {
+      "title": "Switch to {{mode}}",
+      "subtitle": "Change the system color theme"
+    },
+    "action-refresh": {
+      "title": "Refresh all live data (SCADA sync)",
+      "subtitle": "Sync tank readings, flows and balances"
+    }
+  },
+  "breadcrumb": {
+    "label": "Breadcrumb",
+    "home": "Home",
+    "back": "Back",
+    "backTitle": "Back to the previous page"
+  }
+}

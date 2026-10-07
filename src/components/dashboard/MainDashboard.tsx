@@ -9,24 +9,24 @@ import { PriceIndexTable } from './PriceIndexTable';
 
 export const MainDashboard: React.FC = () => {
   return (
-    <div className="space-y-7 sm:space-y-8 animate-in fade-in duration-300 pb-6">
+    <div className="dash-root space-y-12 sm:space-y-[50px] animate-in fade-in duration-300 pb-6">
       {/* Section 1: كاز - صحاري كربلاء 2026 */}
       <SaharaGasSection />
 
       {/* Section 2: كاز - شركة الاتحاد */}
       <EtihadGasSection />
 
-      {/* Section 3: منظومة بنزين المحطات (الأرصدة + الوارد والصادر) */}
-      <PetrolStationsSection />
-
-      {/* Section 4: قسم مشتريات الوقود والمشتقات (5 بطاقات) */}
-      <FuelMetricsGrid />
-
-      {/* Section 5: تفاصيل نفط الأسود (الصحاري + الاتحاد + الإجمالي) */}
+      {/* Section 3: تفاصيل نفط الأسود (الصحاري + الاتحاد + الإجمالي) */}
       <BlackOilSection />
 
-      {/* Section 6: تفاصيل خزانات الشركة (مستطيلات بيانية + أسطوانات ثلاثية الأبعاد) */}
+      {/* Section 4: منظومة بنزين المحطات (الأرصدة + الوارد والصادر) */}
+      <PetrolStationsSection />
+
+      {/* Section 5: تفاصيل خزانات الشركة (مستطيلات بيانية + أسطوانات ثلاثية الأبعاد) */}
       <CompanyTanksSection />
+
+      {/* Section 6: قسم مشتريات الوقود والمشتقات (5 بطاقات) */}
+      <FuelMetricsGrid />
 
       {/* Section 7: مؤشرات أسعار الشركات والموردين */}
       <PriceIndexTable />

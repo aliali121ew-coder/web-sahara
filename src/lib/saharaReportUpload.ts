@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+import { serverText } from '../i18n/errors';
 import { sessionHeaders } from './session';
 
 /** ما يعيده الخادم بعد قراءة صورة الكشف اليومي (انظر worker/extractSaharaReport.ts) */
@@ -53,9 +55,9 @@ export const extractSaharaReportImage = async (file: File, stationNames: string[
       body: JSON.stringify({ image, mediaType: 'image/jpeg', stations: stationNames })
     });
   } catch {
-    throw new Error('لا يوجد اتصال بالخادم');
+    throw new Error(i18n.t('server:errors.network'));
   }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.ok) throw new Error(data.error || 'تعذّر تحليل الصورة');
+  if (!res.ok || !data.ok) throw new Error(serverText(data, i18n.t('server:errors.analyze_failed')));
   return data.result as SaharaReportExtraction;
 };

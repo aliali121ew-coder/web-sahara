@@ -1,8 +1,11 @@
+import { useTranslation } from 'react-i18next';
+import { enumText } from '../../i18n/enums';
 import React from 'react';
 import { Users, Phone, MapPin, Clock } from 'lucide-react';
 import { useFuelData } from '../../context/FuelDataContext';
 
 export const SiteManagers: React.FC = () => {
+  const { t } = useTranslation(['pages', 'common']);
   const { managers, searchQuery } = useFuelData();
 
   const filteredManagers = managers.filter(
@@ -19,10 +22,10 @@ export const SiteManagers: React.FC = () => {
       <div>
         <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
           <Users className="w-6 h-6 text-blue-600" />
-          <span>كادر ومدراء الموقع والتشغيل الميداني</span>
+          <span>{t('pages:managers.title')}</span>
         </h2>
         <p className="text-xs text-slate-500 mt-1">
-          قائمة المشرفين الميدانيين ومسؤولي السلامة وإدارة حقول الخزانات ومناوبات العمل
+          {t('pages:managers.subtitle')}
         </p>
       </div>
 
@@ -47,7 +50,7 @@ export const SiteManagers: React.FC = () => {
                       : 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
                   }`}
                 >
-                  {mgr.status}
+                  {enumText(mgr.status)}
                 </span>
               </div>
 
@@ -73,7 +76,7 @@ export const SiteManagers: React.FC = () => {
 
                 <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
                   <Clock className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                  <span>المناوبة: {mgr.shift}</span>
+                  <span>{t('pages:managers.shift', { value: mgr.shift })}</span>
                 </div>
               </div>
             </div>

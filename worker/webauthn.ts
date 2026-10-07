@@ -66,12 +66,12 @@ export async function verifyAssertion(opts: {
   signature: string;
 }): Promise<{ ok: true; signCount: number } | { ok: false; error: string }> {
   const auth = fromB64url(opts.authenticatorData);
-  if (auth.length < 37) return { ok: false, error: 'بيانات الجهاز غير صالحة' };
+  if (auth.length < 37) return { ok: false, error: 'بيانات الجهاز غير صالحة', code: 'invalid_device' };
   // أول 32 بايت = بصمة اسم الموقع: تمنع استخدام البصمة على موقع مزيّف
-  if (!sameBytes(auth.slice(0, 32), await sha256(new TextEncoder().encode(opts.rpId)))) return { ok: false, error: 'الموقع غير مطابق' };
+  if (!sameBytes(auth.slice(0, 32), await sha256(new TextEncoder().encode(opts.rpId)))) return { ok: false, error: 'الموقع غير مطابق', code: 'origin_mismatch' };
   const flags = auth[32];
   // UP = لمس المستخدم ، UV = تحقّق بالبصمة أو الوجه أو رمز الجهاز
-  if (!(flags & 0x01) || !(flags & 0x04)) return { ok: false, error: 'لم يتم التحقق بالبصمة' };
+  if (!(flags & 0x01) || !(flags & 0x04)) return { ok: false, error: 'لم يتم التحقق بالبصمة', code: 'bio_failed' };
   const signCount = new DataView(auth.buffer, auth.byteOffset + 33, 4).getUint32(0);
 
   const clientHash = await sha256(fromB64url(opts.clientDataJSON));
@@ -90,11 +90,11 @@ export async function verifyAssertion(opts: {
       const key = await crypto.subtle.importKey('spki', spki, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
       valid = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, sig, signed);
     } else {
-      return { ok: false, error: 'نوع المفتاح غير مدعوم' };
+      return { ok: false, error: 'نوع المفتاح غير مدعوم', code: 'key_unsupported' };
     }
-    return valid ? { ok: true, signCount } : { ok: false, error: 'توقيع البصمة غير صحيح' };
+    return valid ? { ok: true, signCount } : { ok: false, error: 'توقيع البصمة غير صحيح', code: 'bad_signature' };
   } catch {
-    return { ok: false, error: 'تعذّر التحقق من البصمة' };
+    return { ok: false, error: 'تعذّر التحقق من البصمة', code: 'bio_verify_failed' };
   }
 }
 

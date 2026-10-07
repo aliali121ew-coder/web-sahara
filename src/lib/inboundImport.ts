@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 /**
  * استيراد ملف الوارد اليومي (Excel أو PDF) الذي يحمل نفس عناوين نافذة الوارد:
  * اسم المجهز، الشركة المجهزة، اسم السائق، رقم العجلة، رقم الفوجر، الكمية المستلمة،
@@ -126,7 +127,7 @@ const parseExcel = async (file: File): Promise<InboundImportRow[]> => {
       return rows;
     }
   }
-  throw new Error('لم يُعثر على صف العناوين في الملف (اسم المجهز، رقم الفوجر، الكمية المستلمة...)');
+  throw new Error(i18n.t('common:fileImport.noHeaderRow'));
 };
 
 /**
@@ -182,7 +183,7 @@ const parsePdf = async (file: File): Promise<InboundImportRow[]> => {
       if (row) rows.push(row);
     }
   }
-  if (!columns) throw new Error('لم يُعثر على صف العناوين في ملف PDF (اسم المجهز، رقم الفوجر، الكمية المستلمة...)');
+  if (!columns) throw new Error(i18n.t('common:fileImport.noHeaderRowPdf'));
   return rows;
 };
 
@@ -190,5 +191,5 @@ export const parseInboundFile = async (file: File): Promise<InboundImportRow[]> 
   const name = file.name.toLowerCase();
   if (name.endsWith('.pdf')) return parsePdf(file);
   if (/\.(xlsx|xls|csv)$/.test(name)) return parseExcel(file);
-  throw new Error('يُقبل ملف Excel أو PDF فقط');
+  throw new Error(i18n.t('common:fileImport.excelPdfOnly'));
 };

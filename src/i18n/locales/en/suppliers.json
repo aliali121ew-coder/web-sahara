@@ -1,0 +1,235 @@
+{
+  "csvFile": "suppliers",
+  "empty": "No matching suppliers",
+  "units": {
+    "iqdPerLiter": "IQD / L"
+  },
+  "header": {
+    "representative": "Representative",
+    "noContact": "Not set"
+  },
+  "fields": {
+    "name": "Supplier name",
+    "product": "Product",
+    "phone": "Phone number",
+    "location": "Location",
+    "category": "Category",
+    "density": "Density",
+    "color": "Color"
+  },
+  "cards": {
+    "current": "Current price",
+    "previous": "Previous price",
+    "change": "Price change",
+    "lastInbound": "Last inbound",
+    "updatedOn": "Last updated",
+    "difference": "Difference",
+    "vsPrevious": "vs previous price",
+    "lastChange": "Last change",
+    "vsMarket": "vs market average",
+    "viewDetails": "View details",
+    "noInbound": "No inbound shipments recorded",
+    "tankers": "Tankers",
+    "lastDay": "Last inbound day",
+    "totalTankers": "Total",
+    "lastDayOn": "Last inbound on {{date}}",
+    "diffFromCurrent": "Difference from current",
+    "marketAvgOf": "{{company}} avg · {{period}}"
+  },
+  "change": {
+    "up": "Up",
+    "down": "Down",
+    "stable": "Stable"
+  },
+  "tabs": {
+    "all": "All suppliers ({{count}})"
+  },
+  "toolbar": {
+    "search": "Search supplier",
+    "sortBy": "Sort by",
+    "actions": "Actions",
+    "add": "Add supplier",
+    "export": "Export CSV"
+  },
+  "sort": {
+    "name": "Name",
+    "priceDesc": "Price: high to low",
+    "priceAsc": "Price: low to high",
+    "change": "Price change",
+    "updated": "Last updated"
+  },
+  "table": {
+    "supplier": "Supplier",
+    "current": "Current price",
+    "previous": "Previous price",
+    "change": "Change",
+    "updated": "Last updated",
+    "action": "Action",
+    "view": "View",
+    "inbound": "Inbound",
+    "tankers": "Tankers",
+    "receiver": "Receiving company",
+    "product": "Product",
+    "density": "Density",
+    "color": "Color"
+  },
+  "modal": {
+    "addTitle": "Add supplier",
+    "editTitle": "Edit supplier",
+    "logo": "Upload logo",
+    "removeLogo": "Remove logo",
+    "priceNote": "{{old}} becomes the previous price, and the dashboard price index updates right away",
+    "sectionBasic": "Basic details",
+    "sectionPrice": "Price & receiving company",
+    "sectionContact": "Contact",
+    "newHint": "New supplier",
+    "deleteAsk": "Delete this supplier?"
+  },
+  "pager": {
+    "label": "Pagination",
+    "prev": "Previous",
+    "next": "Next",
+    "range": "{{from}}–{{to}} of {{total}}"
+  },
+  "receiver": {
+    "sahara": "Sahara",
+    "etihad": "Etihad"
+  },
+  "profile": {
+    "cardLabel": "Supplier profile",
+    "back": "Suppliers",
+    "subtitle": "Sahara and Etihad inbound from the archive",
+    "highest": "Highest price",
+    "lowest": "Lowest price",
+    "tapToFilter": "Tap to filter",
+    "totalInbound": "Total inbound",
+    "tankersTotal_one": "{{count}} tanker",
+    "tankersTotal_other": "{{count}} tankers",
+    "archiveTitle": "Inbound log",
+    "archiveSummary": "{{count}} shipments · {{qty}} L",
+    "empty": "No shipments",
+    "col": {
+      "date": "Date",
+      "equipper": "Supplying company",
+      "driver": "Driver",
+      "truck": "Truck no.",
+      "qty": "Quantity",
+      "price": "Price"
+    },
+    "statTankers": "Tankers",
+    "statEquippers": "Supplying companies",
+    "statLast": "Last inbound",
+    "equippersCount_one": "{{count}} supplying company",
+    "equippersCount_other": "{{count}} supplying companies",
+    "tankersShort": "tankers",
+    "showAll": "Show all inbound",
+    "priceRange": "Price range",
+    "tankersByCompany": "Tankers by company",
+    "lastPrice": "Last price: {{price}}",
+    "avgPrice": "Average price",
+    "chartTitle": "Monthly inbound",
+    "expand": "Expand chart",
+    "analysisTitle": "Supplier inbound analysis",
+    "period": {
+      "d30": "30 days",
+      "d90": "90 days",
+      "m6": "6 months",
+      "m12": "12 months",
+      "all": "All"
+    },
+    "metric": {
+      "qty": "Quantity",
+      "tankers": "Tankers",
+      "price": "Price"
+    },
+    "mode": {
+      "waves": "Waves",
+      "bars": "Bars"
+    },
+    "peakDay": "Peak day",
+    "peakMonth": "Peak month",
+    "avgLine": "Average line",
+    "toggleSeries": "Show or hide",
+    "zoomIn": "Zoom in (more detail)",
+    "zoomOut": "Zoom out (less detail)",
+    "allEquippers": "All equippers",
+    "gran": {
+      "month": "Monthly",
+      "week": "Weekly",
+      "day": "Daily",
+      "shipment": "Each shipment"
+    },
+    "monthlyChange": "Monthly change",
+    "noPrevMonth": "No inbound before this month"
+  },
+  "compare": {
+    "button": "Compare",
+    "title": "Supplier comparison",
+    "subtitle_one": "{{count}} supplier in this period",
+    "subtitle_other": "{{count}} suppliers in this period",
+    "allCompanies": "All companies",
+    "others": "Other suppliers",
+    "pick": "Suppliers ({{count}}/{{max}})",
+    "total": "Total",
+    "suppliersCount": "Suppliers",
+    "leaderShare": "Leader share",
+    "clickMonth": "Click to open the month day by day",
+    "rankingLabel": "Supplier ranking"
+  },
+  "log": {
+    "button": "Log",
+    "title": "Prices & purchases log",
+    "subtitle": "{{count}} recorded operations",
+    "search": "Search by name, product or user",
+    "empty": "No operations recorded yet",
+    "tab": {
+      "ops": "Operations",
+      "match": "Reconciliation"
+    },
+    "source": {
+      "all": "All",
+      "suppliers": "All suppliers",
+      "purchases": "Purchase prices"
+    },
+    "action": {
+      "create": "Added",
+      "update": "Edited",
+      "delete": "Deleted",
+      "reset": "Back to automatic",
+      "snapshot": "Pinned"
+    },
+    "field": {
+      "name": "Name",
+      "product": "Product",
+      "density": "Density",
+      "color": "Color",
+      "price": "Price",
+      "company": "Company",
+      "category": "Category",
+      "phone": "Phone",
+      "location": "Location",
+      "logo": "Logo"
+    },
+    "col": {
+      "when": "Date & time",
+      "section": "Section",
+      "action": "Operation",
+      "name": "Supplier / item",
+      "newPrice": "New price",
+      "by": "By",
+      "current": "Price in table",
+      "logged": "Last logged price",
+      "lastOp": "Last operation",
+      "status": "Status"
+    },
+    "status": {
+      "ok": "Matches",
+      "diff": "Different",
+      "none": "Not logged"
+    },
+    "matchHint": "{{count}} rows do not match the log (changed without a saved operation, or not logged yet)",
+    "allMatch": "Both tables match the log",
+    "snapshot": "Pin current state",
+    "statusHelp": "Matches: current price is the last logged one · Different: price changed without a save (e.g. automatic update from inbound) · Not logged: no operation yet. Total operations: {{n}}"
+  }
+}

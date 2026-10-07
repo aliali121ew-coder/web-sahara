@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 /**
  * قراءة تقرير النفط الأسود اليومي (Excel أو PDF) لتعبئة نافذة "تسجيل يوم" تلقائيًا.
  * التقرير مقسّم إلى مواقف (موقف الريان، موقف السكر...) وتحت كل موقف أسطر: عنوان + رقم، مثل:
@@ -157,8 +158,8 @@ export const parseBlackOilReport = async (file: File, sites: SiteMatcher[]): Pro
   let grid: unknown[][];
   if (name.endsWith('.pdf')) grid = await readPdf(file);
   else if (/\.(xlsx|xls|csv)$/.test(name)) grid = await readExcel(file);
-  else throw new Error('يُقبل ملف Excel أو PDF فقط');
+  else throw new Error(i18n.t('common:fileImport.excelPdfOnly'));
   const result = readGrid(grid, sites);
-  if (!Object.keys(result).length) throw new Error('لم يُعثر على المواقف (موقف الريان / موقف السكر) وقيمها في الملف');
+  if (!Object.keys(result).length) throw new Error(i18n.t('common:fileImport.blackOilNoSites'));
   return { sites: result, date: findDate(grid) };
 };

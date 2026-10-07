@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { TRANSLATIONS, TranslationDict, trText, translateDomTree } from '../lib/translations';
+import i18n, { SUPPORTED_LANGS, isAppLang } from '../i18n';
 
 export type SupportedLanguage = 'ar' | 'en' | 'tr' | 'zh' | 'ur' | 'hi' | 'ru' | 'ja' | 'ko';
 
@@ -23,6 +23,11 @@ export const LANGUAGES: LanguageOption[] = [
   { code: 'ko', name: 'الكورية', nativeName: '한국어', flag: '🇰🇷', dir: 'ltr' },
 ];
 
+/** حالة اللغة والاتجاه مبنية على i18next؛ النصوص كلها عبر useTranslation */
+/** اللغات المفعّلة حاليًا في القائمة (من إعداد i18next)؛ البقية مخفية وترجماتها القديمة محفوظة */
+const ENABLED: SupportedLanguage[] = [...SUPPORTED_LANGS];
+export const ACTIVE_LANGUAGES = LANGUAGES.filter(l => ENABLED.includes(l.code));
+
 interface LanguageContextType {
   currentLanguage: SupportedLanguage;
   language: SupportedLanguage;
@@ -30,49 +35,28 @@ interface LanguageContextType {
   setLanguage: (lang: SupportedLanguage) => void;
   direction: 'rtl' | 'ltr';
   isRTL: boolean;
-  t: (key: keyof TranslationDict) => string;
-  tr: (text: string) => string;
-  translations: TranslationDict;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentLanguage, setCurrentLanguageState] = useState<SupportedLanguage>(() => {
-    const saved = localStorage.getItem('sahara_language');
-    return (saved as SupportedLanguage) || 'ar';
+    // i18next هو مصدر اللغة الحالية (يحفظها ويضبط lang و dir للصفحة)
+    return isAppLang(i18n.language) ? i18n.language : 'ar';
   });
 
   const currentLangInfo = LANGUAGES.find((l) => l.code === currentLanguage) || LANGUAGES[0];
   const direction = currentLangInfo.dir;
   const isRTL = direction === 'rtl';
-  const translations = TRANSLATIONS[currentLanguage] || TRANSLATIONS.ar;
 
   useEffect(() => {
-    localStorage.setItem('sahara_language', currentLanguage);
-    document.documentElement.lang = currentLanguage;
-    document.documentElement.dir = direction;
-
-    if (currentLanguage !== 'ar') {
-      // Immediate sweep
-      translateDomTree(document.body, currentLanguage);
-      const timer = setTimeout(() => {
-        translateDomTree(document.body, currentLanguage);
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [currentLanguage, direction]);
+    const sync = (lng: string) => { if (isAppLang(lng)) setCurrentLanguageState(lng); };
+    i18n.on('languageChanged', sync);
+    return () => { i18n.off('languageChanged', sync); };
+  }, []);
 
   const setLanguage = (lang: SupportedLanguage) => {
-    setCurrentLanguageState(lang);
-  };
-
-  const t = (key: keyof TranslationDict): string => {
-    return translations[key] || TRANSLATIONS.ar[key] || key;
-  };
-
-  const tr = (text: string): string => {
-    return trText(text, currentLanguage);
+    if (isAppLang(lang)) i18n.changeLanguage(lang);
   };
 
   return (
@@ -84,9 +68,6 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setLanguage,
         direction,
         isRTL,
-        t,
-        tr,
-        translations,
       }}
     >
       {children}

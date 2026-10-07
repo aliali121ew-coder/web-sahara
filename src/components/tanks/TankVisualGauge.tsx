@@ -8,7 +8,9 @@ import {
   Plus,
   Minus
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { TankItem } from '../../types';
+import { enumText, siteName } from '../../i18n/enums';
 import { formatNumber } from '../../lib/utils';
 import { useFuelData } from '../../context/FuelDataContext';
 
@@ -17,6 +19,7 @@ interface TankVisualGaugeProps {
 }
 
 export const TankVisualGauge: React.FC<TankVisualGaugeProps> = ({ tank }) => {
+  const { t } = useTranslation(['tanks', 'common']);
   const { updateTankLevel } = useFuelData();
 
   // Get color gradient for fluid wave based on fuel type and status
@@ -75,11 +78,11 @@ export const TankVisualGauge: React.FC<TankVisualGaugeProps> = ({ tank }) => {
                 {tank.code}
               </span>
               <span className="text-[11px] font-bold text-slate-400">
-                {tank.company}
+                {enumText(tank.company)}
               </span>
             </div>
             <h4 className="font-black text-sm sm:text-base text-slate-900 dark:text-white mt-1">
-              {tank.name}
+              {siteName(tank.name)}
             </h4>
           </div>
 
@@ -97,10 +100,10 @@ export const TankVisualGauge: React.FC<TankVisualGaugeProps> = ({ tank }) => {
             {tank.status !== 'safe' && <AlertTriangle className="w-3 h-3" />}
             <span>
               {tank.status === 'safe'
-                ? 'آمن ومستقر'
+                ? t('tanks:gauge.safe')
                 : tank.status === 'warning'
-                ? 'تحذير مستوى'
-                : 'حرج جداً'}
+                ? t('tanks:gauge.warning')
+                : t('tanks:gauge.critical')}
             </span>
           </span>
         </div>
@@ -113,7 +116,7 @@ export const TankVisualGauge: React.FC<TankVisualGaugeProps> = ({ tank }) => {
           <div className="absolute inset-0 tank-cylinder-shadow pointer-events-none z-20" />
 
           {/* Percentage Ruler Grid */}
-          <div className="absolute inset-y-0 right-2 z-20 flex flex-col justify-between py-2 text-[9px] font-mono text-slate-400 select-none pointer-events-none">
+          <div className="absolute inset-y-0 end-2 z-20 flex flex-col justify-between py-2 text-[9px] font-mono text-slate-400 select-none pointer-events-none">
             <span>100%</span>
             <span>75%</span>
             <span>50%</span>
@@ -127,7 +130,7 @@ export const TankVisualGauge: React.FC<TankVisualGaugeProps> = ({ tank }) => {
               {tank.percentage}%
             </span>
             <span className="text-[10px] font-bold text-white/90">
-              {formatNumber(tank.currentLiters)} لتر
+              {formatNumber(tank.currentLiters)} {t('common:units.liter')}
             </span>
           </div>
 
@@ -159,7 +162,7 @@ export const TankVisualGauge: React.FC<TankVisualGaugeProps> = ({ tank }) => {
         <div>
           <div className="flex items-center justify-center gap-1 text-[10px] text-slate-400 font-bold">
             <Thermometer className="w-3 h-3 text-amber-500" />
-            <span>الحرارة</span>
+            <span>{t('tanks:gauge.temperature')}</span>
           </div>
           <span className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200">
             {tank.temperatureC}°C
@@ -169,7 +172,7 @@ export const TankVisualGauge: React.FC<TankVisualGaugeProps> = ({ tank }) => {
         <div>
           <div className="flex items-center justify-center gap-1 text-[10px] text-slate-400 font-bold">
             <Gauge className="w-3 h-3 text-blue-500" />
-            <span>الضغط</span>
+            <span>{t('tanks:gauge.pressure')}</span>
           </div>
           <span className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200">
             {tank.pressureBar} bar
@@ -179,7 +182,7 @@ export const TankVisualGauge: React.FC<TankVisualGaugeProps> = ({ tank }) => {
         <div>
           <div className="flex items-center justify-center gap-1 text-[10px] text-slate-400 font-bold">
             <Droplet className="w-3 h-3 text-teal-500" />
-            <span>الترسيب</span>
+            <span>{t('tanks:gauge.sediment')}</span>
           </div>
           <span className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200">
             {tank.waterLevelMm} mm
@@ -190,19 +193,19 @@ export const TankVisualGauge: React.FC<TankVisualGaugeProps> = ({ tank }) => {
       {/* Quick Interactive Level Simulation Buttons */}
       <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
         <span className="text-[11px] text-slate-400">
-          السعة: <strong className="font-mono text-slate-700 dark:text-slate-300">{formatNumber(tank.capacityLiters)} لتر</strong>
+          {t('tanks:card.capacity')} <strong className="font-mono text-slate-700 dark:text-slate-300">{formatNumber(tank.capacityLiters)} {t('common:units.liter')}</strong>
         </span>
         <div className="flex items-center gap-1">
           <button
             onClick={() => updateTankLevel(tank.id, -5000)}
-            title="سحب 5,000 لتر"
+            title={t('tanks:gauge.draw', { amount: formatNumber(5000) })}
             className="p-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 active:scale-95"
           >
             <Minus className="w-3 h-3" />
           </button>
           <button
             onClick={() => updateTankLevel(tank.id, 5000)}
-            title="تعبئة 5,000 لتر"
+            title={t('tanks:gauge.fill', { amount: formatNumber(5000) })}
             className="p-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-xs active:scale-95"
           >
             <Plus className="w-3 h-3" />

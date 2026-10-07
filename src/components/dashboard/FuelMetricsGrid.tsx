@@ -1,4 +1,5 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { SectionHeader } from './SectionHeader';
 import {
   Flame,
   Fuel,
@@ -11,68 +12,20 @@ import {
   Layers,
   Sparkles
 } from 'lucide-react';
-import { useFuelData } from '../../context/FuelDataContext';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
+import { enumText } from '../../i18n/enums';
 import { formatNumber } from '../../lib/utils';
-import { FuelProductMetric, InboundDelivery } from '../../types';
-import { usePetrolLedger } from '../../lib/petrolLedger';
-import { usePriceOverrides } from '../../lib/priceOverrides';
-import { useBlackOilLedger, type ComputedBlackOilRecord } from '../../lib/blackOilLedger';
-import { PriceEditPopover, type PriceDay } from './PriceEditPopover';
+import { FuelProductMetric } from '../../types';
+import { PriceEditPopover } from './PriceEditPopover';
+import { usePurchasePrices, MANUAL_ONLY_ID } from '../../lib/purchasePrices';
 
-/** مصدر سعر تلقائي من الوارد: أيام مسعّرة (الأحدث أولًا) + توقيع يتغيّر مع كل عملية وارد جديدة */
-interface InboundPriceSource {
-  days: PriceDay[];
-  sig: string;
-}
-const round1 = (v: number) => Math.round(v * 10) / 10;
-const pctChange = (a: number, b: number) => (b > 0 ? Math.round(((a - b) / b) * 10000) / 100 : 0);
-
-/** أسعار الوارد اليومية (متوسط موزون بالكمية لكل يوم) من شحنات كشف الوارد */
-const fromDeliveries = (list: InboundDelivery[]): InboundPriceSource => {
-  const priced = list.filter(d => d.status !== 'ملغي' && Number(d.productPrice ?? d.pricePerLiter) > 0 && Number(d.receivedQuantity ?? d.volumeLiters) > 0);
-  const byDay = new Map<string, { c: number; q: number }>();
-  let total = 0;
-  for (const d of priced) {
-    const date = (d.receiptUnloadDate || d.date || '').slice(0, 10).replace(/-/g, '/');
-    const q = Number(d.receivedQuantity ?? d.volumeLiters);
-    const p = Number(d.productPrice ?? d.pricePerLiter);
-    const v = byDay.get(date) ?? { c: 0, q: 0 };
-    v.c += q * p; v.q += q; total += q;
-    byDay.set(date, v);
-  }
-  const days = [...byDay].sort((a, b) => b[0].localeCompare(a[0])).map(([date, v]) => ({ date, price: round1(v.c / v.q), qty: v.q }));
-  return { days, sig: `${priced.length}|${days[0]?.date ?? ''}|${total}` };
-};
 
 /** layout="side": بدون ترويسة وفي عمودين (للعمود الجانبي في صفحة المشتريات) */
 export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout = 'row' }) => {
   const isSide = layout === 'side';
-  const { fuelMetrics, supplierPrices, saharaDeliveries, etihadDeliveries } = useFuelData();
-  const { tr } = useLanguage();
-  const { publishedComputed: petrolDays } = usePetrolLedger();
-  const { computed: saharaBlackOilDays } = useBlackOilLedger('sahara');
-  const { computed: etihadBlackOilDays } = useBlackOilLedger('etihad');
-  const { overrides, setOverride, clearOverride } = usePriceOverrides();
+  const { fuelMetrics, priceOf: getLinkedSupplierData, savePrice, resetPrice, saveManual } = usePurchasePrices();
+  const { t } = useTranslation(['dashboard', 'common']);
 
-  // ── السعر التلقائي من الوارد: كاز الصحاري وكاز الاتحاد من كشف الوارد، والبنزين من سجل البنزين ──
-  const inboundSources = useMemo<Record<string, InboundPriceSource>>(() => {
-    const petrol = petrolDays.filter(d => d.inboundQty > 0 && d.inboundPrice > 0);
-    const petrolDaysDesc = [...petrol].reverse().map(d => ({ date: d.date, price: d.inboundPrice, qty: d.inboundQty }));
-    // النفط الأسود: سعر اللتر المسجّل لكل يوم في السجل اليومي
-    const fromBlackOil = (list: ComputedBlackOilRecord[]): InboundPriceSource => {
-      const priced = list.filter(d => d.inbound > 0 && (d.price ?? 0) > 0);
-      const days = [...priced].reverse().map(d => ({ date: d.date, price: d.price as number, qty: d.inbound }));
-      return { days, sig: `${priced.length}|${days[0]?.date ?? ''}|${priced.reduce((a, d) => a + d.inbound, 0)}` };
-    };
-    return {
-      'fuel-4': fromBlackOil(saharaBlackOilDays),
-      'fuel-5': fromBlackOil(etihadBlackOilDays),
-      'fuel-2': fromDeliveries(saharaDeliveries),
-      'fuel-3': fromDeliveries(etihadDeliveries),
-      'fuel-1': { days: petrolDaysDesc, sig: `${petrol.length}|${petrolDaysDesc[0]?.date ?? ''}|${petrol.reduce((a, d) => a + d.inboundQty, 0)}` }
-    };
-  }, [saharaDeliveries, etihadDeliveries, petrolDays, saharaBlackOilDays, etihadBlackOilDays]);
 
   // ── الضغط المطوّل على الكارت يفتح نافذة السعر في مكانه ──
   const [pressing, setPressing] = useState<string | null>(null);
@@ -106,45 +59,6 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
 
   const maxBenchmarkVolume = 300000;
 
-  // Dynamic mapping helper to get live price & trend from the supplier prices table
-  const getLinkedSupplierData = (metric: FuelProductMetric) => {
-    let matched = supplierPrices.find(s => {
-      if (metric.id === 'fuel-1') return s.product.includes('بنزين');
-      if (metric.id === 'fuel-2') return s.product.includes('Euro 5') || s.supplierName.includes('كربلاء الدولي');
-      if (metric.id === 'fuel-muhassan') return s.product.includes('حكومي') || s.supplierName.includes('توزيع');
-      if (metric.id === 'fuel-3') return s.supplierName.includes('الاتحاد');
-      if (metric.id === 'fuel-4') return s.product.includes('نفط أسود') || s.supplierName.includes('الفرات الأوسط');
-      if (metric.id === 'fuel-5') return s.supplierName.includes('الوطنية');
-      return false;
-    });
-
-    const displayPrice = matched ? matched.priceIqd : metric.priceIqd;
-    const previousPrice = matched?.previousPriceIqd ?? metric.priceIqd;
-    const trendPercent = matched ? matched.changePercent : metric.trendPercent;
-    // تاريخ آخر تحديث للسعر (من جدول أسعار الموردين)
-    const priceUpdatedAt = matched?.lastUpdated || '—';
-
-    const src = inboundSources[metric.id];
-    const auto = src?.days[0] ?? null;
-    const ov = overrides[metric.id];
-    // السعر اليدوي يسري فقط ما دام لم يحدث وارد جديد بعده (توقيع الوارد لم يتغيّر)
-    const manual = ov && (!src || ov.baseSig === src.sig) ? ov : null;
-    if (manual) {
-      const base = auto?.price ?? displayPrice;
-      return {
-        displayPrice: manual.price, previousPrice: base, trendPercent: pctChange(manual.price, base),
-        priceUpdatedAt: manual.setAt.slice(0, 10).replace(/-/g, '/'), source: 'manual' as const, auto, src, manual
-      };
-    }
-    if (auto) {
-      const prev = src!.days[1]?.price ?? auto.price;
-      return {
-        displayPrice: auto.price, previousPrice: prev, trendPercent: pctChange(auto.price, prev),
-        priceUpdatedAt: auto.date, source: 'auto' as const, auto, src, manual: null
-      };
-    }
-    return { displayPrice, previousPrice, trendPercent, priceUpdatedAt, source: 'supplier' as const, auto: null, src, manual: null };
-  };
 
   const getCardPastelConfig = (metric: FuelProductMetric) => {
     switch (metric.badgeColor) {
@@ -242,23 +156,11 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
       
       {/* Section Header */}
       {!isSide && (
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2.5">
-          <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-700 via-indigo-600 to-blue-600 text-white shadow-md shadow-blue-500/20">
-            <Layers className="w-4 h-4 text-blue-100" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                {tr('مشتريات الوقود والمشتقات')}
-              </h2>
-              <span className="px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-bold border border-slate-200/80 dark:border-slate-700/80">
-                {fuelMetrics.length} {tr('أصناف رئيسية')}
-              </span>
-            </div>
-          </div>
+      <SectionHeader title={t('dashboard:purchases.title')} icon={
+        <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-700 via-indigo-600 to-blue-600 text-white shadow-md shadow-blue-500/20">
+          <Layers className="w-4 h-4 text-blue-100" />
         </div>
-      </div>
+      } />
       )}
 
       {/* 6 Luxury Pastel Cards Grid (Adaptive on Open Sidebar) */}
@@ -266,8 +168,8 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
         {fuelMetrics.map((item) => {
           const config = getCardPastelConfig(item);
           const Icon = config.icon;
-          const { displayPrice, previousPrice, trendPercent, priceUpdatedAt, source } = getLinkedSupplierData(item);
-          const percentage = Math.min(Math.round((item.volumeLiters / maxBenchmarkVolume) * 100), 100);
+          const { displayPrice, previousPrice, trendPercent, priceUpdatedAt, volume, source } = getLinkedSupplierData(item);
+          const percentage = Math.min(Math.round((volume / maxBenchmarkVolume) * 100), 100);
 
           const isPriceDown = trendPercent < 0;
 
@@ -280,7 +182,7 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
               onPointerLeave={cancelPress}
               onPointerCancel={cancelPress}
               onContextMenu={e => e.preventDefault()}
-              title={tr('اضغط مطوّلًا لعرض السعر وتعديله')}
+              title={t('dashboard:purchases.longPress')}
               data-pressing={pressing === item.id || undefined}
               // صفحة الأسعار (side): أبيض ثلجي بحد رمادي خفيف · الشاشة الرئيسية: التدرّج الملوّن الأصلي
               className={`@container ${isSide ? 'rounded-[18px] p-2.5 2xl:p-3' : 'rounded-[24px] 2xl:rounded-[28px] p-3.5 sm:p-4 2xl:p-5'} ${isSide ? 'bg-[#fcfdff] dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700' : `${config.cardBg} border ${config.border} ${config.hoverBorder} ${config.glowShadow}`} shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden select-none touch-manipulation cursor-pointer ${pressing === item.id ? 'scale-[0.97] !translate-y-0 ring-2 ring-teal-500/30' : ''} ${openCard?.id === item.id ? 'opacity-0' : ''}`}
@@ -288,12 +190,6 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
               {/* شريط تقدّم الضغط المطوّل */}
               {pressing === item.id && (
                 <span className="absolute bottom-0 inset-x-0 h-1 bg-teal-500 origin-right" style={{ animation: 'fmLongPress 520ms linear forwards' }} />
-              )}
-              {/* شارة السعر اليدوي */}
-              {source === 'manual' && (
-                <span className="absolute top-2 left-2 z-10 px-1.5 py-px rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 text-[9px] font-black ring-1 ring-amber-200 dark:ring-amber-900" title={tr('سعر يدوي حتى أول وارد جديد')}>
-                  {tr('يدوي')}
-                </span>
               )}
               <div>
                 
@@ -330,14 +226,14 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
                       }}
                       title={item.name}
                     >
-                      {tr(item.name)}
+                      {enumText(item.name)}
                     </h3>
                     <span 
                       className={`inline-block font-bold px-2 py-0.5 rounded-full mt-1 ${config.companyBadge} whitespace-nowrap`}
                       style={{ fontSize: 'clamp(9px, 5cqw, 11px)' }}
                       title={item.company}
                     >
-                      {tr(item.company)}
+                      {enumText(item.company)}
                     </span>
                   </div>
 
@@ -353,7 +249,7 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
                       className="font-bold text-slate-400 block mb-0.5 whitespace-nowrap"
                       style={{ fontSize: 'clamp(9px, 4.6cqw, 10.5px)' }}
                     >
-                      {tr('سعر اللتر المعتمد')}
+                      {t('dashboard:purchases.approvedPrice')}
                     </span>
                     )}
                     <div className="flex items-baseline gap-1">
@@ -367,7 +263,7 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
                         className="font-bold text-slate-400 whitespace-nowrap"
                         style={{ fontSize: 'clamp(10px, 5.2cqw, 11.5px)' }}
                       >
-                        {tr('د.ع')}
+                        {t('common:units.iqd')}
                       </span>
                     </div>
 
@@ -376,17 +272,17 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
                       className="flex items-center gap-1 mt-0.5 text-slate-400 dark:text-slate-500 font-semibold whitespace-nowrap"
                       style={{ fontSize: 'clamp(8.5px, 4.2cqw, 10px)' }}
                     >
-                      <span>{tr('السابق:')}</span>
+                      <span>{t('dashboard:purchases.previous')}</span>
                       <span className="font-mono font-bold text-slate-500 dark:text-slate-400">
                         {previousPrice > 0 ? previousPrice : displayPrice}
                       </span>
-                      <span className="text-[8px] font-normal">{tr('د.ع')}</span>
+                      <span className="text-[8px] font-normal">{t('common:units.iqd')}</span>
                     </div>
                   </div>
 
                   {/* Floating Ultra-3D Tactile Circular Badge - Fluid Scaling */}
                   <div 
-                    title={isPriceDown ? `${tr('انخفاض بالسعر')} (${trendPercent}%)` : trendPercent > 0 ? `${tr('ارتفاع بالسعر')} (+${trendPercent}%)` : `${tr('استقرار بالسعر')} 0.0%`}
+                    title={isPriceDown ? `${t('dashboard:purchases.down')} (${trendPercent}%)` : trendPercent > 0 ? `${t('dashboard:purchases.up')} (+${trendPercent}%)` : `${t('dashboard:purchases.stable')} 0.0%`}
                     className={`relative rounded-full bg-gradient-to-b from-white via-slate-50 to-slate-100/90 dark:from-slate-700 dark:via-slate-800 dark:to-slate-900 ring-1 ring-white/90 dark:ring-white/10 border ${config.circleBadge} flex flex-col items-center justify-center shrink-0 p-0.5 transition-all duration-300 group-hover:scale-108 group-hover:-translate-y-0.5 ${
                       isPriceDown
                         ? 'shadow-[0_4px_14px_rgba(16,185,129,0.22),inset_0_1.5px_2px_rgba(255,255,255,1),inset_0_-1.5px_2px_rgba(16,185,129,0.15)]'
@@ -462,9 +358,9 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
                   className="flex items-center justify-between"
                   style={{ fontSize: 'clamp(10px, 5.2cqw, 11.5px)' }}
                 >
-                  <span className="font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">{tr('مجموع الشراء')}</span>
+                  <span className="font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">{t(source === 'standalone' ? 'dashboard:popover.quantity' : 'dashboard:purchases.total')}</span>
                   <span className="font-mono font-black text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                    {formatNumber(item.volumeLiters)} <span className="text-[9px] font-normal text-slate-400">{tr('لتر')}</span>
+                    {formatNumber(volume)} <span className="text-[9px] font-normal text-slate-400">{t('common:units.liter')}</span>
                   </span>
                 </div>
 
@@ -472,7 +368,7 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
                 <div className="w-full h-1.5 bg-slate-200/80 dark:bg-slate-800 rounded-full overflow-hidden">
                   <div
                     className={`h-full ${config.progressBar} rounded-full transition-all duration-500`}
-                    style={{ width: `${Math.max(percentage, item.volumeLiters > 0 ? 8 : 0)}%` }}
+                    style={{ width: `${Math.max(percentage, volume > 0 ? 8 : 0)}%` }}
                   />
                 </div>
 
@@ -482,7 +378,7 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
                   style={{ fontSize: 'clamp(9.5px, 4.8cqw, 10.5px)' }}
                 >
                   <span className={`font-bold ${config.statusColor} whitespace-nowrap`}>
-                    ● {tr('آخر تحديث للسعر')}
+                    ● {t(source === 'standalone' ? 'dashboard:popover.lastUpdate' : 'dashboard:purchases.lastPriceUpdate')}
                   </span>
                   {/* تاريخ آخر تحديث للسعر في مكان الوقت */}
                   <div className="flex items-center gap-1 font-mono whitespace-nowrap">
@@ -516,8 +412,10 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
             autoDate={d.auto?.date ?? null}
             days={d.src?.days ?? []}
             manual={d.manual ? { price: d.manual.price, setAt: d.manual.setAt } : null}
-            onSave={price => setOverride(item.id, price, d.src?.sig ?? '')}
-            onReset={() => clearOverride(item.id)}
+            readOnly={!isSide}
+            standalone={item.id === MANUAL_ONLY_ID ? { volume: d.volume, date: d.priceUpdatedAt, onSave: v => saveManual(item, v) } : undefined}
+            onSave={price => savePrice(item, price)}
+            onReset={() => resetPrice(item)}
             onClose={() => setOpenCard(null)}
           />
         );

@@ -4,7 +4,7 @@ import {
   X, Printer, Download, Loader2, FileText, FileSpreadsheet, AlertTriangle, ZoomIn, ZoomOut,
   RotateCw, PenLine, Undo2, Eraser, Search, ChevronUp, ChevronDown
 } from 'lucide-react';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
 import { fetchSaharaFileBlob, fileKind, type SaharaFile } from '../../lib/saharaFiles';
 import { renderExcel, excelSheetCss, type RenderedSheet } from '../../lib/excelRender';
 
@@ -165,7 +165,7 @@ const printHtml = (html: string) => {
  * التأشير للمعاينة والطباعة فقط ولا يُحفظ في الملف.
  */
 export const SaharaFilePreview: React.FC<{ file: SaharaFile; onClose: () => void; load?: () => Promise<Blob> }> = ({ file, onClose, load }) => {
-  const { tr } = useLanguage();
+  const { t, i18n } = useTranslation(['finance', 'common']);
   const isPdf = fileKind(file) === 'pdf';
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -257,11 +257,11 @@ export const SaharaFilePreview: React.FC<{ file: SaharaFile; onClose: () => void
         } else {
           const rendered = await renderExcel(await blob.arrayBuffer(), file.id);
           if (cancelled) return;
-          if (!rendered.length) throw new Error('لا توجد أوراق لعرضها في الملف');
+          if (!rendered.length) throw new Error(t('finance:filePreview.noSheets'));
           setSheets(rendered);
         }
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'تعذّر فتح الملف');
+        if (!cancelled) setError(e instanceof Error ? e.message : t('finance:filePreview.openFailed'));
       }
     })();
     return () => {
@@ -426,7 +426,7 @@ export const SaharaFilePreview: React.FC<{ file: SaharaFile; onClose: () => void
   const toolBtn = 'w-8 h-8 flex items-center justify-center rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors';
 
   return createPortal(
-    <div className="fixed inset-0 z-[140] flex items-center justify-center p-3 sm:p-6 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-150" dir="rtl" onClick={onClose}>
+    <div className="fixed inset-0 z-[140] flex items-center justify-center p-3 sm:p-6 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-150" dir={i18n.dir()} onClick={onClose}>
       <style>{excelSheetCss('.xl-scope')}</style>
       <div onClick={e => e.stopPropagation()} className="w-full max-w-5xl h-[92vh] flex flex-col rounded-3xl bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
         {/* الرأس: اسم الملف والأزرار */}
@@ -437,19 +437,19 @@ export const SaharaFilePreview: React.FC<{ file: SaharaFile; onClose: () => void
             </div>
             <div className="min-w-0">
               <div className="font-black text-sm text-slate-900 dark:text-white truncate">{file.name}</div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">{tr('معاينة قبل الطباعة')}</div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">{t('finance:filePreview.title')}</div>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button type="button" onClick={download} disabled={!blobUrl} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 text-xs font-bold cursor-pointer">
               <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">{tr('تنزيل')}</span>
+              <span className="hidden sm:inline">{t('finance:filePreview.download')}</span>
             </button>
             <button type="button" onClick={print} disabled={!ready} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-teal-600 dark:hover:bg-teal-700 disabled:opacity-40 text-white text-xs font-black shadow-md cursor-pointer active:scale-95 transition-all">
               <Printer className="w-4 h-4" />
-              {tr('طباعة')}
+              {t('common:print.print')}
             </button>
-            <button type="button" onClick={onClose} aria-label={tr('إغلاق')} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
+            <button type="button" onClick={onClose} aria-label={t('common:actions.close')} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
               <X className="w-4.5 h-4.5" />
             </button>
           </div>
@@ -459,15 +459,15 @@ export const SaharaFilePreview: React.FC<{ file: SaharaFile; onClose: () => void
         <div className="px-3 sm:px-4 py-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 flex flex-wrap items-center gap-2">
           {/* التكبير */}
           <div className="flex items-center rounded-xl ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-800 p-0.5" dir="ltr">
-            <button type="button" onClick={() => changeZoom(zoom - ZOOM_STEP)} disabled={zoom <= ZOOM_MIN} title={tr('تصغير')} className={toolBtn}><ZoomOut className="w-4 h-4" /></button>
-            <button type="button" onClick={() => changeZoom(1)} title={tr('الحجم الأصلي')} className="min-w-[48px] h-8 px-1 rounded-lg text-[11px] font-black font-mono text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer">{Math.round(zoom * 100)}%</button>
-            <button type="button" onClick={() => changeZoom(zoom + ZOOM_STEP)} disabled={zoom >= ZOOM_MAX} title={tr('تكبير')} className={toolBtn}><ZoomIn className="w-4 h-4" /></button>
+            <button type="button" onClick={() => changeZoom(zoom - ZOOM_STEP)} disabled={zoom <= ZOOM_MIN} title={t('finance:filePreview.zoomOut')} className={toolBtn}><ZoomOut className="w-4 h-4" /></button>
+            <button type="button" onClick={() => changeZoom(1)} title={t('finance:filePreview.actualSize')} className="min-w-[48px] h-8 px-1 rounded-lg text-[11px] font-black font-mono text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer">{Math.round(zoom * 100)}%</button>
+            <button type="button" onClick={() => changeZoom(zoom + ZOOM_STEP)} disabled={zoom >= ZOOM_MAX} title={t('finance:filePreview.zoomIn')} className={toolBtn}><ZoomIn className="w-4 h-4" /></button>
           </div>
 
           {/* التدوير */}
-          <button type="button" onClick={rotate} title={tr('تدوير الورقة')} className="h-9 flex items-center gap-1.5 px-2.5 rounded-xl ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-bold cursor-pointer">
+          <button type="button" onClick={rotate} title={t('finance:filePreview.rotateHint')} className="h-9 flex items-center gap-1.5 px-2.5 rounded-xl ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-bold cursor-pointer">
             <RotateCw className="w-4 h-4" />
-            <span className="hidden sm:inline">{tr('تدوير')}</span>
+            <span className="hidden sm:inline">{t('finance:filePreview.rotate')}</span>
             {rotation !== 0 && <span className="font-mono text-[10px] text-teal-600 dark:text-teal-400">{rotation}°</span>}
           </button>
 
@@ -476,25 +476,25 @@ export const SaharaFilePreview: React.FC<{ file: SaharaFile; onClose: () => void
             <button
               type="button"
               onClick={() => setPenColor(p => (p ? null : lastColor))}
-              title={tr(penColor ? 'إيقاف القلم' : 'تأشير بالقلم')}
+              title={penColor ? t('finance:filePreview.penOff') : t('finance:filePreview.penOn')}
               className={`h-8 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-bold cursor-pointer transition-colors ${penColor ? 'bg-teal-600 text-white' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
             >
               <PenLine className="w-4 h-4" />
-              <span className="hidden sm:inline">{tr('قلم')}</span>
+              <span className="hidden sm:inline">{t('finance:filePreview.pen')}</span>
             </button>
             {PEN_COLORS.map(c => (
               <button
                 key={c}
                 type="button"
                 onClick={() => { setLastColor(c); setPenColor(c); }}
-                title={tr('لون القلم')}
+                title={t('finance:filePreview.penColor')}
                 className={`w-6 h-6 rounded-full cursor-pointer transition-transform ring-offset-1 ring-offset-white dark:ring-offset-slate-800 ${(penColor ?? lastColor) === c ? 'ring-2 ring-slate-500 scale-110' : 'hover:scale-110'}`}
                 style={{ background: c }}
               />
             ))}
             <span className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
-            <button type="button" onClick={undo} disabled={!hasInk} title={tr('تراجع (Ctrl+Z)')} className={toolBtn}><Undo2 className="w-4 h-4" /></button>
-            <button type="button" onClick={clearInk} disabled={!hasInk} title={tr('مسح كل التأشير')} className={toolBtn}><Eraser className="w-4 h-4" /></button>
+            <button type="button" onClick={undo} disabled={!hasInk} title={t('finance:filePreview.undo')} className={toolBtn}><Undo2 className="w-4 h-4" /></button>
+            <button type="button" onClick={clearInk} disabled={!hasInk} title={t('finance:filePreview.clearInk')} className={toolBtn}><Eraser className="w-4 h-4" /></button>
           </div>
 
           {/* البحث */}
@@ -504,7 +504,7 @@ export const SaharaFilePreview: React.FC<{ file: SaharaFile; onClose: () => void
               value={query}
               onChange={e => setQuery(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setHitIndex(i => i + (e.shiftKey ? -1 : 1)); } }}
-              placeholder={tr('بحث داخل الملف')}
+              placeholder={t('finance:filePreview.search')}
               className="w-32 sm:w-44 h-8 bg-transparent outline-none text-xs font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400"
             />
             {q && (
@@ -512,8 +512,8 @@ export const SaharaFilePreview: React.FC<{ file: SaharaFile; onClose: () => void
                 {hitCount ? `${current + 1}/${hitCount}` : '0'}
               </span>
             )}
-            <button type="button" onClick={() => setHitIndex(i => i - 1)} disabled={!hitCount} title={tr('السابق')} className={toolBtn}><ChevronUp className="w-4 h-4" /></button>
-            <button type="button" onClick={() => setHitIndex(i => i + 1)} disabled={!hitCount} title={tr('التالي')} className={toolBtn}><ChevronDown className="w-4 h-4" /></button>
+            <button type="button" onClick={() => setHitIndex(i => i - 1)} disabled={!hitCount} title={t('common:pagination.prev')} className={toolBtn}><ChevronUp className="w-4 h-4" /></button>
+            <button type="button" onClick={() => setHitIndex(i => i + 1)} disabled={!hitCount} title={t('common:pagination.next')} className={toolBtn}><ChevronDown className="w-4 h-4" /></button>
           </div>
         </div>
 
@@ -538,12 +538,12 @@ export const SaharaFilePreview: React.FC<{ file: SaharaFile; onClose: () => void
           {error ? (
             <div className="h-full flex flex-col items-center justify-center gap-2 text-rose-600 dark:text-rose-400 text-sm font-bold">
               <AlertTriangle className="w-6 h-6" />
-              {tr(error)}
+              {error}
             </div>
           ) : !ready ? (
             <div className="h-full flex items-center justify-center gap-2 text-slate-500 text-sm font-bold">
               <Loader2 className="w-5 h-5 animate-spin" />
-              {tr('جارٍ تحميل الملف')}
+              {t('finance:filePreview.loading')}
             </div>
           ) : isPdf ? (
             <div className="p-6 flex flex-col gap-6 w-max min-w-full" dir="ltr">

@@ -1,6 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import '@fontsource-variable/noto-kufi-arabic';
+import '@fontsource-variable/cairo';
+import '@fontsource-variable/inter';
 import './index.css';
+import { i18nReady } from './i18n';
 import { initCloudSync } from './lib/cloudSync';
 import { AppLogin } from './components/auth/AppLogin';
 import { refreshProfile } from './lib/session';
@@ -13,11 +17,14 @@ const root = ReactDOM.createRoot(document.getElementById('root')!);
 
 // سحب آخر نسخة من الخادم أولًا، ثم تحميل التطبيق حتى يقرأ البيانات المحدّثة
 const start = async () => {
+  // الترجمات الأساسية تُحمَّل قبل أول عرض حتى لا تظهر نصوص بلغة أخرى للحظة
+  await i18nReady;
   if ((await initCloudSync()) === 'need-login') {
     root.render(<AppLogin onSuccess={start} />);
     return;
   }
-  refreshProfile();
+  // الصلاحيات تُجلب قبل عرض التطبيق حتى لا تظهر صفحات غير مسموحة للحظة
+  await refreshProfile();
   const { default: App } = await import('./App');
   root.render(
     <React.StrictMode>

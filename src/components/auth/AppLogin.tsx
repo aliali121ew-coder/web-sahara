@@ -1,11 +1,14 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import {
   User, Lock, Eye, EyeOff, Loader2, AlertCircle, Clock, ArrowUpWideNarrow, KeyRound, ShieldCheck, UserCog,
-  Sun, Moon, ArrowRight, Check, Truck, Fuel, Building2, LockKeyhole, Fingerprint, ScanFace, X,
+  Sun, Moon, ArrowRight, ArrowLeft, Check, Truck, Fuel, Building2, LockKeyhole, Fingerprint, ScanFace, X,
 } from 'lucide-react';
+import { useTranslation, Trans } from 'react-i18next';
+import { errorText } from '../../i18n/errors';
+import { LangToggle } from './LangToggle';
 import {
   authStatus, loginAccount, setupSystem, AuthError, LAST_USER_KEY, LAST_NAME_KEY,
-  biometricAvailable, biometricUser, enableBiometric, loginWithBiometric,
+  biometricAvailable, biometricUser, enableBiometric, loginWithBiometric, savedLogin, resumeLogin, forgetSavedLogin,
 } from '../../lib/session';
 import { PhoneFlow, type PhoneStep, type SupportKind } from './PhoneFlow';
 import './auth.css';
@@ -19,13 +22,8 @@ const strength = (p: string) => {
   if (/\d/.test(p) && /[^A-Za-z0-9]/.test(p)) s++;
   return Math.min(s, 4);
 };
-const STRENGTH = [
-  { label: 'ضعيفة جدًا', color: '#ef4444' },
-  { label: 'ضعيفة', color: '#f97316' },
-  { label: 'مقبولة', color: '#ca8a04' },
-  { label: 'جيدة', color: '#16a34a' },
-  { label: 'قوية', color: '#059669' },
-];
+// تسمية كل مستوى في auth:strength.<n>
+const STRENGTH = ['#ef4444', '#f97316', '#ca8a04', '#16a34a', '#059669'].map(color => ({ color }));
 const USERNAME_RE = /^[a-z0-9._-]{3,32}$/;
 const REMEMBER_KEY = 'sahara_remember_me';
 const WELCOME_KEY = 'sahara_welcome_seen';
@@ -57,31 +55,40 @@ type FieldProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'placeholder
   invalid?: boolean;
   children?: React.ReactNode;
 };
-const Field = React.forwardRef<HTMLInputElement, FieldProps>(({ label, icon: Icon, trailing, invalid, children, id, ...rest }, ref) => (
+const Field = React.forwardRef<HTMLInputElement, FieldProps>(({ label, icon: Icon, trailing, invalid, children, id, ...rest }, ref) => {
+  // الحقول قد تكون dir=ltr (اسم المستخدم وكلمة المرور)، لذلك تُحسب الجهات من اتجاه الصفحة لا الحقل
+  const { i18n } = useTranslation();
+  const rtl = i18n.dir() === 'rtl';
+  return (
   <div className="space-y-1.5">
     <div className="fl-wrap">
-      <Icon aria-hidden className="fl-icon absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-slate-400 pointer-events-none" />
+      <Icon aria-hidden className={`fl-icon absolute ${rtl ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-slate-400 pointer-events-none`} />
       <input
         ref={ref}
         id={id}
         placeholder=" "
         aria-invalid={invalid || undefined}
         {...rest}
-        className="fl-input w-full h-14 rounded-xl border border-slate-200 bg-white pr-11 pl-14 pt-1 text-[15px] text-slate-900 dark:bg-slate-950 dark:border-slate-700 dark:text-white"
+        className={`fl-input w-full h-14 rounded-xl border border-slate-200 bg-white ${rtl ? 'pr-11 pl-14' : 'pl-11 pr-14'} pt-1 text-[15px] text-slate-900 dark:bg-slate-950 dark:border-slate-700 dark:text-white`}
       />
       <label htmlFor={id} className="fl-label">{label}</label>
-      {trailing && <div className="absolute left-1.5 top-1/2 -translate-y-1/2">{trailing}</div>}
+      {trailing && <div className={`absolute ${rtl ? 'left-1.5' : 'right-1.5'} top-1/2 -translate-y-1/2`}>{trailing}</div>}
     </div>
     {children}
   </div>
-));
+  );
+});
 Field.displayName = 'Field';
 
 // ═════ الشاشة ═════
 export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
+  const { t, i18n } = useTranslation('auth');
+  const pageDir = i18n.dir();
   const [mode, setMode] = useState<Mode>('loading');
   const [dark, setDark] = useState(() => localStorage.getItem('sahara_theme_mode') === 'dark');
-  const [username, setUsername] = useState(() => localStorage.getItem(LAST_USER_KEY) || '');
+  // الدخول المحفوظ (72 ساعة من آخر إدخال لكلمة المرور): يكفي زر «تسجيل الدخول»
+  const [saved, setSaved] = useState(savedLogin);
+  const [username, setUsername] = useState(() => savedLogin() || localStorage.getItem(LAST_USER_KEY) || '');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [name, setName] = useState('');
@@ -132,12 +139,20 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
     return () => clearInterval(t);
   }, [lockedUntil]);
   const lockLeft = Math.max(0, Math.ceil((lockedUntil - now) / 1000));
+  const useSaved = mode === 'login' && !!saved && username.trim().toLowerCase() === saved;
+  const forgetSaved = () => {
+    forgetSavedLogin();
+    setSaved('');
+    setUsername('');
+    setError('');
+  };
 
   const fail = (e: unknown) => {
-    setError((e as Error).message || 'تعذّر الاتصال بالخادم');
+    setError(errorText(e));
     setShake(s => s + 1);
-    if (e instanceof AuthError && e.code === 'locked') {
-      setLockedUntil(e.retryAt || Date.now() + 5 * 60_000);
+    // إبطاء بعد محاولات خاطئة (للحساب أو للجهاز): عدّاد تنازلي حتى المحاولة التالية
+    if (e instanceof AuthError && (e.code === 'locked' || e.code === 'ip_locked')) {
+      setLockedUntil(e.retryAt || Date.now() + 60_000);
       setNow(Date.now());
     }
     setPassword('');
@@ -152,13 +167,26 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
     const u = username.trim().toLowerCase();
     const invalid = (msg: string) => { setError(msg); setShake(s => s + 1); };
     if (mode === 'setup') {
-      if (!code.trim()) return invalid('أدخل رمز تفعيل النظام');
-      if (!name.trim()) return invalid('اكتب اسمك الكامل');
-      if (!USERNAME_RE.test(u)) return invalid('اسم المستخدم: 3–32 حرفًا إنجليزيًا صغيرًا أو أرقامًا أو . _ -');
-      if (password.length < 8) return invalid('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
-      if (password !== confirm) return invalid('كلمتا المرور غير متطابقتين');
+      if (!code.trim()) return invalid(t('validation.code'));
+      if (!name.trim()) return invalid(t('validation.fullName'));
+      if (!USERNAME_RE.test(u)) return invalid(t('validation.username'));
+      if (password.length < 8) return invalid(t('validation.passwordLength'));
+      if (password !== confirm) return invalid(t('validation.passwordMatch'));
+    } else if (useSaved) {
+      setBtn('loading');
+      try {
+        await resumeLogin();
+        setBtn('success');
+        setTimeout(onSuccess, reducedMotion() ? 0 : 650);
+      } catch (err) {
+        setBtn('idle');
+        // انتهت مهلة الـ 72 ساعة أو أُلغي الدخول المحفوظ: يعود الحقل لطلب كلمة المرور
+        if (err instanceof AuthError && err.code === 'resume_expired') setSaved('');
+        fail(err);
+      }
+      return;
     } else if (!u || !password) {
-      return invalid('أدخل اسم المستخدم وكلمة المرور');
+      return invalid(t('validation.credentials'));
     }
     setBtn('loading');
     try {
@@ -201,18 +229,18 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
       {!setup && bioAvail && bioUser && (
         <div className="mb-5 auth-fade">
           <button type="button" onClick={bioLogin} disabled={bioBusy || btn !== 'idle'} aria-busy={bioBusy}
-            className="auth-focus w-full rounded-2xl p-4 flex items-center gap-4 text-right bg-teal-50 ring-1 ring-teal-200 hover:bg-teal-100/70 dark:bg-teal-500/10 dark:ring-teal-500/30 dark:hover:bg-teal-500/15 transition disabled:opacity-70">
+            className="auth-focus w-full rounded-2xl p-4 flex items-center gap-4 text-start bg-teal-50 ring-1 ring-teal-200 hover:bg-teal-100/70 dark:bg-teal-500/10 dark:ring-teal-500/30 dark:hover:bg-teal-500/15 transition disabled:opacity-70">
             <span className="auth-bio-icon w-14 h-14 shrink-0 rounded-2xl bg-white dark:bg-slate-900 ring-1 ring-teal-200 dark:ring-teal-500/30 flex items-center justify-center text-teal-700 dark:text-teal-300">
               {bioBusy ? <Loader2 className="w-7 h-7 animate-spin" /> : <Fingerprint className="w-8 h-8" />}
             </span>
             <span className="flex-1 min-w-0">
-              <span className="block text-[15px] font-black text-slate-900 dark:text-white">{lastName ? `مرحبًا مجددًا، ${lastName}` : 'مرحبًا مجددًا'}</span>
-              <span className="block text-[13px] font-semibold text-teal-800 dark:text-teal-300">الدخول بالبصمة أو بصمة الوجه</span>
+              <span className="block text-[15px] font-black text-slate-900 dark:text-white">{lastName ? t('welcomeBackName', { name: lastName }) : t('welcomeBack')}</span>
+              <span className="block text-[13px] font-semibold text-teal-800 dark:text-teal-300">{t('bioLogin')}</span>
             </span>
             <ScanFace className="w-6 h-6 text-teal-700/60 dark:text-teal-300/60 shrink-0" aria-hidden />
           </button>
           <div className="flex items-center gap-3 text-xs font-semibold text-slate-500 dark:text-slate-400 mt-5">
-            <span className="flex-1 h-px bg-slate-200 dark:bg-slate-800" /> أو بكلمة المرور <span className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
+            <span className="flex-1 h-px bg-slate-200 dark:bg-slate-800" /> {t('orPassword')} <span className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
           </div>
         </div>
       )}
@@ -220,26 +248,36 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
         className={`space-y-4 ${shake ? 'auth-shake' : 'auth-fade'}`}>
         {setup && (
           <>
-            <Field id="a-code" label="رمز تفعيل النظام" icon={KeyRound} dir="ltr" type="password" value={code}
+            <Field id="a-code" label={t('fields.code')} icon={KeyRound} dir="ltr" type="password" value={code}
               onChange={e => setCode(e.target.value)} autoComplete="off" autoFocus={!phone} required />
-            <Field id="a-name" label="الاسم الكامل" icon={UserCog} value={name} onChange={e => setName(e.target.value)}
+            <Field id="a-name" label={t('fields.fullName')} icon={UserCog} value={name} onChange={e => setName(e.target.value)}
               maxLength={60} autoComplete="name" required />
           </>
         )}
         <Field
-          id="a-user" label="اسم المستخدم" icon={User} dir="ltr" value={username} invalid={hasError && !setup}
+          id="a-user" label={t('fields.username')} icon={User} dir="ltr" value={username} invalid={hasError && !setup}
           onChange={e => setUsername(e.target.value.replace(/\s/g, ''))}
           maxLength={32} autoComplete="username" autoCapitalize="none" spellCheck={false} required
           autoFocus={!phone && !setup && !username}
         />
+        {useSaved ? (
+          <div className="flex items-center gap-3 h-14 rounded-xl px-3.5 bg-teal-50 ring-1 ring-teal-200 dark:bg-teal-500/10 dark:ring-teal-500/30">
+            <ShieldCheck className="w-[18px] h-[18px] shrink-0 text-teal-700 dark:text-teal-300" aria-hidden />
+            <span className="flex-1 min-w-0 text-[13px] font-bold text-teal-900 dark:text-teal-200">{t('savedLogin')}</span>
+            <button type="button" onClick={forgetSaved}
+              className="auth-focus min-h-[44px] px-1 text-[13px] font-bold text-teal-700 hover:text-teal-950 underline-offset-4 hover:underline dark:text-teal-300 dark:hover:text-teal-100 rounded-md shrink-0">
+              {t('otherAccount')}
+            </button>
+          </div>
+        ) : (
         <Field
-          ref={passRef} id="a-pass" label="كلمة المرور" icon={Lock} dir="ltr" invalid={hasError && !setup}
+          ref={passRef} id="a-pass" label={t('fields.password')} icon={Lock} dir="ltr" invalid={hasError && !setup}
           type={show ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
           onKeyDown={onKey} onKeyUp={onKey} maxLength={128} required
           autoComplete={setup ? 'new-password' : 'current-password'} autoFocus={!phone && !setup && !!username}
           trailing={
             <button type="button" onClick={() => setShow(v => !v)} aria-pressed={show}
-              aria-label={show ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+              aria-label={show ? t('hidePassword') : t('showPassword')}
               className="auth-focus w-11 h-11 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition">
               {show ? <EyeOff className="w-[18px] h-[18px]" /> : <Eye className="w-[18px] h-[18px]" />}
             </button>
@@ -247,7 +285,7 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
         >
           {caps && (
             <p className="flex items-center gap-1.5 text-xs font-bold text-amber-700 dark:text-amber-400" role="status">
-              <ArrowUpWideNarrow className="w-3.5 h-3.5" /> زر الأحرف الكبيرة (Caps Lock) مفعّل
+              <ArrowUpWideNarrow className="w-3.5 h-3.5" /> {t('capsLock')}
             </p>
           )}
           {setup && password && (
@@ -257,26 +295,27 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
                   <span key={i} className="h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 transition-colors" style={i < st ? { background: STRENGTH[st].color } : undefined} />
                 ))}
               </div>
-              <span className="text-xs font-bold" style={{ color: STRENGTH[st].color }}>قوة كلمة المرور: {STRENGTH[st].label}</span>
+              <span className="text-xs font-bold" style={{ color: STRENGTH[st].color }}>{t('strengthLabel', { level: t(`strength.${st}`) })}</span>
             </div>
           )}
         </Field>
+        )}
         {setup && (
-          <Field id="a-confirm" label="تأكيد كلمة المرور" icon={Lock} dir="ltr" type={show ? 'text' : 'password'}
+          <Field id="a-confirm" label={t('fields.confirmPassword')} icon={Lock} dir="ltr" type={show ? 'text' : 'password'}
             value={confirm} onChange={e => setConfirm(e.target.value)} maxLength={128} autoComplete="new-password" required />
         )}
 
-        {!setup && (
+        {!setup && !useSaved && (
           <div className="flex items-center justify-between gap-2">
             <label className="inline-flex items-center gap-2.5 min-h-[44px] cursor-pointer select-none text-sm font-semibold text-slate-700 dark:text-slate-300">
               <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)}
                 className="auth-focus w-[18px] h-[18px] rounded accent-teal-700" />
-              تذكّرني
+              {t('remember')}
             </label>
             {phone && (
               <button type="button" onClick={() => { setSupportKind('password'); setPhoneStep('support'); }}
                 className="auth-focus min-h-[44px] text-sm font-bold text-teal-700 dark:text-teal-300 rounded-md">
-                نسيت كلمة المرور؟
+                {t('forgot')}
               </button>
             )}
           </div>
@@ -301,9 +340,9 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
 
         <button type="submit" disabled={btn !== 'idle' || lockLeft > 0} aria-busy={btn === 'loading'}
           className={`auth-btn auth-focus w-full h-14 rounded-xl text-white font-bold text-base flex items-center justify-center gap-2 disabled:cursor-not-allowed ${btn === 'success' ? 'success' : ''} ${btn === 'idle' && lockLeft ? 'opacity-60' : ''}`}>
-          {btn === 'loading' && <><Loader2 className="w-5 h-5 animate-spin" /> جارٍ تسجيل الدخول...</>}
-          {btn === 'success' && <><Check className="w-5 h-5 auth-pop" strokeWidth={3} /> تم تسجيل الدخول</>}
-          {btn === 'idle' && (setup ? 'إنشاء الحساب والدخول' : 'تسجيل الدخول')}
+          {btn === 'loading' && <><Loader2 className="w-5 h-5 animate-spin" /> {t('submitting')}</>}
+          {btn === 'success' && <><Check className="w-5 h-5 auth-pop" strokeWidth={3} /> {t('success')}</>}
+          {btn === 'idle' && (setup ? t('submitSetup') : t('submitLogin'))}
         </button>
       </form>
 
@@ -312,11 +351,11 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-2 text-sm">
           <button type="button" onClick={() => setMode('help')}
             className="auth-focus min-h-[44px] font-bold text-teal-800 hover:text-teal-950 underline-offset-4 hover:underline dark:text-teal-300 dark:hover:text-teal-200 rounded-md">
-            نسيت كلمة المرور؟
+            {t('forgot')}
           </button>
           <button type="button" onClick={() => setMode('help')}
             className="auth-focus min-h-[44px] font-semibold text-slate-600 hover:text-slate-900 underline-offset-4 hover:underline dark:text-slate-400 dark:hover:text-white rounded-md">
-            طلب حساب جديد
+            {t('requestAccount')}
           </button>
         </div>
       )}
@@ -353,7 +392,7 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
   }
 
   return (
-    <div dir="rtl" className="auth-page relative flex items-center justify-center p-5 lg:p-8">
+    <div dir={pageDir} className="auth-page relative flex items-center justify-center p-5 lg:p-8">
       {offerEl}
       <div className="relative w-full max-w-[1280px] rounded-[28px] bg-white/60 dark:bg-white/[.03] p-2.5 shadow-[0_30px_80px_-35px_rgba(15,23,42,.35)] ring-1 ring-white/80 dark:ring-white/5">
         <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.12fr)] gap-2.5 lg:h-[min(840px,calc(100dvh-5rem))]">
@@ -366,16 +405,19 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
                   <img src="/logos/sahara.png" alt="" className="w-9 h-9 object-contain" />
                 </span>
                 <div className="leading-tight">
-                  <div className="font-black text-base text-slate-900 dark:text-white">صحاري كربلاء</div>
-                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">منظومة إدارة المحروقات</div>
+                  <div className="font-black text-base text-slate-900 dark:text-white">{t('common:brand.name')}</div>
+                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('systemName')}</div>
                 </div>
               </div>
-              <ThemeButton dark={dark} onToggle={() => setDark(d => !d)} />
+              <div className="flex items-center gap-1">
+                <LangToggle />
+                <ThemeButton dark={dark} onToggle={() => setDark(d => !d)} />
+              </div>
             </header>
 
             <main className="flex-1 flex flex-col justify-center w-full max-w-[400px] mx-auto py-10">
               {mode === 'loading' ? (
-                <div className="flex justify-center py-20" role="status" aria-label="جارٍ التحميل"><Loader2 className="w-8 h-8 animate-spin text-teal-600" /></div>
+                <div className="flex justify-center py-20" role="status" aria-label={t('loading')}><Loader2 className="w-8 h-8 animate-spin text-teal-600" /></div>
               ) : mode === 'help' ? (
                 <HelpView onBack={() => setMode('login')} />
               ) : (
@@ -383,10 +425,10 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
                   <div className="mb-8">
                     {setup && <SetupBadge />}
                     <h1 className="text-[32px] font-black tracking-tight text-slate-900 dark:text-white leading-[1.3]">
-                      {setup ? 'إنشاء حساب المدير' : 'مرحبًا بك'}
+                      {setup ? t('setupTitle') : t('welcomeTitle')}
                     </h1>
                     <p className="mt-2 text-[15px] leading-7 text-slate-600 dark:text-slate-400">
-                      {setup ? 'أدخل رمز تفعيل النظام ثم أنشئ حساب المدير لإضافة حسابات الموظفين.' : 'سجّل الدخول بحسابك المعتمد للمتابعة.'}
+                      {setup ? t('setupText') : t('welcomeText')}
                     </p>
                   </div>
                   {renderForm(false)}
@@ -395,8 +437,8 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
             </main>
 
             <footer className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-              <span className="inline-flex items-center gap-1.5"><LockKeyhole className="w-3.5 h-3.5" /> اتصال مشفّر وحساب شخصي لكل موظف</span>
-              <span>© {new Date().getFullYear()} صحاري كربلاء</span>
+              <span className="inline-flex items-center gap-1.5"><LockKeyhole className="w-3.5 h-3.5" /> {t('footerSecure')}</span>
+              <span>{t('footerCopyright', { year: new Date().getFullYear() })}</span>
             </footer>
           </section>
 
@@ -409,6 +451,7 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
 
 /** عرض تفعيل الدخول بالبصمة / بصمة الوجه بعد الدخول بكلمة المرور */
 const BioOffer: React.FC<{ onEnable: () => Promise<void>; onSkip: () => void }> = ({ onEnable, onSkip }) => {
+  const { t, i18n } = useTranslation('auth');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const enable = async () => {
@@ -417,27 +460,27 @@ const BioOffer: React.FC<{ onEnable: () => Promise<void>; onSkip: () => void }> 
     try {
       await onEnable();
     } catch (e) {
-      setError((e as Error).message);
+      setError(errorText(e));
       setBusy(false);
     }
   };
   return (
-    <div dir="rtl" role="dialog" aria-modal="true" aria-labelledby="bio-title"
+    <div dir={i18n.dir()} role="dialog" aria-modal="true" aria-labelledby="bio-title"
       className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-slate-950/55 backdrop-blur-sm p-0 sm:p-6 auth-fade">
       <div className="relative w-full sm:max-w-md bg-white dark:bg-slate-950 rounded-t-[32px] sm:rounded-[28px] px-7 pt-9 pb-[max(1.75rem,env(safe-area-inset-bottom))] text-center shadow-2xl auth-rise">
-        <button type="button" onClick={onSkip} aria-label="إغلاق" className="auth-focus absolute top-4 left-4 w-11 h-11 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
+        <button type="button" onClick={onSkip} aria-label={t('common:actions.close')} className="auth-focus absolute top-4 end-4 w-11 h-11 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
           <X className="w-5 h-5" />
         </button>
         <div className="mx-auto w-24 h-24 rounded-[28px] auth-bio-hero flex items-center justify-center text-white">
           <Fingerprint className="w-12 h-12" />
         </div>
-        <h2 id="bio-title" className="mt-6 text-[22px] font-black text-slate-900 dark:text-white">ادخل أسرع بالبصمة</h2>
+        <h2 id="bio-title" className="mt-6 text-[22px] font-black text-slate-900 dark:text-white">{t('bio.title')}</h2>
         <p className="mt-2 text-[15px] leading-7 text-slate-600 dark:text-slate-400">
-          فعّل الدخول ببصمة الإصبع أو بصمة الوجه على هذا الجهاز. البصمة تبقى في جهازك ولا تُرسل لأي خادم.
+          {t('bio.text')}
         </p>
         <div className="mt-5 flex justify-center gap-6 text-slate-500 dark:text-slate-400 text-xs font-bold">
-          <span className="flex flex-col items-center gap-1.5"><Fingerprint className="w-6 h-6 text-teal-600 dark:text-teal-400" /> بصمة الإصبع</span>
-          <span className="flex flex-col items-center gap-1.5"><ScanFace className="w-6 h-6 text-teal-600 dark:text-teal-400" /> بصمة الوجه</span>
+          <span className="flex flex-col items-center gap-1.5"><Fingerprint className="w-6 h-6 text-teal-600 dark:text-teal-400" /> {t('bio.finger')}</span>
+          <span className="flex flex-col items-center gap-1.5"><ScanFace className="w-6 h-6 text-teal-600 dark:text-teal-400" /> {t('bio.face')}</span>
         </div>
         {error && (
           <p role="alert" className="mt-4 flex items-center justify-center gap-2 text-[13px] font-bold text-rose-700 dark:text-rose-300">
@@ -446,31 +489,37 @@ const BioOffer: React.FC<{ onEnable: () => Promise<void>; onSkip: () => void }> 
         )}
         <button type="button" onClick={enable} disabled={busy} autoFocus
           className="auth-btn auth-focus mt-6 w-full h-14 rounded-2xl text-white font-bold text-base flex items-center justify-center gap-2 disabled:opacity-70">
-          {busy ? <><Loader2 className="w-5 h-5 animate-spin" /> بانتظار البصمة...</> : 'تفعيل الآن'}
+          {busy ? <><Loader2 className="w-5 h-5 animate-spin" /> {t('bio.waiting')}</> : t('bio.enable')}
         </button>
         <button type="button" onClick={onSkip} disabled={busy}
           className="auth-focus mt-2 w-full h-12 rounded-2xl text-[15px] font-bold text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-900">
-          ليس الآن
+          {t('bio.later')}
         </button>
       </div>
     </div>
   );
 };
 
-const ThemeButton: React.FC<{ dark: boolean; onToggle: () => void; onColor?: boolean }> = ({ dark, onToggle, onColor }) => (
-  <button type="button" onClick={onToggle} aria-label={dark ? 'التبديل إلى الوضع الفاتح' : 'التبديل إلى الوضع الداكن'}
+const ThemeButton: React.FC<{ dark: boolean; onToggle: () => void; onColor?: boolean }> = ({ dark, onToggle, onColor }) => {
+  const { t } = useTranslation('auth');
+  return (
+  <button type="button" onClick={onToggle} aria-label={dark ? t('theme.toLight') : t('theme.toDark')}
     className={`auth-focus w-11 h-11 rounded-xl flex items-center justify-center transition ${
       onColor ? 'text-white bg-white/10 ring-1 ring-white/20 hover:bg-white/20'
         : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800'}`}>
     {dark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
   </button>
-);
+  );
+};
 
-const SetupBadge = () => (
+const SetupBadge = () => {
+  const { t } = useTranslation('auth');
+  return (
   <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30 mb-3">
-    <UserCog className="w-3.5 h-3.5" /> الإعداد الأول للنظام
+    <UserCog className="w-3.5 h-3.5" /> {t('setupBadge')}
   </span>
-);
+  );
+};
 
 // ───── الدخول عبر مزوّدات خارجية (تُفعَّل لاحقًا) ─────
 /**
@@ -516,11 +565,12 @@ const SSO_PROVIDERS: { id: string; name: string; enabled: boolean; icon: React.R
 ];
 
 const SocialLogin: React.FC = () => {
+  const { t } = useTranslation('auth');
   const [note, setNote] = useState('');
   return (
     <div className="mt-6">
       <div className="flex items-center gap-3 text-xs font-semibold text-slate-500 dark:text-slate-400 mb-4">
-        <span className="flex-1 h-px bg-slate-200 dark:bg-slate-800" /> أو المتابعة عبر <span className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
+        <span className="flex-1 h-px bg-slate-200 dark:bg-slate-800" /> {t('sso.or')} <span className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
       </div>
       <div className="flex justify-center gap-2.5">
         {SSO_PROVIDERS.map(p => (
@@ -528,9 +578,9 @@ const SocialLogin: React.FC = () => {
             key={p.id}
             type="button"
             aria-disabled={!p.enabled}
-            aria-label={`الدخول عبر ${p.name}`}
-            title={`الدخول عبر ${p.name}`}
-            onClick={() => setNote(p.enabled ? '' : `الدخول عبر ${p.name} غير مفعّل بعد، وسيتاح بعد ربطه من مدير النظام.`)}
+            aria-label={t('sso.via', { name: p.name })}
+            title={t('sso.via', { name: p.name })}
+            onClick={() => setNote(p.enabled ? '' : t('sso.notEnabled', { name: p.name }))}
             className="auth-focus w-11 h-11 rounded-xl bg-slate-100/80 hover:bg-slate-200/70 dark:bg-slate-900 dark:hover:bg-slate-800 flex items-center justify-center transition active:scale-95"
           >
             {p.icon}
@@ -543,24 +593,27 @@ const SocialLogin: React.FC = () => {
 };
 
 // ───── المساعدة: نسيت كلمة المرور / طلب حساب ─────
-const HelpView: React.FC<{ onBack: () => void }> = ({ onBack }) => (
+const HelpView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+  const { t, i18n } = useTranslation('auth');
+  const Back = i18n.dir() === 'rtl' ? ArrowRight : ArrowLeft;
+  return (
   <div className="auth-fade">
-    <h1 className="text-[28px] font-black tracking-tight text-slate-900 dark:text-white leading-[1.3]">المساعدة في الدخول</h1>
+    <h1 className="text-[28px] font-black tracking-tight text-slate-900 dark:text-white leading-[1.3]">{t('help.title')}</h1>
     <p className="mt-2 mb-7 text-[15px] leading-7 text-slate-600 dark:text-slate-400">
-      الحسابات وكلمات المرور يديرها مدير النظام فقط لحماية بيانات المنظومة.
+      {t('help.text')}
     </p>
     <ol className="space-y-4">
       {[
-        { icon: ShieldCheck, t: 'تواصل مع مدير النظام', d: 'لطلب حساب جديد أو إعادة تعيين كلمة المرور.' },
-        { icon: KeyRound, t: 'استلم بيانات الدخول', d: 'اسم مستخدم وكلمة مرور مؤقتة باسمك.' },
-        { icon: Lock, t: 'غيّر كلمة المرور', d: 'من «حسابي» بعد أول دخول، ولا تشاركها مع أحد.' },
-      ].map(({ icon: Icon, t, d }) => (
-        <li key={t} className="flex items-start gap-3.5">
+        { icon: ShieldCheck, title: t('help.step1Title'), d: t('help.step1Text') },
+        { icon: KeyRound, title: t('help.step2Title'), d: t('help.step2Text') },
+        { icon: Lock, title: t('help.step3Title'), d: t('help.step3Text') },
+      ].map(({ icon: Icon, title, d }) => (
+        <li key={title} className="flex items-start gap-3.5">
           <span className="w-11 h-11 shrink-0 rounded-xl bg-teal-50 text-teal-800 ring-1 ring-teal-100 dark:bg-teal-500/10 dark:text-teal-300 dark:ring-teal-500/20 flex items-center justify-center">
             <Icon className="w-5 h-5" />
           </span>
           <div className="pt-0.5">
-            <div className="text-[15px] font-bold text-slate-900 dark:text-white">{t}</div>
+            <div className="text-[15px] font-bold text-slate-900 dark:text-white">{title}</div>
             <div className="text-sm text-slate-600 dark:text-slate-400">{d}</div>
           </div>
         </li>
@@ -568,29 +621,33 @@ const HelpView: React.FC<{ onBack: () => void }> = ({ onBack }) => (
     </ol>
     <button type="button" onClick={onBack} autoFocus
       className="auth-focus mt-8 w-full h-14 rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 ring-1 ring-slate-300 text-slate-800 hover:bg-slate-50 dark:ring-slate-700 dark:text-slate-100 dark:hover:bg-slate-900 transition">
-      <ArrowRight className="w-4 h-4" /> العودة لتسجيل الدخول
+      <Back className="w-4 h-4" /> {t('help.back')}
     </button>
   </div>
-);
+  );
+};
 
 // ───── اللوحة الحيّة لمراقبة الأسطول ─────
+// أسماء المناطق في auth:showcase.stations.<key>
 const STATIONS = [
-  { x: 92, y: 74, name: 'الحسينية' },
-  { x: 470, y: 62, name: 'الحر' },
-  { x: 498, y: 252, name: 'طويريج' },
-  { x: 104, y: 262, name: 'عين التمر' },
-  { x: 300, y: 36, name: 'الجدول الغربي' },
+  { x: 92, y: 74, key: 'husseiniya' },
+  { x: 470, y: 62, key: 'hurr' },
+  { x: 498, y: 252, key: 'tuwairij' },
+  { x: 104, y: 262, key: 'ainTamr' },
+  { x: 300, y: 36, key: 'jadwal' },
 ];
-const DEPOT = { x: 290, y: 160 };
+const DEPOT_1 = { x: 200, y: 160 };
+const DEPOT_2 = { x: 380, y: 160 };
 const route = (s: { x: number; y: number }, k: number) => {
-  const cx = (DEPOT.x + s.x) / 2 + (k % 2 ? 40 : -40);
-  const cy = (DEPOT.y + s.y) / 2 + (k % 2 ? -30 : 30);
-  return `M${DEPOT.x},${DEPOT.y} Q${cx},${cy} ${s.x},${s.y}`;
+  const target = k % 2 === 0 ? DEPOT_1 : DEPOT_2;
+  const cx = (target.x + s.x) / 2 + (k % 2 ? 40 : -40);
+  const cy = (target.y + s.y) / 2 + (k % 2 ? -30 : 30);
+  return `M${target.x},${target.y} Q${cx},${cy} ${s.x},${s.y}`;
 };
 const KPIS = [
-  { icon: Truck, value: 42, label: 'مركبة نشطة' },
-  { icon: Building2, value: 18, label: 'محطة توزيع' },
-  { icon: Fuel, value: 705021, label: 'لتر إجمالي الوقود' },
+  { icon: Truck, value: 42, label: 'showcase.kpiVehicles' },
+  { icon: Building2, value: 18, label: 'showcase.kpiStations' },
+  { icon: Fuel, value: 705021, label: 'showcase.kpiFuel' },
 ];
 
 /** عدّاد يصعد بنعومة عند الظهور */
@@ -613,6 +670,7 @@ const CountUp: React.FC<{ to: number }> = ({ to }) => {
 };
 
 const FleetShowcase: React.FC = () => {
+  const { t, i18n } = useTranslation('auth');
   const [time, setTime] = useState(() => new Date());
   const motion = !reducedMotion();
   useEffect(() => {
@@ -621,13 +679,13 @@ const FleetShowcase: React.FC = () => {
   }, []);
 
   return (
-    <section aria-label="لوحة مراقبة الأسطول" className="auth-show hidden lg:flex relative overflow-hidden rounded-[22px] text-white flex-col p-7 xl:p-9">
+    <section aria-label={t('showcase.label')} className="auth-show hidden lg:flex relative overflow-hidden rounded-[22px] text-white flex-col p-7 xl:p-9">
       <div className="auth-grid" />
 
       {/* شريط الحالة */}
       <div className="relative flex items-center justify-between">
         <span className="inline-flex items-center gap-2 h-9 px-3.5 rounded-full auth-glass text-[13px] font-bold">
-          <span className="auth-live-dot w-2 h-2 rounded-full bg-emerald-400 text-emerald-400" /> مراقبة مباشرة
+          <span className="auth-live-dot w-2 h-2 rounded-full bg-emerald-400 text-emerald-400" /> {t('showcase.live')}
         </span>
         <span dir="ltr" className="font-mono text-[13px] text-white/70 tabular-nums">
           {time.toLocaleTimeString('en-GB', { hour12: false })}
@@ -638,13 +696,13 @@ const FleetShowcase: React.FC = () => {
       <div className="relative flex-1 min-h-0 flex items-center justify-center py-6">
         <div className="auth-glass w-full max-w-[600px] rounded-2xl p-4">
           <div className="flex items-center justify-between mb-2 px-1">
-            <span className="text-sm font-bold">مسارات الصهاريج — كربلاء</span>
+            <span className="text-sm font-bold">{t('showcase.routes')}</span>
             <span className="flex items-center gap-3 text-[11px] text-white/65">
-              <span className="flex items-center gap-1.5"><i className="w-2 h-2 rounded-full bg-amber-300" /> صهريج</span>
-              <span className="flex items-center gap-1.5"><i className="w-2 h-2 rounded-full ring-2 ring-teal-300" /> محطة</span>
+              <span className="flex items-center gap-1.5"><i className="w-2 h-2 rounded-full bg-amber-300" /> {t('showcase.tanker')}</span>
+              <span className="flex items-center gap-1.5"><i className="w-2 h-2 rounded-full ring-2 ring-teal-300" /> {t('showcase.station')}</span>
             </span>
           </div>
-          <svg viewBox="0 0 580 300" className="w-full h-auto" role="img" aria-label="خريطة توضيحية لمسارات الصهاريج بين المستودع والمحطات">
+          <svg viewBox="0 0 580 300" className="w-full h-auto" role="img" aria-label={t('showcase.mapLabel')}>
             <defs>
               <radialGradient id="auth-depot" cx="50%" cy="50%" r="50%">
                 <stop offset="0%" stopColor="#5eead4" stopOpacity=".55" />
@@ -657,26 +715,30 @@ const FleetShowcase: React.FC = () => {
             {STATIONS.map((s, k) => (
               <path key={k} id={`auth-r${k}`} d={route(s, k)} fill="none" stroke="rgba(94,234,212,.45)" strokeWidth="1.6" className="auth-route" />
             ))}
-            {/* المستودع */}
-            <circle cx={DEPOT.x} cy={DEPOT.y} r="34" fill="url(#auth-depot)" />
-            <circle cx={DEPOT.x} cy={DEPOT.y} r="9" fill="#14b8a6" stroke="#ccfbf1" strokeWidth="2.5" />
-            <text x={DEPOT.x} y={DEPOT.y + 28} textAnchor="middle" fill="#fff" fontSize="12" fontWeight="700">المستودع المركزي</text>
+            {/* الشركة الأولى */}
+            <circle cx={DEPOT_1.x} cy={DEPOT_1.y} r="34" fill="url(#auth-depot)" />
+            <circle cx={DEPOT_1.x} cy={DEPOT_1.y} r="9" fill="#14b8a6" stroke="#ccfbf1" strokeWidth="2.5" />
+            <text x={DEPOT_1.x} y={DEPOT_1.y + 28} textAnchor="middle" fill="#fff" fontSize="12" fontWeight="700">{t('showcase.depot')}</text>
+            {/* الشركة الثانية */}
+            <circle cx={DEPOT_2.x} cy={DEPOT_2.y} r="34" fill="url(#auth-depot)" />
+            <circle cx={DEPOT_2.x} cy={DEPOT_2.y} r="9" fill="#14b8a6" stroke="#ccfbf1" strokeWidth="2.5" />
+            <text x={DEPOT_2.x} y={DEPOT_2.y + 28} textAnchor="middle" fill="#fff" fontSize="12" fontWeight="700">{t('showcase.depot2')}</text>
             {/* المحطات */}
             {STATIONS.map((s, k) => (
-              <g key={s.name}>
+              <g key={s.key}>
                 <circle cx={s.x} cy={s.y} r="6" fill="none" stroke="#5eead4" strokeWidth="1.5" className="auth-station-ring" style={{ animationDelay: `${k * 0.45}s` }} />
                 <circle cx={s.x} cy={s.y} r="5" fill="#0b3f4a" stroke="#5eead4" strokeWidth="2" />
-                <text x={s.x} y={s.y - 12} textAnchor="middle" fill="rgba(255,255,255,.8)" fontSize="11" fontWeight="600">{s.name}</text>
+                <text x={s.x} y={s.y - 12} textAnchor="middle" fill="rgba(255,255,255,.8)" fontSize="11" fontWeight="600">{t(`showcase.stations.${s.key}`)}</text>
               </g>
             ))}
             {/* الصهاريج المتحركة */}
             {STATIONS.map((_, k) => (
               <g key={`t${k}`}>
                 <circle r="9" fill="rgba(252,211,77,.22)">
-                  {motion && <animateMotion dur={`${7 + k * 1.3}s`} repeatCount="indefinite" keyPoints="0;1;0" keyTimes="0;0.5;1" calcMode="linear" begin={`${-k * 1.1}s`}><mpath href={`#auth-r${k}`} /></animateMotion>}
+                  {motion && <animateMotion dur={`${7 + k * 1.3}s`} repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear" begin={`${-k * 1.1}s`}><mpath href={`#auth-r${k}`} /></animateMotion>}
                 </circle>
                 <circle r="4" fill="#fcd34d" stroke="#fff7d6" strokeWidth="1.2">
-                  {motion && <animateMotion dur={`${7 + k * 1.3}s`} repeatCount="indefinite" keyPoints="0;1;0" keyTimes="0;0.5;1" calcMode="linear" begin={`${-k * 1.1}s`}><mpath href={`#auth-r${k}`} /></animateMotion>}
+                  {motion && <animateMotion dur={`${7 + k * 1.3}s`} repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear" begin={`${-k * 1.1}s`}><mpath href={`#auth-r${k}`} /></animateMotion>}
                 </circle>
               </g>
             ))}
@@ -689,9 +751,9 @@ const FleetShowcase: React.FC = () => {
         {KPIS.map(({ icon: Icon, value, label }) => (
           <div key={label} className="auth-glass rounded-2xl px-4 py-3.5">
             <div className="flex items-center gap-2 text-white/70 text-xs font-semibold mb-1.5">
-              <Icon className="w-4 h-4 text-teal-300" /> {label}
+              <Icon className="w-4 h-4 text-teal-300" /> {t(label)}
             </div>
-            <div className="text-[22px] xl:text-2xl font-black tabular-nums" dir="ltr" style={{ textAlign: 'right' }}><CountUp to={value} /></div>
+            <div className="text-[22px] xl:text-2xl font-black tabular-nums" dir="ltr" style={{ textAlign: i18n.dir() === 'rtl' ? 'right' : 'left' }}><CountUp to={value} /></div>
           </div>
         ))}
       </div>
@@ -699,10 +761,10 @@ const FleetShowcase: React.FC = () => {
       {/* الرسالة */}
       <div className="relative mt-7">
         <h2 className="text-[26px] xl:text-[30px] font-black leading-[1.35] tracking-tight">
-          منصة موحّدة لإدارة <span className="text-teal-300">أسطول المحروقات</span>
+          <Trans t={t} i18nKey="showcase.headline" components={{ 1: <span className="text-teal-300" /> }} />
         </h2>
         <p className="mt-2 text-[15px] leading-7 text-white/70 max-w-lg">
-          الأرصدة والخزانات والتوريدات وحركة الصهاريج في مكان واحد، مع تواصل فوري بين المحطات والإدارة.
+          {t('showcase.text')}
         </p>
       </div>
     </section>

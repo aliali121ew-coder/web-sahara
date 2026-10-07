@@ -2,8 +2,7 @@ import type React from 'react';
 
 export interface ChatTheme {
   id: string;
-  name: string;
-  tagline: string;
+  /** الاسم والوصف: chat:theme.<id>.name / .tagline */
   dark: boolean;
   vars: Record<string, string>;
 }
@@ -14,7 +13,7 @@ export interface ChatTheme {
  */
 export const CHAT_THEMES: ChatTheme[] = [
   {
-    id: 'nebula', name: 'سديم', tagline: 'بنفسجي كوني مع نجوم متلألئة', dark: true,
+    id: 'nebula', dark: true,
     vars: {
       '--bg': '#07051a', '--glow1': 'rgba(124,58,237,.45)', '--glow2': 'rgba(6,182,212,.30)',
       '--panel': 'rgba(18,14,44,.72)', '--panel-solid': '#120e2c', '--panel2': 'rgba(255,255,255,.05)', '--border': 'rgba(167,139,250,.16)',
@@ -25,7 +24,7 @@ export const CHAT_THEMES: ChatTheme[] = [
     },
   },
   {
-    id: 'cyber', name: 'سايبر نيون', tagline: 'أسود حالك بأضواء نيون وردية وسماوية', dark: true,
+    id: 'cyber', dark: true,
     vars: {
       '--bg': '#030306', '--glow1': 'rgba(236,72,153,.38)', '--glow2': 'rgba(34,211,238,.32)',
       '--panel': 'rgba(10,10,18,.8)', '--panel-solid': '#0a0a12', '--panel2': 'rgba(34,211,238,.06)', '--border': 'rgba(34,211,238,.22)',
@@ -36,7 +35,7 @@ export const CHAT_THEMES: ChatTheme[] = [
     },
   },
   {
-    id: 'aurora', name: 'الشفق القطبي', tagline: 'أمواج خضراء وزرقاء راقصة', dark: true,
+    id: 'aurora', dark: true,
     vars: {
       '--bg': '#02121a', '--glow1': 'rgba(16,185,129,.40)', '--glow2': 'rgba(59,130,246,.32)',
       '--panel': 'rgba(4,28,36,.74)', '--panel-solid': '#041c24', '--panel2': 'rgba(255,255,255,.05)', '--border': 'rgba(52,211,153,.18)',
@@ -47,7 +46,7 @@ export const CHAT_THEMES: ChatTheme[] = [
     },
   },
   {
-    id: 'dunes', name: 'كثبان الصحراء', tagline: 'ليل صحراوي دافئ بلون الكهرمان', dark: true,
+    id: 'dunes', dark: true,
     vars: {
       '--bg': '#140b04', '--glow1': 'rgba(245,158,11,.36)', '--glow2': 'rgba(239,68,68,.22)',
       '--panel': 'rgba(34,20,8,.76)', '--panel-solid': '#221408', '--panel2': 'rgba(255,255,255,.05)', '--border': 'rgba(251,191,36,.18)',
@@ -58,7 +57,7 @@ export const CHAT_THEMES: ChatTheme[] = [
     },
   },
   {
-    id: 'mars', name: 'المريخ', tagline: 'أحمر ناري من كوكب آخر', dark: true,
+    id: 'mars', dark: true,
     vars: {
       '--bg': '#12030a', '--glow1': 'rgba(244,63,94,.38)', '--glow2': 'rgba(251,146,60,.26)',
       '--panel': 'rgba(32,8,16,.76)', '--panel-solid': '#200810', '--panel2': 'rgba(255,255,255,.05)', '--border': 'rgba(251,113,133,.18)',
@@ -69,7 +68,7 @@ export const CHAT_THEMES: ChatTheme[] = [
     },
   },
   {
-    id: 'hologram', name: 'هولوغرام', tagline: 'زجاج فاتح بألوان قزحية', dark: false,
+    id: 'hologram', dark: false,
     vars: {
       '--bg': '#eef2ff', '--glow1': 'rgba(192,132,252,.45)', '--glow2': 'rgba(103,232,249,.45)',
       '--panel': 'rgba(255,255,255,.66)', '--panel-solid': '#ffffff', '--panel2': 'rgba(99,102,241,.06)', '--border': 'rgba(99,102,241,.16)',
@@ -80,7 +79,7 @@ export const CHAT_THEMES: ChatTheme[] = [
     },
   },
   {
-    id: 'crystal', name: 'كريستال', tagline: 'نظيف ومشرق للعمل اليومي', dark: false,
+    id: 'crystal', dark: false,
     vars: {
       '--bg': '#f1f5f9', '--glow1': 'rgba(59,130,246,.22)', '--glow2': 'rgba(14,165,233,.18)',
       '--panel': 'rgba(255,255,255,.82)', '--panel-solid': '#ffffff', '--panel2': 'rgba(15,23,42,.04)', '--border': 'rgba(15,23,42,.09)',
@@ -91,7 +90,7 @@ export const CHAT_THEMES: ChatTheme[] = [
     },
   },
   {
-    id: 'mint', name: 'نعناع', tagline: 'أخضر هادئ ومنعش', dark: false,
+    id: 'mint', dark: false,
     vars: {
       '--bg': '#ecfdf5', '--glow1': 'rgba(52,211,153,.30)', '--glow2': 'rgba(45,212,191,.25)',
       '--panel': 'rgba(255,255,255,.78)', '--panel-solid': '#ffffff', '--panel2': 'rgba(6,78,59,.05)', '--border': 'rgba(6,78,59,.1)',
@@ -113,7 +112,7 @@ export const themeStyle = (t: ChatTheme) => t.vars as unknown as React.CSSProper
  */
 export interface BubbleStyle {
   id: string;
-  name: string;
+  /** الاسم: chat:bubble.<id> */
   out?: string;
   outText?: string;
   in?: string;
@@ -122,21 +121,21 @@ export interface BubbleStyle {
 }
 
 export const BUBBLE_STYLES: BubbleStyle[] = [
-  { id: 'auto', name: 'حسب الثيم' },
-  { id: 'whatsapp', name: 'واتساب', out: 'linear-gradient(135deg,#128c7e,#075e54)', outText: '#fff', in: '#ffffff', inText: '#111b21', inBorder: 'rgba(0,0,0,.06)' },
-  { id: 'messenger', name: 'ماسنجر', out: 'linear-gradient(160deg,#00b2ff 0%,#a033ff 60%,#ff5c87 100%)', outText: '#fff', in: '#e4e6eb', inText: '#050505', inBorder: 'transparent' },
-  { id: 'telegram', name: 'تيليجرام', out: 'linear-gradient(135deg,#3390ec,#2a7bd1)', outText: '#fff', in: 'rgba(255,255,255,.95)', inText: '#0f1419', inBorder: 'rgba(0,0,0,.05)' },
-  { id: 'gold', name: 'ذهبي', out: 'linear-gradient(135deg,#fbbf24,#d97706)', outText: '#1c1003', in: 'rgba(251,191,36,.12)', inText: 'var(--text)', inBorder: 'rgba(251,191,36,.35)' },
-  { id: 'rose', name: 'وردي', out: 'linear-gradient(135deg,#f472b6,#db2777)', outText: '#fff', in: 'rgba(244,114,182,.12)', inText: 'var(--text)', inBorder: 'rgba(244,114,182,.3)' },
-  { id: 'mono', name: 'أحادي', out: '#1f2937', outText: '#f9fafb', in: 'rgba(148,163,184,.16)', inText: 'var(--text)', inBorder: 'rgba(148,163,184,.3)' },
-  { id: 'glass', name: 'زجاجي', out: 'rgba(255,255,255,.18)', outText: 'var(--text)', in: 'rgba(255,255,255,.06)', inText: 'var(--text)', inBorder: 'rgba(255,255,255,.14)' },
+  { id: 'auto' },
+  { id: 'whatsapp', out: 'linear-gradient(135deg,#128c7e,#075e54)', outText: '#fff', in: '#ffffff', inText: '#111b21', inBorder: 'rgba(0,0,0,.06)' },
+  { id: 'messenger', out: 'linear-gradient(160deg,#00b2ff 0%,#a033ff 60%,#ff5c87 100%)', outText: '#fff', in: '#e4e6eb', inText: '#050505', inBorder: 'transparent' },
+  { id: 'telegram', out: 'linear-gradient(135deg,#3390ec,#2a7bd1)', outText: '#fff', in: 'rgba(255,255,255,.95)', inText: '#0f1419', inBorder: 'rgba(0,0,0,.05)' },
+  { id: 'gold', out: 'linear-gradient(135deg,#fbbf24,#d97706)', outText: '#1c1003', in: 'rgba(251,191,36,.12)', inText: 'var(--text)', inBorder: 'rgba(251,191,36,.35)' },
+  { id: 'rose', out: 'linear-gradient(135deg,#f472b6,#db2777)', outText: '#fff', in: 'rgba(244,114,182,.12)', inText: 'var(--text)', inBorder: 'rgba(244,114,182,.3)' },
+  { id: 'mono', out: '#1f2937', outText: '#f9fafb', in: 'rgba(148,163,184,.16)', inText: 'var(--text)', inBorder: 'rgba(148,163,184,.3)' },
+  { id: 'glass', out: 'rgba(255,255,255,.18)', outText: 'var(--text)', in: 'rgba(255,255,255,.06)', inText: 'var(--text)', inBorder: 'rgba(255,255,255,.14)' },
 ];
 
 export const TEXT_SIZES = [
-  { id: 'sm', name: 'صغير', px: 13 },
-  { id: 'md', name: 'متوسط', px: 14.5 },
-  { id: 'lg', name: 'كبير', px: 16.5 },
-  { id: 'xl', name: 'كبير جدًا', px: 19 },
+  { id: 'sm', px: 13 },
+  { id: 'md', px: 14.5 },
+  { id: 'lg', px: 16.5 },
+  { id: 'xl', px: 19 },
 ];
 
 export interface RoomLook { bubble: string; size: string }

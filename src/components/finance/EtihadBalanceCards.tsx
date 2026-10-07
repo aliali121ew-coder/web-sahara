@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { EtihadSummaryMetrics } from '../../types/finance';
 import { formatNumber } from '../../lib/utils';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation, Trans } from 'react-i18next';
 
 interface EtihadBalanceCardsProps {
   metrics: EtihadSummaryMetrics;
@@ -25,7 +25,7 @@ export const EtihadBalanceCards: React.FC<EtihadBalanceCardsProps> = ({
   metrics,
   coverageDays = 107
 }) => {
-  const { tr } = useLanguage();
+  const { t } = useTranslation(['finance', 'common']);
 
   const getDynamicTextSize = (num: number) => {
     const strLen = formatNumber(num).length;
@@ -49,13 +49,13 @@ export const EtihadBalanceCards: React.FC<EtihadBalanceCardsProps> = ({
     const percentage = (current / MAX_CAPACITY) * 100;
 
     if (percentage >= 75) {
-      return { label: tr('ممتاز'), color: 'text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/50 border-teal-200/50 dark:border-teal-800/40' };
+      return { label: t('finance:cards.excellent'), color: 'text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/50 border-teal-200/50 dark:border-teal-800/40' };
     } else if (percentage >= 50) {
-      return { label: tr('جيد'), color: 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 border-blue-200/50 dark:border-blue-800/40' };
+      return { label: t('finance:cards.good'), color: 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 border-blue-200/50 dark:border-blue-800/40' };
     } else if (percentage >= 25) {
-      return { label: tr('متوسط'), color: 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border-amber-200/50 dark:border-amber-800/40' };
+      return { label: t('finance:cards.average'), color: 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border-amber-200/50 dark:border-amber-800/40' };
     } else {
-      return { label: tr('حرج'), color: 'text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 border-rose-200/50 dark:border-rose-800/40' };
+      return { label: t('finance:cards.critical'), color: 'text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 border-rose-200/50 dark:border-rose-800/40' };
     }
   };
 
@@ -80,13 +80,13 @@ export const EtihadBalanceCards: React.FC<EtihadBalanceCardsProps> = ({
         <div className="flex items-start justify-between gap-2">
           <div>
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block mb-1">
-              {tr('الرصيد السابق')}
+              {t('finance:ledger.previousBalance')}
             </span>
             <div className="flex items-baseline gap-1.5">
               <span className={`${getDynamicTextSize(metrics.previousBalance)} font-black font-mono tracking-tight text-slate-900 dark:text-white`}>
                 {formatNumber(metrics.previousBalance)}
               </span>
-              <span className="text-xs font-bold text-amber-600 dark:text-amber-400">{tr('لتر')}</span>
+              <span className="text-xs font-bold text-amber-600 dark:text-amber-400">{t('common:units.liter')}</span>
             </div>
           </div>
           <div className="w-11 h-11 rounded-2xl bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/20 shadow-xs">
@@ -97,9 +97,9 @@ export const EtihadBalanceCards: React.FC<EtihadBalanceCardsProps> = ({
         <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
           <span className="flex items-center gap-1 font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-            {tr('الرصيد الافتتاحي المقفل')}
+            {t('finance:cards.lockedOpening')}
           </span>
-          <span className="font-mono font-bold text-amber-600 dark:text-amber-400">سجل معتمد</span>
+          <span className="font-mono font-bold text-amber-600 dark:text-amber-400">{t('finance:cards.approvedRecord')}</span>
         </div>
       </div>
 
@@ -110,14 +110,14 @@ export const EtihadBalanceCards: React.FC<EtihadBalanceCardsProps> = ({
           <div>
             <div className="flex items-center gap-1.5 mb-1">
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                {tr('الوارد')}
+                {t('finance:ledger.inbound')}
               </span>
             </div>
             <div className="flex items-baseline gap-1.5">
               <span className={`${getDynamicTextSize(metrics.todayInbound)} font-black font-mono tracking-tight text-slate-900 dark:text-white`}>
                 {formatNumber(metrics.todayInbound)}
               </span>
-              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{tr('لتر')}</span>
+              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{t('common:units.liter')}</span>
             </div>
           </div>
           <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20 shadow-xs">
@@ -126,7 +126,7 @@ export const EtihadBalanceCards: React.FC<EtihadBalanceCardsProps> = ({
         </div>
 
         <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-          <span>{tr('زيادة على الرصيد الحالي  ')}</span>
+          <span>{t('finance:cards.addedToCurrent')}</span>
           <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1" dir="ltr">
             <TrendingUp className="w-3 h-3" />
             {inboundPercentage}%
@@ -141,14 +141,14 @@ export const EtihadBalanceCards: React.FC<EtihadBalanceCardsProps> = ({
           <div>
             <div className="flex items-center gap-1.5 mb-1">
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                {tr('الاستهلاك')}
+                {t('finance:saharaPetrol.consumption')}
               </span>
             </div>
             <div className="flex items-baseline gap-1.5">
               <span className={`${getDynamicTextSize(metrics.todayConsumption)} font-black font-mono tracking-tight text-slate-900 dark:text-white`}>
                 {formatNumber(metrics.todayConsumption)}
               </span>
-              <span className="text-xs font-bold text-rose-600 dark:text-rose-400">{tr('لتر')}</span>
+              <span className="text-xs font-bold text-rose-600 dark:text-rose-400">{t('common:units.liter')}</span>
             </div>
           </div>
           <div className="w-11 h-11 rounded-2xl bg-rose-500/10 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 border border-rose-500/20 shadow-xs">
@@ -157,7 +157,7 @@ export const EtihadBalanceCards: React.FC<EtihadBalanceCardsProps> = ({
         </div>
 
         <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-          <span>{tr('من الرصيد المتوفر')}</span>
+          <span>{t('finance:cards.fromAvailable')}</span>
           <span className="font-mono font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1" dir="ltr">
             <TrendingDown className="w-3 h-3" />
             {consumptionPercentage}%
@@ -172,14 +172,14 @@ export const EtihadBalanceCards: React.FC<EtihadBalanceCardsProps> = ({
           <div>
             <div className="flex items-center gap-1.5 mb-1">
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                {tr('مبيعات')}
+                {t('finance:cards.sales')}
               </span>
             </div>
             <div className="flex items-baseline gap-1.5">
               <span className={`${getDynamicTextSize(metrics.todaySales)} font-black font-mono tracking-tight text-slate-900 dark:text-white`}>
                 {formatNumber(metrics.todaySales)}
               </span>
-              <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{tr('لتر')}</span>
+              <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{t('common:units.liter')}</span>
             </div>
           </div>
           <div className="w-11 h-11 rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-500/20 shadow-xs">
@@ -188,7 +188,7 @@ export const EtihadBalanceCards: React.FC<EtihadBalanceCardsProps> = ({
         </div>
 
         <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-          <span>{tr('  مبيعات خارجية')}</span>
+          <span>{t('finance:cards.externalSales')}</span>
           <span className="font-mono font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1" dir="ltr">
             <TrendingDown className="w-3 h-3" />
             {salesPercentage}%
@@ -203,14 +203,14 @@ export const EtihadBalanceCards: React.FC<EtihadBalanceCardsProps> = ({
           <div>
             <div className="flex items-center gap-1.5 mb-1">
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                {tr('الرصيد الحالي')}
+                {t('finance:ledger.currentBalance')}
               </span>
             </div>
             <div className="flex items-baseline gap-1.5">
               <span className={`${getDynamicTextSize(metrics.currentBalance)} font-black font-mono tracking-tight text-teal-600 dark:text-teal-400 truncate`}>
                 {formatNumber(metrics.currentBalance)}
               </span>
-              <span className="text-xs font-bold text-teal-600 dark:text-teal-400">{tr('لتر')}</span>
+              <span className="text-xs font-bold text-teal-600 dark:text-teal-400">{t('common:units.liter')}</span>
             </div>
           </div>
           <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-teal-500/20">
@@ -221,7 +221,7 @@ export const EtihadBalanceCards: React.FC<EtihadBalanceCardsProps> = ({
         <div className="mt-3 pt-2.5 border-t border-teal-100/60 dark:border-slate-800/80 flex items-center justify-between text-[11px]">
           <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
             <Sparkles className="w-3 h-3 text-teal-500" />
-            {tr('الحالة')}:
+            {t('finance:cards.status')}:
           </span>
           <span className={`font-mono font-black px-2 py-0.5 rounded-lg border ${currentStatus.color}`}>
             {currentStatus.label}
@@ -236,14 +236,14 @@ export const EtihadBalanceCards: React.FC<EtihadBalanceCardsProps> = ({
           <div>
             <div className="flex items-center gap-1.5 mb-1">
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                {tr('التكلفة')}
+                {t('finance:cards.cost')}
               </span>
             </div>
             <div className="flex items-baseline gap-1.5">
               <span className={`${getDynamicTextSize(totalCost)} font-black font-mono tracking-tight text-emerald-600 dark:text-emerald-400 truncate`}>
                 {formatNumber(totalCost)}
               </span>
-              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{tr('د.ع')}</span>
+              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{t('common:units.iqd')}</span>
             </div>
           </div>
           <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/20">
@@ -254,10 +254,10 @@ export const EtihadBalanceCards: React.FC<EtihadBalanceCardsProps> = ({
         <div className="mt-3 pt-2.5 border-t border-emerald-100/60 dark:border-slate-800/80 flex items-center justify-between text-[11px]">
           <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
             <Sparkles className="w-3 h-3 text-emerald-500" />
-            {tr('الوارد × متوسط السعر')}:
+            {t('finance:cards.costFormula')}:
           </span>
           <span className="font-mono font-bold text-emerald-700 dark:text-emerald-300">
-            {formatNumber(metrics.averagePrice)} د.ع / لتر
+            {formatNumber(metrics.averagePrice)} {t('finance:tanksView.iqdPerLiter')}
           </span>
         </div>
       </div>
@@ -268,13 +268,13 @@ export const EtihadBalanceCards: React.FC<EtihadBalanceCardsProps> = ({
         <div className="flex items-start justify-between gap-2">
           <div>
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block mb-1">
-              {tr('معدل السعر')}
+              {t('finance:cards.avgPrice')}
             </span>
             <div className="flex items-baseline gap-1.5">
               <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-cyan-600 dark:text-cyan-400">
                 {formatNumber(metrics.averagePrice)}
               </span>
-              <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">{tr('د.ع')}</span>
+              <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">{t('common:units.iqd')}</span>
             </div>
           </div>
           <div className="w-11 h-11 rounded-2xl bg-cyan-500/10 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0 border border-cyan-500/20 shadow-xs">
@@ -285,9 +285,9 @@ export const EtihadBalanceCards: React.FC<EtihadBalanceCardsProps> = ({
         <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
           <span className="flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
-            {tr('السعر المعتمد للتجهيز')}
+            {t('finance:cards.supplyPrice')}
           </span>
-          <span className="font-mono font-bold text-cyan-600 dark:text-cyan-400">معتمد رسمياً</span>
+          <span className="font-mono font-bold text-cyan-600 dark:text-cyan-400">{t('finance:cards.officiallyApproved')}</span>
         </div>
       </div>
 
@@ -298,14 +298,11 @@ export const EtihadBalanceCards: React.FC<EtihadBalanceCardsProps> = ({
           <div>
             <div className="flex items-center gap-1.5 mb-1">
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                {tr('يؤمن لغاية')}
+                {t('finance:saharaPetrol.coversUntil')}
               </span>
             </div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-xl sm:text-2xl xl:text-3xl font-black font-mono tracking-tight text-slate-900 dark:text-white">
-                {coverageDays}
-              </span>
-              <span className="text-xs font-bold text-sky-600 dark:text-sky-400">{tr('يوماً')}</span>
+              <Trans t={t} i18nKey="finance:tanksReport.coverageDays" count={coverageDays} components={{ 1: <span className="text-xl sm:text-2xl xl:text-3xl font-black font-mono tracking-tight text-slate-900 dark:text-white" />, 2: <span className="text-xs font-bold text-sky-600 dark:text-sky-400" /> }} />
             </div>
           </div>
           <div className="w-11 h-11 rounded-2xl bg-sky-500/10 dark:bg-sky-500/20 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 border border-sky-500/20 shadow-xs">
@@ -314,7 +311,7 @@ export const EtihadBalanceCards: React.FC<EtihadBalanceCardsProps> = ({
         </div>
 
         <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-          <span>{tr('تاريخ النفاد المتوقع')}:</span>
+          <span>{t('finance:saharaPetrol.runOutDate')}:</span>
           <span className="font-mono font-bold text-sky-600 dark:text-sky-400">{formattedSecuresUntil}</span>
         </div>
       </div>

@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@100..900&family=Cairo:wght@200..1000&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -9,11 +8,11 @@
     --bg-canvas: #f8fafc;
     --card-bg: #ffffff;
     --border-color: #f1f5f9;
-    font-family: 'Noto Kufi Arabic', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Noto Kufi Arabic Variable', 'Noto Kufi Arabic', 'Cairo Variable', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
   *, *::before, *::after {
-    font-family: 'Noto Kufi Arabic', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Noto Kufi Arabic Variable', 'Noto Kufi Arabic', 'Cairo Variable', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
   .dark {
@@ -25,12 +24,12 @@
   body {
     background-color: var(--bg-canvas);
     color: #1e293b;
-    font-family: 'Noto Kufi Arabic', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-family: 'Noto Kufi Arabic Variable', 'Noto Kufi Arabic', 'Cairo Variable', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    /* بدون "cv02/cv03/cv04/cv11": بدائل لخطوط لاتينية كانت تفعّل في الخطوط العربية ياءً أخيرة بلا نقاط (الصحاري ← الصحارى) */
   }
 
   button, input, select, textarea {
-    font-family: 'Noto Kufi Arabic', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Noto Kufi Arabic Variable', 'Noto Kufi Arabic', 'Cairo Variable', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
   .dark body {
@@ -258,7 +257,7 @@ svg path:focus-visible {
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
-    font-family: 'Cairo', 'Noto Kufi Arabic', system-ui, sans-serif !important;
+    font-family: 'Cairo Variable', 'Cairo', 'Noto Kufi Arabic Variable', 'Noto Kufi Arabic', system-ui, sans-serif !important;
     font-size: 10px !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -392,7 +391,186 @@ svg path:focus-visible {
 .success-ring { transform: scale(0.6); opacity: 0; animation: successRing 0.9s ease-out 0.6s forwards; }
 @keyframes successPop { from { opacity: 0; transform: scale(0.85) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 @keyframes successDraw { to { stroke-dashoffset: 0; } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dialogIn { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { [class*="animate-[overlayIn"], [class*="animate-[dialogIn"] { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { [class*="animate-[fadeIn"] { animation: none !important; } }
 @keyframes successRing { 0% { transform: scale(0.6); opacity: 0.9; } 100% { transform: scale(1.45); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
   .success-pop, .success-circle, .success-check, .success-ring { animation: none; stroke-dashoffset: 0; }
+}
+
+/* انتقال تبويبات SwipeTabs: التالي يدخل من اليسار والسابق من اليمين (اتجاه عربي) */
+@keyframes swipe-in-next { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+@keyframes swipe-in-prev { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+.swipe-in-next { animation: swipe-in-next .28s ease-out; }
+.swipe-in-prev { animation: swipe-in-prev .28s ease-out; }
+@media (prefers-reduced-motion: reduce) { .swipe-in-next, .swipe-in-prev { animation: none; } }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   🌈 تدرجات ألوان الخلفية الهادئة الاحترافية (Ambient Canvas Gradients)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+body {
+  min-height: 100vh;
+  transition: background-color 0.3s ease, background-image 0.5s ease;
+}
+
+/* 1. شفق صحاري الذهبي (Sahara Sunset Amber) */
+body[data-bg-gradient="sahara-amber"] {
+  background-image: 
+    radial-gradient(at 15% 15%, rgba(245, 158, 11, 0.14) 0px, transparent 55%),
+    radial-gradient(at 85% 85%, rgba(249, 115, 22, 0.10) 0px, transparent 55%),
+    radial-gradient(at 50% 30%, rgba(251, 191, 36, 0.08) 0px, transparent 65%);
+  background-attachment: fixed;
+}
+.dark body[data-bg-gradient="sahara-amber"] {
+  background-image: 
+    radial-gradient(at 15% 15%, rgba(245, 158, 11, 0.18) 0px, transparent 55%),
+    radial-gradient(at 85% 85%, rgba(180, 83, 9, 0.15) 0px, transparent 55%),
+    radial-gradient(at 50% 30%, rgba(217, 119, 6, 0.10) 0px, transparent 65%);
+  background-attachment: fixed;
+}
+
+/* 2. أزرق النفط الملكي (Royal Petroleum Blue) */
+body[data-bg-gradient="petrol-blue"] {
+  background-image: 
+    radial-gradient(at 10% 10%, rgba(37, 99, 235, 0.13) 0px, transparent 55%),
+    radial-gradient(at 90% 90%, rgba(14, 165, 233, 0.11) 0px, transparent 55%),
+    radial-gradient(at 50% 25%, rgba(99, 102, 241, 0.08) 0px, transparent 65%);
+  background-attachment: fixed;
+}
+.dark body[data-bg-gradient="petrol-blue"] {
+  background-image: 
+    radial-gradient(at 10% 10%, rgba(37, 99, 235, 0.22) 0px, transparent 55%),
+    radial-gradient(at 90% 90%, rgba(30, 58, 138, 0.20) 0px, transparent 55%),
+    radial-gradient(at 50% 25%, rgba(67, 56, 202, 0.13) 0px, transparent 65%);
+  background-attachment: fixed;
+}
+
+/* 3. زمرد الطاقة والتكرير (Emerald Energy) */
+body[data-bg-gradient="emerald-flow"] {
+  background-image: 
+    radial-gradient(at 15% 15%, rgba(16, 185, 129, 0.13) 0px, transparent 55%),
+    radial-gradient(at 85% 85%, rgba(20, 184, 166, 0.11) 0px, transparent 55%),
+    radial-gradient(at 50% 30%, rgba(5, 150, 105, 0.08) 0px, transparent 65%);
+  background-attachment: fixed;
+}
+.dark body[data-bg-gradient="emerald-flow"] {
+  background-image: 
+    radial-gradient(at 15% 15%, rgba(16, 185, 129, 0.18) 0px, transparent 55%),
+    radial-gradient(at 85% 85%, rgba(15, 118, 110, 0.16) 0px, transparent 55%),
+    radial-gradient(at 50% 30%, rgba(4, 120, 87, 0.11) 0px, transparent 65%);
+  background-attachment: fixed;
+}
+
+/* 4. الشفق الأرجواني الملكي (Royal Twilight Aurora) */
+body[data-bg-gradient="royal-violet"] {
+  background-image: 
+    radial-gradient(at 15% 15%, rgba(147, 51, 234, 0.12) 0px, transparent 55%),
+    radial-gradient(at 85% 85%, rgba(99, 102, 241, 0.11) 0px, transparent 55%),
+    radial-gradient(at 50% 30%, rgba(236, 72, 153, 0.07) 0px, transparent 65%);
+  background-attachment: fixed;
+}
+.dark body[data-bg-gradient="royal-violet"] {
+  background-image: 
+    radial-gradient(at 15% 15%, rgba(147, 51, 234, 0.20) 0px, transparent 55%),
+    radial-gradient(at 85% 85%, rgba(79, 70, 229, 0.18) 0px, transparent 55%),
+    radial-gradient(at 50% 30%, rgba(192, 38, 211, 0.12) 0px, transparent 65%);
+  background-attachment: fixed;
+}
+
+/* 5. أمواج السيان الهندسية (Cyan Electric Waves) */
+body[data-bg-gradient="ocean-cyan"] {
+  background-image: 
+    radial-gradient(at 15% 15%, rgba(6, 182, 212, 0.13) 0px, transparent 55%),
+    radial-gradient(at 85% 85%, rgba(59, 130, 246, 0.11) 0px, transparent 55%),
+    radial-gradient(at 50% 30%, rgba(14, 165, 233, 0.08) 0px, transparent 65%);
+  background-attachment: fixed;
+}
+.dark body[data-bg-gradient="ocean-cyan"] {
+  background-image: 
+    radial-gradient(at 15% 15%, rgba(6, 182, 212, 0.19) 0px, transparent 55%),
+    radial-gradient(at 85% 85%, rgba(2, 132, 199, 0.17) 0px, transparent 55%),
+    radial-gradient(at 50% 30%, rgba(30, 58, 138, 0.13) 0px, transparent 65%);
+  background-attachment: fixed;
+}
+
+/* نمط الكثافة الحيوية (Vibrant Gradient Mode) */
+body[data-gradient-intensity="vibrant"]:not([data-bg-gradient="none"]) {
+  filter: saturate(1.08) contrast(1.02);
+}
+
+/* تأثير الزجاج والبلورة (Glassmorphism & Frosted Blur) */
+body[data-glassmorphism="true"] .shadow-soft-card {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background-color: rgba(255, 255, 255, 0.90);
+}
+.dark body[data-glassmorphism="true"] .shadow-soft-card {
+  background-color: rgba(17, 26, 46, 0.88);
+  border-color: rgba(30, 41, 59, 0.7);
+}
+
+/* تركيز واضح عند التنقل بالكيبورد في الشريط الجانبي (لا يظهر مع الفأرة) */
+#main-sidebar :is(button, [role="button"], input, a):focus-visible {
+  outline: 2px solid #fbbf24;
+  outline-offset: 2px;
+}
+
+/* ===== شبكة المؤشرات المرنة: تتبدل حسب عرض الكارت نفسه (لا عرض الشاشة) ===== */
+.kpi-wrap { container-type: inline-size; }
+/* بطاقات صفحة الموردين: الأحجام تتبع عرض البطاقة نفسها فلا يُقصّ نص عند تصغير الشاشة */
+.sup-stat { container-type: inline-size; min-height: 150px; }
+/* أرقام كروت صفحة المورد: خط Inter بأرقام متساوية العرض، أوضح وأرشق من الخط العربي للأرقام */
+.kpi-num { font-family: 'Inter Variable', 'Inter', system-ui, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; font-weight: 700; line-height: 1.1; }
+.kpi-label { font-size: 0.8125rem; font-weight: 600; }
+.kpi-sub { font-size: 0.7rem; }
+.sup-stat-pad { padding-inline: clamp(0.75rem, 7cqi, 1.125rem); }
+.sup-stat-title { font-size: clamp(0.78rem, 6.2cqi, 0.875rem); }
+.sup-stat-val { font-size: clamp(1.35rem, 13cqi, 1.875rem); line-height: 1.15; white-space: nowrap; }
+.sup-stat-unit { font-size: clamp(0.66rem, 5cqi, 0.75rem); }
+.sup-stat-row { font-size: clamp(0.66rem, 5.2cqi, 0.75rem); }
+.kpi-grid { display: grid; grid-template-columns: minmax(0, 1fr); }
+.kpi-num { white-space: nowrap; font-size: 1.125rem; line-height: 1.2; }
+.kpi-sub { white-space: nowrap; font-size: 0.8125rem; }
+.kpi-label { line-height: 1.25; overflow-wrap: anywhere; }
+/* ثلاثة أعمدة متى اتسع الكارت، والخط يكبر ويصغر بسلاسة مع عرضه */
+@container (min-width: 26rem) {
+  .kpi-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .kpi-num { font-size: clamp(0.8rem, 2.7cqw, 1.05rem); }
+  .kpi-sub { font-size: clamp(0.62rem, 2.1cqw, 0.78rem); }
+}
+/* شرائح قصيرة (اسم + رقم): تبقى 3 أعمدة حتى العروض الضيقة وتصغر الخطوط */
+.kpi-grid-chips { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.kpi-grid-chips .kpi-num { font-size: clamp(0.7rem, 3.6cqw, 1.05rem); }
+.kpi-grid-chips .kpi-label { font-size: clamp(0.62rem, 2.9cqw, 0.8125rem); }
+/* عمودان (كروت قصيرة): خط أكبر يتكيف مع عرض الكارت، بلا قطع للنص */
+.kpi-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.kpi-grid-2 .kpi-num { font-size: clamp(0.8rem, 4.2cqw, 1.05rem); }
+/* الرئيسية: أرقام الكروت الصغيرة بنفس خط «الرصيد الفعلي الحالي» (font-mono = Noto Kufi) حتى لا يظهر أكثر من نوع خط */
+.dash-root .kpi-num { font-family: theme('fontFamily.mono'); font-weight: 900; letter-spacing: normal; font-size: 14px !important; }
+/* عناوين الكروت الصغيرة بسطر واحد: تصغر قليلًا مع عرض الكارت، ونقاط في الحالات الضيقة جدًا */
+.dash-root .kpi-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* الحجم من عرض صف الكروت (حد أدنى 12px)، والعنوان الطويل يُستبدل بصيغته المختصرة حين يضيق الصف */
+@container (min-width: 26rem) { .dash-root .kpi-grid-3 .kpi-label { font-size: clamp(0.75rem, calc(2.2cqw + 1px), 0.8125rem); } }
+.dash-root .kpi-grid-2 .kpi-label { font-size: clamp(0.75rem, calc(4.4cqw - 3px), 0.8125rem); }
+.dash-root .lbl-short { display: none; }
+@container (max-width: 38rem) { .dash-root .kpi-grid-3 .lbl-full { display: none; } .dash-root .kpi-grid-3 .lbl-short { display: inline; } }
+@container (max-width: 22rem) { .dash-root .kpi-grid-2 .lbl-full { display: none; } .dash-root .kpi-grid-2 .lbl-short { display: inline; } }
+
+/* ===== الخطوط حسب اللغة =====
+   الإنجليزية: Inter، مع الرجوع لخط عربي للبيانات العربية التي يدخلها المستخدمون (أسماء المحطات وغيرها).
+   العربية: بلا تباعد بين الحروف، لأنه يكسر اتصالها. */
+:root {
+  --font-ar: 'Noto Kufi Arabic Variable', 'Noto Kufi Arabic', 'Cairo Variable', 'Cairo', system-ui, sans-serif;
+  --font-en: 'Inter Variable', 'Inter', 'Noto Kufi Arabic Variable', 'Noto Kufi Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+html[lang="en"] body,
+html[lang="en"] body * {
+  font-family: var(--font-en);
+}
+html[lang="ar"] [class*="tracking-"] {
+  letter-spacing: normal;
 }

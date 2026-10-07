@@ -1,0 +1,120 @@
+{
+  "category": {
+    "all": "Show all",
+    "allPurchases": "All purchases",
+    "station-gas": "Station gasoil",
+    "sahara-gas": "Sahara gasoil",
+    "etihad-gas": "Etihad gasoil",
+    "sahara-black-oil": "Sahara black oil",
+    "etihad-black-oil": "Etihad black oil",
+    "sahara-petrol": "Sahara gasoline"
+  },
+  "range": {
+    "today": "Today",
+    "week": "Week",
+    "month": "Month",
+    "pick": "Pick a date range",
+    "date": "Date"
+  },
+  "table": {
+    "title": "Fuel purchase log",
+    "subtitle": "Daily inbound with weighted average purchase price",
+    "receiver": "Receiving party",
+    "product": "Product",
+    "inbound": "Inbound",
+    "avgPrice": "Average price",
+    "date": "Purchase date",
+    "emptyRange": "No purchases in this period",
+    "emptyCategory": "No purchases recorded for this category yet",
+    "total": "Total",
+    "showing": "Showing <1>{{from}}–{{to}}</1> of <2>{{total}}</2>",
+    "prev": "Previous",
+    "next": "Next"
+  },
+  "records_one": "{{count}} record",
+  "records_other": "{{count}} records",
+  "shipments_one": "{{count}} shipment",
+  "shipments_other": "{{count}} shipments",
+  "weeks_one": "{{count}} week",
+  "weeks_other": "{{count}} weeks",
+  "months_one": "{{count}} month",
+  "months_other": "{{count}} months",
+  "chart": {
+    "title": "Inbound and price trend",
+    "gran": {
+      "auto": "Auto",
+      "day": "Daily",
+      "week": "Weekly",
+      "month": "Monthly"
+    },
+    "ma": {
+      "day": "7-day moving average",
+      "week": "4-week moving average",
+      "month": "3-month moving average"
+    },
+    "movingAvg": "Moving average",
+    "compareHint": "Compare with the previous period of the same length",
+    "compare": "Compare with previous period",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "reset": "Show full period",
+    "exportPng": "Export PNG image",
+    "exportExcel": "Export to Excel",
+    "fullscreen": "Full screen",
+    "exitFullscreen": "Exit full screen",
+    "show": "Show",
+    "hide": "Hide",
+    "totalInbound": "Total inbound",
+    "inbound": "Inbound",
+    "weightedAvg": "Weighted average price",
+    "byQuantity": "By quantity",
+    "maxPrice": "Highest price",
+    "minPrice": "Lowest price",
+    "trend": "Price trend",
+    "noData": "No data to chart",
+    "pricePerProduct": "Price by product",
+    "avgBuyPrice": "Average purchase price",
+    "iqdPerLiter": "IQD / L",
+    "periodAvg": "Period average",
+    "prevPeriod": "Previous period",
+    "noPrices": "No prices recorded for this period",
+    "inboundBy": {
+      "day": "Daily inbound",
+      "week": "Weekly inbound",
+      "month": "Monthly inbound"
+    },
+    "prevInbound": "Previous period inbound",
+    "prevPrice": "Previous period price",
+    "avgPrice": "Average price",
+    "vsPrev": {
+      "day": "vs. previous day",
+      "week": "vs. previous week",
+      "month": "vs. previous month"
+    },
+    "vsPeriodAvg": "vs. period average",
+    "dailyRange": "Daily range",
+    "inboundChange": "Inbound change",
+    "prevPeriodInbound": "Previous period — inbound",
+    "prevPeriodPrice": "Previous period — price",
+    "clickHint": "Click to show this period in the table"
+  },
+  "export": {
+    "period": "Period",
+    "inboundLiters": "Inbound (L)",
+    "shipmentCount": "Shipments",
+    "avgPrice": "Average price",
+    "minPrice": "Lowest price",
+    "maxPrice": "Highest price",
+    "catInbound": "{{name}} — inbound",
+    "catPrice": "{{name}} — price",
+    "prevInbound": "Previous period inbound",
+    "prevPrice": "Previous period price",
+    "sheet": "Purchases",
+    "file": "purchases"
+  },
+  "navigator": {
+    "start": "Window start",
+    "end": "Window end",
+    "hint": "Drag to select a period · double-click to show all"
+  }
+}

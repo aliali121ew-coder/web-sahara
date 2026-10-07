@@ -1,4 +1,5 @@
 import React from 'react';
+import { SectionHeader } from './SectionHeader';
 import {
   Droplets,
   ArrowDownLeft,
@@ -10,17 +11,18 @@ import {
   Boxes
 } from 'lucide-react';
 import { formatNumber } from '../../lib/utils';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
 import { useBlackOilLedger, BLACK_OIL_SECTION_KEYS } from '../../lib/blackOilLedger';
 import { useCentralTanks, tankLiters } from '../../lib/centralTanks';
 import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
 import { getBusinessDate } from '../../lib/utils';
+import i18n from '../../i18n';
 
 /** نسبة تغيّر صغيرة عن اليوم السابق (سهم + نسبة). upIsGood: الزيادة إيجابية (الوارد) أو سلبية (الاستهلاك) */
 const ChangeBadge: React.FC<{ cur: number; prev: number | null | undefined; upIsGood: boolean; title: string }> = ({ cur, prev, upIsGood, title }) => {
   if (prev === null || prev === undefined)
     return (
-      <span title="لا يوجد يوم سابق للمقارنة" className="inline-flex items-center px-1 py-px rounded-md text-[9px] font-black leading-none bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">—</span>
+      <span title={i18n.t('dashboard:compare.noPrevDay')} className="inline-flex items-center px-1 py-px rounded-md text-[9px] font-black leading-none bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">—</span>
     );
   const pct = prev > 0 ? ((cur - prev) / prev) * 100 : cur > 0 ? 100 : 0;
   const up = pct > 0.05, down = pct < -0.05;
@@ -38,7 +40,7 @@ const ChangeBadge: React.FC<{ cur: number; prev: number | null | undefined; upIs
 };
 
 export const BlackOilSection: React.FC = () => {
-  const { tr } = useLanguage();
+  const { t } = useTranslation(['dashboard', 'common']);
   // 1. Sahara Data: من السجل اليومي لنفط الصحاري الأسود وخزانات قسمه في منظومة الخزانات
   const saharaLedger = useBlackOilLedger('sahara');
   const [centralTanks] = useCentralTanks(OFFICIAL_TABLE_TANK_UNITS);
@@ -96,23 +98,11 @@ export const BlackOilSection: React.FC = () => {
     <div className="space-y-4">
       
       {/* Section Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2.5">
-          <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-700 via-indigo-600 to-slate-900 text-white shadow-md shadow-purple-500/20">
-            <Droplets className="w-4 h-4 text-purple-200" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                {tr('تفاصيل نفط الأسود')}
-              </h2>
-              <span className="px-2.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-[10px] font-bold border border-purple-200/80 dark:border-purple-800/80">
-                {tr('مخزون استراتيجي موحد')}
-              </span>
-            </div>
-          </div>
+      <SectionHeader title={t('dashboard:blackOil.details')} icon={
+        <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-700 via-indigo-600 to-slate-900 text-white shadow-md shadow-purple-500/20">
+          <Droplets className="w-4 h-4 text-purple-200" />
         </div>
-      </div>
+      } />
 
       {/* Grid: 2 Spacious Main Cards (Sahara 5/12 + Etihad 4/12) + 1 Compact Luxury Executive Card (3/12) */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4 items-stretch">
@@ -136,11 +126,11 @@ export const BlackOilSection: React.FC = () => {
                 </div>
                 <div className="min-w-0">
                   <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white truncate">
-                    {tr('نفط أسود - صحاري كربلاء')}
+                    {t('dashboard:blackOil.sahara')}
                   </h3>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[11px] font-medium text-slate-400">{tr('السعة الكلية:')}</span>
-                    <span className="font-mono font-bold text-[11px] text-slate-700 dark:text-slate-300">{formatNumber(saharaCapacity)} {tr('لتر')}</span>
+                    <span className="text-[11px] font-medium text-slate-400">{t('dashboard:capacity.totalColon')}</span>
+                    <span className="font-mono font-bold text-[11px] text-slate-700 dark:text-slate-300">{formatNumber(saharaCapacity)} {t('common:units.liter')}</span>
                   </div>
                 </div>
               </div>
@@ -150,7 +140,7 @@ export const BlackOilSection: React.FC = () => {
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800/60 shadow-2xs">
                   <Calendar className="w-3 h-3 text-sky-600 dark:text-sky-400 shrink-0" />
                   <span className="text-[11px] font-black font-mono text-sky-700 dark:text-sky-300 whitespace-nowrap">
-                    {tr('يؤمن')} {saharaCoverageDays} {tr('يوماً')}
+                    {t('dashboard:coverage.covers')} {t('common:units.days', { count: saharaCoverageDays })}
                   </span>
                 </div>
                 <span className="text-[9.5px] text-slate-400 dark:text-slate-500 block text-left font-mono mt-0.5 pr-1">
@@ -163,14 +153,14 @@ export const BlackOilSection: React.FC = () => {
             {/* Actual Balance Big Display */}
             <div className="pt-0.5">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
-                {tr('الرصيد الفعلي الحالي')}
+                {t('dashboard:balance.actualCurrent')}
               </span>
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl sm:text-4xl lg:text-[36px] font-black font-mono text-slate-900 dark:text-white tracking-tight leading-none">
                   {formatNumber(saharaTotalBalance)}
                 </span>
                 <span className="text-sm font-black text-sky-600 dark:text-sky-400">
-                  {tr('لتر')}
+                  {t('common:units.liter')}
                 </span>
               </div>
             </div>
@@ -184,11 +174,11 @@ export const BlackOilSection: React.FC = () => {
               <div className="flex items-center gap-1.5">
                 <Boxes className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
                 <span className="text-xs font-black text-slate-800 dark:text-slate-200">
-                  {tr('توزيع السعة الاستيعابية للمخزون')}
+                  {t('dashboard:capacity.title')}
                 </span>
               </div>
               <span className="font-mono font-black text-xs px-2 py-0.5 rounded-lg bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/30 whitespace-nowrap">
-                {saharaFill}% {tr('نسبة الامتلاء')}
+                {saharaFill}% {t('dashboard:capacity.fill')}
               </span>
             </div>
 
@@ -203,16 +193,16 @@ export const BlackOilSection: React.FC = () => {
             {/* Dual Data Metric Breakdown */}
             <div className="grid grid-cols-2 gap-2 pt-0.5">
               <div className="p-2 rounded-xl bg-sky-50/60 dark:bg-sky-950/30 border border-sky-200/60 dark:border-sky-900/40">
-                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">{tr('الرصيد الفعلي')}</span>
-                <span className="font-mono font-black text-xs text-sky-900 dark:text-sky-200 block mt-0.5 truncate">
-                  {formatNumber(saharaTotalBalance)} <span className="text-[9px] font-normal">{tr('لتر')} ({saharaFill}%)</span>
+                <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 block leading-tight">{t('dashboard:balance.actual')}</span>
+                <span className="font-mono font-black text-[14px] leading-tight text-sky-900 dark:text-sky-200 block truncate">
+                  {formatNumber(saharaTotalBalance)} <span className="text-[10.5px] font-normal">{t('common:units.liter')} ({saharaFill}%)</span>
                 </span>
               </div>
 
               <div className="p-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80">
-                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">{tr('المتبقي للسعة')}</span>
-                <span className="font-mono font-black text-xs text-slate-900 dark:text-slate-100 block mt-0.5 truncate">
-                  {formatNumber(saharaRemainingCapacity)} <span className="text-[9px] font-normal text-slate-500 dark:text-slate-400">{tr('لتر')}</span>
+                <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 block leading-tight">{t('dashboard:capacity.remainingOfCapacity')}</span>
+                <span className="font-mono font-black text-[14px] leading-tight text-slate-900 dark:text-slate-100 block truncate">
+                  {formatNumber(saharaRemainingCapacity)} <span className="text-[10.5px] font-normal text-slate-500 dark:text-slate-400">{t('common:units.liter')}</span>
                 </span>
               </div>
             </div>
@@ -221,31 +211,31 @@ export const BlackOilSection: React.FC = () => {
 
           {/* Bottom Operational Stats: Inbound / Outbound */}
           <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-800 relative z-10">
-            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex items-center justify-between gap-1 overflow-hidden min-w-0">
+            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-wrap items-center justify-between gap-x-1 gap-y-0.5 min-w-0">
               <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 shrink-0">
                 <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                <span className="text-xs font-bold whitespace-nowrap">{tr('الوارد:')}</span>
-                <ChangeBadge cur={saharaInbound} prev={saharaPrevDay?.inbound} upIsGood title={`${tr('مقارنة باليوم السابق')} (${saharaPrevDay?.date ?? ''}): ${formatNumber(saharaPrevDay?.inbound ?? 0)}`} />
+                <span className="text-xs 2xl:text-[13px] font-bold whitespace-nowrap">{t('dashboard:flow.inboundColon')}</span>
+                <ChangeBadge cur={saharaInbound} prev={saharaPrevDay?.inbound} upIsGood title={`${t('dashboard:compare.prevDay')} (${saharaPrevDay?.date ?? ''}): ${formatNumber(saharaPrevDay?.inbound ?? 0)}`} />
               </div>
               <span 
-                className="font-mono font-black text-slate-900 dark:text-white text-xs truncate"
-                title={`${formatNumber(saharaInbound)} ${tr('لتر')}`}
+                className="ms-auto font-mono font-black text-slate-900 dark:text-white text-xs 2xl:text-[13.5px] leading-tight whitespace-nowrap"
+                title={`${formatNumber(saharaInbound)} ${t('common:units.liter')}`}
               >
-                {formatNumber(saharaInbound)} <span className="text-[9px] font-normal text-slate-400">{tr('لتر')}</span>
+                {formatNumber(saharaInbound)} <span className="text-[10.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </span>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex items-center justify-between gap-1 overflow-hidden min-w-0">
+            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-wrap items-center justify-between gap-x-1 gap-y-0.5 min-w-0">
               <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 shrink-0">
                 <Activity className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                <span className="text-xs font-bold whitespace-nowrap">{tr('الاستهلاك:')}</span>
-                <ChangeBadge cur={saharaOutbound} prev={saharaPrevDay?.consumption} upIsGood={false} title={`${tr('مقارنة باليوم السابق')} (${saharaPrevDay?.date ?? ''}): ${formatNumber(saharaPrevDay?.consumption ?? 0)}`} />
+                <span className="text-xs 2xl:text-[13px] font-bold whitespace-nowrap">{t('dashboard:flow.consumptionColon')}</span>
+                <ChangeBadge cur={saharaOutbound} prev={saharaPrevDay?.consumption} upIsGood={false} title={`${t('dashboard:compare.prevDay')} (${saharaPrevDay?.date ?? ''}): ${formatNumber(saharaPrevDay?.consumption ?? 0)}`} />
               </div>
               <span 
-                className="font-mono font-black text-slate-900 dark:text-white text-xs truncate"
-                title={`${formatNumber(saharaOutbound)} ${tr('لتر')}`}
+                className="ms-auto font-mono font-black text-slate-900 dark:text-white text-xs 2xl:text-[13.5px] leading-tight whitespace-nowrap"
+                title={`${formatNumber(saharaOutbound)} ${t('common:units.liter')}`}
               >
-                {formatNumber(saharaOutbound)} <span className="text-[9px] font-normal text-slate-400">{tr('لتر')}</span>
+                {formatNumber(saharaOutbound)} <span className="text-[10.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </span>
             </div>
           </div>
@@ -273,11 +263,11 @@ export const BlackOilSection: React.FC = () => {
                 </div>
                 <div className="min-w-0">
                   <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white truncate">
-                    {tr('نفط أسود - شركة الاتحاد')}
+                    {t('dashboard:blackOil.etihad')}
                   </h3>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[11px] font-medium text-slate-400">{tr('السعة الكلية:')}</span>
-                    <span className="font-mono font-bold text-[11px] text-slate-700 dark:text-slate-300">{formatNumber(etihadCapacity)} {tr('لتر')}</span>
+                    <span className="text-[11px] font-medium text-slate-400">{t('dashboard:capacity.totalColon')}</span>
+                    <span className="font-mono font-bold text-[11px] text-slate-700 dark:text-slate-300">{formatNumber(etihadCapacity)} {t('common:units.liter')}</span>
                   </div>
                 </div>
               </div>
@@ -287,7 +277,7 @@ export const BlackOilSection: React.FC = () => {
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800/60 shadow-2xs">
                   <Calendar className="w-3 h-3 text-teal-600 dark:text-teal-400 shrink-0" />
                   <span className="text-[11px] font-black font-mono text-teal-700 dark:text-teal-300 whitespace-nowrap">
-                    {tr('يؤمن')} {etihadCoverageDays} {tr('يوماً')}
+                    {t('dashboard:coverage.covers')} {t('common:units.days', { count: etihadCoverageDays })}
                   </span>
                 </div>
                 <span className="text-[9.5px] text-slate-400 dark:text-slate-500 block text-left font-mono mt-0.5 pr-1">
@@ -300,14 +290,14 @@ export const BlackOilSection: React.FC = () => {
             {/* Actual Balance Big Display */}
             <div className="pt-0.5">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
-                {tr('الرصيد الفعلي الحالي')}
+                {t('dashboard:balance.actualCurrent')}
               </span>
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl sm:text-4xl lg:text-[36px] font-black font-mono text-slate-900 dark:text-white tracking-tight leading-none">
                   {formatNumber(etihadTotalBalance)}
                 </span>
                 <span className="text-sm font-black text-teal-600 dark:text-teal-400">
-                  {tr('لتر')}
+                  {t('common:units.liter')}
                 </span>
               </div>
             </div>
@@ -321,11 +311,11 @@ export const BlackOilSection: React.FC = () => {
               <div className="flex items-center gap-1.5">
                 <Boxes className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
                 <span className="text-xs font-black text-slate-800 dark:text-slate-200">
-                  {tr('توزيع السعة الاستيعابية للمخزون')}
+                  {t('dashboard:capacity.title')}
                 </span>
               </div>
               <span className="font-mono font-black text-xs px-2 py-0.5 rounded-lg bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/30 whitespace-nowrap">
-                {etihadFill}% {tr('نسبة الامتلاء')}
+                {etihadFill}% {t('dashboard:capacity.fill')}
               </span>
             </div>
 
@@ -340,16 +330,16 @@ export const BlackOilSection: React.FC = () => {
             {/* Dual Data Metric Breakdown */}
             <div className="grid grid-cols-2 gap-2 pt-0.5">
               <div className="p-2 rounded-xl bg-teal-50/60 dark:bg-teal-950/30 border border-teal-200/60 dark:border-teal-900/40">
-                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">{tr('الرصيد الفعلي')}</span>
-                <span className="font-mono font-black text-xs text-teal-900 dark:text-teal-200 block mt-0.5 truncate">
-                  {formatNumber(etihadTotalBalance)} <span className="text-[9px] font-normal">{tr('لتر')} ({etihadFill}%)</span>
+                <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 block leading-tight">{t('dashboard:balance.actual')}</span>
+                <span className="font-mono font-black text-[14px] leading-tight text-teal-900 dark:text-teal-200 block truncate">
+                  {formatNumber(etihadTotalBalance)} <span className="text-[10.5px] font-normal">{t('common:units.liter')} ({etihadFill}%)</span>
                 </span>
               </div>
 
               <div className="p-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80">
-                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">{tr('المتبقي للسعة')}</span>
-                <span className="font-mono font-black text-xs text-slate-900 dark:text-slate-100 block mt-0.5 truncate">
-                  {formatNumber(etihadRemainingCapacity)} <span className="text-[9px] font-normal text-slate-500 dark:text-slate-400">{tr('لتر')}</span>
+                <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 block leading-tight">{t('dashboard:capacity.remainingOfCapacity')}</span>
+                <span className="font-mono font-black text-[14px] leading-tight text-slate-900 dark:text-slate-100 block truncate">
+                  {formatNumber(etihadRemainingCapacity)} <span className="text-[10.5px] font-normal text-slate-500 dark:text-slate-400">{t('common:units.liter')}</span>
                 </span>
               </div>
             </div>
@@ -358,31 +348,31 @@ export const BlackOilSection: React.FC = () => {
 
           {/* Bottom Operational Stats: Inbound / Outbound */}
           <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-800 relative z-10">
-            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex items-center justify-between gap-1 overflow-hidden min-w-0">
+            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-wrap items-center justify-between gap-x-1 gap-y-0.5 min-w-0">
               <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 shrink-0">
                 <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                <span className="text-xs font-bold whitespace-nowrap">{tr('الوارد:')}</span>
-                <ChangeBadge cur={etihadInbound} prev={etihadPrevDay?.inbound} upIsGood title={`${tr('مقارنة باليوم السابق')} (${etihadPrevDay?.date ?? ''}): ${formatNumber(etihadPrevDay?.inbound ?? 0)}`} />
+                <span className="text-xs 2xl:text-[13px] font-bold whitespace-nowrap">{t('dashboard:flow.inboundColon')}</span>
+                <ChangeBadge cur={etihadInbound} prev={etihadPrevDay?.inbound} upIsGood title={`${t('dashboard:compare.prevDay')} (${etihadPrevDay?.date ?? ''}): ${formatNumber(etihadPrevDay?.inbound ?? 0)}`} />
               </div>
               <span 
-                className="font-mono font-black text-slate-900 dark:text-white text-xs truncate"
-                title={`${formatNumber(etihadInbound)} ${tr('لتر')}`}
+                className="ms-auto font-mono font-black text-slate-900 dark:text-white text-xs 2xl:text-[13.5px] leading-tight whitespace-nowrap"
+                title={`${formatNumber(etihadInbound)} ${t('common:units.liter')}`}
               >
-                {formatNumber(etihadInbound)} <span className="text-[9px] font-normal text-slate-400">{tr('لتر')}</span>
+                {formatNumber(etihadInbound)} <span className="text-[10.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </span>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex items-center justify-between gap-1 overflow-hidden min-w-0">
+            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-wrap items-center justify-between gap-x-1 gap-y-0.5 min-w-0">
               <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 shrink-0">
                 <Activity className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                <span className="text-xs font-bold whitespace-nowrap">{tr('الاستهلاك:')}</span>
-                <ChangeBadge cur={etihadOutbound} prev={etihadPrevDay?.consumption} upIsGood={false} title={`${tr('مقارنة باليوم السابق')} (${etihadPrevDay?.date ?? ''}): ${formatNumber(etihadPrevDay?.consumption ?? 0)}`} />
+                <span className="text-xs 2xl:text-[13px] font-bold whitespace-nowrap">{t('dashboard:flow.consumptionColon')}</span>
+                <ChangeBadge cur={etihadOutbound} prev={etihadPrevDay?.consumption} upIsGood={false} title={`${t('dashboard:compare.prevDay')} (${etihadPrevDay?.date ?? ''}): ${formatNumber(etihadPrevDay?.consumption ?? 0)}`} />
               </div>
               <span 
-                className="font-mono font-black text-slate-900 dark:text-white text-xs truncate"
-                title={`${formatNumber(etihadOutbound)} ${tr('لتر')}`}
+                className="ms-auto font-mono font-black text-slate-900 dark:text-white text-xs 2xl:text-[13.5px] leading-tight whitespace-nowrap"
+                title={`${formatNumber(etihadOutbound)} ${t('common:units.liter')}`}
               >
-                {formatNumber(etihadOutbound)} <span className="text-[9px] font-normal text-slate-400">{tr('لتر')}</span>
+                {formatNumber(etihadOutbound)} <span className="text-[10.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </span>
             </div>
           </div>
@@ -407,10 +397,10 @@ export const BlackOilSection: React.FC = () => {
               </div>
               <div>
                 <h4 className="font-black text-base sm:text-lg lg:text-xl text-white leading-tight tracking-tight drop-shadow-sm">
-                  {tr('الرصيد الكلي')}
+                  {t('dashboard:balance.total')}
                 </h4>
                 <span className="text-[10px] text-purple-300/80 font-medium block mt-0.5">
-                  {tr('صحاري كربلاء + الاتحاد')}
+                  {t('dashboard:blackOil.both')}
                 </span>
               </div>
             </div>
@@ -423,15 +413,15 @@ export const BlackOilSection: React.FC = () => {
           {/* Grand Total Value */}
           <div className="space-y-1 relative z-10">
             <span className="text-[11px] font-extrabold text-purple-200/80 uppercase tracking-wider block">
-              {tr('إجمالي الرصيد الفعلي المشترك')}
+              {t('dashboard:blackOil.combinedBalance')}
             </span>
             <div className="text-2xl sm:text-3xl lg:text-[40px] font-black font-mono text-white tracking-tight leading-none flex items-baseline gap-2 drop-shadow-md">
               {formatNumber(grandTotalBalance)}
-              <span className="text-sm sm:text-base font-bold text-purple-300">{tr('لتر')}</span>
+              <span className="text-sm sm:text-base font-bold text-purple-300">{t('common:units.liter')}</span>
             </div>
             <div className="flex items-center gap-1.5 pt-1">
-              <span className="text-[11px] text-purple-300/70 font-medium">{tr('السعة الإجمالية:')}</span>
-              <span className="text-[11px] font-mono font-bold text-purple-200">{formatNumber(totalCapacity)} {tr('لتر')}</span>
+              <span className="text-[11px] text-purple-300/70 font-medium">{t('dashboard:capacity.grandTotalColon')}</span>
+              <span className="text-[11px] font-mono font-bold text-purple-200">{formatNumber(totalCapacity)} {t('common:units.liter')}</span>
             </div>
           </div>
 
@@ -441,16 +431,16 @@ export const BlackOilSection: React.FC = () => {
             <div className="p-2.5 rounded-xl bg-white/10 dark:bg-white/5 border border-white/10 flex flex-col justify-between space-y-1 overflow-hidden min-w-0">
               <div className="flex items-center gap-1.5 text-emerald-300">
                 <ArrowDownLeft className="w-3.5 h-3.5 shrink-0" />
-                <span className="text-[10px] sm:text-[11px] font-bold whitespace-nowrap">{tr('الوارد الكلي')}</span>
+                <span className="text-[10px] sm:text-[11px] font-bold whitespace-nowrap">{t('dashboard:flow.totalInboundAll')}</span>
               </div>
               <div className="flex items-baseline gap-1 min-w-0">
                 <span 
                   className="font-mono font-black text-white text-xs sm:text-[13px] tracking-tight truncate" 
-                  title={`${formatNumber(grandTotalInbound)} ${tr('لتر')}`}
+                  title={`${formatNumber(grandTotalInbound)} ${t('common:units.liter')}`}
                 >
                   {formatNumber(grandTotalInbound)}
                 </span>
-                <span className="text-[9px] font-normal text-emerald-200/70 shrink-0">{tr('لتر')}</span>
+                <span className="text-[9px] font-normal text-emerald-200/70 shrink-0">{t('common:units.liter')}</span>
               </div>
             </div>
 
@@ -458,16 +448,16 @@ export const BlackOilSection: React.FC = () => {
             <div className="p-2.5 rounded-xl bg-white/10 dark:bg-white/5 border border-white/10 flex flex-col justify-between space-y-1 overflow-hidden min-w-0">
               <div className="flex items-center gap-1.5 text-cyan-300">
                 <Activity className="w-3.5 h-3.5 shrink-0" />
-                <span className="text-[10px] sm:text-[11px] font-bold whitespace-nowrap">{tr('الاستهلاك الكلي')}</span>
+                <span className="text-[10px] sm:text-[11px] font-bold whitespace-nowrap">{t('dashboard:flow.totalConsumption')}</span>
               </div>
               <div className="flex items-baseline gap-1 min-w-0">
                 <span 
                   className="font-mono font-black text-white text-xs sm:text-[13px] tracking-tight truncate" 
-                  title={`${formatNumber(grandTotalOutbound)} ${tr('لتر')}`}
+                  title={`${formatNumber(grandTotalOutbound)} ${t('common:units.liter')}`}
                 >
                   {formatNumber(grandTotalOutbound)}
                 </span>
-                <span className="text-[9px] font-normal text-cyan-200/70 shrink-0">{tr('لتر')}</span>
+                <span className="text-[9px] font-normal text-cyan-200/70 shrink-0">{t('common:units.liter')}</span>
               </div>
             </div>
           </div>
@@ -477,15 +467,15 @@ export const BlackOilSection: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="text-base font-black text-white leading-tight font-cairo flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-purple-300" />
-                <span>{tr('يؤمن لغاية')}</span>
-                <span className="text-purple-300 font-mono font-black">{grandTotalDays} {tr('يوماً')}</span>
+                <span>{t('dashboard:coverage.until')}</span>
+                <span className="text-purple-300 font-mono font-black">{t('common:units.days', { count: grandTotalDays })}</span>
               </div>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-400/20 text-purple-200 border border-purple-300/30">
-                {tr('مؤمّن')}
+                {t('dashboard:coverage.secured')}
               </span>
             </div>
             <p className="text-[11px] text-purple-200/80 font-medium">
-              {tr('تاريخ الاستحقاق المتوقع:')} <strong className="font-mono text-white">{grandTotalCoverageDate}</strong>
+              {t('dashboard:coverage.dueDate')} <strong className="font-mono text-white">{grandTotalCoverageDate}</strong>
             </p>
           </div>
 

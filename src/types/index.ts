@@ -1,5 +1,20 @@
 export type ThemeMode = 'light' | 'dark';
-export type SidebarStyle = 'navy' | 'light' | 'gradient' | 'unified';
+export type SidebarStyle = 'navy' | 'light' | 'gradient' | 'unified' | 'glass' | 'match-bg';
+export type BgGradientTheme =
+  | 'none'
+  | 'titanium-slate'
+  | 'petrol-blue'
+  | 'frost-snow'
+  | 'glacier-blue'
+  | 'emerald-flow'
+  | 'ocean-cyan'
+  | 'royal-violet'
+  | 'sahara-amber'
+  | 'desert-bronze';
+export type BgType = 'gradient' | 'solid';
+export type GradientIntensity = 'subtle' | 'vibrant';
+export type GradientShadeLevel = number; // 1 (فاتح وهادئ جداً) إلى 10 (أغمق قليلاً)
+export type UiDensity = 'standard' | 'compact';
 export type CompanyScope = 'sahara' | 'etihad';
 export type UserRole = 'admin' | 'sahara_operator' | 'etihad_operator' | 'supervisor';
 
@@ -7,6 +22,7 @@ export type NavTabId =
   | 'dashboard'
   | 'tanks'
   | 'prices'
+  | 'suppliers'
   | 'deliveries'
   | 'deliveries-sahara'
   | 'deliveries-etihad'
@@ -66,6 +82,20 @@ export interface SupplierPriceRecord {
   category: 'الكل' | 'تجاري' | 'رسمي' | 'حكومي';
   availability: 'متوفر' | 'محدود' | 'غير متوفر';
   lastUpdated: string;
+  // بيانات صفحة الموردين (اختيارية)
+  /** الشركة المستلمة: كل مورد مفصول حسب أرشيف الوارد (الصحاري أو الاتحاد) */
+  company?: 'sahara' | 'etihad';
+  phone?: string;
+  location?: string;
+  contactName?: string;
+  contactRole?: string;
+  /** شعار المورد مصغّرًا (data URL) */
+  logo?: string;
+  /** كثافة المنتج ولونه (تُعدَّل من نافذة المورد؛ تبدأ بقيمة آخر شحنة في الأرشيف) */
+  density?: string;
+  color?: string;
+  /** سجل تغيّر السعر، الأحدث أولًا */
+  history?: { date: string; price: number }[];
 }
 
 export interface InboundDelivery {
@@ -163,4 +193,7 @@ export interface SystemNotification {
   timestamp: string;
   read: boolean;
   type: 'alert' | 'warning' | 'info' | 'success';
+  /** مفتاح الترجمة (common:notif.<key>.title / .message) ومتغيراته؛ النص العربي أعلاه يبقى للإشعارات القديمة */
+  key?: string;
+  params?: Record<string, string | number>;
 }

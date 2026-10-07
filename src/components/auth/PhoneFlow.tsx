@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { flushSync } from 'react-dom';
-import { ArrowRight, Fuel, Loader2, User, Phone, MessageSquareText, Send, CheckCircle2, UserPlus, KeyRound, HelpCircle, AlertCircle, Sun, Moon } from 'lucide-react';
+import { useTranslation, Trans } from 'react-i18next';
+import { errorText } from '../../i18n/errors';
+import { ArrowRight, ArrowLeft, Fuel, Loader2, User, Phone, MessageSquareText, Send, CheckCircle2, UserPlus, KeyRound, HelpCircle, AlertCircle, Sun, Moon } from 'lucide-react';
 import { sendSupportRequest } from '../../lib/session';
 import { Onboarding } from './Onboarding';
+import { LangToggle } from './LangToggle';
 
 export type PhoneStep = 'intro' | 'welcome' | 'login' | 'support';
 export type SupportKind = 'account' | 'password' | 'other';
@@ -23,6 +26,8 @@ export const PhoneFlow: React.FC<{
   username: string;
   form: React.ReactNode;
 }> = ({ step, setStep: rawSetStep, setup, loading, dark, onToggleDark, supportKind, setSupportKind, username, form }) => {
+  const { t, i18n } = useTranslation('auth');
+  const rich = { b: <b />, br: <br /> };
   // انتقال سلس بين الشاشات: الرأس الملوّن يتقلص واللوحة البيضاء ترتفع (View Transitions عند توفرها)
   const setStep = (s: PhoneStep) => {
     const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };
@@ -30,7 +35,7 @@ export const PhoneFlow: React.FC<{
     doc.startViewTransition(() => flushSync(() => rawSetStep(s)));
   };
   return (
-  <div dir="rtl" className="auth-phone min-h-[100dvh] flex flex-col">
+  <div dir={i18n.dir()} className="auth-phone min-h-[100dvh] flex flex-col">
     {step === 'intro' && <Onboarding onDone={() => setStep('welcome')} />}
     {step === 'welcome' && <Welcome dark={dark} onToggleDark={onToggleDark} onStart={() => setStep('login')} />}
 
@@ -40,17 +45,17 @@ export const PhoneFlow: React.FC<{
         onBack={setup ? undefined : () => setStep('welcome')}
         dark={dark}
         onToggleDark={onToggleDark}
-        headline={setup ? <>جهّز النظام<br />وأضف <b>فريقك</b> بأمان.</> : <>سجّل دخولك لمتابعة<br /><b>الأرصدة والخزانات</b><br />والتوريدات.</>}
+        headline={<Trans t={t} i18nKey={setup ? 'phone.headlineSetup' : 'phone.headlineLogin'} components={rich} />}
       >
         <div className="text-center mb-6">
-          <h1 className="text-[26px] font-black text-slate-900 dark:text-white">{setup ? 'إنشاء حساب المدير' : 'تسجيل الدخول'}</h1>
+          <h1 className="text-[26px] font-black text-slate-900 dark:text-white">{setup ? t('setupTitle') : t('title')}</h1>
           {setup ? (
-            <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-400">أدخل رمز تفعيل النظام ثم أنشئ حساب المدير.</p>
+            <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-400">{t('phone.setupText')}</p>
           ) : (
             <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-400">
-              لا تملك حسابًا؟{' '}
+              {t('phone.noAccount')}{' '}
               <button type="button" onClick={() => { setSupportKind('account'); setStep('support'); }} className="auth-focus font-bold text-teal-700 dark:text-teal-300 rounded">
-                تواصل مع الدعم
+                {t('phone.contactSupport')}
               </button>
             </p>
           )}
@@ -65,7 +70,7 @@ export const PhoneFlow: React.FC<{
         onBack={() => setStep('login')}
         dark={dark}
         onToggleDark={onToggleDark}
-        headline={<>نحن هنا <b>لمساعدتك</b><br />في الوصول إلى حسابك.</>}
+        headline={<Trans t={t} i18nKey="phone.headlineSupport" components={rich} />}
       >
         <SupportForm kind={supportKind} setKind={setSupportKind} username={username} onDone={() => setStep('login')} />
       </Shell>
@@ -81,18 +86,21 @@ const Shell: React.FC<{
   onToggleDark: () => void;
   headline: React.ReactNode;
   children: React.ReactNode;
-}> = ({ onBack, dark, onToggleDark, headline, children }) => (
+}> = ({ onBack, dark, onToggleDark, headline, children }) => {
+  const { t, i18n } = useTranslation('auth');
+  const Back = i18n.dir() === 'rtl' ? ArrowRight : ArrowLeft;
+  return (
   <>
     <div className="auth-phone-top relative overflow-hidden px-6 pt-[max(1.25rem,env(safe-area-inset-top))] pb-16 text-white" style={{ viewTransitionName: 'auth-top' }}>
       <Swirls />
       <div className="relative flex items-center justify-between">
         {onBack ? (
-          <button type="button" onClick={onBack} aria-label="رجوع"
+          <button type="button" onClick={onBack} aria-label={t('phone.back')}
             className="auth-focus w-11 h-11 rounded-xl flex items-center justify-center bg-white/10 ring-1 ring-white/20 hover:bg-white/20 transition">
-            <ArrowRight className="w-5 h-5" />
+            <Back className="w-5 h-5" />
           </button>
         ) : <span className="w-11" />}
-        <ToggleDark dark={dark} onToggle={onToggleDark} />
+        <div className="flex items-center gap-1.5"><LangToggle onColor /><ToggleDark dark={dark} onToggle={onToggleDark} /></div>
       </div>
       <p className="auth-headline relative mt-6 text-[26px] font-black leading-[1.45]">{headline}</p>
     </div>
@@ -100,14 +108,18 @@ const Shell: React.FC<{
       <div className="max-w-[420px] mx-auto auth-fade">{children}</div>
     </div>
   </>
-);
+  );
+};
 
-const ToggleDark: React.FC<{ dark: boolean; onToggle: () => void }> = ({ dark, onToggle }) => (
-  <button type="button" onClick={onToggle} aria-label={dark ? 'التبديل إلى الوضع الفاتح' : 'التبديل إلى الوضع الداكن'}
+const ToggleDark: React.FC<{ dark: boolean; onToggle: () => void }> = ({ dark, onToggle }) => {
+  const { t } = useTranslation('auth');
+  return (
+  <button type="button" onClick={onToggle} aria-label={dark ? t('theme.toLight') : t('theme.toDark')}
     className="auth-focus w-11 h-11 rounded-xl flex items-center justify-center bg-white/10 ring-1 ring-white/20 hover:bg-white/20 transition">
     {dark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
   </button>
-);
+  );
+};
 
 /** خطوط زخرفية دائرية في الخلفية الملوّنة */
 const Swirls = () => (
@@ -122,15 +134,17 @@ const Swirls = () => (
 );
 
 // ═════ 1) الترحيب ═════
-const Welcome: React.FC<{ dark: boolean; onToggleDark: () => void; onStart: () => void }> = ({ dark, onToggleDark, onStart }) => (
+const Welcome: React.FC<{ dark: boolean; onToggleDark: () => void; onStart: () => void }> = ({ dark, onToggleDark, onStart }) => {
+  const { t } = useTranslation('auth');
+  return (
   <>
     <div className="auth-welcome-top relative overflow-hidden flex-1 min-h-[56dvh] flex flex-col px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-14 text-white" style={{ viewTransitionName: 'auth-top' }}>
       <Swirls />
       <div className="relative flex items-center justify-between">
         <span className="inline-flex items-center gap-2 h-9 px-3.5 rounded-full bg-white/10 ring-1 ring-white/15 backdrop-blur text-[12px] font-bold">
-          <span className="auth-live-dot w-2 h-2 rounded-full bg-emerald-300 text-emerald-300" /> منظومة 2026
+          <span className="auth-live-dot w-2 h-2 rounded-full bg-emerald-300 text-emerald-300" /> {t('phone.systemBadge')}
         </span>
-        <ToggleDark dark={dark} onToggle={onToggleDark} />
+        <div className="flex items-center gap-1.5"><LangToggle onColor /><ToggleDark dark={dark} onToggle={onToggleDark} /></div>
       </div>
       <div className="relative flex-1 flex items-center justify-center pt-2">
         <WelcomeScene />
@@ -142,38 +156,41 @@ const Welcome: React.FC<{ dark: boolean; onToggleDark: () => void; onStart: () =
       <div className="auth-rise flex flex-col items-center">
         <span className="auth-logo-ring relative w-[72px] h-[72px] rounded-[22px] p-[2px]">
           <span className="w-full h-full rounded-[20px] bg-white flex items-center justify-center overflow-hidden">
-            <img src="/logos/sahara.png" alt="شعار صحاري كربلاء" className="w-14 h-14 object-contain" />
+            <img src="/logos/sahara.png" alt={t('phone.logoAlt')} className="w-14 h-14 object-contain" />
           </span>
         </span>
       </div>
 
       <h1 className="auth-rise d1 mt-5 font-black leading-[1.45] text-slate-900 dark:text-white">
-        <span className="block text-[clamp(16px,calc((100vw-56px)/17),22px)]">نظام إدارة الوقود المركزية</span>
+        <span className="block text-[clamp(16px,calc((100vw-56px)/17),22px)]">{t('phone.welcomeKicker')}</span>
         <span className="mt-1.5 text-[26px] flex items-center justify-center gap-2 text-teal-700 dark:text-teal-300">
           <span className="w-9 h-9 rounded-xl bg-teal-50 ring-1 ring-teal-100 dark:bg-teal-500/10 dark:ring-teal-500/20 flex items-center justify-center" aria-hidden>
             <Fuel className="w-5 h-5" />
           </span>
-          صحاري كربلاء
+          {t('common:brand.name')}
         </span>
       </h1>
       <p className="auth-rise d2 mt-2.5 text-[15px] leading-7 text-slate-600 dark:text-slate-400 max-w-xs mx-auto">
-        تابع الخزانات والصهاريج والتوريدات لحظة بلحظة، وتواصل مع فريقك بسهولة.
+        {t('phone.welcomeText')}
       </p>
       <button type="button" onClick={onStart} autoFocus
         className="auth-rise d3 auth-btn auth-focus mt-6 w-full h-14 rounded-2xl text-white font-bold text-base">
-        ابدأ الآن
+        {t('phone.start')}
       </button>
     </div>
   </>
-);
+  );
+};
 
 /** مشهد الترحيب: محطة وقود ذكية + خزانات + صهريج حديث + بطاقات بيانات عائمة */
-const WelcomeScene = () => (
+const WelcomeScene = () => {
+  const { t } = useTranslation('auth');
+  return (
   <div className="relative w-full max-w-[360px]">
     {/* توهج خلف المشهد */}
     <div className="auth-scene-glow absolute inset-x-6 top-10 bottom-6 rounded-full" aria-hidden />
 
-    <svg viewBox="0 0 360 250" className="relative w-full h-auto" role="img" aria-label="محطة وقود ذكية وخزانات وصهريج وقود">
+    <svg viewBox="0 0 360 250" className="relative w-full h-auto" role="img" aria-label={t('phone.sceneLabel')}>
       <defs>
         <linearGradient id="w-tank" x1="0" x2="1">
           <stop offset="0" stopColor="#99f6e4" /><stop offset=".55" stopColor="#ecfeff" /><stop offset="1" stopColor="#5eead4" />
@@ -254,7 +271,7 @@ const WelcomeScene = () => (
 
     {/* بطاقات بيانات عائمة (عرض توضيحي) */}
     <div className="auth-chip c1 absolute top-[2%] right-[2%]">
-      <span className="text-[10px] text-white/70">مستوى الخزان</span>
+      <span className="text-[10px] text-white/70">{t('phone.chipTank')}</span>
       <span className="flex items-center gap-1.5 mt-0.5">
         <b className="text-[13px]">82%</b>
         <span className="w-12 h-1.5 rounded-full bg-white/20 overflow-hidden"><span className="block h-full w-[82%] bg-emerald-300 rounded-full" /></span>
@@ -262,27 +279,32 @@ const WelcomeScene = () => (
     </div>
     <div className="auth-chip c2 absolute top-[0%] left-[0%]">
       <span className="flex items-center gap-1.5 text-[11px] font-bold">
-        <span className="auth-live-dot w-1.5 h-1.5 rounded-full bg-amber-300 text-amber-300" /> صهريج 14
+        <span className="auth-live-dot w-1.5 h-1.5 rounded-full bg-amber-300 text-amber-300" /> {t('phone.chipTanker')}
       </span>
-      <span className="text-[10px] text-white/70">في الطريق · 12 دقيقة</span>
+      <span className="text-[10px] text-white/70">{t('phone.chipEta')}</span>
     </div>
     <div className="auth-chip c3 absolute top-[33%] left-[38%]">
-      <span className="text-[10px] text-white/70">الرصيد الكلي</span>
+      <span className="text-[10px] text-white/70">{t('phone.chipBalance')}</span>
       <b className="text-[13px]" dir="ltr">705,021 L</b>
     </div>
   </div>
-);
+  );
+};
 
 // ═════ 3) التواصل مع الدعم ═════
 const KINDS: { id: SupportKind; label: string; icon: React.ElementType }[] = [
-  { id: 'account', label: 'حساب جديد', icon: UserPlus },
-  { id: 'password', label: 'نسيت كلمة المرور', icon: KeyRound },
-  { id: 'other', label: 'مشكلة أخرى', icon: HelpCircle },
+  { id: 'account', label: 'support.kindAccount', icon: UserPlus },
+  { id: 'password', label: 'support.kindPassword', icon: KeyRound },
+  { id: 'other', label: 'support.kindOther', icon: HelpCircle },
 ];
 
-const inputCls = 'auth-input-plain w-full h-14 rounded-xl border border-slate-200 bg-white pr-11 pl-4 text-[15px] text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-500';
+const inputCls = 'auth-input-plain w-full h-14 rounded-xl border border-slate-200 bg-white ps-11 pe-4 text-[15px] text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-500';
 
 const SupportForm: React.FC<{ kind: SupportKind; setKind: (k: SupportKind) => void; username: string; onDone: () => void }> = ({ kind, setKind, username, onDone }) => {
+  const { t, i18n } = useTranslation('auth');
+  const rtl = i18n.dir() === 'rtl';
+  // الحقول ذات dir=ltr (الهاتف واسم المستخدم): الحشوة والمحاذاة تتبع اتجاه الصفحة
+  const ltrField = rtl ? 'pr-11 pl-4 text-right' : 'pl-11 pr-4 text-left';
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [user, setUser] = useState(kind === 'password' ? username : '');
@@ -295,14 +317,14 @@ const SupportForm: React.FC<{ kind: SupportKind; setKind: (k: SupportKind) => vo
     e.preventDefault();
     if (busy) return;
     setError('');
-    if (!name.trim()) return setError('اكتب اسمك الكامل');
-    if (phone.replace(/[^\d]/g, '').length < 7) return setError('اكتب رقم هاتف صحيح للتواصل معك');
+    if (!name.trim()) return setError(t('validation.fullName'));
+    if (phone.replace(/[^\d]/g, '').length < 7) return setError(t('validation.phone'));
     setBusy(true);
     try {
       await sendSupportRequest({ name: name.trim(), phone, username: user.trim(), kind, message: message.trim() });
       setSent(true);
     } catch (err) {
-      setError((err as Error).message);
+      setError(errorText(err));
     } finally {
       setBusy(false);
     }
@@ -314,9 +336,9 @@ const SupportForm: React.FC<{ kind: SupportKind; setKind: (k: SupportKind) => vo
         <span className="mx-auto w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 ring-8 ring-emerald-50/50 dark:bg-emerald-500/10 dark:ring-emerald-500/5 flex items-center justify-center auth-pop">
           <CheckCircle2 className="w-9 h-9" />
         </span>
-        <h2 className="mt-5 text-xl font-black text-slate-900 dark:text-white">تم إرسال طلبك</h2>
-        <p className="mt-2 text-sm leading-7 text-slate-600 dark:text-slate-400">سيتواصل معك مدير النظام على رقم هاتفك قريبًا.</p>
-        <button type="button" onClick={onDone} className="auth-btn auth-focus mt-7 w-full h-14 rounded-2xl text-white font-bold">العودة لتسجيل الدخول</button>
+        <h2 className="mt-5 text-xl font-black text-slate-900 dark:text-white">{t('support.sentTitle')}</h2>
+        <p className="mt-2 text-sm leading-7 text-slate-600 dark:text-slate-400">{t('support.sentText')}</p>
+        <button type="button" onClick={onDone} className="auth-btn auth-focus mt-7 w-full h-14 rounded-2xl text-white font-bold">{t('help.back')}</button>
       </div>
     );
   }
@@ -324,15 +346,15 @@ const SupportForm: React.FC<{ kind: SupportKind; setKind: (k: SupportKind) => vo
   return (
     <form onSubmit={submit} noValidate>
       <div className="text-center mb-6">
-        <h1 className="text-[26px] font-black text-slate-900 dark:text-white">تواصل مع الدعم</h1>
+        <h1 className="text-[26px] font-black text-slate-900 dark:text-white">{t('support.title')}</h1>
         <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-400">
-          لديك حساب؟{' '}
-          <button type="button" onClick={onDone} className="auth-focus font-bold text-teal-700 dark:text-teal-300 rounded">تسجيل الدخول</button>
+          {t('support.haveAccount')}{' '}
+          <button type="button" onClick={onDone} className="auth-focus font-bold text-teal-700 dark:text-teal-300 rounded">{t('title')}</button>
         </p>
       </div>
 
       <fieldset className="mb-4">
-        <legend className="text-[13px] font-bold text-slate-700 dark:text-slate-300 mb-2">نوع الطلب</legend>
+        <legend className="text-[13px] font-bold text-slate-700 dark:text-slate-300 mb-2">{t('support.kind')}</legend>
         <div className="grid grid-cols-3 gap-2">
           {KINDS.map(({ id, label, icon: Icon }) => (
             <button key={id} type="button" onClick={() => setKind(id)} aria-pressed={kind === id}
@@ -341,7 +363,7 @@ const SupportForm: React.FC<{ kind: SupportKind; setKind: (k: SupportKind) => vo
                   ? 'bg-teal-50 text-teal-800 ring-teal-600 dark:bg-teal-500/10 dark:text-teal-200 dark:ring-teal-400'
                   : 'bg-slate-50 text-slate-600 ring-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-800'
               }`}>
-              <Icon className="w-[18px] h-[18px]" /> {label}
+              <Icon className="w-[18px] h-[18px]" /> {t(label)}
             </button>
           ))}
         </div>
@@ -349,27 +371,27 @@ const SupportForm: React.FC<{ kind: SupportKind; setKind: (k: SupportKind) => vo
 
       <div className="space-y-3">
         <label className="relative block">
-          <span className="sr-only">الاسم الكامل</span>
-          <User className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-slate-400" aria-hidden />
-          <input value={name} onChange={e => setName(e.target.value)} maxLength={60} placeholder="الاسم الكامل" autoComplete="name" className={inputCls} />
+          <span className="sr-only">{t('fields.fullName')}</span>
+          <User className="absolute start-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-slate-400" aria-hidden />
+          <input value={name} onChange={e => setName(e.target.value)} maxLength={60} placeholder={t('fields.fullName')} autoComplete="name" className={inputCls} />
         </label>
         <label className="relative block">
-          <span className="sr-only">رقم الهاتف</span>
-          <Phone className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-slate-400" aria-hidden />
-          <input value={phone} onChange={e => setPhone(e.target.value)} maxLength={20} placeholder="رقم الهاتف" type="tel" inputMode="tel" dir="ltr" autoComplete="tel" className={`${inputCls} text-right`} />
+          <span className="sr-only">{t('fields.phone')}</span>
+          <Phone className="absolute start-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-slate-400" aria-hidden />
+          <input value={phone} onChange={e => setPhone(e.target.value)} maxLength={20} placeholder={t('fields.phone')} type="tel" inputMode="tel" dir="ltr" autoComplete="tel" className={`${inputCls} ${ltrField}`} />
         </label>
         {kind === 'password' && (
           <label className="relative block">
-            <span className="sr-only">اسم المستخدم</span>
-            <User className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-slate-400" aria-hidden />
-            <input value={user} onChange={e => setUser(e.target.value.replace(/\s/g, ''))} maxLength={32} placeholder="اسم المستخدم" dir="ltr" autoCapitalize="none" className={`${inputCls} text-right`} />
+            <span className="sr-only">{t('fields.username')}</span>
+            <User className="absolute start-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-slate-400" aria-hidden />
+            <input value={user} onChange={e => setUser(e.target.value.replace(/\s/g, ''))} maxLength={32} placeholder={t('fields.username')} dir="ltr" autoCapitalize="none" className={`${inputCls} ${ltrField}`} />
           </label>
         )}
         <label className="relative block">
-          <span className="sr-only">ملاحظات</span>
-          <MessageSquareText className="absolute right-3.5 top-4 w-[18px] h-[18px] text-slate-400" aria-hidden />
-          <textarea value={message} onChange={e => setMessage(e.target.value)} maxLength={500} rows={3} placeholder="ملاحظات (اختياري): المحطة، الوظيفة..."
-            className="auth-input-plain w-full rounded-xl border border-slate-200 bg-white pr-11 pl-4 py-3.5 text-[15px] text-slate-900 placeholder:text-slate-400 resize-none dark:bg-slate-950 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-500" />
+          <span className="sr-only">{t('fields.notes')}</span>
+          <MessageSquareText className="absolute start-3.5 top-4 w-[18px] h-[18px] text-slate-400" aria-hidden />
+          <textarea value={message} onChange={e => setMessage(e.target.value)} maxLength={500} rows={3} placeholder={t('fields.notesPlaceholder')}
+            className="auth-input-plain w-full rounded-xl border border-slate-200 bg-white ps-11 pe-4 py-3.5 text-[15px] text-slate-900 placeholder:text-slate-400 resize-none dark:bg-slate-950 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-500" />
         </label>
       </div>
 
@@ -383,9 +405,9 @@ const SupportForm: React.FC<{ kind: SupportKind; setKind: (k: SupportKind) => vo
 
       <button type="submit" disabled={busy} aria-busy={busy}
         className="auth-btn auth-focus mt-5 w-full h-14 rounded-2xl text-white font-bold text-base flex items-center justify-center gap-2 disabled:opacity-70">
-        {busy ? <><Loader2 className="w-5 h-5 animate-spin" /> جارٍ الإرسال...</> : <><Send className="w-[18px] h-[18px]" /> إرسال الطلب</>}
+        {busy ? <><Loader2 className="w-5 h-5 animate-spin" /> {t('support.sending')}</> : <><Send className="w-[18px] h-[18px]" /> {t('support.send')}</>}
       </button>
-      <p className="mt-3 text-center text-xs text-slate-500 dark:text-slate-400">يصل طلبك مباشرة إلى مدير النظام.</p>
+      <p className="mt-3 text-center text-xs text-slate-500 dark:text-slate-400">{t('support.note')}</p>
     </form>
   );
 };

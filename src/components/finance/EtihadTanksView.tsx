@@ -11,7 +11,9 @@ import {
   Zap
 } from 'lucide-react';
 import { formatNumber } from '../../lib/utils';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation, Trans } from 'react-i18next';
+import { enumText } from '../../i18n/enums';
+import { fmtDate } from '../../i18n/format';
 import { Tank3DCard, CalculatedTankUnit } from '../tanks/Tank3DCard';
 import { TankGlobalSvgDefs } from '../tanks/TankGlobalSvgDefs';
 import { TankUnitRow, getFillLevelTheme, OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
@@ -67,7 +69,7 @@ interface EtihadTanksViewProps {
 }
 
 export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, company = 'etihad' }) => {
-  const { tr } = useLanguage();
+  const { t } = useTranslation(['finance', 'common']);
   const isSahara = company === 'sahara';
 
   // ── كل خزانات هذه الصفحة تُقرأ من منظومة الخزانات (المرجع المركزي) وتُكتب فيها ──
@@ -91,10 +93,10 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
   const sections: SectionConfig[] = useMemo(() => [
     {
       key: 'etihad-black-oil',
-      title: tr(isSahara ? 'الصحاري - النفط الأسود' : 'عمليات الاتحاد - النفط الأسود'),
-      shortTitle: tr('النفط الأسود'),
-      badge: tr(isSahara ? 'خزانات صحاري كربلاء' : 'محطات الطاقة والربان'),
-      description: tr(isSahara ? 'خزانات النفط الأسود لشركة الصحاري — مرتبطة مباشرة بمنظومة الخزانات' : 'خزانات النفط الأسود لعمليات الاتحاد — مرتبطة مباشرة بمنظومة الخزانات'),
+      title: isSahara ? t('finance:tanksView.saharaBlackOil') : t('finance:tanksView.etihadBlackOil'),
+      shortTitle: t('finance:tanksReport.group.blackOil'),
+      badge: isSahara ? t('finance:tanksView.saharaTanksBadge') : t('finance:tanksView.etihadBlackOilBadge'),
+      description: isSahara ? t('finance:tanksView.saharaBlackOilDesc') : t('finance:tanksView.etihadBlackOilDesc'),
       icon: Droplets,
       accentColor: '#0891b2',
       headerGrad: 'from-cyan-600 via-sky-600 to-blue-700',
@@ -103,15 +105,15 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
       badgeBorder: 'border-cyan-200 dark:border-cyan-800',
       dailyBurnRate: 520000,
       coverageDays: 87,
-      coverageDate: '6 ديسمبر 2026',
+      coverageDate: fmtDate(new Date(2026, 11, 6), { dateStyle: 'long' }),
       chartData: BLACK_OIL_CHART
     },
     {
       key: 'strategic-gasoil',
-      title: tr(isSahara ? 'خزانات الكاز - الصحاري' : 'مجمع الكاز والديزل'),
-      shortTitle: tr(isSahara ? 'الكاز' : 'الكاز والديزل'),
-      badge: tr(isSahara ? 'مواقع صحاري كربلاء' : 'الموقع الرئيسي وطوارئ بابل'),
-      description: tr(isSahara ? 'خزانات الكاز في مواقع شركة الصحاري' : 'خزانا الاستخلاص والنقل لتأمين منظومة الكاز والديزل'),
+      title: isSahara ? t('finance:tanksView.saharaGasoil') : t('finance:tanksView.etihadGasoil'),
+      shortTitle: isSahara ? t('finance:tanksReport.group.gasoil') : t('finance:tanksView.gasoilDiesel'),
+      badge: isSahara ? t('finance:tanksView.saharaSites') : t('finance:tanksView.etihadSites'),
+      description: isSahara ? t('finance:tanksView.saharaGasoilDesc') : t('finance:tanksView.etihadGasoilDesc'),
       icon: Fuel,
       accentColor: '#2563eb',
       headerGrad: 'from-blue-600 via-indigo-600 to-blue-800',
@@ -120,10 +122,10 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
       badgeBorder: 'border-blue-200 dark:border-blue-800',
       dailyBurnRate: 175000,
       coverageDays: 109,
-      coverageDate: '28 ديسمبر 2026',
+      coverageDate: fmtDate(new Date(2026, 11, 28), { dateStyle: 'long' }),
       chartData: GASOIL_CHART
     }
-  ], [tr, isSahara]);
+  ], [t, isSahara]);
 
   const [activeSectionKey, setActiveSectionKey] = useSessionState<'etihad-black-oil' | 'strategic-gasoil'>(isSahara ? 'sahara_tanks_section' : 'etihad_tanks_section', 'etihad-black-oil');
   const [activeChartMode, setActiveChartMode] = useState<'balance' | 'flow'>('balance');
@@ -221,8 +223,8 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
       {/* Breadcrumb Path (هامش ثابت وموحّد أسفلها في كل صفحات البرنامج) */}
       <Breadcrumb
         items={[
-          { label: tr(isSahara ? 'شركة الصحاري' : 'شركة الاتحاد'), onClick: onBack },
-          { label: tr(isSahara ? 'خزانات الصحاري' : 'خزانات الاتحاد') }
+          { label: isSahara ? t('finance:hub.saharaCompany') : t('common:enum.company.etihad'), onClick: onBack },
+          { label: isSahara ? t('finance:hub.saharaTanks') : t('finance:hub.etihadTanks') }
         ]}
       />
 
@@ -239,7 +241,7 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
             <Fuel className="w-5 h-5" />
           </div>
           <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight">
-            {tr(isSahara ? 'خزانات وقود شركة الصحاري' : 'خزانات وقود شركة الاتحاد')}
+            {isSahara ? t('finance:tanksView.saharaFuelTanks') : t('finance:tanksView.etihadFuelTanks')}
           </h2>
         </div>
 
@@ -275,7 +277,7 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
                     isActive ? 'bg-white/25 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
                   }`}
                 >
-                  {count} {tr('خزانات')}
+                  {t('finance:tanksView.tankCount', { count })}
                 </span>
               </button>
             );
@@ -300,10 +302,10 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
               <div className="flex items-center justify-between gap-2 mb-2">
                 <span className="text-xs font-black text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                   <CurrentSectionIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  {tr('الرصيد الفعلي')}
+                  {t('finance:tanksView.actualBalance')}
                 </span>
                 <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-black bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/60">
-                  {sectionFillPercentage}% {tr('امتلاء')}
+                  {sectionFillPercentage}% {t('finance:tanksView.full')}
                 </span>
               </div>
 
@@ -312,10 +314,10 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
                   <span className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-slate-900 dark:text-white">
                     {formatNumber(sectionTotalStored)}
                   </span>
-                  <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{tr('لتر')}</span>
+                  <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{t('common:units.liter')}</span>
                 </div>
                 <p className="text-[11.5px] text-slate-400 font-medium">
-                  {tr('المخزون الميداني المقاس بحساسات المناسيب الحية')}
+                  {t('finance:tanksView.fieldStock')}
                 </p>
               </div>
             </div>
@@ -323,9 +325,9 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
             {/* Dynamic Liquid Meter */}
             <div className="space-y-2 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-800">
               <div className="flex items-center justify-between text-xs font-bold">
-                <span className="text-slate-600 dark:text-slate-300">{tr('إجمالي السعة')}</span>
+                <span className="text-slate-600 dark:text-slate-300">{t('finance:tanksView.totalCapacity')}</span>
                 <span className="font-mono font-black text-slate-800 dark:text-slate-200">
-                  {formatNumber(sectionTotalCapacity)} {tr('لتر')}
+                  {formatNumber(sectionTotalCapacity)} {t('common:units.liter')}
                 </span>
               </div>
 
@@ -337,9 +339,9 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
               </div>
 
               <div className="flex items-center justify-between text-[10.5px] font-mono text-slate-400">
-                <span>{tr('الفراغ المتاح للاستلام')}</span>
+                <span>{t('finance:tanksView.ullage')}</span>
                 <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                  {formatNumber(sectionUllage)} {tr('لتر')}
+                  {formatNumber(sectionUllage)} {t('common:units.liter')}
                 </span>
               </div>
             </div>
@@ -353,24 +355,21 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
               <div className="flex items-center justify-between gap-2 mb-2">
                 <span className="text-xs font-black text-blue-300 flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  {tr('الأمان التشغيلي')}
+                  {t('finance:tanksView.opSafety')}
                 </span>
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  {tr('مؤمن استراتيجياً')}
+                  {t('finance:tanksView.secured')}
                 </span>
               </div>
 
               <div className="space-y-1">
-                <span className="text-xs text-slate-400 font-bold block">{tr('يؤمن لغاية')}</span>
+                <span className="text-xs text-slate-400 font-bold block">{t('finance:saharaPetrol.coversUntil')}</span>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-emerald-400">
-                    {currentSection.coverageDays}
-                  </span>
-                  <span className="text-sm font-bold text-slate-300">{tr('يوماً')}</span>
+                  <Trans t={t} i18nKey="finance:tanksReport.coverageDays" count={currentSection.coverageDays} components={{ 1: <span className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-emerald-400" />, 2: <span className="text-sm font-bold text-slate-300" /> }} />
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-blue-200 font-bold mt-1">
                   <Calendar className="w-3.5 h-3.5 text-blue-400" />
-                  <span>{tr('يكفي حتى تاريخ')}: {currentSection.coverageDate}</span>
+                  <span>{t('finance:tanksView.enoughUntil')}: {currentSection.coverageDate}</span>
                 </div>
               </div>
             </div>
@@ -379,10 +378,10 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
             <div className="relative z-10 p-3 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-between text-xs">
               <span className="text-slate-300 flex items-center gap-1.5">
                 <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
-                {tr('الاستهلاك اليومي')}
+                {t('finance:ledger.dailyConsumption')}
               </span>
               <span className="font-mono font-bold text-rose-300">
-                -{formatNumber(currentSection.dailyBurnRate)} {tr('لتر/يوم')}
+                -{formatNumber(currentSection.dailyBurnRate)} {t('finance:tanksView.litersPerDay')}
               </span>
             </div>
           </div>
@@ -396,7 +395,7 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
                   <BarChart3 className="w-4 h-4" />
                 </div>
                 <h4 className="text-xs font-black text-slate-900 dark:text-white">
-                  {tr('الرسم البياني لحركة المخزون')}
+                  {t('finance:tanksView.chartTitle')}
                 </h4>
               </div>
 
@@ -408,7 +407,7 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
                     activeChartMode === 'balance' ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-slate-300'
                   }`}
                 >
-                  {tr('الرصيد')}
+                  {t('finance:ledger.form.balance')}
                 </button>
                 <button
                   type="button"
@@ -417,7 +416,7 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
                     activeChartMode === 'flow' ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-slate-300'
                   }`}
                 >
-                  {tr('الوارد')}
+                  {t('finance:ledger.inbound')}
                 </button>
               </div>
             </div>
@@ -461,7 +460,7 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
                           <div className="w-2 sm:w-2.5 bg-emerald-500 rounded-t-sm" style={{ height: `${Math.max(12, inPct)}%` }} />
                           <div className="w-2 sm:w-2.5 bg-rose-500 rounded-t-sm" style={{ height: `${Math.max(12, outPct)}%` }} />
                         </div>
-                        <span className="text-[8.5px] font-mono text-slate-400">{pt.dayName.slice(0, 3)}</span>
+                        <span className="text-[8.5px] font-mono text-slate-400">{enumText(pt.dayName, 'short')}</span>
                       </div>
                     );
                   })}
@@ -471,7 +470,7 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
               {/* Tooltip on Hover */}
               {hoveredPointIndex !== null && chartPoints[hoveredPointIndex] && (
                 <div className="absolute top-1.5 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-lg bg-slate-900 text-white text-[10px] font-mono shadow-md z-20 pointer-events-none">
-                  {chartPoints[hoveredPointIndex].dayName}: {formatNumber(chartPoints[hoveredPointIndex].balance)} لتر
+                  {enumText(chartPoints[hoveredPointIndex].dayName)}: {formatNumber(chartPoints[hoveredPointIndex].balance)} {t('common:units.liter')}
                 </div>
               )}
             </div>
@@ -479,9 +478,9 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
             <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800">
               <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold">
                 <Sparkles className="w-3 h-3" />
-                {tr('استقرار المخزون')}
+                {t('finance:tanksView.stability')}
               </span>
-              <span className="font-mono">7 {tr('أيام مسجلة')}</span>
+              <span className="font-mono">{t('finance:tanksView.recordedDays', { count: 7 })}</span>
             </div>
 
           </div>
@@ -496,11 +495,11 @@ export const EtihadTanksView: React.FC<EtihadTanksViewProps> = ({ onBack, compan
             <div className="flex items-center gap-2">
               <Zap className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
-                {tr('خزانات')} {currentSection.shortTitle} {tr('بالتصميم ثلاثي الأبعاد المباشر')}
+                {t('finance:tanksView.tanks3d', { name: currentSection.shortTitle })}
               </h3>
             </div>
             <span className="text-xs font-bold text-slate-400">
-              {calculatedTanks.length} {tr('خزانات تشغيلية عاملة')}
+              {t('finance:tanksView.operatingTanks', { count: calculatedTanks.length })}
             </span>
           </div>
 

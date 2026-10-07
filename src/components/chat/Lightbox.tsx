@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { X, Download, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Loader2 } from 'lucide-react';
 import { downloadFile, fileUrl, type Attachment } from './chatApi';
@@ -12,6 +13,7 @@ interface Props {
 
 /** عارض الوسائط بملء الشاشة: صور، فيديو، PDF */
 export const Lightbox: React.FC<Props> = ({ items, index, onClose }) => {
+  const { t, i18n } = useTranslation(['chat', 'common']);
   const [i, setI] = useState(index);
   const [zoom, setZoom] = useState(1);
   const [url, setUrl] = useState('');
@@ -41,7 +43,7 @@ export const Lightbox: React.FC<Props> = ({ items, index, onClose }) => {
 
   // يُعرض في body مباشرة حتى لا يختفي زر الإغلاق خلف شريط التطبيق العلوي
   return createPortal(
-    <div className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-xl flex flex-col cx-fade" dir="rtl" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-xl flex flex-col cx-fade" dir={i18n.dir()} onClick={onClose}>
       <div className="flex items-center gap-2 p-3 sm:p-4 text-white" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }} onClick={e => e.stopPropagation()}>
         <div className="flex-1 min-w-0">
           <p className="font-bold text-sm truncate" dir="auto">{a.name}</p>
@@ -49,12 +51,12 @@ export const Lightbox: React.FC<Props> = ({ items, index, onClose }) => {
         </div>
         {!pdf && !isVideo(a.type) && (
           <>
-            <button className="p-2.5 rounded-full hover:bg-white/10" onClick={() => setZoom(z => Math.min(4, z + 0.5))} title="تكبير"><ZoomIn className="w-5 h-5" /></button>
-            <button className="p-2.5 rounded-full hover:bg-white/10" onClick={() => setZoom(z => Math.max(1, z - 0.5))} title="تصغير"><ZoomOut className="w-5 h-5" /></button>
+            <button className="p-2.5 rounded-full hover:bg-white/10" onClick={() => setZoom(z => Math.min(4, z + 0.5))} title={t('chat:zoomIn')}><ZoomIn className="w-5 h-5" /></button>
+            <button className="p-2.5 rounded-full hover:bg-white/10" onClick={() => setZoom(z => Math.max(1, z - 0.5))} title={t('chat:zoomOut')}><ZoomOut className="w-5 h-5" /></button>
           </>
         )}
-        <button className="p-2.5 rounded-full hover:bg-white/10" onClick={() => downloadFile(a)} title="تنزيل"><Download className="w-5 h-5" /></button>
-        <button className="w-11 h-11 rounded-full bg-white/15 hover:bg-rose-500 flex items-center justify-center transition" onClick={onClose} title="إغلاق (Esc)"><X className="w-6 h-6" /></button>
+        <button className="p-2.5 rounded-full hover:bg-white/10" onClick={() => downloadFile(a)} title={t('chat:download')}><Download className="w-5 h-5" /></button>
+        <button className="w-11 h-11 rounded-full bg-white/15 hover:bg-rose-500 flex items-center justify-center transition" onClick={onClose} title={t('chat:closeEsc')}><X className="w-6 h-6" /></button>
       </div>
 
       <div className="flex-1 min-h-0 relative flex items-center justify-center px-2 sm:px-16 pb-4 overflow-auto" onClick={e => e.stopPropagation()}>
@@ -76,10 +78,10 @@ export const Lightbox: React.FC<Props> = ({ items, index, onClose }) => {
 
         {items.length > 1 && (
           <>
-            <button disabled={i === 0} onClick={() => setI(i - 1)} className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-20 text-white flex items-center justify-center">
+            <button disabled={i === 0} onClick={() => setI(i - 1)} className="absolute start-2 sm:start-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-20 text-white flex items-center justify-center">
               <ChevronRight className="w-6 h-6" />
             </button>
-            <button disabled={i === items.length - 1} onClick={() => setI(i + 1)} className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-20 text-white flex items-center justify-center">
+            <button disabled={i === items.length - 1} onClick={() => setI(i + 1)} className="absolute end-2 sm:end-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-20 text-white flex items-center justify-center">
               <ChevronLeft className="w-6 h-6" />
             </button>
           </>

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { SectionHeader } from './SectionHeader';
 import {
   Fuel,
   ArrowDownLeft,
@@ -10,7 +11,8 @@ import {
   Waves
 } from 'lucide-react';
 import { formatNumber } from '../../lib/utils';
-import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
+import { enumText } from '../../i18n/enums';
 import { usePetrolLedger, petrolPriceStats, PETROL_TOTAL_CAPACITY } from '../../lib/petrolLedger';
 import {
   AreaChart,
@@ -33,7 +35,7 @@ const formatAxis = (val: number) =>
   val >= 1_000_000 ? `${(val / 1_000_000).toFixed(1)}M` : val >= 1000 ? `${(val / 1000).toFixed(val % 1000 ? 1 : 0)}k` : String(val);
 
 export const PetrolStationsSection: React.FC = () => {
-  const { tr } = useLanguage();
+  const { t } = useTranslation(['dashboard', 'common']);
   // المؤشرات من آخر يوم معتمد في "بنزين الصحاري" (تتحدث بعد "تأكيد البيانات")
   const { publishedComputed: petrolDays } = usePetrolLedger();
   const latestPetrol = petrolDays[petrolDays.length - 1];
@@ -123,11 +125,11 @@ export const PetrolStationsSection: React.FC = () => {
           <div className="flex items-center justify-between gap-1.5 border-b border-slate-800/90 pb-1">
             <div className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-              <span className="font-extrabold text-[11px] text-white">{tr(data.name)}</span>
+              <span className="font-extrabold text-[11px] text-white">{enumText(data.name)}</span>
               <span className="text-[8.5px] text-slate-400 font-mono">({data.date})</span>
             </div>
             <span className="text-[8px] font-bold px-1.5 py-0.2 rounded-full bg-cyan-950/90 text-cyan-300 border border-cyan-700/50">
-              {tr(data.tag)}
+              {enumText(data.tag)}
             </span>
           </div>
 
@@ -137,10 +139,10 @@ export const PetrolStationsSection: React.FC = () => {
             <div className="flex items-center justify-between gap-2 bg-emerald-950/40 px-1.5 py-0.5 rounded-lg border border-emerald-700/40">
               <div className="flex items-center gap-1 text-emerald-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />
-                <span className="text-[9.5px]">{tr('الوارد:')}</span>
+                <span className="text-[9.5px]">{t('dashboard:flow.inboundColon')}</span>
               </div>
               <span className="font-mono font-black text-white text-[10.5px]">
-                {formatNumber(inboundVal)} <span className="text-[7.5px] text-slate-400 font-normal">{tr('لتر')}</span>
+                {formatNumber(inboundVal)} <span className="text-[7.5px] text-slate-400 font-normal">{t('common:units.liter')}</span>
               </span>
             </div>
 
@@ -148,10 +150,10 @@ export const PetrolStationsSection: React.FC = () => {
             <div className="flex items-center justify-between gap-2 bg-orange-950/40 px-1.5 py-0.5 rounded-lg border border-orange-700/40">
               <div className="flex items-center gap-1 text-orange-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shadow-[0_0_6px_#f97316]" />
-                <span className="text-[9.5px]">{tr('الاستهلاك:')}</span>
+                <span className="text-[9.5px]">{t('dashboard:flow.consumptionColon')}</span>
               </div>
               <span className="font-mono font-black text-white text-[10.5px]">
-                {formatNumber(consumptionVal)} <span className="text-[7.5px] text-slate-400 font-normal">{tr('لتر')}</span>
+                {formatNumber(consumptionVal)} <span className="text-[7.5px] text-slate-400 font-normal">{t('common:units.liter')}</span>
               </span>
             </div>
           </div>
@@ -162,9 +164,9 @@ export const PetrolStationsSection: React.FC = () => {
               ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
               : 'bg-rose-500/15 border-rose-500/40 text-rose-300'
           }`}>
-            <span>{tr('الفائض:')}</span>
+            <span>{t('dashboard:petrol.surplusColon')}</span>
             <span className="font-mono font-black dir-ltr">
-              {isPositive ? `+${formatNumber(netVal)}` : formatNumber(netVal)} {tr('لتر')}
+              {isPositive ? `+${formatNumber(netVal)}` : formatNumber(netVal)} {t('common:units.liter')}
             </span>
           </div>
         </div>
@@ -177,27 +179,15 @@ export const PetrolStationsSection: React.FC = () => {
     <div className="space-y-4 animate-in fade-in duration-300">
       
       {/* 🌟 Section Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2.5">
-          <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-600 via-orange-500 to-amber-400 text-white shadow-md shadow-amber-500/20">
-            <Fuel className="w-4 h-4 text-amber-50" />
-            <span className="absolute -top-1 -right-1 flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                {tr('بنزين - صحاري كربلاء 2026')}
-              </h2>
-              <span className="px-2.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 text-[10px] font-bold border border-amber-200/80 dark:border-amber-800/60">
-                {tr('المخزون والتشغيل')}
-              </span>
-            </div>
-          </div>
+      <SectionHeader title={t('dashboard:petrol.title')} icon={
+        <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-600 via-orange-500 to-amber-400 text-white shadow-md shadow-amber-500/20">
+          <Fuel className="w-4 h-4 text-amber-50" />
+          <span className="absolute -top-1 -right-1 flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
         </div>
-      </div>
+      } />
 
       {/* 🌟 3 Main Columns Container */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4 items-stretch">
@@ -212,29 +202,29 @@ export const PetrolStationsSection: React.FC = () => {
                 <div className="w-6 h-6 rounded-lg bg-[#146f82]/10 dark:bg-[#146f82]/30 flex items-center justify-center text-[#146f82] dark:text-teal-400 border border-[#146f82]/20 dark:border-[#146f82]/40">
                   <Fuel className="w-3.5 h-3.5" />
                 </div>
-                <span>{tr('رصيد البنزين الفعلي المعتمد')}</span>
+                <span>{t('dashboard:petrol.balance')}</span>
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold border border-emerald-200/60 dark:border-emerald-800/40">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  {tr('تشغيلي نشط')}
+                  {t('dashboard:petrol.active')}
                 </span>
               </div>
               <div className="flex items-baseline gap-2 mt-1">
-                <span className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
+                <span className="text-3xl sm:text-4xl lg:text-[36px] font-black text-slate-900 dark:text-white font-mono tracking-tight">
                   {formatNumber(totalBalance)}
                 </span>
-                <span className="text-base sm:text-lg font-bold text-[#146f82] dark:text-teal-400">{tr('لتر')}</span>
+                <span className="text-base sm:text-lg font-bold text-[#146f82] dark:text-teal-400">{t('common:units.liter')}</span>
               </div>
             </div>
 
             {/* Average Price Pill */}
             <div className="p-3 rounded-2xl bg-gradient-to-br from-slate-50/90 to-teal-50/30 dark:from-slate-800/80 dark:to-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 text-right shrink-0 shadow-xs">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-400 block">{tr('متوسط السعر')}</span>
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-400 block">{t('dashboard:price.average')}</span>
               <div className="text-base sm:text-xl font-black text-[#146f82] dark:text-teal-300 font-mono tracking-tight">
-                {avgPrice} <span className="text-[10px] font-bold text-slate-500">{tr('د.ع')}</span>
+                {avgPrice} <span className="text-[10px] font-bold text-slate-500">{t('common:units.iqd')}</span>
               </div>
               <div className="flex items-center gap-1 mt-0.5 justify-end">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                <span className="text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400">{tr('معتمد')}</span>
+                <span className="text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400">{t('dashboard:price.approved')}</span>
               </div>
             </div>
           </div>
@@ -251,7 +241,7 @@ export const PetrolStationsSection: React.FC = () => {
                 </div>
                 <div>
                   <h4 className="text-xs sm:text-[13px] font-extrabold text-slate-800 dark:text-slate-100 leading-tight">
-                    {tr('توزيع السعة الاستيعابية للمخزون')}
+                    {t('dashboard:capacity.title')}
                   </h4>
                 </div>
               </div>
@@ -264,7 +254,7 @@ export const PetrolStationsSection: React.FC = () => {
                 <span className="font-mono font-black text-[#146f82] dark:text-teal-300 text-xs sm:text-[12.5px] tracking-tight">
                   {fillLabel}
                 </span>
-                <span className="text-[9.5px] font-bold text-slate-600 dark:text-slate-300">{tr('نسبة الامتلاء')}</span>
+                <span className="text-[9.5px] font-bold text-slate-600 dark:text-slate-300">{t('dashboard:capacity.fill')}</span>
               </div>
             </div>
 
@@ -278,13 +268,13 @@ export const PetrolStationsSection: React.FC = () => {
                 <div
                   className="group relative h-full rounded-lg bg-gradient-to-r from-[#0c2e3a] via-[#144757] to-[#1d576a] transition-all duration-500 hover:brightness-110 shadow-[0_0_12px_rgba(29,87,106,0.4)] flex items-center justify-center overflow-hidden cursor-pointer"
                   style={{ width: fillLabel }}
-                  title={`${tr('الخزانات المركزية')}: ${fillLabel} (${formatNumber(totalBalance)} ${tr('لتر')})`}
+                  title={`${t('dashboard:capacity.centralTanks')}: ${fillLabel} (${formatNumber(totalBalance)} ${t('common:units.liter')})`}
                 >
                   <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/20 to-transparent opacity-60 pointer-events-none" />
-                  <span className="relative z-10 text-[9px] sm:text-[10px] font-bold text-white px-2 truncate drop-shadow-sm flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-teal-300"></span>
-                    <span>{tr('الخزانات المركزية')}</span>
-                    <strong className="font-mono font-black text-teal-100">{fillLabel}</strong>
+                  <span className="relative z-10 min-w-0 max-w-full text-[9px] sm:text-[10px] font-bold text-white px-2 drop-shadow-sm flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-teal-300 shrink-0"></span>
+                    <span className="truncate min-w-0">{t('dashboard:capacity.centralTanks')}</span>
+                    <strong className="shrink-0 font-mono font-black text-teal-100">{fillLabel}</strong>
                   </span>
                 </div>
 
@@ -292,7 +282,7 @@ export const PetrolStationsSection: React.FC = () => {
                 <div
                   className="group relative h-full rounded-lg bg-gradient-to-r from-[#1d576a] via-[#23687e] to-[#2ea0be] transition-all duration-500 hover:brightness-110 shadow-[0_0_14px_rgba(46,160,190,0.45)] flex items-center justify-center overflow-hidden cursor-pointer"
                   style={{ width: remainLabel }}
-                  title={`${tr('السعة المتبقية')}: ${remainLabel} (${formatNumber(remainingCapacity)} ${tr('لتر')})`}
+                  title={`${t('dashboard:capacity.remaining')}: ${remainLabel} (${formatNumber(remainingCapacity)} ${t('common:units.liter')})`}
                 >
                   {/* Live Animated Holographic Flow Stream */}
                   <div className="absolute inset-0 animate-stream-flow opacity-60 pointer-events-none" />
@@ -303,7 +293,7 @@ export const PetrolStationsSection: React.FC = () => {
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
                     </span>
-                    <span>{tr('المتبقي')}</span>
+                    <span>{t('dashboard:capacity.remainingShort')}</span>
                     <strong className="font-mono font-black text-teal-100">{remainLabel}</strong>
                   </span>
                 </div>
@@ -313,20 +303,6 @@ export const PetrolStationsSection: React.FC = () => {
               {/* Smart HUD Badges */}
               <div className="flex items-center justify-between text-xs gap-2 pt-0.5">
                 
-                {/* Badge 1: الخزانات المركزية */}
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-[#1d576a]/10 dark:bg-[#1d576a]/30 border border-[#1d576a]/30 dark:border-[#1d576a]/50 min-w-0 shadow-2xs">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#1d576a] dark:bg-teal-400 shadow-xs shrink-0" />
-                  <span className="font-bold text-[9.5px] sm:text-[10.5px] text-slate-700 dark:text-slate-200 truncate">
-                    {tr('الخزانات المركزية')}
-                  </span>
-                  <span className="font-mono font-black text-[11px] sm:text-xs text-[#1d576a] dark:text-teal-300">
-                    {fillLabel}
-                  </span>
-                  <span className="text-[9px] font-mono text-slate-400 hidden sm:inline">
-                    ({formatNumber(totalBalance)} {tr('لتر')})
-                  </span>
-                </div>
-
                 {/* Badge 2: السعة المتبقية */}
                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-[#1d576a]/10 dark:bg-[#1d576a]/30 border border-[#2ea0be]/30 dark:border-[#2ea0be]/50 min-w-0 shadow-2xs">
                   <span className="relative flex h-1.5 w-1.5 shrink-0">
@@ -334,13 +310,13 @@ export const PetrolStationsSection: React.FC = () => {
                     <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#2ea0be]"></span>
                   </span>
                   <span className="font-bold text-[9.5px] sm:text-[10.5px] text-slate-700 dark:text-slate-200 truncate">
-                    {tr('السعة المتبقية')}
+                    {t('dashboard:capacity.remaining')}
                   </span>
                   <span className="font-mono font-black text-[11px] sm:text-xs text-[#1d576a] dark:text-teal-300">
                     {remainLabel}
                   </span>
                   <span className="text-[9px] font-mono text-slate-400 hidden sm:inline">
-                    ({formatNumber(remainingCapacity)} {tr('لتر')})
+                    ({formatNumber(remainingCapacity)} {t('common:units.liter')})
                   </span>
                 </div>
 
@@ -350,37 +326,37 @@ export const PetrolStationsSection: React.FC = () => {
           </div>
 
           {/* Executive Metrics: الوارد - الاستهلاك (Matching Sahara Layout) */}
-          <div className="grid grid-cols-2 gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <div className="kpi-wrap pt-3 border-t border-slate-100 dark:border-slate-800"><div className="kpi-grid kpi-grid-2 gap-2.5">
             
             {/* 1. الوارد */}
             <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors min-w-0">
-              <div className="flex items-center justify-between text-[10.5px] font-bold text-slate-500 dark:text-slate-400 mb-1">
-                <span className="truncate">{tr('إجمالي الوارد')}</span>
+              <div className="flex items-center justify-between gap-1.5 text-[10.5px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                <span className="kpi-label">{t('dashboard:flow.totalInbound')}</span>
                 <div className="w-5 h-5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/40 shrink-0">
                   <ArrowDownLeft className="w-3 h-3" />
                 </div>
               </div>
-              <div className="text-xs sm:text-sm font-black text-slate-900 dark:text-white font-mono truncate">
-                {formatNumber(totalInbound)} <span className="text-[8.5px] font-normal text-slate-400">{tr('لتر')}</span>
+              <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
+                {formatNumber(totalInbound)} <span className="text-[8.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </div>
-              <span className="text-[9px] text-slate-400 mt-0.5 block truncate">{tr('توريدات مستلمة')}</span>
+              <span className="text-[10px] text-slate-400 mt-0.5 block">{t('dashboard:flow.received')}</span>
             </div>
 
             {/* 2. الاستهلاك */}
             <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-orange-300 dark:hover:border-orange-700 transition-colors min-w-0">
-              <div className="flex items-center justify-between text-[10.5px] font-bold text-slate-500 dark:text-slate-400 mb-1">
-                <span className="truncate">{tr('الاستهلاك اليومي')}</span>
+              <div className="flex items-center justify-between gap-1.5 text-[10.5px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                <span className="kpi-label">{t('dashboard:flow.daily')}</span>
                 <div className="w-5 h-5 rounded-lg bg-orange-50 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400 flex items-center justify-center border border-orange-200/60 dark:border-orange-800/40 shrink-0">
                   <ArrowUpRight className="w-3 h-3" />
                 </div>
               </div>
-              <div className="text-xs sm:text-sm font-black text-slate-900 dark:text-white font-mono truncate">
-                {formatNumber(totalConsumption)} <span className="text-[8.5px] font-normal text-slate-400">{tr('لتر')}</span>
+              <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
+                {formatNumber(totalConsumption)} <span className="text-[8.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </div>
-              <span className="text-[9px] text-slate-400 mt-0.5 block truncate">{tr('صرف مباشر')}</span>
+              <span className="text-[10px] text-slate-400 mt-0.5 block">{t('dashboard:flow.directOutflow')}</span>
             </div>
 
-          </div>
+          </div></div>
 
         </div>
 
@@ -391,20 +367,20 @@ export const PetrolStationsSection: React.FC = () => {
           <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 font-bold text-xs">
               <Calendar className="w-4 h-4 text-[#146f82] dark:text-teal-400 shrink-0" />
-              <span className="truncate">{tr('تنبؤ التغطية الذكية')}</span>
+              <span className="truncate">{t('dashboard:coverage.smartTitle')}</span>
             </div>
             <span className="text-[9.5px] font-mono font-bold text-[#146f82] dark:text-teal-300 bg-[#146f82]/10 dark:bg-[#146f82]/25 px-2 py-0.5 rounded-full border border-[#146f82]/25 dark:border-[#146f82]/40">
-              {tr('ذكاء تنبؤي')}
+              {t('dashboard:coverage.predictive')}
             </span>
           </div>
 
           {/* 1. Prediction Headline (الرصيد الفعلي الحالي) */}
           <div className="text-center py-1 space-y-1 my-auto">
-            <div className="text-xl sm:text-2xl lg:text-[25px] font-black text-slate-900 dark:text-white tracking-tight leading-none drop-shadow-2xs">
-              {tr('يؤمن لغاية')} <span className="text-[#146f82] dark:text-[#2dd4bf] drop-shadow-xs">{coverageDays} {tr('يوماً')}</span>
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-none drop-shadow-2xs">
+              {t('dashboard:coverage.until')} <span className="text-[#146f82] dark:text-[#2dd4bf] drop-shadow-xs">{t('common:units.days', { count: coverageDays })}</span>
             </div>
             <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-semibold">
-              {tr('تاريخ النفاد المتوقع:')} <strong className="font-mono text-slate-800 dark:text-slate-100 font-black">{coverageDate}</strong>
+              {t('dashboard:coverage.runOutDate')} <strong className="font-mono text-slate-800 dark:text-slate-100 font-black">{coverageDate}</strong>
             </p>
           </div>
 
@@ -413,7 +389,7 @@ export const PetrolStationsSection: React.FC = () => {
             <div className="flex items-center justify-between text-[11px] font-bold">
               <span className="text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#146f82] dark:bg-teal-400 animate-pulse"></span>
-                <span>{tr('جاهزية التغطية التشغيلية')}</span>
+                <span>{t('dashboard:petrol.readiness')}</span>
               </span>
               <span className="font-mono font-black text-[#146f82] dark:text-teal-300 text-xs">
                 77.3%
@@ -423,41 +399,41 @@ export const PetrolStationsSection: React.FC = () => {
               <div className="h-full rounded-full bg-gradient-to-r from-[#146f82] via-[#23687e] to-[#2dd4bf] shadow-xs transition-all duration-500" style={{ width: '77.3%' }} />
             </div>
             <div className="flex items-center justify-between text-[9.5px] text-slate-500 dark:text-slate-400 font-bold font-mono">
-              <span>{tr('الفعلي:')} {coverageDays} {tr('يوماً')}</span>
-              <span className="text-[#146f82] dark:text-teal-400">{tr('المستهدف:')} {targetCoverageDays} {tr('يوماً')}</span>
+              <span>{t('dashboard:petrol.actualColon')} {t('common:units.days', { count: coverageDays })}</span>
+              <span className="text-[#146f82] dark:text-teal-400">{t('dashboard:petrol.targetColon')} {t('common:units.days', { count: targetCoverageDays })}</span>
             </div>
           </div>
 
           {/* 3. كروت الإمداد والتغطية الشاملة المستهدفة (الكمية المطلوب توفرها + يؤمن لغاية بعد التعزيز) */}
-          <div className="grid grid-cols-2 gap-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+          <div className="kpi-wrap pt-2.5 border-t border-slate-100 dark:border-slate-800"><div className="kpi-grid kpi-grid-2 gap-2.5">
             
             {/* كارت 1: الكمية المطلوب توفرها */}
             <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-teal-300 dark:hover:border-teal-700 transition-colors min-w-0">
-              <div className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-0.5 truncate">
-                {tr('الكمية المطلوب توفرها')}
+              <div className="kpi-label text-slate-500 dark:text-slate-400 mb-0.5" title={t('dashboard:petrol.required')}>
+                <span className="lbl-full">{t('dashboard:petrol.required')}</span><span className="lbl-short">{t('dashboard:petrol.requiredShort')}</span>
               </div>
-              <div className="text-xs sm:text-sm font-black text-slate-900 dark:text-white font-mono truncate">
-                {formatNumber(requiredQuantity)} <span className="text-[8.5px] font-normal text-slate-400">{tr('لتر')}</span>
+              <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
+                {formatNumber(requiredQuantity)} <span className="text-[8.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </div>
-              <span className="text-[8.5px] text-[#146f82] dark:text-teal-400 font-bold mt-0.5 block truncate">
-                {tr('تعزيز استراتيجي مستهدف')}
+              <span className="text-[8.5px] text-[#146f82] dark:text-teal-400 font-bold mt-0.5 block">
+                {t('dashboard:petrol.boost')}
               </span>
             </div>
 
             {/* كارت 2: يؤمن لغاية (المتوفر + المطلوب توفرها) */}
             <div className="p-2.5 sm:p-3 rounded-2xl bg-[#146f82]/5 dark:bg-[#146f82]/20 border border-[#146f82]/25 dark:border-[#146f82]/40 flex flex-col justify-between hover:border-[#146f82] transition-colors min-w-0">
-              <div className="text-[10px] sm:text-[11px] font-bold text-[#146f82] dark:text-teal-300 mb-0.5 truncate">
-                {tr('يؤمن لغاية (الشامل)')}
+              <div className="kpi-label text-[#146f82] dark:text-teal-300 mb-0.5" title={t('dashboard:petrol.coverageFull')}>
+                <span className="lbl-full">{t('dashboard:petrol.coverageFull')}</span><span className="lbl-short">{t('dashboard:petrol.coverageFullShort')}</span>
               </div>
-              <div className="text-xs sm:text-sm font-black text-[#146f82] dark:text-[#2dd4bf] font-mono truncate">
-                {targetCoverageDays} {tr('يوماً')} <span className="text-[8.5px] font-normal text-slate-400">({targetCoverageDate})</span>
+              <div className="kpi-num !whitespace-normal font-black text-[#146f82] dark:text-[#2dd4bf] font-mono">
+                <span className="whitespace-nowrap">{t('common:units.days', { count: targetCoverageDays })}</span> <span className="text-[8.5px] font-normal text-slate-400 whitespace-nowrap">({targetCoverageDate})</span>
               </div>
-              <span className="text-[8.5px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5 block truncate">
-                {tr('الرصيد:')} {formatNumber(targetTotalBalance)} {tr('لتر')}
+              <span className="text-[8.5px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5 block">
+                {t('dashboard:petrol.balanceColon')} {formatNumber(targetTotalBalance)} {t('common:units.liter')}
               </span>
             </div>
 
-          </div>
+          </div></div>
 
 
         </div>
@@ -476,7 +452,7 @@ export const PetrolStationsSection: React.FC = () => {
                 <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-cyan-600 to-teal-500 text-white flex items-center justify-center shadow-xs">
                   <Activity className="w-3.5 h-3.5 animate-pulse" />
                 </div>
-                <span className="truncate">{tr('تحليل الوارد والاستهلاك والتدفق')}</span>
+                <span className="truncate">{t('dashboard:petrol.analysis')}</span>
               </div>
               
               {/* Timeframe Selector Pills */}
@@ -489,7 +465,7 @@ export const PetrolStationsSection: React.FC = () => {
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                   }`}
                 >
-                  {tr('7 أيام')}
+                  {t('dashboard:range.d7')}
                 </button>
                 <button
                   onClick={() => setTimeRange('14d')}
@@ -499,7 +475,7 @@ export const PetrolStationsSection: React.FC = () => {
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                   }`}
                 >
-                  {tr('14 يوم')}
+                  {t('dashboard:range.d14')}
                 </button>
                 <button
                   onClick={() => setTimeRange('30d')}
@@ -509,7 +485,7 @@ export const PetrolStationsSection: React.FC = () => {
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                   }`}
                 >
-                  {tr('شهري')}
+                  {t('dashboard:range.monthly')}
                 </button>
               </div>
             </div>
@@ -526,7 +502,7 @@ export const PetrolStationsSection: React.FC = () => {
                   }`}
                 >
                   <Waves className="w-3.5 h-3.5" />
-                  <span>{tr('أمواج نيون')}</span>
+                  <span>{t('dashboard:petrol.neon')}</span>
                 </button>
                 <button
                   onClick={() => setChartMode('cyber-bars')}
@@ -537,7 +513,7 @@ export const PetrolStationsSection: React.FC = () => {
                   }`}
                 >
                   <BarChart3 className="w-3.5 h-3.5" />
-                  <span>{tr('أعمدة 3D')}</span>
+                  <span>{t('dashboard:petrol.bars')}</span>
                 </button>
               </div>
             </div>
@@ -603,7 +579,7 @@ export const PetrolStationsSection: React.FC = () => {
                     interval={timeRange === '30d' ? 4 : timeRange === '14d' ? 1 : 0}
                     tick={{ fill: '#64748b', fontSize: 10.5, fontWeight: 700 }}
                     dy={6}
-                    tickFormatter={(val) => tr(val)}
+                    tickFormatter={(val) => enumText(val, 'short')}
                   />
                   <YAxis 
                     axisLine={false}
@@ -632,7 +608,7 @@ export const PetrolStationsSection: React.FC = () => {
                     <Area 
                       type="monotone" 
                       dataKey="inbound" 
-                      name="الوارد"
+                      name={t('dashboard:flow.inbound')}
                       stroke="url(#strokeLaserInbound)" 
                       strokeWidth={3}
                       fillOpacity={1} 
@@ -652,7 +628,7 @@ export const PetrolStationsSection: React.FC = () => {
                     <Area 
                       type="monotone" 
                       dataKey="consumption" 
-                      name="الاستهلاك"
+                      name={t('dashboard:flow.consumption')}
                       stroke="url(#strokeLaserConsumption)" 
                       strokeWidth={3}
                       fillOpacity={1} 
@@ -710,7 +686,7 @@ export const PetrolStationsSection: React.FC = () => {
                     interval={timeRange === '30d' ? 4 : timeRange === '14d' ? 1 : 0}
                     tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
                     dy={6}
-                    tickFormatter={(val) => tr(val)}
+                    tickFormatter={(val) => enumText(val, 'short')}
                   />
                   <YAxis 
                     axisLine={false}
@@ -732,7 +708,7 @@ export const PetrolStationsSection: React.FC = () => {
                   {showInbound && (
                     <Bar
                       dataKey="inbound"
-                      name="الوارد"
+                      name={t('dashboard:flow.inbound')}
                       fill="url(#barInboundGrad)"
                       radius={[6, 6, 0, 0]}
                     />
@@ -741,7 +717,7 @@ export const PetrolStationsSection: React.FC = () => {
                   {showConsumption && (
                     <Bar
                       dataKey="consumption"
-                      name="الاستهلاك"
+                      name={t('dashboard:flow.consumption')}
                       fill="url(#barConsumptionGrad)"
                       radius={[6, 6, 0, 0]}
                     />
@@ -772,10 +748,10 @@ export const PetrolStationsSection: React.FC = () => {
                     ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700/60 shadow-2xs'
                     : 'opacity-40 line-through bg-slate-100 dark:bg-slate-800 text-slate-500 border-transparent'
                 }`}
-                title={tr('انقر لإظهار أو إخفاء الوارد')}
+                title={t('dashboard:petrol.toggleInbound')}
               >
                 <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_#10b981]" />
-                <span>{tr('الوارد (Inbound)')}</span>
+                <span>{t('dashboard:petrol.inboundLegend')}</span>
               </button>
 
               <button
@@ -785,10 +761,10 @@ export const PetrolStationsSection: React.FC = () => {
                     ? 'bg-orange-50 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-700/60 shadow-2xs'
                     : 'opacity-40 line-through bg-slate-100 dark:bg-slate-800 text-slate-500 border-transparent'
                 }`}
-                title={tr('انقر لإظهار أو إخفاء الاستهلاك')}
+                title={t('dashboard:petrol.toggleConsumption')}
               >
                 <span className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_6px_#f97316]" />
-                <span>{tr('الاستهلاك (Outflow)')}</span>
+                <span>{t('dashboard:petrol.consumptionLegend')}</span>
               </button>
             </div>
 
