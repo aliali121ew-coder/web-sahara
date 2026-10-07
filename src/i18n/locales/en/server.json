@@ -52,6 +52,7 @@
     "ip_locked": "Too many failed sign-in attempts from this device. Try again in 15 minutes",
     "key_unsupported": "Unsupported key type",
     "leave_general": "You can’t leave the general room",
+    "resume_expired": "Your saved sign-in has expired. Enter your password",
     "locked": "Repeated failed attempts. Wait a moment before trying again",
     "maintenance": "The system is in maintenance mode (restoring a backup). Try again in a few minutes",
     "max_accounts": "You’ve reached the maximum number of accounts ({{max}})",

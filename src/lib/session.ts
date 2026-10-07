@@ -20,6 +20,11 @@ export const LAST_NAME_KEY = 'sahara_last_name';
 /** وقت بدء الجلسة: تنتهي بعد 24 ساعة ويُطلب تسجيل الدخول من جديد */
 const SESSION_STARTED_KEY = 'sahara_session_started';
 export const SESSION_MAX_MS = 24 * 3600_000;
+/**
+ * الدخول المحفوظ بضغطة واحدة: اسم المستخدم ووقت انتهاء رمز المتابعة (72 ساعة من آخر إدخال لكلمة المرور).
+ * الرمز نفسه في كوكي HttpOnly يديره الخادم؛ هذه مجرد علامة لتعرف شاشة الدخول أنه متاح
+ */
+const RESUME_KEY = 'sahara_session_resume';
 /** بصمة هذا الجهاز: اسم المستخدم ومعرّف مفتاح البصمة المسجّل عليه */
 export const BIO_USER_KEY = 'sahara_bio_user';
 const BIO_CRED_KEY = 'sahara_bio_cred';
@@ -96,6 +101,20 @@ const store = (r: { id: string }, remember: boolean) => {
   target.setItem(SESSION_STARTED_KEY, String(Date.now()));
 };
 
+/** اسم المستخدم المحفوظ للدخول بضغطة واحدة ('' = غير متاح أو انتهت مهلته) */
+export const savedLogin = (): string => {
+  try {
+    const r = JSON.parse(localStorage.getItem(RESUME_KEY) || 'null') as { u?: string; until?: number } | null;
+    return r?.u && (r.until || 0) > Date.now() ? r.u : '';
+  } catch { return ''; }
+};
+const setSavedLogin = (username: string, until?: number) => {
+  try {
+    if (username && until) localStorage.setItem(RESUME_KEY, JSON.stringify({ u: username, until }));
+    else localStorage.removeItem(RESUME_KEY);
+  } catch { /* تجاهل */ }
+};
+
 /** هل النظام بحاجة لإعداد أول (لا توجد حسابات بعد)؟ */
 export async function authStatus(): Promise<{ setup: boolean }> {
   const res = await fetch('/api/chat/auth/status', { cache: 'no-store' });
@@ -104,14 +123,37 @@ export async function authStatus(): Promise<{ setup: boolean }> {
 }
 
 export async function loginAccount(username: string, password: string, remember = true) {
-  store(await post<{ id: string }>('/api/chat/auth/login', { username, password, remember }), remember);
+  const r = await post<{ id: string; resumeUntil?: number }>('/api/chat/auth/login', { username, password, remember });
+  store(r, remember);
   localStorage.setItem(LAST_USER_KEY, username);
+  setSavedLogin(username, r.resumeUntil);
+}
+
+/** الدخول المحفوظ: زر «تسجيل الدخول» فقط، بلا كلمة مرور، خلال 72 ساعة من آخر إدخال لها */
+export async function resumeLogin() {
+  const username = savedLogin();
+  try {
+    const r = await post<{ id: string; resumeUntil?: number }>('/api/chat/auth/resume', {});
+    store(r, true);
+    setSavedLogin(username, r.resumeUntil);
+  } catch (e) {
+    if (e instanceof AuthError && e.code === 'resume_expired') setSavedLogin('');
+    throw e;
+  }
+}
+
+/** نسيان الدخول المحفوظ على هذا الجهاز (الدخول بحساب آخر) */
+export async function forgetSavedLogin() {
+  setSavedLogin('');
+  await post('/api/chat/auth/resume/forget', {}).catch(() => {});
 }
 
 /** الإعداد الأول: إنشاء حساب مدير النظام برمز تفعيل النظام */
 export async function setupSystem(code: string, body: { username: string; password: string; name: string }) {
-  store(await post<{ id: string }>('/api/chat/auth/setup', body, { 'x-app-token': code }), true);
+  const r = await post<{ id: string; resumeUntil?: number }>('/api/chat/auth/setup', body, { 'x-app-token': code });
+  store(r, true);
   localStorage.setItem(LAST_USER_KEY, body.username);
+  setSavedLogin(body.username, r.resumeUntil);
 }
 
 /** إرسال طلب دعم لمدير النظام من شاشة الدخول */
@@ -154,6 +196,8 @@ export async function logout() {
   try {
     await fetch('/api/chat/auth/logout', { method: 'POST', headers: { 'content-type': 'application/json', ...sessionHeaders() }, body: '{}' });
   } catch { /* الجلسة تُمسح محليًا في كل الأحوال */ }
+  // الخروج المتعمَّد يُلغي الدخول المحفوظ أيضًا: الدخول التالي بكلمة المرور
+  setSavedLogin('');
   clearSession();
   location.reload();
 }

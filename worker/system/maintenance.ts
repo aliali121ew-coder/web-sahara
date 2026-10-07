@@ -130,6 +130,7 @@ export const cleanup = async (env: Env, now = Date.now()) => {
     try { const r = await env.DB.prepare(sql).bind(...args).run(); out[label] = r.meta?.changes ?? 0; } catch { out[label] = 0; }
   };
   await run('expiredSessions', 'DELETE FROM chat_sessions WHERE created_at < ?', now - SESSION_MAX_MS);
+  await run('expiredResume', 'DELETE FROM chat_resume WHERE expires_at < ?', now);
   await run('expiredChallenges', 'DELETE FROM webauthn_challenges WHERE expires_at < ?', now);
   await run('orphanSaharaChunks', 'DELETE FROM sahara_file_chunks WHERE file_id NOT IN (SELECT id FROM sahara_files)');
   await run('orphanChatChunks', 'DELETE FROM chat_file_chunks WHERE file_id NOT IN (SELECT id FROM chat_files)');

@@ -8,7 +8,7 @@ import { errorText } from '../../i18n/errors';
 import { LangToggle } from './LangToggle';
 import {
   authStatus, loginAccount, setupSystem, AuthError, LAST_USER_KEY, LAST_NAME_KEY,
-  biometricAvailable, biometricUser, enableBiometric, loginWithBiometric,
+  biometricAvailable, biometricUser, enableBiometric, loginWithBiometric, savedLogin, resumeLogin, forgetSavedLogin,
 } from '../../lib/session';
 import { PhoneFlow, type PhoneStep, type SupportKind } from './PhoneFlow';
 import './auth.css';
@@ -86,7 +86,9 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
   const pageDir = i18n.dir();
   const [mode, setMode] = useState<Mode>('loading');
   const [dark, setDark] = useState(() => localStorage.getItem('sahara_theme_mode') === 'dark');
-  const [username, setUsername] = useState(() => localStorage.getItem(LAST_USER_KEY) || '');
+  // الدخول المحفوظ (72 ساعة من آخر إدخال لكلمة المرور): يكفي زر «تسجيل الدخول»
+  const [saved, setSaved] = useState(savedLogin);
+  const [username, setUsername] = useState(() => savedLogin() || localStorage.getItem(LAST_USER_KEY) || '');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [name, setName] = useState('');
@@ -137,6 +139,13 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
     return () => clearInterval(t);
   }, [lockedUntil]);
   const lockLeft = Math.max(0, Math.ceil((lockedUntil - now) / 1000));
+  const useSaved = mode === 'login' && !!saved && username.trim().toLowerCase() === saved;
+  const forgetSaved = () => {
+    forgetSavedLogin();
+    setSaved('');
+    setUsername('');
+    setError('');
+  };
 
   const fail = (e: unknown) => {
     setError(errorText(e));
@@ -163,6 +172,19 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
       if (!USERNAME_RE.test(u)) return invalid(t('validation.username'));
       if (password.length < 8) return invalid(t('validation.passwordLength'));
       if (password !== confirm) return invalid(t('validation.passwordMatch'));
+    } else if (useSaved) {
+      setBtn('loading');
+      try {
+        await resumeLogin();
+        setBtn('success');
+        setTimeout(onSuccess, reducedMotion() ? 0 : 650);
+      } catch (err) {
+        setBtn('idle');
+        // انتهت مهلة الـ 72 ساعة أو أُلغي الدخول المحفوظ: يعود الحقل لطلب كلمة المرور
+        if (err instanceof AuthError && err.code === 'resume_expired') setSaved('');
+        fail(err);
+      }
+      return;
     } else if (!u || !password) {
       return invalid(t('validation.credentials'));
     }
@@ -238,6 +260,16 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
           maxLength={32} autoComplete="username" autoCapitalize="none" spellCheck={false} required
           autoFocus={!phone && !setup && !username}
         />
+        {useSaved ? (
+          <div className="flex items-center gap-3 h-14 rounded-xl px-3.5 bg-teal-50 ring-1 ring-teal-200 dark:bg-teal-500/10 dark:ring-teal-500/30">
+            <ShieldCheck className="w-[18px] h-[18px] shrink-0 text-teal-700 dark:text-teal-300" aria-hidden />
+            <span className="flex-1 min-w-0 text-[13px] font-bold text-teal-900 dark:text-teal-200">{t('savedLogin')}</span>
+            <button type="button" onClick={forgetSaved}
+              className="auth-focus min-h-[44px] px-1 text-[13px] font-bold text-teal-700 hover:text-teal-950 underline-offset-4 hover:underline dark:text-teal-300 dark:hover:text-teal-100 rounded-md shrink-0">
+              {t('otherAccount')}
+            </button>
+          </div>
+        ) : (
         <Field
           ref={passRef} id="a-pass" label={t('fields.password')} icon={Lock} dir="ltr" invalid={hasError && !setup}
           type={show ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
@@ -267,12 +299,13 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
             </div>
           )}
         </Field>
+        )}
         {setup && (
           <Field id="a-confirm" label={t('fields.confirmPassword')} icon={Lock} dir="ltr" type={show ? 'text' : 'password'}
             value={confirm} onChange={e => setConfirm(e.target.value)} maxLength={128} autoComplete="new-password" required />
         )}
 
-        {!setup && (
+        {!setup && !useSaved && (
           <div className="flex items-center justify-between gap-2">
             <label className="inline-flex items-center gap-2.5 min-h-[44px] cursor-pointer select-none text-sm font-semibold text-slate-700 dark:text-slate-300">
               <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)}

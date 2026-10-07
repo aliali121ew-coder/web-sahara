@@ -22,6 +22,7 @@ const LOCAL_ONLY = new Set([
   BIO_USER_KEY,
   'sahara_bio_cred',
   'sahara_session_started',
+  'sahara_session_resume',
   'sahara_remember_me',
   'sahara_welcome_seen',
   PENDING_KEY,

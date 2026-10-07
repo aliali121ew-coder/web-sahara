@@ -147,7 +147,7 @@ export default {
     if (!env.APP_TOKEN) return json({ error: 'لم يُضبط رمز تفعيل النظام على الخادم (APP_TOKEN)', code: 'app_token_missing' }, 503);
 
     // تسجيل الدخول والإعداد الأول متاحان بدون جلسة (الإعداد يتحقق من APP_TOKEN بنفسه)
-    if (url.pathname.startsWith('/api/chat/auth/') && ['/api/chat/auth/status', '/api/chat/auth/login', '/api/chat/auth/setup', '/api/chat/auth/support', '/api/chat/auth/webauthn/login-options', '/api/chat/auth/webauthn/login'].includes(url.pathname)) {
+    if (url.pathname.startsWith('/api/chat/auth/') && ['/api/chat/auth/status', '/api/chat/auth/login', '/api/chat/auth/setup', '/api/chat/auth/support', '/api/chat/auth/webauthn/login-options', '/api/chat/auth/webauthn/login', '/api/chat/auth/resume', '/api/chat/auth/resume/forget'].includes(url.pathname)) {
       return handleChat(request, url, env.DB, env.APP_TOKEN, env.FILES);
     }
 

@@ -73,6 +73,9 @@ const ensureTables = async (db: ChatDB) => {
   await db.exec('CREATE INDEX IF NOT EXISTS chat_sessions_user ON chat_sessions (user_id)');
   // وقت آخر تحقق بكلمة المرور في هذه الجلسة (0 = دخلت بالبصمة): شرط لإضافة بصمة جديدة
   try { await db.exec('ALTER TABLE chat_sessions ADD COLUMN pw_at INTEGER NOT NULL DEFAULT 0'); } catch { /* موجود */ }
+  // رموز «متابعة الدخول» بضغطة واحدة بعد انتهاء الجلسة: صالحة 72 ساعة من آخر إدخال لكلمة المرور (البصمة فقط تُحفظ)
+  await db.exec('CREATE TABLE IF NOT EXISTS chat_resume (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL, expires_at INTEGER NOT NULL)');
+  await db.exec('CREATE INDEX IF NOT EXISTS chat_resume_user ON chat_resume (user_id)');
   // مفاتيح الدخول بالبصمة / بصمة الوجه (المفتاح العام فقط) والتحديات المؤقتة
   await db.exec("CREATE TABLE IF NOT EXISTS webauthn_credentials (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, public_key TEXT NOT NULL, alg INTEGER NOT NULL, sign_count INTEGER NOT NULL DEFAULT 0, label TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, last_used INTEGER NOT NULL DEFAULT 0)");
   await db.exec('CREATE INDEX IF NOT EXISTS webauthn_credentials_user ON webauthn_credentials (user_id)');
@@ -262,11 +265,35 @@ const withCookie = (res: Response, cookie: string) => {
   return res;
 };
 
-/** جلسة جديدة لهذا الجهاز: الرمز يصل للمتصفح في كوكي HttpOnly فقط ويُحفظ على الخادم كبصمة. pwAt = وقت التحقق بكلمة المرور (0 للبصمة) */
-const newSession = async (db: ChatDB, userId: string, now: number, pwAt = 0, remember = true) => {
+// ───── متابعة الدخول بضغطة واحدة ─────
+// الجلسة تنتهي كل 24 ساعة، لكن مع «تذكّرني» يحصل الجهاز على رمز متابعة (كوكي HttpOnly منفصل) صالح 72 ساعة
+// من آخر دخول بكلمة المرور: شاشة الدخول تكتفي بزر «تسجيل الدخول». بعد 72 ساعة تُطلب كلمة المرور من جديد.
+// كلمة المرور نفسها لا تُحفظ على الجهاز أبدًا. الرمز يُستبدل عند كل استخدام، ويُلغى بالخروج أو تغيير كلمة المرور.
+const RESUME_COOKIE = 'sahara_resume';
+const RESUME_MAX_MS = 72 * 3600_000;
+const resumeAttrs = 'Path=/api/chat/auth; HttpOnly; Secure; SameSite=Strict';
+const clearedResume = () => `${RESUME_COOKIE}=; ${resumeAttrs}; Max-Age=0`;
+/** حذف رمز المتابعة الخاص بهذا الجهاز (من كوكي الطلب) */
+const dropResume = async (db: ChatDB, request: Request) => {
+  const token = str(readCookie(request, RESUME_COOKIE), 128);
+  if (token) await db.prepare('DELETE FROM chat_resume WHERE token_hash = ?').bind(await hashKey(token)).run();
+};
+
+/**
+ * جلسة جديدة لهذا الجهاز: الرمز يصل للمتصفح في كوكي HttpOnly فقط ويُحفظ على الخادم كبصمة. pwAt = وقت التحقق بكلمة المرور (0 للبصمة).
+ * resumeUntil: رمز متابعة جديد ينتهي في هذا الوقت. 0 = بلا رمز (ويُلغى أي رمز سابق على هذا الجهاز)، -1 = يبقى الرمز الحالي كما هو
+ */
+const newSession = async (db: ChatDB, request: Request, userId: string, now: number, opts: { pwAt?: number; remember?: boolean; resumeUntil?: number } = {}) => {
+  const { pwAt = 0, remember = true, resumeUntil = 0 } = opts;
   const key = newKey();
   await db.prepare('INSERT INTO chat_sessions (token_hash, user_id, created_at, last_used, pw_at) VALUES (?, ?, ?, ?, ?)').bind(await hashKey(key), userId, now, now, pwAt).run();
-  return withCookie(json({ ok: true, id: userId }), sessionCookie(key, remember));
+  const res = withCookie(json({ ok: true, id: userId, ...(resumeUntil > 0 ? { resumeUntil } : {}) }), sessionCookie(key, remember));
+  if (resumeUntil === -1) return res;
+  await dropResume(db, request);
+  if (!resumeUntil) return withCookie(res, clearedResume());
+  const token = newKey();
+  await db.prepare('INSERT INTO chat_resume (token_hash, user_id, expires_at) VALUES (?, ?, ?)').bind(await hashKey(token), userId, resumeUntil).run();
+  return withCookie(res, `${RESUME_COOKIE}=${token}; ${resumeAttrs}; Max-Age=${Math.max(1, Math.floor((resumeUntil - now) / 1000))}`);
 };
 
 const authUser = async (request: Request, db: ChatDB) => {
@@ -347,7 +374,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
         .bind(id, name, now, username, await hashPassword(password)),
       db.prepare("INSERT OR IGNORE INTO chat_members (room_id, user_id, role, last_read, joined_at) VALUES (?, ?, 'admin', 0, ?)").bind(GENERAL_ROOM, id, now),
     ]);
-    return newSession(db, id, now, now);
+    return newSession(db, request, id, now, { pwAt: now, resumeUntil: now + RESUME_MAX_MS });
   }
 
   // تسجيل الدخول: اسم المستخدم + كلمة المرور، مع إبطاء تدريجي بعد محاولات فاشلة متتالية
@@ -378,7 +405,8 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     await db.prepare('UPDATE chat_users SET fail_count = 0, lock_until = 0, last_seen = ? WHERE id = ?').bind(now, u.id).run();
     await db.prepare("INSERT OR IGNORE INTO chat_members (room_id, user_id, role, last_read, joined_at) VALUES (?, ?, 'member', 0, ?)").bind(GENERAL_ROOM, u.id, now).run();
     await audit(db, request, u.id, 'auth.login', 'كلمة المرور', { username });
-    return newSession(db, u.id, now, now, b?.remember !== false);
+    const remember = b?.remember !== false;
+    return newSession(db, request, u.id, now, { pwAt: now, remember, resumeUntil: remember ? now + RESUME_MAX_MS : 0 });
   }
 
   // ───── الدخول بالبصمة / بصمة الوجه ─────
@@ -426,7 +454,35 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     await db.prepare('UPDATE webauthn_credentials SET sign_count = ?, last_used = ? WHERE id = ?').bind(v.signCount, now, cred.id).run();
     await db.prepare('UPDATE chat_users SET fail_count = 0, lock_until = 0, last_seen = ? WHERE id = ?').bind(now, cred.user_id).run();
     await audit(db, request, cred.user_id, 'auth.login', 'البصمة');
-    return newSession(db, cred.user_id, now);
+    return newSession(db, request, cred.user_id, now, { resumeUntil: -1 });
+  }
+
+  // متابعة الدخول برمز المتابعة المحفوظ (بدون كلمة مرور خلال 72 ساعة من آخر إدخال لها)
+  if (path === '/auth/resume' && method === 'POST') {
+    await readBody(request); // استهلاك الجسم الفارغ حتى لا يبقى الاتصال معلّقًا
+    if (await ipBlocked(db, request)) return ipBlockedResponse();
+    const token = str(readCookie(request, RESUME_COOKIE), 128);
+    const expired = () => withCookie(json({ error: 'انتهت صلاحية الدخول المحفوظ، أدخل كلمة المرور', code: 'resume_expired' }, 401), clearedResume());
+    if (!token) return expired();
+    await db.prepare('DELETE FROM chat_resume WHERE expires_at < ?').bind(now).run();
+    const { results } = await db.prepare(
+      "SELECT r.user_id, r.expires_at, u.username FROM chat_resume r JOIN chat_users u ON u.id = r.user_id WHERE r.token_hash = ? AND u.disabled = 0 AND u.pass_hash != ''",
+    ).bind(await hashKey(token)).all<{ user_id: string; expires_at: number; username: string }>();
+    const r = results[0];
+    if (!r) {
+      await audit(db, request, '', 'auth.failed', 'دخول محفوظ منتهي أو غير صالح');
+      return expired();
+    }
+    await db.prepare('UPDATE chat_users SET last_seen = ? WHERE id = ?').bind(now, r.user_id).run();
+    await audit(db, request, r.user_id, 'auth.login', 'دخول محفوظ', { username: r.username });
+    // رمز جديد بنفس وقت الانتهاء (لا يمدّد مهلة الـ 72 ساعة)
+    return newSession(db, request, r.user_id, now, { resumeUntil: r.expires_at });
+  }
+  // نسيان الدخول المحفوظ على هذا الجهاز («الدخول بحساب آخر»)
+  if (path === '/auth/resume/forget' && method === 'POST') {
+    await readBody(request);
+    await dropResume(db, request);
+    return withCookie(json({ ok: true }), clearedResume());
   }
 
   // طلب دعم من شاشة الدخول (بدون جلسة)
@@ -455,8 +511,9 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
   }
   if (path === '/auth/logout' && method === 'POST') {
     await db.prepare('DELETE FROM chat_sessions WHERE token_hash = ?').bind(session.tokenHash).run();
+    await dropResume(db, request);
     await audit(db, request, authId, 'auth.logout');
-    return withCookie(json({ ok: true }), clearedCookie());
+    return withCookie(withCookie(json({ ok: true }), clearedCookie()), clearedResume());
   }
   // تغيير كلمة المرور: يُخرج كل الأجهزة الأخرى ويُبقي هذا الجهاز
   if (path === '/auth/password' && method === 'POST') {
@@ -469,6 +526,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     await db.batch([
       db.prepare('UPDATE chat_users SET pass_hash = ? WHERE id = ?').bind(await hashPassword(next), authId),
       db.prepare('DELETE FROM chat_sessions WHERE user_id = ? AND token_hash != ?').bind(authId, session.tokenHash),
+      db.prepare('DELETE FROM chat_resume WHERE user_id = ?').bind(authId),
     ]);
     await audit(db, request, authId, 'auth.password');
     return json({ ok: true });
@@ -654,10 +712,11 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
         // إعادة التعيين تفك القفل وتُخرج الحساب من كل الأجهزة
         stmts.push(db.prepare('UPDATE chat_users SET pass_hash = ?, fail_count = 0, lock_until = 0 WHERE id = ?').bind(await hashPassword(str(b.password, 200)), id));
         stmts.push(db.prepare('DELETE FROM chat_sessions WHERE user_id = ?').bind(id));
+        stmts.push(db.prepare('DELETE FROM chat_resume WHERE user_id = ?').bind(id));
       }
       if (b.disabled !== undefined) {
         stmts.push(db.prepare('UPDATE chat_users SET disabled = ? WHERE id = ?').bind(b.disabled ? 1 : 0, id));
-        if (b.disabled) stmts.push(db.prepare('DELETE FROM chat_sessions WHERE user_id = ?').bind(id));
+        if (b.disabled) stmts.push(db.prepare('DELETE FROM chat_sessions WHERE user_id = ?').bind(id), db.prepare('DELETE FROM chat_resume WHERE user_id = ?').bind(id));
       }
       if (stmts.length) {
         await db.batch(stmts);

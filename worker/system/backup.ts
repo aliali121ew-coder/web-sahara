@@ -24,7 +24,7 @@ interface Snapshot { format: 'etihad-backup'; version: 1; createdAt: number; kin
  * - الحسابات (IDENTITY_MERGE): الحساب الموجود الآن يحتفظ بحالته الحالية كاملة (كلمة المرور، الإدارة، الإيقاف، الصلاحيات)،
  *   ويُضاف فقط حساب موجود في النسخة ومفقود الآن (لا يوجد حذف حسابات في التطبيق، فغيابه يعني فقدان بيانات).
  */
-const SKIP_ON_RESTORE = new Set(['backups', 'system_jobs', 'system_meta', 'chat_sessions', 'webauthn_challenges', 'webauthn_credentials', 'audit_log', 'sahara_file_chunks', 'chat_file_chunks']);
+const SKIP_ON_RESTORE = new Set(['backups', 'system_jobs', 'system_meta', 'chat_sessions', 'chat_resume', 'webauthn_challenges', 'webauthn_credentials', 'audit_log', 'sahara_file_chunks', 'chat_file_chunks']);
 const IDENTITY_MERGE = new Set(['chat_users']);
 /** جداول لا تُنسخ أصلًا: أجزاء الملفات القديمة (المحتوى في R2) */
 const SKIP_ON_BACKUP = new Set(['sahara_file_chunks', 'chat_file_chunks']);
