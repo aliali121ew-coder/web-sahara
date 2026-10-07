@@ -9,9 +9,9 @@ import { LangToggle } from './LangToggle';
 import {
   authStatus, loginAccount, setupSystem, AuthError, LAST_USER_KEY, LAST_NAME_KEY,
   biometricAvailable, biometricUser, enableBiometric, loginWithBiometric, savedLogin, resumeLogin, forgetSavedLogin,
-  BIO_DECLINED_PREFIX,
+  BIO_DECLINED_PREFIX, type BioRegisterOptions,
 } from '../../lib/session';
-import { BioMethods } from './BiometricSettings';
+import { BioMethods, bioErrorText, usePreparedBio } from './BiometricSettings';
 import { PhoneFlow, type PhoneStep, type SupportKind } from './PhoneFlow';
 import './auth.css';
 
@@ -367,7 +367,7 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
 
   const offerEl = bioOffer && (
     <BioOffer
-      onEnable={async () => { await enableBiometric(); onSuccess(); }}
+      onEnable={async prepared => { await enableBiometric(undefined, prepared); onSuccess(); }}
       onSkip={() => { try { localStorage.setItem(BIO_DECLINED_KEY + username.trim().toLowerCase(), '1'); } catch { /* تجاهل */ } onSuccess(); }}
     />
   );
@@ -452,17 +452,19 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
 };
 
 /** عرض تفعيل الدخول بالبصمة / بصمة الوجه بعد الدخول بكلمة المرور */
-const BioOffer: React.FC<{ onEnable: () => Promise<void>; onSkip: () => void }> = ({ onEnable, onSkip }) => {
+const BioOffer: React.FC<{ onEnable: (prepared: BioRegisterOptions | null) => Promise<void>; onSkip: () => void }> = ({ onEnable, onSkip }) => {
   const { t, i18n } = useTranslation('auth');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // تُجلب بيانات التسجيل فور ظهور العرض ليبدأ طلب البصمة مباشرة عند الضغط (شرط Safari في iPhone)
+  const { ref: prepared } = usePreparedBio(true);
   const enable = async () => {
     setBusy(true);
     setError('');
     try {
-      await onEnable();
+      await onEnable(prepared.current);
     } catch (e) {
-      setError(errorText(e));
+      setError(bioErrorText(e));
       setBusy(false);
     }
   };
@@ -490,7 +492,7 @@ const BioOffer: React.FC<{ onEnable: () => Promise<void>; onSkip: () => void }> 
           className="auth-btn auth-focus mt-6 w-full h-14 rounded-2xl text-white font-bold text-base flex items-center justify-center gap-2 disabled:opacity-70">
           {busy ? <><Loader2 className="w-5 h-5 animate-spin" /> {t('bio.waiting')}</> : t('bio.enable')}
         </button>
-        <button type="button" onClick={onSkip} disabled={busy}
+        <button type="button" onClick={onSkip}
           className="auth-focus mt-2 w-full h-12 rounded-2xl text-[15px] font-bold text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-900">
           {t('bio.later')}
         </button>

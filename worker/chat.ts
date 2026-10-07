@@ -510,10 +510,11 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     return json({ user: withPerms(results[0]) });
   }
   if (path === '/auth/logout' && method === 'POST') {
+    // الخروج يُنهي الجلسة فقط: الدخول المحفوظ («تذكرني») يبقى حتى نهاية مهلته،
+    // ويُلغى صراحة من /auth/resume/forget («دخول بحساب آخر»)
     await db.prepare('DELETE FROM chat_sessions WHERE token_hash = ?').bind(session.tokenHash).run();
-    await dropResume(db, request);
     await audit(db, request, authId, 'auth.logout');
-    return withCookie(withCookie(json({ ok: true }), clearedCookie()), clearedResume());
+    return withCookie(json({ ok: true }), clearedCookie());
   }
   // تغيير كلمة المرور: يُخرج كل الأجهزة الأخرى ويُبقي هذا الجهاز
   if (path === '/auth/password' && method === 'POST') {

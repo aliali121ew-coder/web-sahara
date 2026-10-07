@@ -58,12 +58,12 @@ export const SwipeTabs: React.FC<{ tabs: SwipeTab[]; active: string; onChange: (
           const on = i === index;
           return (
             <button key={t.id} role="tab" aria-selected={on} tabIndex={on ? 0 : -1} onClick={() => go(i)}
-              className={`relative z-10 h-11 rounded-xl px-2 flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold transition-colors ${on ? 'text-blue-700 dark:text-blue-300' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}>
+              className={`relative z-10 min-h-[3.25rem] sm:min-h-0 sm:h-11 rounded-xl px-1 sm:px-2 py-1.5 sm:py-0 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 text-[10px] leading-tight sm:text-sm font-bold transition-colors ${on ? 'text-blue-700 dark:text-blue-300' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}>
               {Icon && <Icon className="w-4 h-4 shrink-0" />}
-              {/* على الشاشات الضيقة: التبويب النشط يعرض اسمه، والبقية أيقونة فقط */}
-              <span className={`truncate ${on || !Icon ? '' : 'sr-only sm:not-sr-only'}`}>{t.label}</span>
+              {/* على الشاشات الضيقة: الاسم تحت الأيقونة بخط صغير (سطران كحد أقصى) فتظهر كل الأسماء كاملة */}
+              <span className="max-w-full text-center line-clamp-2 break-words sm:truncate">{t.label}</span>
               {!!t.badge && (
-                <span className="min-w-5 h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">{t.badge}</span>
+                <span className="absolute top-0.5 end-0.5 sm:static min-w-4 h-4 sm:min-w-5 sm:h-5 px-1 sm:px-1.5 rounded-full bg-rose-500 text-white text-[9px] sm:text-[10px] font-black flex items-center justify-center">{t.badge}</span>
               )}
             </button>
           );
