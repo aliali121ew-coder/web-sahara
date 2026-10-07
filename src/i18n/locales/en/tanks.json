@@ -46,7 +46,8 @@
     "level": "Current level (m)",
     "addSave": "Add and save tank",
     "fillPercent": "{{value}}% full",
-    "namePlaceholder": "e.g. Additional diesel tank 2"
+    "namePlaceholder": "e.g. Additional diesel tank 2",
+    "capacityRequired": "Please enter the tank’s total capacity (liters)"
   },
   "reorder": {
     "title": "Reorder sections",
