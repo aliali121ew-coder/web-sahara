@@ -17,6 +17,8 @@ import { ensureSystemTables, getMaintenance } from './system/backup';
 import { schemaGate } from './storage/schema';
 import { onSchedule } from './system/maintenance';
 
+export { StateHub } from './realtime/stateHub';
+
 type StateRow = { key: string; value: string; updated_at: number };
 
 // رؤوس أمان ردود الواجهة البرمجية (الصفحات نفسها تأخذ رؤوسها من public/_headers)
@@ -43,6 +45,14 @@ const ensureTable = (db: D1Database) => schemaGate(db, 'app_state', '1', async (
   if (leaked.length) await db.batch(leaked.map(k => db.prepare('DELETE FROM app_state WHERE key = ?').bind(k)));
 });
 
+const HUB_NAME = 'state';
+/** إبلاغ كل الأجهزة المتصلة برقم النسخة الجديد (لا يؤخّر رد الحفظ) */
+const broadcastVersion = (env: Env, ctx: ExecutionContext, version: string) => {
+  if (!env.HUB) return;
+  ctx.waitUntil(env.HUB.get(env.HUB.idFromName(HUB_NAME)).fetch('https://hub/notify', { method: 'POST', body: version }).catch(() => undefined));
+};
+/** يتغيّر مع كل حفظ للبيانات (system_meta) */
+const STATE_VERSION_KEY = 'state_version';
 const MAX_STATE_BODY = 8 * 1024 * 1024;
 const MAX_IMAGE_BODY = 6 * 1024 * 1024;
 const forbidden = (error = 'لا تملك صلاحية لهذا القسم') => json({ error, code: 'forbidden' }, 403);
@@ -140,7 +150,7 @@ const handleFiles = async (request: Request, url: URL, db: D1Database, bucket: R
 };
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
 
@@ -152,6 +162,12 @@ export default {
     }
 
     // كل ما عدا ذلك يتطلب جلسة حساب معتمد (اسم مستخدم + كلمة مرور)
+    // WebSocket لا يرسل ترويسات مخصّصة: معرّف الحساب من الرابط (?u=) ويُطابق مع كوكي الجلسة كالمعتاد
+    if (url.pathname === '/api/state/ws' && !request.headers.get('x-chat-user')) {
+      const headers = new Headers(request.headers);
+      headers.set('x-chat-user', url.searchParams.get('u') || '');
+      request = new Request(request, { headers });
+    }
     const session = await verifySession(request, env.DB);
     if (!session) return json({ error: 'انتهت الجلسة، سجّل الدخول مجددًا', code: 'chat_auth' }, 401);
 
@@ -166,6 +182,21 @@ export default {
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       const m = await getMaintenance(env.DB);
       if (m) return json({ error: 'النظام في وضع الصيانة (استرجاع نسخة احتياطية). حاول بعد دقائق', code: 'maintenance' }, 503);
+    }
+
+    // قناة التحديث اللحظي: WebSocket لا يرسل ترويسات مخصّصة، فمعرّف الحساب يأتي في الرابط ويُطابق مع كوكي الجلسة
+    // (الكوكي SameSite=Strict، ونتحقق من Origin حتى لا تفتح مواقع أخرى القناة)
+    if (url.pathname === '/api/state/ws') {
+      if (!env.HUB) return json({ error: 'القناة اللحظية غير مفعّلة', code: 'not_found' }, 404);
+      const origin = request.headers.get('origin');
+      if (origin && origin !== url.origin) return forbidden();
+      return env.HUB.get(env.HUB.idFromName(HUB_NAME)).fetch(request);
+    }
+
+    // رقم نسخة البيانات (سطر واحد): الأجهزة تسأل عنه كل ثوانٍ قليلة، ولا تنزّل النسخة الكاملة إلا إن تغيّر
+    if (url.pathname === '/api/state/version' && request.method === 'GET') {
+      const { results } = await env.DB.prepare('SELECT value FROM system_meta WHERE key = ?').bind(STATE_VERSION_KEY).all<{ value: string }>();
+      return json({ v: results[0]?.value || '0' });
     }
 
     if (url.pathname === '/api/state' && request.method === 'GET') {
@@ -237,7 +268,16 @@ export default {
         if (isCollectionKey(key)) { await clearCollection(env.DB, key); collectionOps++; continue; }
         statements.push(env.DB.prepare('DELETE FROM app_state WHERE key = ?1').bind(key));
       }
+      const version = statements.length || collectionOps ? `${now}-${session.id}` : null;
+      if (version) {
+        // رفع رقم النسخة حتى تلتقط الأجهزة الأخرى التغيير فورًا
+        statements.push(
+          env.DB.prepare('INSERT INTO system_meta (key, value, updated_at) VALUES (?1, ?2, ?3) ON CONFLICT(key) DO UPDATE SET value = ?2, updated_at = ?3')
+            .bind(STATE_VERSION_KEY, version, now)
+        );
+      }
       if (statements.length) await env.DB.batch(statements);
+      if (version) broadcastVersion(env, ctx, version);
       if (statements.length || collectionOps) {
         // سجل العمليات: الأقسام التي حُفظت (يُدمج الحفظ التلقائي المتكرر في سطر واحد)
         const touched = [...Object.keys(body.set || {}), ...(body.remove || []), ...Object.keys(body.collections || {})].filter(k => typeof k === 'string' && !rejected.includes(k));
@@ -245,7 +285,7 @@ export default {
         if (sections.length) await audit(env.DB, request, session.id, 'data.save', sections.join('، '), { merge: true });
       }
       if (rejected.length) await audit(env.DB, request, session.id, 'data.denied', Array.from(new Set(rejected.map(keySectionLabel))).join('، '), { merge: true });
-      return json({ ok: true, saved: statements.length + collectionOps, rejected });
+      return json({ ok: true, saved: statements.length + collectionOps, rejected, version });
     }
 
     // المحادثة: الحسابات والغرف والرسائل والمرفقات

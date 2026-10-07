@@ -49,6 +49,13 @@ export interface Env {
   APP_TOKEN?: string;
   ANTHROPIC_API_KEY?: string;
   ASSETS: { fetch(request: Request): Promise<Response> };
+  /** قناة التحديث اللحظي (Durable Object StateHub) */
+  HUB?: DurableObjectNamespace;
+}
+
+export interface DurableObjectNamespace {
+  idFromName(name: string): unknown;
+  get(id: unknown): { fetch(input: string | Request, init?: RequestInit): Promise<Response> };
 }
 
 export interface ExecutionContext {
