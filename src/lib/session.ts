@@ -5,11 +5,13 @@ import { useEffect, useState } from 'react';
 
 /**
  * جلسة الدخول للبرنامج: حساب معتمد (اسم مستخدم + كلمة مرور) يصدره مدير النظام.
- * الجلسة نفسها تفتح البرنامج والمحادثة معًا، وتُرسل مع كل طلب للخادم في الترويسات.
+ * الجلسة نفسها تفتح البرنامج والمحادثة معًا. رمزها السرّي في كوكي HttpOnly يديره الخادم والمتصفح
+ * (لا تقرؤه سكربتات الصفحة)، ويحفظ التطبيق محليًا معرّف الحساب ووقت بدء الجلسة فقط.
  */
 
 export const SESSION_USER_KEY = 'sahara_chat_me';
-export const SESSION_KEY = 'sahara_chat_key';
+/** مكان رمز الجلسة قديمًا (قبل الكوكي): يُمسح فقط */
+const LEGACY_SESSION_KEY = 'sahara_chat_key';
 /** نسخة محلية من بيانات الحساب لعرضها فورًا (الاسم، الوظيفة، الصلاحية) */
 export const SESSION_PROFILE_KEY = 'sahara_session_profile';
 export const LAST_USER_KEY = 'sahara_last_username';
@@ -35,8 +37,8 @@ export interface SessionProfile {
 }
 
 /**
- * «تذكّرني»: الجلسة في localStorage (تبقى بعد إغلاق المتصفح).
- * بدونه: في sessionStorage (تنتهي بإغلاق التبويب).
+ * «تذكّرني»: معرّف الجلسة في localStorage (يبقى بعد إغلاق المتصفح).
+ * بدونه: في sessionStorage (ينتهي بإغلاق التبويب).
  */
 const read = (k: string) => {
   try { return localStorage.getItem(k) || sessionStorage.getItem(k) || ''; } catch { return ''; }
@@ -47,7 +49,7 @@ export const getSessionStarted = () => Number(read(SESSION_STARTED_KEY)) || 0;
 
 /** هل توجد جلسة صالحة؟ الجلسة الأقدم من 24 ساعة تُمسح حتى بدون اتصال بالخادم */
 export const hasSession = () => {
-  if (!(read(SESSION_USER_KEY) && read(SESSION_KEY))) return false;
+  if (!read(SESSION_USER_KEY)) return false;
   const started = Number(read(SESSION_STARTED_KEY)) || 0;
   if (Date.now() - started > SESSION_MAX_MS) {
     clearSession();
@@ -56,9 +58,9 @@ export const hasSession = () => {
   return true;
 };
 
+/** ترويسة معرّف الحساب: يطابقها الخادم مع كوكي الجلسة (ترويسة مخصّصة = حماية من تزوير الطلبات من مواقع أخرى) */
 export const sessionHeaders = (): Record<string, string> => ({
   'x-chat-user': read(SESSION_USER_KEY),
-  'x-chat-key': read(SESSION_KEY),
 });
 
 export const getProfile = (): SessionProfile | null => {
@@ -86,11 +88,11 @@ async function post<T>(path: string, body: unknown, headers: Record<string, stri
   return data;
 }
 
-const store = (r: { id: string; key: string }, remember: boolean) => {
+/** الخادم وضع رمز الجلسة في الكوكي؛ نحفظ هنا المعرّف ووقت البدء فقط */
+const store = (r: { id: string }, remember: boolean) => {
   clearSession();
   const target = remember ? localStorage : sessionStorage;
   target.setItem(SESSION_USER_KEY, r.id);
-  target.setItem(SESSION_KEY, r.key);
   target.setItem(SESSION_STARTED_KEY, String(Date.now()));
 };
 
@@ -102,13 +104,13 @@ export async function authStatus(): Promise<{ setup: boolean }> {
 }
 
 export async function loginAccount(username: string, password: string, remember = true) {
-  store(await post<{ id: string; key: string }>('/api/chat/auth/login', { username, password }), remember);
+  store(await post<{ id: string }>('/api/chat/auth/login', { username, password, remember }), remember);
   localStorage.setItem(LAST_USER_KEY, username);
 }
 
 /** الإعداد الأول: إنشاء حساب مدير النظام برمز تفعيل النظام */
 export async function setupSystem(code: string, body: { username: string; password: string; name: string }) {
-  store(await post<{ id: string; key: string }>('/api/chat/auth/setup', body, { 'x-app-token': code }), true);
+  store(await post<{ id: string }>('/api/chat/auth/setup', body, { 'x-app-token': code }), true);
   localStorage.setItem(LAST_USER_KEY, body.username);
 }
 
@@ -136,13 +138,18 @@ export async function refreshProfile(): Promise<SessionProfile | null> {
 export const clearSession = () => {
   for (const s of [localStorage, sessionStorage]) {
     s.removeItem(SESSION_USER_KEY);
-    s.removeItem(SESSION_KEY);
+    s.removeItem(LEGACY_SESSION_KEY);
     s.removeItem(SESSION_STARTED_KEY);
   }
   localStorage.removeItem(SESSION_PROFILE_KEY);
 };
 
-/** تسجيل الخروج: إلغاء الجلسة على الخادم ثم العودة لشاشة الدخول */
+// جلسة قديمة كان رمزها في التخزين المحلي: لا تصلح مع الكوكي، فتُمسح ويُطلب الدخول مرة واحدة
+try {
+  if (localStorage.getItem(LEGACY_SESSION_KEY) || sessionStorage.getItem(LEGACY_SESSION_KEY)) clearSession();
+} catch { /* تجاهل */ }
+
+/** تسجيل الخروج: إلغاء الجلسة على الخادم (ومسح الكوكي) ثم العودة لشاشة الدخول */
 export async function logout() {
   try {
     await fetch('/api/chat/auth/logout', { method: 'POST', headers: { 'content-type': 'application/json', ...sessionHeaders() }, body: '{}' });
@@ -260,7 +267,7 @@ export async function loginWithBiometric(username: string) {
   }
   const res = cred.response as AuthenticatorAssertionResponse;
   try {
-    store(await post<{ id: string; key: string }>('/api/chat/auth/webauthn/login', {
+    store(await post<{ id: string }>('/api/chat/auth/webauthn/login', {
       id: cred.id,
       clientDataJSON: toB64url(res.clientDataJSON),
       authenticatorData: toB64url(res.authenticatorData),

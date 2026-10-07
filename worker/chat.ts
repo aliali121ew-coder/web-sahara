@@ -3,9 +3,10 @@
  * التحديث الفوري يتم عبر مزامنة تزايدية (/api/chat/sync?since=) يستدعيها التطبيق كل ثانية تقريبًا.
  * كل الطلبات تمر أولًا بفحص رمز الدخول في worker/index.ts.
  *
- * هوية المستخدم: لكل حساب مفتاح سرّي يُولَّد عند إنشائه ويُحفظ على الخادم كبصمة SHA-256 فقط.
- * يرسل التطبيق (x-chat-user + x-chat-key) مع كل طلب، والخادم يأخذ هوية "me" منهما حصرًا
- * ويتجاهل أي me في الجسم أو الرابط؛ فلا يمكن لأحد الإرسال أو القراءة باسم غيره.
+ * هوية المستخدم: رمز الجلسة يُولَّد عند الدخول ويُحفظ على الخادم كبصمة SHA-256 فقط، ويصل للمتصفح
+ * في كوكي HttpOnly (لا تقرؤه سكربتات الصفحة، فلا يسرقه أي حقن سكربت). يرسل التطبيق معه الترويسة x-chat-user
+ * (معرّف الحساب) مع كل طلب — وهي ترويسة مخصّصة لا تستطيع المواقع الأخرى إرسالها، فتمنع تزوير الطلبات (CSRF).
+ * الخادم يأخذ هوية "me" منهما حصرًا ويتجاهل أي me في الجسم أو الرابط؛ فلا يمكن لأحد الإرسال أو القراءة باسم غيره.
  */
 
 import { checkPublicKey, parseClientData, randomChallenge, verifyAssertion } from './webauthn';
@@ -61,6 +62,8 @@ const ensureTables = async (db: ChatDB) => {
     'disabled INTEGER NOT NULL DEFAULT 0', 'fail_count INTEGER NOT NULL DEFAULT 0', 'lock_until INTEGER NOT NULL DEFAULT 0',
     // صلاحيات الأقسام (JSON) يحددها مدير النظام — راجع src/lib/permCatalog.ts
     "perms TEXT NOT NULL DEFAULT '{}'",
+    // وقت آخر محاولة خاطئة (لتصفير عدّاد الإبطاء بعد 24 ساعة)
+    'fail_at INTEGER NOT NULL DEFAULT 0',
   ]) {
     try { await db.exec(`ALTER TABLE chat_users ADD COLUMN ${col}`); } catch { /* موجود */ }
   }
@@ -125,7 +128,7 @@ export const audit = async (db: ChatDB, request: Request, userId: string, action
 };
 
 // ───── حد محاولات الدخول لكل جهاز (عنوان IP) ─────
-// يكمّل القفل الحالي لكل حساب: يمنع تجربة كلمات مرور على حسابات كثيرة من نفس الجهاز
+// يكمّل الإبطاء التدريجي لكل حساب: يمنع تجربة كلمات مرور على حسابات كثيرة من نفس الجهاز
 const IP_WINDOW_MS = 15 * 60_000;
 const IP_MAX_FAILS = 20;
 const ipBlocked = async (db: ChatDB, request: Request) => {
@@ -196,14 +199,32 @@ const verifyPassword = async (password: string, stored: string) => {
   return sameHash(hash, await pbkdf2(password, fromHex(salt), Number(iter))) && !!stored;
 };
 
+// ───── إبطاء تدريجي بعد المحاولات الخاطئة (بدل القفل الكامل للحساب) ─────
+// أول 3 محاولات خاطئة بلا انتظار، ثم يتضاعف الانتظار قبل المحاولة التالية: 5ث، 10ث، 20ث... حتى 15 دقيقة كحد أقصى.
+// لا يُقفل الحساب قفلًا كاملًا، فالتخمين المتعمَّد لا يمنع صاحبه من الدخول طويلًا، ويبقى التخمين نفسه بطيئًا جدًا.
+// العدّاد يُصفَّر عند الدخول الناجح أو بعد 24 ساعة بلا محاولات خاطئة.
+const FREE_FAILS = 3;
+const BASE_DELAY_MS = 5_000;
+const MAX_DELAY_MS = 15 * 60_000;
+const FAIL_RESET_MS = 24 * 3600_000;
+export const failDelay = (fails: number) => (fails <= FREE_FAILS ? 0 : Math.min(MAX_DELAY_MS, BASE_DELAY_MS * 2 ** (fails - FREE_FAILS - 1)));
+/** تسجيل محاولة خاطئة لحساب: يزيد العدّاد ويحدد وقت المحاولة التالية المسموحة (lock_until) */
+const recordFail = async (db: ChatDB, u: { id: string; fail_count: number; fail_at: number }, now: number) => {
+  const fails = (now - u.fail_at > FAIL_RESET_MS ? 0 : u.fail_count) + 1;
+  const wait = failDelay(fails);
+  await db.prepare('UPDATE chat_users SET fail_count = ?, fail_at = ?, lock_until = ? WHERE id = ?').bind(fails, now, wait ? now + wait : 0, u.id).run();
+  return { fails, wait };
+};
+const waitText = (ms: number) => (ms < 60_000 ? `${Math.ceil(ms / 1000)} ثانية` : `${Math.ceil(ms / 60_000)} دقيقة`);
+const throttled = (until: number, now: number) =>
+  json({ error: `محاولات خاطئة متكررة. انتظر ${waitText(until - now)} قبل المحاولة التالية`, code: 'locked', retryAt: until }, 429);
+
 const USERNAME_RE = /^[a-z0-9._-]{3,32}$/;
 const MIN_PASSWORD = 8;
 /** الحد الأقصى لحسابات المصادقة */
 const MAX_ACCOUNTS = 100;
-const MAX_FAILS = 5;
 /** مدة الجلسة القصوى: يُطلب تسجيل الدخول من جديد كل 24 ساعة */
 const SESSION_MAX_MS = 24 * 3600_000;
-const LOCK_MS = 5 * 60_000;
 /** إضافة بصمة جديدة تتطلب تحققًا بكلمة المرور خلال آخر 10 دقائق (لا يكفي رمز جلسة مسروق) */
 const STEP_UP_MS = 10 * 60_000;
 const normUser = (v: unknown) => str(v, 40).trim().toLowerCase();
@@ -221,16 +242,36 @@ type AccountRow = { id: string; username: string; name: string; role: string; av
 const ACCOUNT_COLS = 'id, username, name, role, avatar, color, is_admin, disabled, last_seen, updated_at, perms';
 const withPerms = (a: AccountRow | undefined) => a && { ...a, perms: parsePerms(a.perms) };
 
-/** جلسة جديدة لهذا الجهاز: الرمز يُعاد للعميل مرة واحدة ويُحفظ على الخادم كبصمة. pwAt = وقت التحقق بكلمة المرور (0 للبصمة) */
-const newSession = async (db: ChatDB, userId: string, now: number, pwAt = 0) => {
+// ───── كوكي الجلسة ─────
+// HttpOnly: لا تصل إليه سكربتات الصفحة. SameSite=Strict: لا يُرسل مع طلبات من مواقع أخرى. Path=/api: لا يُرسل مع الملفات الثابتة.
+const SESSION_COOKIE = 'sahara_session';
+const cookieAttrs = 'Path=/api; HttpOnly; Secure; SameSite=Strict';
+/** «تذكّرني»: الكوكي يبقى 24 ساعة (مدة الجلسة على الخادم)، وبدونه ينتهي بإغلاق المتصفح */
+const sessionCookie = (key: string, remember: boolean) =>
+  `${SESSION_COOKIE}=${key}; ${cookieAttrs}${remember ? `; Max-Age=${SESSION_MAX_MS / 1000}` : ''}`;
+const clearedCookie = () => `${SESSION_COOKIE}=; ${cookieAttrs}; Max-Age=0`;
+const readCookie = (request: Request, name: string) => {
+  for (const part of (request.headers.get('cookie') || '').split(';')) {
+    const i = part.indexOf('=');
+    if (i > 0 && part.slice(0, i).trim() === name) return part.slice(i + 1).trim();
+  }
+  return '';
+};
+const withCookie = (res: Response, cookie: string) => {
+  res.headers.append('set-cookie', cookie);
+  return res;
+};
+
+/** جلسة جديدة لهذا الجهاز: الرمز يصل للمتصفح في كوكي HttpOnly فقط ويُحفظ على الخادم كبصمة. pwAt = وقت التحقق بكلمة المرور (0 للبصمة) */
+const newSession = async (db: ChatDB, userId: string, now: number, pwAt = 0, remember = true) => {
   const key = newKey();
   await db.prepare('INSERT INTO chat_sessions (token_hash, user_id, created_at, last_used, pw_at) VALUES (?, ?, ?, ?, ?)').bind(await hashKey(key), userId, now, now, pwAt).run();
-  return key;
+  return withCookie(json({ ok: true, id: userId }), sessionCookie(key, remember));
 };
 
 const authUser = async (request: Request, db: ChatDB) => {
   const id = str(request.headers.get('x-chat-user'), 64);
-  const key = str(request.headers.get('x-chat-key'), 128);
+  const key = str(readCookie(request, SESSION_COOKIE), 128);
   if (!id || !key) return null;
   const { results } = await db.prepare(
     `SELECT u.id, u.is_admin, u.perms, s.token_hash, s.created_at, s.last_used, s.pw_at FROM chat_sessions s JOIN chat_users u ON u.id = s.user_id
@@ -306,32 +347,27 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
         .bind(id, name, now, username, await hashPassword(password)),
       db.prepare("INSERT OR IGNORE INTO chat_members (room_id, user_id, role, last_read, joined_at) VALUES (?, ?, 'admin', 0, ?)").bind(GENERAL_ROOM, id, now),
     ]);
-    return json({ ok: true, id, key: await newSession(db, id, now, now) });
+    return newSession(db, id, now, now);
   }
 
-  // تسجيل الدخول: اسم المستخدم + كلمة المرور، مع قفل مؤقت بعد محاولات فاشلة متتالية
+  // تسجيل الدخول: اسم المستخدم + كلمة المرور، مع إبطاء تدريجي بعد محاولات فاشلة متتالية
   if (path === '/auth/login' && method === 'POST') {
     if (await ipBlocked(db, request)) return ipBlockedResponse();
-    const b = await readBody<{ username?: string; password?: string }>(request);
+    const b = await readBody<{ username?: string; password?: string; remember?: boolean }>(request);
     const username = normUser(b?.username);
     const password = str(b?.password, 200);
     if (!username || !password) return json({ error: 'أدخل اسم المستخدم وكلمة المرور', code: 'credentials_required' }, 400);
-    const { results } = await db.prepare('SELECT id, pass_hash, disabled, fail_count, lock_until FROM chat_users WHERE username = ?')
-      .bind(username).all<{ id: string; pass_hash: string; disabled: number; fail_count: number; lock_until: number }>();
+    const { results } = await db.prepare('SELECT id, pass_hash, disabled, fail_count, fail_at, lock_until FROM chat_users WHERE username = ?')
+      .bind(username).all<{ id: string; pass_hash: string; disabled: number; fail_count: number; fail_at: number; lock_until: number }>();
     const u = results[0];
-    if (u && u.lock_until > now) {
-      const mins = Math.ceil((u.lock_until - now) / 60_000);
-      return json({ error: `تم إيقاف الدخول مؤقتًا بسبب محاولات خاطئة متكررة. حاول بعد ${mins} دقيقة`, code: 'locked', retryAt: u.lock_until }, 429);
-    }
+    // أثناء الانتظار لا تُفحص كلمة المرور أصلًا (ولا تُحتسب محاولة)
+    if (u && u.lock_until > now) return throttled(u.lock_until, now);
     const ok = await verifyPassword(password, u?.pass_hash || '');
     if (!u || !ok) {
       if (u) {
-        const fails = u.fail_count + 1;
-        const locked = fails >= MAX_FAILS;
-        await db.prepare('UPDATE chat_users SET fail_count = ?, lock_until = ? WHERE id = ?')
-          .bind(locked ? 0 : fails, locked ? now + LOCK_MS : 0, u.id).run();
-        await audit(db, request, u.id, locked ? 'auth.locked' : 'auth.failed', locked ? 'قفل مؤقت 5 دقائق' : `محاولة ${fails}`, { username });
-        if (locked) return json({ error: 'محاولات خاطئة كثيرة. تم إيقاف الدخول لهذا الحساب 5 دقائق', code: 'locked', retryAt: now + LOCK_MS }, 429);
+        const { fails, wait } = await recordFail(db, u, now);
+        await audit(db, request, u.id, wait ? 'auth.locked' : 'auth.failed', wait ? `محاولة ${fails}، انتظار ${waitText(wait)}` : `محاولة ${fails}`, { username });
+        if (wait) return throttled(now + wait, now);
       } else {
         // اسم مستخدم غير موجود: يُسجَّل أيضًا حتى يُحتسب ضمن حد الجهاز
         await audit(db, request, '', 'auth.failed', 'اسم مستخدم غير موجود', { username });
@@ -342,7 +378,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     await db.prepare('UPDATE chat_users SET fail_count = 0, lock_until = 0, last_seen = ? WHERE id = ?').bind(now, u.id).run();
     await db.prepare("INSERT OR IGNORE INTO chat_members (room_id, user_id, role, last_read, joined_at) VALUES (?, ?, 'member', 0, ?)").bind(GENERAL_ROOM, u.id, now).run();
     await audit(db, request, u.id, 'auth.login', 'كلمة المرور', { username });
-    return json({ ok: true, id: u.id, key: await newSession(db, u.id, now, now) });
+    return newSession(db, u.id, now, now, b?.remember !== false);
   }
 
   // ───── الدخول بالبصمة / بصمة الوجه ─────
@@ -390,7 +426,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     await db.prepare('UPDATE webauthn_credentials SET sign_count = ?, last_used = ? WHERE id = ?').bind(v.signCount, now, cred.id).run();
     await db.prepare('UPDATE chat_users SET fail_count = 0, lock_until = 0, last_seen = ? WHERE id = ?').bind(now, cred.user_id).run();
     await audit(db, request, cred.user_id, 'auth.login', 'البصمة');
-    return json({ ok: true, id: cred.user_id, key: await newSession(db, cred.user_id, now) });
+    return newSession(db, cred.user_id, now);
   }
 
   // طلب دعم من شاشة الدخول (بدون جلسة)
@@ -420,7 +456,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
   if (path === '/auth/logout' && method === 'POST') {
     await db.prepare('DELETE FROM chat_sessions WHERE token_hash = ?').bind(session.tokenHash).run();
     await audit(db, request, authId, 'auth.logout');
-    return json({ ok: true });
+    return withCookie(json({ ok: true }), clearedCookie());
   }
   // تغيير كلمة المرور: يُخرج كل الأجهزة الأخرى ويُبقي هذا الجهاز
   if (path === '/auth/password' && method === 'POST') {
@@ -444,15 +480,15 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     if (now - session.pwAt > STEP_UP_MS) {
       const password = str((await readBody<{ password?: string }>(request))?.password, 200);
       if (!password) return json({ error: 'أعد إدخال كلمة المرور لتفعيل البصمة', code: 'reauth_required' }, 403);
-      const { results: me } = await db.prepare('SELECT pass_hash, fail_count, lock_until FROM chat_users WHERE id = ?').bind(authId).all<{ pass_hash: string; fail_count: number; lock_until: number }>();
+      const { results: me } = await db.prepare('SELECT id, pass_hash, fail_count, fail_at, lock_until FROM chat_users WHERE id = ?').bind(authId).all<{ id: string; pass_hash: string; fail_count: number; fail_at: number; lock_until: number }>();
       const u = me[0];
-      if (!u || u.lock_until > now) return json({ error: 'تم إيقاف الدخول مؤقتًا بسبب محاولات خاطئة متكررة', code: 'locked', retryAt: u?.lock_until }, 429);
+      if (!u) return unauthorized();
+      if (u.lock_until > now) return throttled(u.lock_until, now);
       if (!(await verifyPassword(password, u.pass_hash))) {
         // نفس عدّاد محاولات الدخول حتى لا تصبح هذه النقطة طريقًا لتخمين كلمة المرور بجلسة مسروقة
-        const fails = u.fail_count + 1;
-        const locked = fails >= MAX_FAILS;
-        await db.prepare('UPDATE chat_users SET fail_count = ?, lock_until = ? WHERE id = ?').bind(locked ? 0 : fails, locked ? now + LOCK_MS : 0, authId).run();
-        await audit(db, request, authId, locked ? 'auth.locked' : 'auth.failed', 'تحقق قبل إضافة بصمة');
+        const { wait } = await recordFail(db, u, now);
+        await audit(db, request, authId, wait ? 'auth.locked' : 'auth.failed', 'تحقق قبل إضافة بصمة');
+        if (wait) return throttled(now + wait, now);
         return json({ error: 'كلمة المرور غير صحيحة', code: 'wrong_password' }, 403);
       }
       await db.batch([

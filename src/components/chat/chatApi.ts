@@ -127,7 +127,7 @@ export interface SyncPayload {
 }
 
 
-/** ترويسات جلسة الحساب الحالية (المعرّف + رمز الجلسة) */
+/** ترويسة جلسة الحساب الحالية (المعرّف؛ رمز الجلسة نفسه في كوكي HttpOnly) */
 const authHeaders = sessionHeaders;
 
 export class ChatApiError extends Error {

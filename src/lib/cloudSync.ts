@@ -31,7 +31,7 @@ const LOCAL_ONLY = new Set([
   'sahara_sidebar_style',
   // حساب المحادثة وثيمها خاصّان بكل جهاز، والرسائل نفسها تُحفظ في خادم المحادثة
   'sahara_chat_me',
-  // مفتاح الحساب السرّي: لا يغادر الجهاز أبدًا
+  // مكان رمز الجلسة القديم (أصبح الآن في كوكي HttpOnly): لا يُرفع أبدًا
   'sahara_chat_key',
   'sahara_chat_theme',
   'sahara_chat_sound',

@@ -141,8 +141,9 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
   const fail = (e: unknown) => {
     setError(errorText(e));
     setShake(s => s + 1);
-    if (e instanceof AuthError && e.code === 'locked') {
-      setLockedUntil(e.retryAt || Date.now() + 5 * 60_000);
+    // إبطاء بعد محاولات خاطئة (للحساب أو للجهاز): عدّاد تنازلي حتى المحاولة التالية
+    if (e instanceof AuthError && (e.code === 'locked' || e.code === 'ip_locked')) {
+      setLockedUntil(e.retryAt || Date.now() + 60_000);
       setNow(Date.now());
     }
     setPassword('');
