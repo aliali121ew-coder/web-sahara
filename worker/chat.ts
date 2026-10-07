@@ -556,7 +556,6 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
       ]);
     }
     const { results } = await db.prepare('SELECT username, name FROM chat_users WHERE id = ?').bind(authId).all<{ username: string; name: string }>();
-    const { results: creds } = await db.prepare('SELECT id FROM webauthn_credentials WHERE user_id = ?').bind(authId).all<{ id: string }>();
     const challenge = randomChallenge();
     await db.prepare("INSERT INTO webauthn_challenges (challenge, user_id, kind, expires_at) VALUES (?, ?, 'create', ?)").bind(challenge, authId, now + 2 * 60_000).run();
     return json({
@@ -568,7 +567,9 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
       // 'preferred' كان يحوّل الطلب في أندرويد إلى Credential Manager فيفشل بـ NotReadableError
       // عند أي خلل في مدير كلمات مرور Google؛ 'discouraged' يستخدم مسار البصمة المباشر في الجهاز
       authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'discouraged', requireResidentKey: false },
-      excludeCredentials: creds.map(c => ({ type: 'public-key', id: c.id })),
+      // لا قائمة استبعاد: كل جهاز يُنشئ مفتاحه المستقل. مفاتيح قديمة «متزامنة» (Google Password Manager / iCloud)
+      // كانت تصل لأجهزة أخرى فيرفض الهاتف التفعيل بـ «مفعّلة مسبقًا» بسبب مفتاح الكمبيوتر
+      excludeCredentials: [],
       timeout: 60000,
       attestation: 'none',
     });
