@@ -24,6 +24,13 @@
     { "binding": "FILES", "bucket_name": "etihad-files" },
     { "binding": "BACKUPS", "bucket_name": "etihad-backups" }
   ],
+  // قناة التحديث اللحظي (WebSocket): كائن واحد يبلّغ كل الأجهزة المفتوحة عند أي حفظ
+  "durable_objects": {
+    "bindings": [{ "name": "HUB", "class_name": "StateHub" }]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["StateHub"] }
+  ],
   // نسخة احتياطية يومية 00:00 UTC (03:00 بتوقيت العراق)، والصيانة الشهرية تُشغَّل من نفس المهمة في أول كل شهر
   "triggers": {
     "crons": ["0 0 * * *"]
@@ -40,6 +47,9 @@
         { "binding": "FILES", "bucket_name": "etihad-files-staging" },
         { "binding": "BACKUPS", "bucket_name": "etihad-backups-staging" }
       ],
+      "durable_objects": {
+        "bindings": [{ "name": "HUB", "class_name": "StateHub" }]
+      },
       // بلا مهام مجدولة في التجربة (تُشغَّل يدويًا من لوحة إدارة النظام عند الحاجة)
       "triggers": { "crons": [] }
     }

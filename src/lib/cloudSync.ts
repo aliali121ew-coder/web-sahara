@@ -160,6 +160,12 @@ const buildPayload = (pending: Pending) => {
   return { body: { set, remove, collections }, snapshots };
 };
 
+/** رقم نسخة البيانات التي وصلت لهذا الجهاز (يرسله الخادم عبر القناة اللحظية مع كل حفظ) */
+let knownVersion: string | null = null;
+/** وصل إشعار تغيير ولم يُجلب (تعديلات معلّقة هنا): يُجلب بعد انتهاء الإرسال */
+let missedUpdate = false;
+let onMissedUpdate: (() => void) | null = null;
+
 let flushing = false;
 async function flush(): Promise<void> {
   if (flushing || !getToken()) return;
@@ -181,7 +187,9 @@ async function flush(): Promise<void> {
       return;
     }
     if (!res.ok) throw new Error(String(res.status));
-    const { rejected = [] } = (await res.json().catch(() => ({}))) as { rejected?: string[] };
+    const { rejected = [], version } = (await res.json().catch(() => ({}))) as { rejected?: string[]; version?: string | null };
+    // إشعار هذا الحفظ سيصل لهذا الجهاز أيضًا: لا داعي لجلب ما أرسله بنفسه
+    if (version) knownVersion = version;
     // إزالة ما وصل فقط، وإبقاء ما تغيّر أثناء الإرسال
     const latest = readPending();
     for (const [key, ver] of Object.entries(pending)) if (latest[key] === ver) delete latest[key];
@@ -192,7 +200,11 @@ async function flush(): Promise<void> {
     if (rejected.length) restoreRejected(rejected);
     flushing = false;
     if (Object.keys(latest).length) scheduleFlush(200);
-    else setStatus('saved');
+    else {
+      setStatus('saved');
+      // وصل تغيير من جهاز آخر أثناء الإرسال (كان مؤجّلًا بسبب التعديلات المعلّقة): يُجلب الآن
+      if (missedUpdate) onMissedUpdate?.();
+    }
   } catch (e) {
     flushing = false;
     // فشل الاتصال نفسه (TypeError) = غير متصل، حتى لو ظن المتصفح أن الشبكة متاحة (إشارة ضعيفة أو الخادم لا يُصل)
@@ -219,6 +231,20 @@ const localSyncKeys = () => Object.keys(localStorage).filter(shouldSync);
 
 /** حدث يُطلق بعد تطبيق تعديلات أجهزة أخرى أثناء فتح الصفحة؛ detail = المفاتيح التي تغيّرت */
 export const CLOUD_APPLIED_EVENT = 'cloud-state-applied';
+
+/**
+ * إبلاغ الصفحات بمفاتيح وصلت من الخادم: الحدث المخصّص، وحدث storage لكل مفتاح
+ * (كثير من الصفحات تستمع لـ storage فقط، فكانت لا تتحدث إلا بإعادة تحميل الصفحة)
+ */
+const notifyApplied = (keys: string[]) => {
+  if (!keys.length) return;
+  window.dispatchEvent(new CustomEvent(CLOUD_APPLIED_EVENT, { detail: keys }));
+  for (const key of keys) {
+    try {
+      window.dispatchEvent(new StorageEvent('storage', { key, newValue: rawGet.call(localStorage, key), storageArea: localStorage }));
+    } catch { /* متصفح قديم */ }
+  }
+};
 
 /** يطبّق نسخة الخادم محليًا (عدا ما تغيّر هنا ولم يُرسل بعد). يعيد المفاتيح التي تغيّرت */
 const applyServerState = (items: Record<string, string>): string[] => {
@@ -254,7 +280,7 @@ const restoreRejected = async (keys: string[]) => {
       else rawRemove.call(localStorage, k);
       if (isCollection(k)) setShadow(k, k in data.items ? data.items[k] : null);
     }
-    window.dispatchEvent(new CustomEvent(CLOUD_APPLIED_EVENT, { detail: keys }));
+    notifyApplied(keys);
   } catch {
     /* تجاهل */
   }
@@ -348,7 +374,7 @@ export async function initCloudSync(): Promise<InitResult> {
         if (!res.ok) throw new Error(String(res.status));
         const changed = adopt((await res.json()) as StateResponse);
         rememberEtag(res);
-        if (changed.length) window.dispatchEvent(new CustomEvent(CLOUD_APPLIED_EVENT, { detail: changed }));
+        if (changed.length) notifyApplied(changed);
         flush();
       } catch {
         // لا اتصال: نعمل بالنسخة المحلية، وعند عودة الاتصال تُجلب نسخة الخادم وتُرسل التعديلات
@@ -368,7 +394,7 @@ export async function initCloudSync(): Promise<InitResult> {
       if (Object.keys(readPending()).length) return;
       const changed = applyServerState(items);
       rememberEtag(res);
-      if (changed.length) window.dispatchEvent(new CustomEvent(CLOUD_APPLIED_EVENT, { detail: changed }));
+      if (changed.length) notifyApplied(changed);
     } catch {
       /* تجاهل: المحاولة التالية في المزامنة الدورية */
     }
@@ -401,29 +427,115 @@ export async function initCloudSync(): Promise<InitResult> {
       // الصفحات تحدّث نفسها من الحدث، فلا حاجة لإعادة تحميل الصفحة كاملة
       const changed = applyServerState(items);
       rememberEtag(res);
-      if (changed.length) window.dispatchEvent(new CustomEvent(CLOUD_APPLIED_EVENT, { detail: changed }));
+      if (changed.length) notifyApplied(changed);
     } catch {
       /* تجاهل */
     }
   });
 
-  // أثناء فتح الصفحة: جلب تعديلات الأجهزة الأخرى بهدوء كل 30 ثانية (بدون إعادة تحميل)،
+  // أثناء فتح الصفحة: جلب تعديلات الأجهزة الأخرى بهدوء (بدون إعادة تحميل)،
   // والصفحات المشتركة في الحدث تحدّث نفسها فورًا
-  setInterval(async () => {
-    if (document.visibilityState !== 'visible' || Object.keys(readPending()).length || flushing) return;
+  let pulling = false;
+  const pull = async (): Promise<boolean> => {
+    if (pulling || document.visibilityState !== 'visible' || Object.keys(readPending()).length || flushing) return false;
+    pulling = true;
     lastBackgroundSync = Date.now();
     try {
       const res = await fetchState(8000, true);
-      if (!res.ok) return;
+      if (res.status === 304) return true;
+      if (!res.ok) return false;
       const { items } = (await res.json()) as { items: Record<string, string> };
-      if (Object.keys(readPending()).length) return;
+      if (Object.keys(readPending()).length) return false;
       const changed = applyServerState(items);
       rememberEtag(res);
-      if (changed.length) window.dispatchEvent(new CustomEvent(CLOUD_APPLIED_EVENT, { detail: changed }));
+      if (changed.length) notifyApplied(changed);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      pulling = false;
+    }
+  };
+  /** رقم نسخة جديد وصل (من القناة اللحظية أو السؤال الاحتياطي): يُجلب التغيير ويُحفظ الرقم بعد تطبيقه فعلًا */
+  const onVersion = async (v: string) => {
+    if (!v || v === knownVersion) return;
+    if (await pull()) {
+      knownVersion = v;
+      missedUpdate = false;
+    } else if (Object.keys(readPending()).length || flushing) {
+      missedUpdate = true;
+    }
+  };
+  onMissedUpdate = () => {
+    missedUpdate = false;
+    void pull();
+  };
+
+  // ───── القناة اللحظية (WebSocket): الخادم يبلّغ هذا الجهاز فور أي حفظ من أي جهاز ─────
+  let socket: WebSocket | null = null;
+  let socketOpen = false;
+  let retries = 0;
+  let retryTimer: ReturnType<typeof setTimeout> | undefined;
+  let pingTimer: ReturnType<typeof setInterval> | undefined;
+  const connect = () => {
+    if (socket || !getToken() || typeof WebSocket === 'undefined') return;
+    clearTimeout(retryTimer);
+    const user = encodeURIComponent(sessionHeaders()['x-chat-user'] || '');
+    const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/state/ws?u=${user}`);
+    socket = ws;
+    ws.onopen = () => {
+      socketOpen = true;
+      retries = 0;
+      // ما فات أثناء الانقطاع
+      void pull();
+      // نبضة تُبقي الاتصال حيًا عبر الشبكات (يرد عليها الخادم تلقائيًا دون تكلفة تشغيل)
+      clearInterval(pingTimer);
+      pingTimer = setInterval(() => { try { ws.send('ping'); } catch { /* يُغلق ويُعاد */ } }, 25_000);
+    };
+    ws.onmessage = e => {
+      if (typeof e.data === 'string' && e.data !== 'pong') void onVersion(e.data);
+    };
+    ws.onclose = () => {
+      clearInterval(pingTimer);
+      socket = null;
+      socketOpen = false;
+      if (!getToken()) return;
+      // إعادة الاتصال بتباعد متزايد (1، 2، 4... حتى 30 ثانية)
+      retryTimer = setTimeout(connect, Math.min(30_000, 1000 * 2 ** retries++));
+    };
+    ws.onerror = () => ws.close();
+  };
+  connect();
+  // العودة للتطبيق (الهاتف يغلق الاتصال في الخلفية): إعادة الاتصال فورًا
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && !socket) {
+      retries = 0;
+      connect();
+    }
+  });
+  window.addEventListener('online', () => {
+    if (!socket) {
+      retries = 0;
+      connect();
+    }
+  });
+
+  // احتياط إن لم تعمل القناة (شبكة تحجب WebSocket): سؤال خفيف عن رقم النسخة كل 3 ثوانٍ
+  setInterval(async () => {
+    if (socketOpen || document.visibilityState !== 'visible' || !getToken()) return;
+    try {
+      const res = await api('/api/state/version');
+      if (!res.ok) return;
+      const { v } = (await res.json()) as { v: string };
+      // أول سؤال يحفظ الرقم فقط
+      if (knownVersion === null) knownVersion = v;
+      else await onVersion(v);
     } catch {
       /* تجاهل */
     }
-  }, 30_000);
+  }, 3_000);
+  // احتياط أخير: نسخة كاملة كل 30 ثانية (تعديلات لا تغيّر رقم النسخة، مثل استرجاع نسخة احتياطية)
+  setInterval(() => void pull(), 30_000);
 
   return 'ready';
 }
