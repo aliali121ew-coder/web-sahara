@@ -1,12 +1,37 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Fingerprint, ScanFace, Loader2, AlertCircle, CheckCircle2, X, Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { errorText } from '../../i18n/errors';
 import {
-  AuthError, biometricAvailable, biometricUser, enableBiometric, disableBiometric, BIO_DECLINED_PREFIX,
+  AuthError, biometricAvailable, biometricUser, enableBiometric, disableBiometric, prepareBiometric, BIO_DECLINED_PREFIX,
+  type BioRegisterOptions,
 } from '../../lib/session';
 import './auth.css';
+
+/** نص خطأ البصمة مع اسم الخطأ التقني من المتصفح (لمعرفة السبب الحقيقي عند «تعذّر الاستخدام») */
+export const bioErrorText = (e: unknown) => errorText(e) + (e instanceof AuthError && e.detail ? ` (${e.detail})` : '');
+
+/**
+ * بيانات التسجيل مجلوبة مسبقًا عند فتح النافذة: طلب البصمة يُستدعى مباشرة عند الضغط
+ * (Safari في iPhone يرفضه إن سبقه انتظار شبكة). يعيد null إن احتاج الخادم كلمة المرور أولًا
+ */
+export const usePreparedBio = (active: boolean) => {
+  const ref = useRef<BioRegisterOptions | null>(null);
+  const [needPw, setNeedPw] = useState(false);
+  useEffect(() => {
+    if (!active) return;
+    let alive = true;
+    const load = () => prepareBiometric()
+      .then(o => { if (alive) ref.current = o; })
+      .catch(e => { if (alive && e instanceof AuthError && e.code === 'reauth_required') setNeedPw(true); });
+    load();
+    // التحدي صالح دقيقتين في الخادم: يُجدَّد قبل انتهائه ما دامت النافذة مفتوحة
+    const timer = setInterval(load, 80_000);
+    return () => { alive = false; clearInterval(timer); };
+  }, [active]);
+  return { ref, needPw, setNeedPw };
+};
 
 /**
  * اختيار طريقة البصمة: الإصبع أو الوجه أو كلاهما — الضغط على أي منها يبدأ التفعيل.
@@ -45,30 +70,36 @@ export const BiometricSettings: React.FC<{ username: string; onClose: () => void
   const [enabledFor, setEnabledFor] = useState(biometricUser);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [needPw, setNeedPw] = useState(false);
   const [password, setPassword] = useState('');
+  const { ref: prepared, needPw, setNeedPw } = usePreparedBio(avail === true && !enabledFor);
 
   useEffect(() => { biometricAvailable().then(setAvail); }, []);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !busy) onClose(); };
+    // الإغلاق متاح دائمًا، حتى أثناء انتظار البصمة (قد يعلق طلب الجهاز فلا يبقى المستخدم محبوسًا)
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [busy, onClose]);
+  }, [onClose]);
 
   const enable = async () => {
     if (busy) return;
     setBusy(true);
     setError('');
     try {
-      await enableBiometric(needPw ? password : undefined);
+      if (needPw) {
+        // بعد كلمة المرور تُجلب بيانات التسجيل؛ إن رفض الجهاز الطلب لتأخره تكفي ضغطة ثانية
+        prepared.current = await prepareBiometric(password);
+        setNeedPw(false);
+        setPassword('');
+      }
+      await enableBiometric(undefined, prepared.current);
+      prepared.current = null;
       try { localStorage.removeItem(BIO_DECLINED_PREFIX + username.toLowerCase()); } catch { /* تجاهل */ }
       setEnabledFor(biometricUser());
-      setNeedPw(false);
-      setPassword('');
     } catch (e) {
       // مرّت أكثر من 10 دقائق على إدخال كلمة المرور: الخادم يطلبها مجددًا قبل التسجيل
       if (e instanceof AuthError && e.code === 'reauth_required') setNeedPw(true);
-      if (!(e instanceof AuthError && e.code === 'cancelled')) setError(errorText(e));
+      setError(bioErrorText(e));
     } finally {
       setBusy(false);
     }
@@ -85,10 +116,10 @@ export const BiometricSettings: React.FC<{ username: string; onClose: () => void
   // عبر بوابة إلى body: الرأس فيه تمويه خلفية يحبس العناصر الثابتة داخله
   return createPortal(
     <div dir={i18n.dir()} role="dialog" aria-modal="true" aria-labelledby="bio-settings-title"
-      onClick={e => { if (e.target === e.currentTarget && !busy) onClose(); }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-slate-950/55 backdrop-blur-sm p-0 sm:p-6 auth-fade">
       <div className="relative w-full sm:max-w-md max-h-[100dvh] overflow-y-auto bg-white dark:bg-slate-950 rounded-t-[32px] sm:rounded-[28px] px-6 pt-8 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-center shadow-2xl">
-        <button type="button" onClick={onClose} disabled={busy} aria-label={t('common:actions.close')}
+        <button type="button" onClick={onClose} aria-label={t('common:actions.close')}
           className="auth-focus absolute top-4 end-4 w-11 h-11 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
           <X className="w-5 h-5" />
         </button>

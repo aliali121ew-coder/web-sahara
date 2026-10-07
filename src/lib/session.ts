@@ -75,7 +75,8 @@ export const getProfile = (): SessionProfile | null => {
 };
 
 export class AuthError extends Error {
-  constructor(message: string, public code?: string, public retryAt?: number) { super(message); }
+  /** detail: اسم الخطأ التقني من المتصفح (للتشخيص فقط، يُعرض بجانب الرسالة) */
+  constructor(message: string, public code?: string, public retryAt?: number, public detail?: string) { super(message); }
 }
 
 async function post<T>(path: string, body: unknown, headers: Record<string, string> = {}): Promise<T> {
@@ -198,8 +199,8 @@ export async function logout() {
   try {
     await fetch('/api/chat/auth/logout', { method: 'POST', headers: { 'content-type': 'application/json', ...sessionHeaders() }, body: '{}' });
   } catch { /* الجلسة تُمسح محليًا في كل الأحوال */ }
-  // الخروج المتعمَّد يُلغي الدخول المحفوظ أيضًا: الدخول التالي بكلمة المرور
-  setSavedLogin('');
+  // الدخول المحفوظ («تذكرني») يبقى بعد الخروج حتى نهاية مهلته (72 ساعة):
+  // شاشة الدخول تعرض «متابعة باسم…» بضغطة، ويُلغى من زر «دخول بحساب آخر»
   clearSession();
   location.reload();
 }
@@ -227,7 +228,10 @@ const bioError = (e: unknown) => {
   const name = (e as Error)?.name;
   if (name === 'NotAllowedError' || name === 'AbortError') return new AuthError('تم إلغاء التحقق بالبصمة', 'cancelled');
   if (name === 'InvalidStateError') return new AuthError('البصمة مفعّلة مسبقًا على هذا الجهاز', 'exists');
-  return e instanceof AuthError ? e : new AuthError('تعذّر استخدام البصمة على هذا الجهاز', 'bio_device');
+  if (e instanceof AuthError) return e;
+  // اسم الخطأ الحقيقي (NotSupportedError، SecurityError…) يُعرض بجانب الرسالة لمعرفة السبب
+  const detail = [name, (e as Error)?.message].filter(Boolean).join(': ').slice(0, 160);
+  return new AuthError('تعذّر استخدام البصمة على هذا الجهاز', 'bio_device', undefined, detail || undefined);
 };
 
 /** هل يدعم الجهاز البصمة أو بصمة الوجه (مستشعر مدمج)؟ */
@@ -241,17 +245,32 @@ export async function biometricAvailable() {
 /** اسم المستخدم المفعّل له الدخول بالبصمة على هذا الجهاز */
 export const biometricUser = () => { try { return localStorage.getItem(BIO_USER_KEY) || ''; } catch { return ''; } };
 
+export interface BioRegisterOptions {
+  challenge: string; rp: { id: string; name: string }; user: { id: string; name: string; displayName: string };
+  pubKeyCredParams: PublicKeyCredentialParameters[]; authenticatorSelection: AuthenticatorSelectionCriteria;
+  excludeCredentials: { type: 'public-key'; id: string }[]; timeout: number;
+  /** وقت الجلب محليًا: التحدي صالح دقيقتين في الخادم */
+  fetchedAt: number;
+}
+
+/**
+ * جلب بيانات تسجيل البصمة مسبقًا (قبل ضغط المستخدم).
+ * Safari في iPhone يرفض طلب البصمة إن جاء بعد انتظار شبكة طويل بعد الضغط، فنجلبها عند فتح النافذة
+ * ليُستدعى طلب البصمة مباشرة عند الضغط.
+ */
+export async function prepareBiometric(password?: string): Promise<BioRegisterOptions> {
+  const o = await post<Omit<BioRegisterOptions, 'fetchedAt'>>('/api/chat/auth/webauthn/register-options', password ? { password } : {}, sessionHeaders());
+  return { ...o, fetchedAt: Date.now() };
+}
+
 /**
  * تفعيل البصمة لحسابي على هذا الجهاز (يتطلب جلسة).
  * الخادم يشترط دخولًا بكلمة المرور خلال آخر 10 دقائق، وإلا تُمرَّر كلمة المرور هنا (رمز الخطأ reauth_required)
  */
-export async function enableBiometric(password?: string) {
+export async function enableBiometric(password?: string, prepared?: BioRegisterOptions | null) {
   const headers = sessionHeaders();
-  const o = await post<{
-    challenge: string; rp: { id: string; name: string }; user: { id: string; name: string; displayName: string };
-    pubKeyCredParams: PublicKeyCredentialParameters[]; authenticatorSelection: AuthenticatorSelectionCriteria;
-    excludeCredentials: { type: 'public-key'; id: string }[]; timeout: number;
-  }>('/api/chat/auth/webauthn/register-options', password ? { password } : {}, headers);
+  // التحدي صالح دقيقتين: المجلوب مسبقًا يُستخدم إن كان حديثًا، وإلا يُجلب الآن
+  const o = prepared && !password && Date.now() - prepared.fetchedAt < 90_000 ? prepared : await prepareBiometric(password);
   let cred: PublicKeyCredential;
   try {
     cred = (await navigator.credentials.create({
