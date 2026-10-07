@@ -5,7 +5,7 @@
  * بهذا لا تضيع البيانات عند إغلاق المتصفح أو مسحه، وتظهر نفسها في كل الأجهزة.
  */
 
-import { hasSession, sessionHeaders, clearSession, SESSION_PROFILE_KEY, LAST_USER_KEY, LAST_NAME_KEY, BIO_USER_KEY } from './session';
+import { hasSession, sessionHeaders, clearSession, SESSION_PROFILE_KEY, LAST_USER_KEY, LAST_NAME_KEY, BIO_USER_KEY, BIO_DECLINED_PREFIX } from './session';
 import { COLLECTION_KEYS, SHADOW_PREFIX } from './permCatalog';
 
 /** رمز الدخول القديم (قبل حسابات المستخدمين) — يُمسح فقط */
@@ -41,7 +41,8 @@ const LOCAL_ONLY = new Set([
   'sahara_chat_starred',
 ]);
 
-const shouldSync = (key: string) => !LOCAL_ONLY.has(key) && !key.startsWith(SHADOW_PREFIX);
+// رفض البصمة خاص بكل جهاز: لو زُومن لاختفى عرض التفعيل من الهاتف بعد رفضه في الحاسوب
+const shouldSync = (key: string) => !LOCAL_ONLY.has(key) && !key.startsWith(SHADOW_PREFIX) && !key.startsWith(BIO_DECLINED_PREFIX);
 
 export type SyncStatus = 'saved' | 'saving' | 'offline' | 'error';
 let status: SyncStatus = 'saved';

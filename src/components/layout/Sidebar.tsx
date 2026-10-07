@@ -404,13 +404,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [isOpen, onClose, searchQuery, isDesktop, collapsedPref]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // نقل التركيز لأول عنصر عند فتح الدرج، وإرجاعه لزر الفتح عند إغلاقه
+  // (أول زر في القائمة لا حقل البحث: التركيز على الحقل يفتح لوحة المفاتيح في الهاتف)
   const asideRef = useRef<HTMLElement>(null);
   const lastFocusRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     if (isDesktop) return;
     if (isOpen) {
       lastFocusRef.current = document.activeElement as HTMLElement | null;
-      asideRef.current?.querySelector<HTMLElement>('input, nav button')?.focus();
+      asideRef.current?.querySelector<HTMLElement>('nav button')?.focus({ preventScroll: true });
     } else if (lastFocusRef.current) {
       lastFocusRef.current.focus?.();
       lastFocusRef.current = null;
