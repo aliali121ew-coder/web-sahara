@@ -100,6 +100,21 @@ const dedupeById = <T extends { id: string }>(list: T[]): T[] => {
 };
 
 /** الشحنات التجريبية القديمة (del-1 … del-50) تُحذف؛ المرفوعة من الإكسل أو المضافة يدويًا معرّفها del-<وقت>-… */
+/**
+ * كروت مشتريات الوقود ثابتة (بنزين، كاز الصحاري، كاز محسن...): أسعارها تُحسب من الوارد، والمحفوظ يضيف عليها فقط.
+ * قائمة محفوظة فارغة أو ناقصة (مثل قاعدة جديدة أو مجموعة فارغة على الخادم) كانت تُخفي الكروت كلها،
+ * فيُكمَل كل كارت مفقود من القائمة الأساسية، وتُحدَّث الأسماء من آخر نسخة.
+ */
+export const withAllFuelCards = (saved: FuelProductMetric[]): FuelProductMetric[] => {
+  const list = saved.filter(item => item && typeof item === 'object' && item.id);
+  const merged = list.map(item => {
+    const initial = INITIAL_FUEL_METRICS.find(i => i.id === item.id);
+    return initial ? { ...item, name: initial.name } : item;
+  });
+  for (const initial of INITIAL_FUEL_METRICS) if (!merged.some(m => m.id === initial.id)) merged.push(initial);
+  return merged;
+};
+
 const isRealDelivery = (d: InboundDelivery) => !/^del-\d{1,3}$/.test(d.id || '');
 
 /** إصلاح المعرّفات المكررة في البيانات المحفوظة: التكرار الثاني وما بعده يأخذ معرّفًا جديدًا */
@@ -210,13 +225,7 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          // Sync names and properties with latest INITIAL_FUEL_METRICS
-          return parsed.map((item: any) => {
-            const initial = INITIAL_FUEL_METRICS.find(i => i.id === item.id);
-            return initial ? { ...item, name: initial.name } : item;
-          });
-        }
+        if (Array.isArray(parsed)) return withAllFuelCards(parsed);
       } catch (e) {
         // ignore error
       }
@@ -371,7 +380,7 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (has('sahara_tanks')) { const v = parse<TankItem[]>('sahara_tanks'); if (Array.isArray(v)) setTanks(v); }
       if (has('sahara_fuel_metrics')) {
         const v = parse<FuelProductMetric[]>('sahara_fuel_metrics');
-        if (Array.isArray(v)) setFuelMetrics(v.map(item => { const initial = INITIAL_FUEL_METRICS.find(i => i.id === item.id); return initial ? { ...item, name: initial.name } : item; }));
+        if (Array.isArray(v)) setFuelMetrics(withAllFuelCards(v));
       }
       if (has('sahara_supplier_prices')) { const v = parse<SupplierPriceRecord[]>('sahara_supplier_prices'); if (Array.isArray(v)) setSupplierPrices(v); }
       if (has('sahara_inbound_deliveries')) { const v = parse<InboundDelivery[]>('sahara_inbound_deliveries'); if (Array.isArray(v)) setSaharaDeliveries(dedupeIds(v.filter(isRealDelivery).map(normalizeDeliveryItem))); }
