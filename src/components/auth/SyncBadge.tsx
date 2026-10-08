@@ -18,10 +18,11 @@ export const SyncBadge: React.FC = () => {
       title={t(`sync.${status}Hint`)}
       role="status"
       aria-live="polite"
-      className={`fixed bottom-3 end-3 z-[9999] print:hidden flex items-center gap-1.5 rounded-full bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700 shadow px-3 py-1.5 text-xs font-bold ${color}`}
+      // تحت النوافذ المنبثقة (z-[100] فما فوق) حتى لا يغطي أزرارها؛ على الهاتف تكفي الأيقونة في الحالة العادية
+      className={`fixed bottom-3 end-3 z-[90] print:hidden flex items-center gap-1.5 rounded-full bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700 shadow px-2 sm:px-3 py-1.5 text-xs font-bold ${color}`}
     >
       <Icon className={`w-3.5 h-3.5 ${status === 'saving' ? 'animate-spin' : ''}`} />
-      <span>{t(`sync.${status}`)}</span>
+      <span className={status === 'saved' ? 'hidden sm:inline' : ''}>{t(`sync.${status}`)}</span>
     </div>
   );
 };

@@ -1,7 +1,7 @@
 {
   "reports": {
     "title": "Analytical reports and full fuel inventory",
-    "subtitle": "Approved official periodic statements that can be printed and exported as Excel and PDF",
+    "subtitle": "Printable and exportable statements",
     "csv": "Export Excel/CSV",
     "print": "Print official report",
     "country": "Republic of Iraq - Holy Karbala Governorate",
@@ -38,7 +38,7 @@
   },
   "managers": {
     "title": "Site staff and field operations managers",
-    "subtitle": "Field supervisors, safety officers, tank farm management and work shifts",
+    "subtitle": "Supervisors and shifts",
     "shift": "Shift: {{value}}"
   }
 }

@@ -534,7 +534,7 @@ export const EtihadGasSection: React.FC = () => {
           <div className="sm:col-span-2 p-4 sm:p-5 rounded-[26px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-soft-card hover:shadow-soft-hover transition-all flex flex-col justify-between space-y-3 overflow-hidden">
             
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 font-bold text-xs">
+              <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 font-bold text-xs min-w-0">
                 <Calendar className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
                 <span className="truncate">{t('dashboard:etihad.coverageTitle')}</span>
               </div>

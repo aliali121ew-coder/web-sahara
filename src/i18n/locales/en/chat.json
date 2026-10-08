@@ -56,7 +56,7 @@
   "pinned": "Pinned message",
   "dispatch": {
     "title": "Field operations and rapid communication room",
-    "subtitle": "A direct radio channel between site management, tank officers and tanker drivers",
+    "subtitle": "Direct line between management, tanks and drivers",
     "secure": "Channel encrypted and active",
     "urgent": "Emergency alert / urgent report",
     "placeholder": "Write a message or field instruction for the site…"

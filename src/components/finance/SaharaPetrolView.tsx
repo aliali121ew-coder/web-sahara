@@ -34,6 +34,8 @@ import { siteName } from '../../i18n/enums';
 import { fmtList } from '../../i18n/format';
 import { usePetrolLedger, petrolPriceStats, PetrolLedgerRecord, PETROL_STATIONS } from '../../lib/petrolLedger';
 import { readPetrolReportFile } from '../../lib/petrolReportFile';
+import { useReportAttach } from '../../lib/saharaFiles';
+import { ReportAttachNotice } from './DayFilesCell';
 import { useCentralTanks, resolveSaharaPetrolSectionKey, tankLiters } from '../../lib/centralTanks';
 import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
 
@@ -146,6 +148,7 @@ export const SaharaPetrolView: React.FC = () => {
     const today = getBusinessDate();
     setEntryMode('manual');
     setUpload({ status: 'idle' });
+    setReportFile(null);
     setForm({
       date: computed.some(r => r.date === today) ? '' : today,
       previous: '',
@@ -159,7 +162,9 @@ export const SaharaPetrolView: React.FC = () => {
       balances: Object.fromEntries(stations.map(s => [s.id, fmtInput(s.balance)]))
     });
   };
-  const openEdit = (r: PetrolLedgerRecord) =>
+  const openEdit = (r: PetrolLedgerRecord) => {
+    setUpload({ status: 'idle' });
+    setReportFile(null);
     setForm({
       id: r.id,
       date: r.date,
@@ -172,6 +177,7 @@ export const SaharaPetrolView: React.FC = () => {
       consumption: Object.fromEntries(stations.map(s => [s.id, fmtInput(r.consumption?.[s.id])])),
       balances: Object.fromEntries(stations.map(s => [s.id, fmtInput(r.stationBalances?.[s.id] ?? s.balance)]))
     });
+  };
 
   const [entryMode, setEntryMode] = useState<'manual' | 'upload'>('manual');
   // الرصيد السابق التلقائي = الرصيد الحالي لآخر يوم قبل تاريخ النموذج
@@ -189,16 +195,24 @@ export const SaharaPetrolView: React.FC = () => {
   const startEditPrevious = () => form && setForm({ ...form, prevEditing: true, previous: form.previous || fmtInput(autoPrevious ?? 0) });
   const commitPrevious = () => form && setForm({ ...form, prevEditing: false, editPrevious: form.previous.trim() !== '' });
   // مسح البيانات: يفرّغ الخانات فقط ولا يحذف اليوم
-  const clearData = () => form && setForm({
+  const clearData = () => {
+    if (!form) return;
+    setReportFile(null);
+    setUpload({ status: 'idle' });
+    setForm({
     ...form,
     inboundQty: '',
     inboundInternal: '',
     inboundPrice: '',
     consumption: Object.fromEntries(stations.map(s => [s.id, ''])),
     balances: Object.fromEntries(stations.map(s => [s.id, '']))
-  });
+    });
+  };
   // رفع ملف كشف البنزين: يعبّئ خانات النموذج (المطابقة حسب اسم المحطة) ثم تُراجع وتُحفظ
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  // ملف الكشف الذي عبّأ النافذة: يُرفق باليوم في الأرشيف عند الحفظ فقط
+  const [reportFile, setReportFile] = useState<File | null>(null);
+  const reportAttach = useReportAttach();
   const [upload, setUpload] = useState<
     | { status: 'idle' }
     | { status: 'loading'; fileName: string }
@@ -208,6 +222,7 @@ export const SaharaPetrolView: React.FC = () => {
   const handleUpload = async (file?: File) => {
     if (!file || !form) return;
     setUpload({ status: 'loading', fileName: file.name });
+    setReportFile(null);
     try {
       const data = await readPetrolReportFile(file, stations.map(s => s.name));
       const byName = new Map(stations.map(s => [s.name, s.id]));
@@ -229,6 +244,7 @@ export const SaharaPetrolView: React.FC = () => {
       if (data.previous !== undefined && autoPrevious === null) { next.previous = fmtInput(data.previous); next.editPrevious = true; filled++; }
       setForm(next);
       setUpload({ status: 'done', filled, unmatched, notes: data.notes });
+      setReportFile(file);
     } catch (e) {
       setUpload({ status: 'error', message: e instanceof Error ? e.message : t('finance:saharaPetrol.readFailed') });
     }
@@ -253,6 +269,8 @@ export const SaharaPetrolView: React.FC = () => {
     };
     // الحفظ يحدّث هذه الصفحة فقط؛ الواجهة الرئيسية والخزانات تنتظر "تأكيد البيانات"
     update(prev => (form.id ? prev.map(r => (r.id === form.id ? record : r)) : [...prev, record]));
+    if (reportFile) reportAttach.attach(record.id, reportFile);
+    setReportFile(null);
     setViewId(null);
     setForm(null);
   };
@@ -347,6 +365,7 @@ export const SaharaPetrolView: React.FC = () => {
 
   return (
     <div className="space-y-4" dir="rtl">
+      <ReportAttachNotice state={reportAttach.state} onClose={reportAttach.dismiss} />
       {/* ── شريط اليوم المعروض والأزرار (بدون كارت، نفس تصميم رصيد الكاز) ── */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
@@ -364,7 +383,7 @@ export const SaharaPetrolView: React.FC = () => {
             <ChevronLeft className="w-4 h-4 ltr:rotate-180" />
           </button>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 [&_button]:whitespace-nowrap">
           {hasPending && (
             <>
               <button type="button" onClick={() => setConfirmOpen(true)} className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-700 to-emerald-600 hover:from-emerald-800 hover:to-emerald-700 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-700/25 cursor-pointer active:scale-95 transition-all animate-pulse">
@@ -426,19 +445,19 @@ export const SaharaPetrolView: React.FC = () => {
             {kpis.map(k => {
               const Icon = k.icon;
               return (
-                <div key={k.label} className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 px-4 py-5 shadow-[0_4px_18px_-6px_rgba(15,23,42,0.08)]">
+                <div key={k.label} className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 px-3 py-4 sm:px-4 sm:py-5 shadow-[0_4px_18px_-6px_rgba(15,23,42,0.08)]">
                   <div className={`absolute top-0 inset-x-0 h-1 bg-gradient-to-l ${k.accent}`} />
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block">{k.label}</span>
                       <div className="flex items-baseline gap-1.5 mt-1">
-                        <span className="text-2xl sm:text-[28px] leading-none font-black font-mono tracking-tight tabular-nums text-slate-900 dark:text-white">
+                        <span className="text-[21px] sm:text-[28px] leading-none font-black font-mono tracking-tight tabular-nums text-slate-900 dark:text-white">
                           {formatNumber(k.value)}
                         </span>
                         <span className="text-[11px] font-bold text-slate-400">{t('common:units.liter')}</span>
                       </div>
                     </div>
-                    <div className={`w-11 h-11 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-sm ${k.iconBg} flex items-center justify-center shrink-0`}>
+                    <div className={`hidden sm:flex w-11 h-11 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-sm ${k.iconBg} items-center justify-center shrink-0`}>
                       <Icon className="w-5 h-5" />
                     </div>
                   </div>
@@ -451,17 +470,17 @@ export const SaharaPetrolView: React.FC = () => {
             })}
 
             {/* الرصيد الحالي: الكارت الرئيسي */}
-            <div className={`relative overflow-hidden rounded-2xl px-4 py-5 text-white shadow-lg ${view.current < 0 ? 'bg-gradient-to-br from-red-600 to-rose-700 shadow-red-900/20' : 'bg-gradient-to-br from-emerald-700 via-emerald-800 to-green-900 shadow-emerald-900/25'}`}>
+            <div className={`relative overflow-hidden rounded-2xl px-3 py-4 sm:px-4 sm:py-5 text-white shadow-lg ${view.current < 0 ? 'bg-gradient-to-br from-red-600 to-rose-700 shadow-red-900/20' : 'bg-gradient-to-br from-emerald-700 via-emerald-800 to-green-900 shadow-emerald-900/25'}`}>
               <div className="absolute -top-14 -left-14 w-40 h-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
               <div className="relative flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <span className="text-xs font-bold text-white/75 block">{t('finance:ledger.currentBalance')}</span>
                   <div className="flex items-baseline gap-1.5 mt-1">
-                    <span className="text-2xl sm:text-[28px] leading-none font-black font-mono tracking-tight tabular-nums">{formatNumber(view.current)}</span>
+                    <span className="text-[21px] sm:text-[28px] leading-none font-black font-mono tracking-tight tabular-nums">{formatNumber(view.current)}</span>
                     <span className="text-[11px] font-bold text-white/70">{t('common:units.liter')}</span>
                   </div>
                 </div>
-                <div className="w-11 h-11 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center shrink-0">
+                <div className="hidden sm:flex w-11 h-11 rounded-xl bg-white/15 border border-white/20 items-center justify-center shrink-0">
                   <Wallet className="w-5 h-5" />
                 </div>
               </div>
@@ -740,8 +759,8 @@ export const SaharaPetrolView: React.FC = () => {
             onClick={e => e.stopPropagation()}
             className="relative w-[min(880px,94vw)] max-h-[96vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200/90 dark:border-slate-800 flex flex-col overflow-hidden font-cairo animate-in zoom-in-95 duration-150"
           >
-            <div className="px-5 sm:px-6 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
+            <div className="px-4 sm:px-6 py-3 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
                 <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800 text-emerald-700 dark:text-emerald-600 flex items-center justify-center shrink-0">
                   <Fuel className="w-5 h-5" />
                 </div>
@@ -749,7 +768,7 @@ export const SaharaPetrolView: React.FC = () => {
                   <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white">
                     {form.id ? t('finance:saharaPetrol.form.editTitle') : t('finance:saharaPetrol.form.newTitle')}
                   </h3>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <p className="hidden sm:block text-[11px] text-slate-500 dark:text-slate-400">
                     {t('finance:saharaPetrol.form.formula')}
                   </p>
                 </div>
@@ -938,7 +957,7 @@ export const SaharaPetrolView: React.FC = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                     {stations.map((st, i) => (
                       <label key={st.id} className="space-y-1">
-                        <div className="h-5 flex items-center"><span className={`${fieldLabel} truncate`}>{t('finance:ledger.form.withLiters', { label: st.name })}</span></div>
+                        <div className="min-h-5 flex items-center"><span className={`${fieldLabel} truncate`}>{t('finance:ledger.form.withLiters', { label: st.name })}</span></div>
                         <input
                           autoFocus={i === 0 && !form.prevEditing}
                           inputMode="numeric"
@@ -970,7 +989,7 @@ export const SaharaPetrolView: React.FC = () => {
                       const over = st.capacity > 0 && num(form.balances[st.id] || '') > st.capacity;
                       return (
                         <label key={st.id} className="space-y-1">
-                          <div className="h-5 flex items-center"><span className={`${fieldLabel} truncate`}>{siteName(st.name)}</span></div>
+                          <div className="min-h-5 flex items-center"><span className={`${fieldLabel} truncate`}>{siteName(st.name)}</span></div>
                           <input
                             inputMode="numeric"
                             dir="ltr"
@@ -997,11 +1016,11 @@ export const SaharaPetrolView: React.FC = () => {
                 <div className={cardTitle}><span className={cardNum}>4</span><Truck className="w-3.5 h-3.5" /><span>{t('finance:ledger.inbound')}</span></div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                   <label className="space-y-1">
-                    <div className="h-5 flex items-center"><span className={fieldLabel}>{t('finance:saharaPetrol.form.externalL')}</span></div>
+                    <div className="min-h-5 flex items-center"><span className={fieldLabel}>{t('finance:saharaPetrol.form.externalL')}</span></div>
                     <input inputMode="numeric" dir="ltr" className={field} value={form.inboundQty} placeholder="0" onChange={e => setForm({ ...form, inboundQty: withCommas(e.target.value) })} />
                   </label>
                   <label className="space-y-1">
-                    <div className="h-5 flex items-center gap-1.5">
+                    <div className="min-h-5 flex items-center gap-1.5">
                       <span className={fieldLabel}>{t('finance:saharaPetrol.form.internalL')}</span>
                       <span className="text-[9.5px] font-bold text-slate-400">{t('finance:saharaPetrol.form.balanceOnly')}</span>
                     </div>
@@ -1016,15 +1035,15 @@ export const SaharaPetrolView: React.FC = () => {
                     />
                   </label>
                   <label className="space-y-1">
-                    <div className="h-5 flex items-center"><span className={fieldLabel}>{t('finance:saharaPetrol.form.pricePerLiter')}</span></div>
+                    <div className="min-h-5 flex items-center"><span className={fieldLabel}>{t('finance:saharaPetrol.form.pricePerLiter')}</span></div>
                     <input inputMode="decimal" dir="ltr" className={field} value={form.inboundPrice} placeholder="0" onChange={e => setForm({ ...form, inboundPrice: withCommas(e.target.value) })} />
                   </label>
                 </div>
               </div>
             </div>
 
-            <div className="px-5 py-3 border-t border-slate-200/90 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0">
-              <div className="flex items-center gap-2 min-w-0">
+            <div className="px-3 sm:px-5 py-3 border-t border-slate-200/90 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 sm:gap-3 shrink-0 [&_button]:whitespace-nowrap">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0 [&>p]:w-full sm:[&>p]:w-auto [&>p]:order-first sm:[&>p]:order-none">
                 <button type="button" onClick={clearData} title={t('finance:saharaPetrol.form.clearHint')} className="px-3.5 py-2.5 rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0">
                   <Eraser className="w-4 h-4" />
                   {t('finance:ledger.form.clear')}
@@ -1039,8 +1058,8 @@ export const SaharaPetrolView: React.FC = () => {
                   <p className="text-xs font-bold text-amber-600">{t('finance:saharaPetrol.form.missingPrice')}</p>
                 ) : null}
               </div>
-              <div className="flex items-center gap-2.5">
-                <button type="button" onClick={() => setForm(null)} className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 text-xs font-bold cursor-pointer">
+              <div className="flex items-center gap-2 sm:gap-2.5 ms-auto">
+                <button type="button" onClick={() => setForm(null)} className="px-4 sm:px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 text-xs font-bold cursor-pointer">
                   {t('common:actions.cancel')}
                 </button>
                 <button

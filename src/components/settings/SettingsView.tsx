@@ -537,11 +537,11 @@ const AppearanceAndNavigationSection: React.FC = () => {
               <Palette className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
                   {t('backgrounds.title')}
                 </h3>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-indigo-600 text-white">
+                <span className="whitespace-nowrap text-[10px] font-black px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-indigo-600 text-white">
                   {t('backgrounds.pro')}
                 </span>
               </div>
@@ -606,7 +606,7 @@ const AppearanceAndNavigationSection: React.FC = () => {
                 6
               </div>
               <div>
-                <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex flex-wrap items-center gap-2">
                   <span>{t('backgrounds.layersTitle')}</span>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold">
                     {t(`gradients.${currentGradient.id}.short`)}
@@ -622,7 +622,7 @@ const AppearanceAndNavigationSection: React.FC = () => {
             </div>
 
             {/* أزرار الانتقال السريع بين المستويات */}
-            <div className="flex items-center gap-1.5 text-[10px] font-bold self-start sm:self-auto">
+            <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-bold self-start sm:self-auto">
               <button
                 type="button"
                 onClick={() => setShadeLevel(1)}

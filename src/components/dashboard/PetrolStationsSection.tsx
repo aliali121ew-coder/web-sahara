@@ -448,15 +448,15 @@ export const PetrolStationsSection: React.FC = () => {
           {/* Top Header: Title, Live Ping & Mode Controls */}
           <div className="flex flex-col gap-2.5 pb-2 border-b border-slate-100 dark:border-slate-800/80">
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-slate-800 dark:text-slate-100 font-extrabold text-xs sm:text-[13px]">
-                <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-cyan-600 to-teal-500 text-white flex items-center justify-center shadow-xs">
+              <div className="flex items-center gap-2 text-slate-800 dark:text-slate-100 font-extrabold text-xs sm:text-[13px] min-w-0">
+                <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-cyan-600 to-teal-500 text-white flex items-center justify-center shadow-xs shrink-0">
                   <Activity className="w-3.5 h-3.5 animate-pulse" />
                 </div>
                 <span className="truncate">{t('dashboard:petrol.analysis')}</span>
               </div>
               
               {/* Timeframe Selector Pills */}
-              <div className="flex items-center gap-1 bg-slate-100/80 dark:bg-slate-800/80 p-0.5 rounded-xl border border-slate-200/60 dark:border-slate-700/50 text-[10px] font-black">
+              <div className="shrink-0 flex items-center gap-1 bg-slate-100/80 dark:bg-slate-800/80 p-0.5 rounded-xl border border-slate-200/60 dark:border-slate-700/50 text-[10px] font-black">
                 <button
                   onClick={() => setTimeRange('7d')}
                   className={`px-2 py-0.5 rounded-lg transition-all ${

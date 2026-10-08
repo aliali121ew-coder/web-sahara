@@ -71,7 +71,7 @@
   "title": "Inbound fuel shipments",
   "businessDay": "Business day",
   "archiveSubtitle": "The cumulative log of all inbound shipments across all dates",
-  "subtitle": "Inbound for the current business day (7 AM to 7 AM) — moves to the archive automatically when the day ends",
+  "subtitle": "Current work day's inbound (7 AM – 7 AM)",
   "editHint": "Edit fields and select shipments to delete",
   "finishEditing": "Finish editing",
   "printHint": "Print the official inbound report and table",
@@ -139,7 +139,7 @@
   "printModal": {
     "title": "Inbound statement print settings and preview",
     "a3": "Wide A3 landscape mode",
-    "subtitle": "Customize columns, paper size (A4 / A3 / A2) and orientation, and check the report before printing",
+    "subtitle": "Columns, paper size and orientation",
     "print": "Print now / save as PDF",
     "columns": "Choose columns",
     "included": "Columns included in print",
@@ -161,8 +161,8 @@
     "signatures": "Signatures",
     "activeCols_one": "{{count}} column on",
     "activeCols_other": "{{count}} columns on",
-    "smartHint_one": "<1>Smart tip:</1> <1>{{count}} column</1> is on. The system switched to a wide <1>A3 Landscape</1> page and scaled the font so the whole table fits without squeezing or cropping.",
-    "smartHint_other": "<1>Smart tip:</1> <1>{{count}} columns</1> are on. The system switched to a wide <1>A3 Landscape</1> page and scaled the font so the whole table fits without squeezing or cropping."
+    "smartHint_one": "<1>Auto:</1> A3 landscape so all columns fit.",
+    "smartHint_other": "<1>Auto:</1> A3 landscape so all columns fit."
   },
   "titleSahara": "Sahara inbound",
   "titleEtihad": "Etihad inbound",
@@ -188,7 +188,7 @@
     "recorded": "Shipment recorded successfully",
     "posted": "It has been posted to the inbound table",
     "newTitle": "Record a new inbound fuel shipment",
-    "subtitle": "Voucher documentation, weight reconciliation, receiving station and automatic cost",
+    "subtitle": "Waybill, quantity, station and cost",
     "manual": "Manual",
     "upload": "Upload file",
     "period": "Inbound file period",

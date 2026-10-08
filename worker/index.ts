@@ -68,7 +68,9 @@ const MAX_FILE_BYTES = 20 * 1024 * 1024;
 const ALLOWED_FILE_TYPES = new Set([
   'application/pdf',
   'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel.sheet.macroEnabled.12',
+  'text/csv'
 ]);
 
 let filesTableReady = false;
@@ -79,10 +81,18 @@ const ensureFilesTables = async (db: D1Database) => {
   filesTableReady = true;
 };
 
+// القسم المسؤول عن مرفقات السجل من بادئة رقمه (sah- رصيد الصحاري، pet- البنزين، bo- النفط الأسود للشركتين)
+const FILE_SECTIONS = ['sahara.balance', 'sahara.petrol', 'sahara.black-oil', 'etihad.black-oil', 'sahara.reports', 'etihad.reports'];
+const fileSectionsFor = (recordId: string): string[] =>
+  recordId.startsWith('pet-') ? ['sahara.petrol']
+  : recordId.startsWith('bo-') ? ['sahara.black-oil', 'etihad.black-oil']
+  : ['sahara.balance'];
+const fileLevel = (session: Session, sections: string[]) =>
+  Math.max(0, ...sections.map(s => levelOf(session.perms, session.admin, s)));
+
 const handleFiles = async (request: Request, url: URL, db: D1Database, bucket: R2Bucket, session: Session): Promise<Response> => {
-  // مرفقات رصيد الصحاري: العرض يتطلب صلاحية عرض، والرفع والحذف يتطلبان صلاحية تعديل
-  const level = levelOf(session.perms, session.admin, 'sahara.balance');
-  if (level < (request.method === 'GET' ? 1 : 2)) return forbidden();
+  // مرفقات الأيام (رصيد الصحاري، البنزين، النفط الأسود): العرض يتطلب صلاحية عرض، والرفع والحذف صلاحية تعديل القسم
+  if (fileLevel(session, FILE_SECTIONS) < 1) return forbidden();
   await ensureFilesTables(db);
   const id = url.pathname.slice('/api/files/'.length);
 
@@ -98,6 +108,7 @@ const handleFiles = async (request: Request, url: URL, db: D1Database, bucket: R
     const name = (url.searchParams.get('name') || '').slice(0, 200);
     const type = request.headers.get('content-type') || '';
     if (!recordId || !name) return json({ error: 'بيانات الملف ناقصة', code: 'file_data_incomplete' }, 400);
+    if (fileLevel(session, fileSectionsFor(recordId)) < 2) return forbidden();
     if (!ALLOWED_FILE_TYPES.has(type)) return json({ error: 'يُسمح بملفات PDF و Excel فقط', code: 'pdf_excel_only' }, 400);
     const bytes = new Uint8Array(await request.arrayBuffer());
     if (!bytes.length) return json({ error: 'الملف فارغ', code: 'file_empty' }, 400);
@@ -139,6 +150,7 @@ const handleFiles = async (request: Request, url: URL, db: D1Database, bucket: R
   // حذف الملف
   if (request.method === 'DELETE') {
     const { results: gone } = await db.prepare('SELECT name, record_id, type, created_at FROM sahara_files WHERE id = ?').bind(id).all<{ name: string; record_id: string; type: string; created_at: number }>();
+    if (fileLevel(session, fileSectionsFor(gone[0]?.record_id || '')) < 2) return forbidden();
     // إلى سلة المحذوفات (قابل للاسترجاع 30 يومًا من لوحة إدارة النظام)
     await removeFile(bucket, db, 'sahara', id, { by: session.id, name: gone[0]?.name, record: gone[0]?.record_id, type: gone[0]?.type, createdAt: gone[0]?.created_at });
     await db.prepare('DELETE FROM sahara_files WHERE id = ?').bind(id).run();
