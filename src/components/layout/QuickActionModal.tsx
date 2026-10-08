@@ -508,6 +508,13 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
     try {
       const rows = await parseInboundFile(file);
       if (!rows.length) throw new Error(t('deliveries:quick.noRows'));
+      // الفترة تُؤخذ من تواريخ الشحنات في الملف تلقائيًا (كانت "اليوم" فتُتجاهل شحنات الأيام الأخرى)،
+      // وتبقى قابلة للتغيير يدويًا من زر الفترة
+      const dates = rows.map(r => r.receiptUnloadDate).filter(Boolean).sort();
+      if (dates.length) {
+        setImportFrom(dates[0]);
+        setImportTo(dates[dates.length - 1]);
+      }
       setImportState({ status: 'ready', fileName: file.name, rows });
     } catch (err) {
       setImportState({ status: 'error', message: err instanceof Error ? err.message : t('deliveries:quick.readFailed') });
