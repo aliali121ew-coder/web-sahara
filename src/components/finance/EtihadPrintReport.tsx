@@ -23,10 +23,8 @@ export const ETIHAD_PRINT_COLUMNS: PrintColumnDef[] = [
   { id: 'previousBalance', category: 'basic', defaultVisible: true, align: 'center', widthWeight: 9.5 },
   { id: 'purchases', category: 'flow', defaultVisible: true, align: 'center', widthWeight: 9.5 },
   { id: 'etihadExpense', category: 'flow', defaultVisible: true, align: 'center', widthWeight: 9.0 },
-  { id: 'saharaSales', category: 'sales', defaultVisible: true, align: 'center', widthWeight: 8.5 },
-  { id: 'cablesSales', category: 'sales', defaultVisible: true, align: 'center', widthWeight: 8.5 },
-  { id: 'otherSales', category: 'sales', defaultVisible: true, align: 'center', widthWeight: 8.0 },
-  { id: 'totalSales', category: 'sales', defaultVisible: true, align: 'center', widthWeight: 9.0 },
+  // المبيعات عمود واحد (بدون تفرع)
+  { id: 'totalSales', category: 'sales', defaultVisible: true, align: 'center', widthWeight: 10.0 },
   { id: 'currentBalance', category: 'basic', defaultVisible: true, align: 'center', widthWeight: 10.0 },
   { id: 'price', category: 'extra', defaultVisible: false, align: 'center', widthWeight: 6.5 },
   { id: 'notes', category: 'extra', defaultVisible: false, align: 'start', widthWeight: 10.0 },
@@ -419,15 +417,6 @@ export const EtihadPrintReport: React.FC<EtihadPrintReportProps> = ({
                                 break;
                               case 'etihadExpense':
                                 cellContent = <span className="font-bold text-rose-800">{formatNumber(record.etihadExpense || 0)}</span>;
-                                break;
-                              case 'saharaSales':
-                                cellContent = <span className="text-slate-800">{formatNumber(record.saharaSales || 0)}</span>;
-                                break;
-                              case 'cablesSales':
-                                cellContent = <span className="text-slate-800">{formatNumber(record.cablesSales || 0)}</span>;
-                                break;
-                              case 'otherSales':
-                                cellContent = <span className="text-slate-800">{formatNumber(record.otherSales || 0)}</span>;
                                 break;
                               case 'totalSales':
                                 cellContent = <span className="font-bold text-slate-900">{formatNumber(salesTotal)}</span>;

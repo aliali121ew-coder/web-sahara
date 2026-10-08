@@ -855,19 +855,19 @@ export const TanksOverview: React.FC = () => {
           return (
             <div
               key={config.key}
-              className="rounded-[32px] bg-white dark:bg-slate-950 border border-slate-200/90 dark:border-slate-800/90 shadow-soft-card dark:shadow-[0_15px_40px_rgba(0,0,0,0.6)] p-5 sm:p-7 space-y-6 relative overflow-hidden transition-colors duration-300"
+              className="rounded-[32px] bg-white dark:bg-slate-950 border border-slate-200/90 dark:border-slate-800/90 shadow-soft-card dark:shadow-[0_15px_40px_rgba(0,0,0,0.6)] p-3 sm:p-7 space-y-6 relative overflow-hidden transition-colors duration-300"
             >
               
               {/* Header Banner */}
               <div className={`p-4 sm:p-5 rounded-2xl bg-gradient-to-r ${config.headerGrad} border border-slate-200/80 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10`}>
                 
                 {/* Title & Badge */}
-                <div className="flex items-center gap-3.5">
-                  <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex items-center justify-center shadow-xs shrink-0">
-                    <Icon className="w-6 h-6" style={{ color: config.accentColor }} />
+                <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex items-center justify-center shadow-xs shrink-0">
+                    <Icon className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: config.accentColor }} />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-black bg-white/80 dark:bg-slate-900/80 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/80 shadow-2xs">
                         #{sectionIndex + 1}
                       </span>
@@ -884,7 +884,7 @@ export const TanksOverview: React.FC = () => {
                           {sectionText(config.name)}
                         </h2>
                       )}
-                      <span className={`px-2.5 py-0.5 rounded-lg text-[10.5px] font-bold border ${config.badgeBg} ${config.badgeText} ${config.badgeBorder}`}>
+                      <span className={`whitespace-nowrap px-2.5 py-0.5 rounded-lg text-[10.5px] font-bold border ${config.badgeBg} ${config.badgeText} ${config.badgeBorder}`}>
                         {t('tanks:count', { count: tanks.length })}
                       </span>
                     </div>
@@ -905,7 +905,7 @@ export const TanksOverview: React.FC = () => {
                 </div>
 
                 {/* Section Controls (Move Up / Move Down / Delete) & Metrics */}
-                <div className="flex items-center gap-2.5 self-end md:self-center shrink-0">
+                <div className="flex flex-wrap items-center gap-2.5 self-stretch md:self-center md:shrink-0">
                   {isEditMode && (
                     <div className="flex items-center gap-1.5 animate-in fade-in">
                       {/* Rename Section */}
@@ -968,7 +968,7 @@ export const TanksOverview: React.FC = () => {
                     </div>
                   )}
 
-                  <div className="flex items-center gap-3 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+                  <div className="flex flex-1 md:flex-none items-center justify-between gap-3 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
                     <div className="text-right">
                       <span className="text-[10px] font-bold text-slate-400 block">{t('tanks:section.total')}</span>
                       <span className="text-xs sm:text-sm font-black font-mono text-slate-900 dark:text-white">

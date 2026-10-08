@@ -50,3 +50,7 @@ export interface EtihadSummaryMetrics {
   totalCost?: number;
   recordsCount: number;
 }
+
+/** المبيعات لسجل الاتحاد: خانة واحدة (السجلات القديمة كانت مفصّلة إلى صحاري/كبلات/خاصة/أخرى فتُجمع) */
+export const etihadSalesOf = (r: Pick<EtihadBalanceRecord, 'saharaSales' | 'cablesSales' | 'specialSales' | 'otherSales'>): number =>
+  (r.saharaSales || 0) + (r.cablesSales || 0) + (r.specialSales || 0) + (r.otherSales || 0);

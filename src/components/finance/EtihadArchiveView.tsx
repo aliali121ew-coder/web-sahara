@@ -13,9 +13,12 @@ import {
   Fuel,
   DollarSign,
   TrendingDown,
-  Layers
+  Layers,
+  Printer
 } from 'lucide-react';
-import { EtihadBalanceRecord } from '../../types/finance';
+import { EtihadBalanceRecord, etihadSalesOf } from '../../types/finance';
+import { useSaharaFiles, type SaharaFile } from '../../lib/saharaFiles';
+import { DayFilesCell } from './DayFilesCell';
 import { formatNumber } from '../../lib/utils';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTranslation, Trans } from 'react-i18next';
@@ -65,6 +68,13 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
 
   // Print & PDF Modal State
   const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
+  // مرفقات كل يوم (ملف الكشف يُحفظ هنا تلقائيًا عند حفظ اليوم من ملف)
+  const filesApi = useSaharaFiles();
+  const filesByRecord = useMemo(() => {
+    const map = new Map<string, SaharaFile[]>();
+    for (const f of filesApi.files) map.set(f.record_id, [...(map.get(f.record_id) || []), f]);
+    return map;
+  }, [filesApi.files]);
 
   // Pagination State (10 items per page)
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -429,6 +439,17 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
               <ArrowUpDown className="w-4 h-4" />
             </button>
 
+            {/* طباعة الكشف (الفترة المعروضة) */}
+            <button
+              type="button"
+              onClick={() => setShowPrintModal(true)}
+              disabled={filteredRecords.length === 0}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 disabled:opacity-40 text-white text-xs font-bold shadow-md active:scale-95 transition-all cursor-pointer"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>{t('common:print.print')}</span>
+            </button>
+
             {/* Toggle Edit Mode */}
             <button
               type="button"
@@ -461,17 +482,12 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
                   {t('finance:tx.etihadExpense')}
                 </th>
                 <th className="p-3 font-mono text-rose-700 dark:text-rose-400 bg-rose-50/40 dark:bg-rose-950/20">
-                  {t('finance:tx.saharaSales')}
-                </th>
-                <th className="p-3 font-mono text-rose-700 dark:text-rose-400 bg-rose-50/40 dark:bg-rose-950/20">
-                  {t('finance:tx.cableSales')}
-                </th>
-                <th className="p-3 font-mono text-rose-700 dark:text-rose-400 bg-rose-50/40 dark:bg-rose-950/20">
-                  {t('finance:tx.otherSales')}
+                  {t('finance:tx.sales')}
                 </th>
                 <th className="p-3 font-mono text-teal-700 dark:text-teal-300 font-black bg-teal-50/50 dark:bg-teal-950/30">
                   {t('finance:ledger.currentBalance')}
                 </th>
+                <th className="p-3 text-center">{t('finance:archive.attachments')}</th>
                 {isEditMode && (
                   <th className="p-3 text-center animate-in fade-in zoom-in duration-200">
                     <div className="inline-flex items-center justify-center gap-1.5 min-h-[28px]">
@@ -535,16 +551,16 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
                         {formatNumber(r.etihadExpense || 0)}
                       </td>
                       <td className="p-3 font-bold text-rose-600 dark:text-rose-400 bg-rose-50/20 dark:bg-rose-950/10">
-                        {formatNumber(r.saharaSales || 0)}
-                      </td>
-                      <td className="p-3 font-bold text-rose-600 dark:text-rose-400 bg-rose-50/20 dark:bg-rose-950/10">
-                        {formatNumber(r.cablesSales || 0)}
-                      </td>
-                      <td className="p-3 font-bold text-rose-600 dark:text-rose-400 bg-rose-50/20 dark:bg-rose-950/10">
-                        {formatNumber(r.otherSales || 0)}
+                        {formatNumber(etihadSalesOf(r))}
                       </td>
                       <td className="p-3 font-black text-teal-700 dark:text-teal-300 text-sm bg-teal-50/40 dark:bg-teal-950/20">
                         {formatNumber(r.currentBalance)}
+                      </td>
+                      {/* مرفقات اليوم: ملف الكشف المحفوظ تلقائيًا أو المرفق يدويًا */}
+                      <td className="p-3 font-sans" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <DayFilesCell recordId={r.id} files={filesByRecord.get(r.id) || []} manage={isEditMode} api={filesApi} />
+                        </div>
                       </td>
                       {isEditMode && (
                         <td className="p-3 text-center animate-in fade-in duration-200">
@@ -599,7 +615,7 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
                 })
               ) : (
                 <tr>
-                  <td colSpan={isEditMode ? 10 : 9} className="p-12 text-center text-slate-400 font-sans">
+                  <td colSpan={isEditMode ? 9 : 8} className="p-12 text-center text-slate-400 font-sans">
                     <div className="flex flex-col items-center justify-center space-y-2.5">
                       <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
                         <Archive className="w-6 h-6" />

@@ -12,7 +12,7 @@
   "preview": {
     "title": "Live preview",
     "live": "Live",
-    "text": "See how lighting, background and the navigation bar look on your workspace instantly",
+    "text": "Live preview of the look",
     "toggleTheme": "Quick lighting switch",
     "toLight": "Light mode",
     "toDark": "Dark mode",
@@ -33,28 +33,28 @@
   },
   "theme": {
     "title": "Lighting & appearance",
-    "text": "Choose the lighting theme that's easiest on your eyes during work hours",
-    "light": { "title": "Light mode", "desc": "Bright backgrounds and eye-friendly colors for clear daytime reading", "tag": "Bright daytime" },
-    "dark": { "title": "Dark mode", "desc": "Deep navy backgrounds that save energy and are easy on the eyes in control rooms at night", "tag": "Energy-saving night" }
+    "text": "Light or dark",
+    "light": { "title": "Light mode", "desc": "Bright backgrounds for daytime work", "tag": "Bright daytime" },
+    "dark": { "title": "Dark mode", "desc": "Navy backgrounds for night work", "tag": "Energy-saving night" }
   },
   "backgrounds": {
-    "title": "Backgrounds & color gradients",
+    "title": "Backgrounds",
     "pro": "Pro feature",
-    "text": "Soft color gradients that give your workspace a comfortable depth, with full control over brightness (6 layers)",
+    "text": "Color gradients with 6 brightness levels",
     "layer": "Layer:",
-    "sliderHint": "Quickly move between layers",
+    "sliderHint": "Brightness level",
     "subtle": "Soft & calm",
     "vibrant": "Vibrant",
     "active": "Active",
-    "layersTitle": "Six layers (from lightest to slightly deeper)",
-    "layersCurrent": "Pick the layer that's easiest on your eyes — current:",
+    "layersTitle": "Brightness levels",
+    "layersCurrent": "Current:",
     "layerOf": "Layer {{n}} of 5 ({{name}})",
-    "quickLight": "Light & calm (0–1)",
-    "quickBalanced": "Balanced (2–3)",
-    "quickDeep": "Slightly deeper (4–5)",
-    "min": "Layer 0: lightest and calmest",
+    "quickLight": "Light",
+    "quickBalanced": "Balanced",
+    "quickDeep": "Deeper",
+    "min": "Lightest",
     "selected": "Selected: {{n}} / 5 ({{name}})",
-    "max": "Layer 5: slightly deeper"
+    "max": "Deepest"
   },
   "shades": {
     "label": "Layer {{n}}",
@@ -77,7 +77,7 @@
   },
   "sidebar": {
     "title": "Navigation bar & side menu",
-    "text": "Choose the side menu's style and background color to suit your taste",
+    "text": "Side menu style and color",
     "bar": "Navigation bar",
     "liveMatch": "Live match ({{name}})",
     "styles": {
@@ -90,7 +90,7 @@
   },
   "extras": {
     "title": "Advanced options",
-    "text": "Options to refine the look and data density",
+    "text": "Display options",
     "glass": "Glass effect",
     "glassText": "A light blur behind cards for better harmony with gradients",
     "density": "Display density",
@@ -100,7 +100,7 @@
   },
   "data": {
     "title": "Factory reset",
-    "text": "Restore the initial default data and clear the cache",
+    "text": "Reset and clear the cache",
     "reset": "Reset data",
     "confirm": "Reset all sample data and theme settings to their original state?"
   }

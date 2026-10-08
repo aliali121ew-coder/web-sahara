@@ -21,9 +21,11 @@ const headers = () => sessionHeaders();
 const TYPE_BY_EXT: Record<string, string> = {
   pdf: 'application/pdf',
   xls: 'application/vnd.ms-excel',
-  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  xlsm: 'application/vnd.ms-excel.sheet.macroEnabled.12',
+  csv: 'text/csv'
 };
-export const ACCEPT_FILES = '.pdf,.xls,.xlsx';
+export const ACCEPT_FILES = '.pdf,.xls,.xlsx,.xlsm,.csv';
 export const MAX_FILE_BYTES = 20 * 1024 * 1024;
 export const fileKind = (f: Pick<SaharaFile, 'type' | 'name'>): 'pdf' | 'excel' =>
   f.type === 'application/pdf' || /\.pdf$/i.test(f.name) ? 'pdf' : 'excel';
@@ -56,29 +58,76 @@ export const deleteSaharaFile = async (id: string): Promise<void> => {
   if (!res.ok) throw new Error(await readError(res, i18n.t('server:errors.delete_failed')));
 };
 
+const listFiles = async (): Promise<SaharaFile[]> => {
+  const res = await fetch('/api/files', { headers: headers(), cache: 'no-store' });
+  if (!res.ok) throw new Error(await readError(res, i18n.t('server:errors.attachments_failed')));
+  return ((await res.json()) as { items: SaharaFile[] }).items;
+};
+
+/**
+ * ملف الكشف الذي عبّأ نافذة اليوم يصبح مرفق ذلك اليوم في الأرشيف بعد الحفظ،
+ * ويستبدل مرفقاته السابقة (تذهب إلى سلة المحذوفات).
+ */
+export const attachDayReport = async (recordId: string, file: File): Promise<void> => {
+  try {
+    const old = (await listFiles()).filter(f => f.record_id === recordId);
+    const sameName = old.find(f => f.name.toLowerCase() === file.name.toLowerCase());
+    await uploadSaharaFile(recordId, file, sameName?.id);
+    for (const f of old) await deleteSaharaFile(f.id);
+  } finally {
+    window.dispatchEvent(new Event(CHANGE_EVENT));
+  }
+};
+
+/** حذف كل مرفقات يوم (عند حذف اليوم نفسه) */
+export const removeDayFiles = async (recordId: string): Promise<void> => {
+  try {
+    for (const f of (await listFiles()).filter(x => x.record_id === recordId)) await deleteSaharaFile(f.id);
+  } finally {
+    window.dispatchEvent(new Event(CHANGE_EVENT));
+  }
+};
+
+export type ReportAttachState = { status: 'idle' } | { status: 'saving'; name: string } | { status: 'done'; name: string } | { status: 'error'; message: string };
+
+/** رفع ملف الكشف إلى الأرشيف بعد حفظ اليوم (في الخلفية) مع حالة تُعرض للمستخدم */
+export const useReportAttach = () => {
+  const [state, setState] = useState<ReportAttachState>({ status: 'idle' });
+  useEffect(() => {
+    if (state.status !== 'done') return;
+    const timer = window.setTimeout(() => setState({ status: 'idle' }), 3500);
+    return () => window.clearTimeout(timer);
+  }, [state]);
+  const attach = (recordId: string, file: File) => {
+    setState({ status: 'saving', name: file.name });
+    attachDayReport(recordId, file)
+      .then(() => setState({ status: 'done', name: file.name }))
+      .catch(e => setState({ status: 'error', message: e instanceof Error ? e.message : i18n.t('server:errors.upload_failed') }));
+  };
+  return { state, attach, dismiss: () => setState({ status: 'idle' }) };
+};
+
 /** قائمة المرفقات مجمّعة حسب السجل، مع رفع وحذف يحدّثان القائمة في كل الصفحات */
-export const useSaharaFiles = () => {
+export const useSaharaFiles = (enabled = true) => {
   const [files, setFiles] = useState<SaharaFile[]>([]);
   const [busy, setBusy] = useState<string | null>(null); // رقم السجل أو الملف الجاري رفعه/حذفه
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch('/api/files', { headers: headers(), cache: 'no-store' });
-      if (!res.ok) throw new Error(await readError(res, i18n.t('server:errors.attachments_failed')));
-      const data = (await res.json()) as { items: SaharaFile[] };
-      setFiles(data.items);
+      setFiles(await listFiles());
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'تعذّر تحميل المرفقات');
+      setError(e instanceof Error ? e.message : i18n.t('server:errors.attachments_failed'));
     }
   }, []);
 
   useEffect(() => {
+    if (!enabled) return;
     refresh();
     const onChange = () => { refresh(); };
     window.addEventListener(CHANGE_EVENT, onChange);
     return () => window.removeEventListener(CHANGE_EVENT, onChange);
-  }, [refresh]);
+  }, [refresh, enabled]);
 
   const run = async (key: string, task: () => Promise<void>) => {
     setBusy(key);

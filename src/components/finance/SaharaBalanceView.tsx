@@ -38,6 +38,8 @@ import { useFuelData } from '../../context/FuelDataContext';
 import { computeDailyBuys, ownSaharaDeliveries } from '../../lib/inboundPrice';
 import { isSpreadsheetOrPdf, readSaharaReportFile, matchStation } from '../../lib/saharaReportFile';
 import { formatNumber, getBusinessDate } from '../../lib/utils';
+import { useReportAttach } from '../../lib/saharaFiles';
+import { ReportAttachNotice } from './DayFilesCell';
 import { useTranslation, Trans } from 'react-i18next';
 import { siteName } from '../../i18n/enums';
 import { fmtList } from '../../i18n/format';
@@ -219,10 +221,14 @@ export const SaharaBalanceView: React.FC = () => {
     | { status: 'done'; fileName: string; filled: number; unmatched: string[]; notes: string }
   >({ status: 'idle' });
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  // ملف الكشف الذي عبّأ النافذة: يُرفق باليوم في الأرشيف عند الحفظ فقط
+  const [reportFile, setReportFile] = useState<File | null>(null);
+  const reportAttach = useReportAttach();
 
   const handleUpload = async (file: File | undefined) => {
     if (!file || !form) return;
     setUpload({ status: 'loading', fileName: file.name });
+    setReportFile(null);
     try {
       // Excel و PDF يُقرآن داخل المتصفح مباشرة (الصور غير مدعومة حاليًا)
       if (!isSpreadsheetOrPdf(file)) {
@@ -289,6 +295,7 @@ export const SaharaBalanceView: React.FC = () => {
           : `⚠ ${t('finance:saharaBalance.upload.checkMismatch', { value: formatNumber(Math.round(r.currentInFile)), diff: formatNumber(diff) })}`;
       }
       setUpload({ status: 'done', fileName: file.name, filled, unmatched, notes: [check, r.notes].filter(Boolean).join(' — ') });
+      setReportFile(file);
     } catch (e) {
       setUpload({ status: 'error', message: e instanceof Error ? e.message : t('finance:ledger.upload.parseFailed') });
     }
@@ -297,6 +304,7 @@ export const SaharaBalanceView: React.FC = () => {
   const openNew = () => {
     setEntryMode('manual');
     setUpload({ status: 'idle' });
+    setReportFile(null);
     // اليوم الجديد: تاريخ اليوم، أو اليوم التالي لآخر يوم مسجّل إن كان اليوم مسجّلًا
     const today = getBusinessDate();
     let date = today;
@@ -325,6 +333,7 @@ export const SaharaBalanceView: React.FC = () => {
   const openEdit = (r: SaharaLedgerRecord) => {
     setEntryMode('manual');
     setUpload({ status: 'idle' });
+    setReportFile(null);
     const external: FormState['external'] = {};
     (Object.keys(r.inboundExternal || {}) as SaharaExternalSource[]).forEach(k => {
       external[k] = withCommas(String(r.inboundExternal[k] || ''));
@@ -419,6 +428,8 @@ export const SaharaBalanceView: React.FC = () => {
     };
     // الحفظ يحدّث هذه الصفحة فقط؛ الواجهة الرئيسية والخزانات تنتظر "تأكيد البيانات"
     update(prev => (form.id ? prev.map(r => (r.id === form.id ? record : r)) : [...prev, record]));
+    if (reportFile) reportAttach.attach(record.id, reportFile);
+    setReportFile(null);
     setViewId(null);
     setForm(null);
   };
@@ -442,6 +453,7 @@ export const SaharaBalanceView: React.FC = () => {
   const clearData = () => {
     if (!form) return;
     setUpload({ status: 'idle' });
+    setReportFile(null);
     setForm({
       ...form,
       previous: '',
@@ -570,7 +582,7 @@ export const SaharaBalanceView: React.FC = () => {
 
   const numInput = (key: 'vehicles' | 'farms' | 'generators' | 'sales', label: string, autoFocus = false) => (
     <label className="space-y-1">
-      <div className="h-5 flex items-center"><span className={fieldLabel}>{label}</span></div>
+      <div className="min-h-5 flex items-center"><span className={fieldLabel}>{label}</span></div>
       <NumberInput
 
         autoFocus={autoFocus}
@@ -584,6 +596,7 @@ onValue={v => setForm({ ...form!, [key]: v })}
 
   return (
     <div className="flex-1 flex flex-col gap-3 pb-3">
+      <ReportAttachNotice state={reportAttach.state} onClose={reportAttach.dismiss} />
       {/* شريط اليوم المعروض والأزرار */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
@@ -643,7 +656,7 @@ onValue={v => setForm({ ...form!, [key]: v })}
             <ChevronLeft className="w-4 h-4 ltr:rotate-180" />
           </button>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 [&_button]:whitespace-nowrap">
           {/* يظهر بعد حفظ بيانات جديدة، ويختفي بعد تأكيدها ونقلها للواجهة الرئيسية */}
           {hasPending && (
             <button
@@ -771,19 +784,19 @@ onValue={v => setForm({ ...form!, [key]: v })}
         {kpis.map(k => {
           const Icon = k.icon;
           return (
-            <div key={k.label} className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 shadow-[0_4px_18px_-6px_rgba(15,23,42,0.08)]">
+            <div key={k.label} className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3 sm:p-4 shadow-[0_4px_18px_-6px_rgba(15,23,42,0.08)]">
               <div className={`absolute top-0 inset-x-0 h-1 bg-gradient-to-l ${k.accent}`} />
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block">{k.label}</span>
                   <div className="flex items-baseline gap-1.5 mt-1">
-                    <span className="text-2xl sm:text-[28px] leading-none font-black font-mono tracking-tight tabular-nums text-slate-900 dark:text-white">
+                    <span className="text-[21px] sm:text-[28px] leading-none font-black font-mono tracking-tight tabular-nums text-slate-900 dark:text-white">
                       {formatNumber(k.value)}
                     </span>
                     <span className="text-[11px] font-bold text-slate-400">{t('common:units.liter')}</span>
                   </div>
                 </div>
-                <div className={`w-11 h-11 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-sm ${k.iconBg} flex items-center justify-center shrink-0`}>
+                <div className={`hidden sm:flex w-11 h-11 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-sm ${k.iconBg} items-center justify-center shrink-0`}>
                   <Icon className="w-5 h-5" />
                 </div>
               </div>
@@ -796,17 +809,17 @@ onValue={v => setForm({ ...form!, [key]: v })}
         })}
 
         {/* الرصيد الحالي: الكارت الرئيسي */}
-        <div className={`relative overflow-hidden rounded-2xl p-4 text-white shadow-lg ${(v?.current ?? 0) < 0 ? 'bg-gradient-to-br from-red-600 to-rose-700 shadow-red-900/20' : 'bg-gradient-to-br from-teal-600 via-teal-700 to-emerald-700 shadow-teal-900/25'}`}>
+        <div className={`relative overflow-hidden rounded-2xl p-3 sm:p-4 text-white shadow-lg ${(v?.current ?? 0) < 0 ? 'bg-gradient-to-br from-red-600 to-rose-700 shadow-red-900/20' : 'bg-gradient-to-br from-teal-600 via-teal-700 to-emerald-700 shadow-teal-900/25'}`}>
           <div className="absolute -top-14 -left-14 w-40 h-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
           <div className="relative flex items-start justify-between gap-3">
             <div className="min-w-0">
               <span className="text-xs font-bold text-white/75 block">{t('finance:ledger.currentBalance')}</span>
               <div className="flex items-baseline gap-1.5 mt-1">
-                <span className="text-2xl sm:text-[28px] leading-none font-black font-mono tracking-tight tabular-nums">{formatNumber(v?.current ?? 0)}</span>
+                <span className="text-[21px] sm:text-[28px] leading-none font-black font-mono tracking-tight tabular-nums">{formatNumber(v?.current ?? 0)}</span>
                 <span className="text-[11px] font-bold text-white/70">{t('common:units.liter')}</span>
               </div>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center shrink-0">
+            <div className="hidden sm:flex w-11 h-11 rounded-xl bg-white/15 border border-white/20 items-center justify-center shrink-0">
               <Wallet className="w-5 h-5" />
             </div>
           </div>
@@ -832,7 +845,7 @@ onValue={v => setForm({ ...form!, [key]: v })}
                 const p = pct(c.value, actual);
                 return (
                   <div key={c.label} className={`${tileCard} justify-between gap-2`}>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1.5 sm:gap-2">
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${c.tile}`}>
                         <Icon className="w-4 h-4" />
                       </div>
@@ -855,7 +868,7 @@ onValue={v => setForm({ ...form!, [key]: v })}
             {stationSlots.length === 0 ? (
               <div className="flex-1 flex items-center justify-center text-xs text-slate-400 py-4">{t('finance:ledger.noStations')}</div>
             ) : (
-              <div className="grid grid-cols-4 grid-rows-2 gap-2.5 flex-1">
+              <div className="grid grid-cols-2 sm:grid-cols-4 sm:grid-rows-2 gap-2.5 flex-1">
                 {stationSlots.map(st => {
                   const p = pct(st.balance, st.capacity);
                   const tone = stationTone(p);
@@ -897,7 +910,7 @@ onValue={v => setForm({ ...form!, [key]: v })}
                 const p = pct(c.value, v?.inbound ?? 0);
                 return (
                   <div key={c.key} className={`${tileCard} justify-between gap-2`}>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1.5 sm:gap-2">
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${c.tile}`}>
                         <Icon className="w-4 h-4" />
                       </div>
@@ -955,8 +968,8 @@ onValue={v => setForm({ ...form!, [key]: v })}
             onClick={e => e.stopPropagation()}
             className="relative w-[min(880px,94vw)] max-h-[96vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200/90 dark:border-slate-800 flex flex-col overflow-hidden font-cairo animate-in zoom-in-95 duration-150"
           >
-            <div className="px-5 sm:px-6 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
+            <div className="px-4 sm:px-6 py-3 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
                 <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/60 border border-teal-200/80 dark:border-teal-800 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
                   <Wallet className="w-5 h-5" />
                 </div>
@@ -964,7 +977,7 @@ onValue={v => setForm({ ...form!, [key]: v })}
                   <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white">
                     {form.id ? t('finance:saharaBalance.form.editTitle') : t('finance:saharaBalance.form.newTitle')}
                   </h3>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <p className="hidden sm:block text-[11px] text-slate-500 dark:text-slate-400">
                     {t('finance:saharaBalance.form.formula')}
                   </p>
                 </div>
@@ -1186,7 +1199,7 @@ onValue={v => setForm({ ...form, previous: v })}
                       const over = num(form.stations[st.id] || '') > st.capacity;
                       return (
                         <label key={st.id} className="space-y-1">
-                          <div className="h-5 flex items-center"><span className={`${fieldLabel} truncate`}>{siteName(st.name)}</span></div>
+                          <div className="min-h-5 flex items-center"><span className={`${fieldLabel} truncate`}>{siteName(st.name)}</span></div>
                           <NumberInput
 
                             className={`${field} ${over ? '!border-red-500 !ring-red-500' : ''}`}
@@ -1213,7 +1226,7 @@ onValue={v => setForm({ ...form, stations: { ...form.stations, [st.id]: v } })}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   {SAHARA_EXTERNAL_SOURCES.map(s => (
                     <label key={s.key} className="space-y-1">
-                      <div className="h-5 flex items-center"><span className={fieldLabel}>{t('finance:ledger.form.withLiters', { label: t(`finance:saharaBalance.source.${s.key}`) })}</span></div>
+                      <div className="min-h-5 flex items-center"><span className={fieldLabel}>{t('finance:ledger.form.withLiters', { label: t(`finance:saharaBalance.source.${s.key}`) })}</span></div>
                       <NumberInput
 
                         className={field}
@@ -1228,8 +1241,8 @@ onValue={v => setForm({ ...form, external: { ...form.external, [s.key]: v } })}
 
             </div>
 
-            <div className="px-5 py-3 border-t border-slate-200/90 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0">
-              <div className="flex items-center gap-2 min-w-0">
+            <div className="px-3 sm:px-5 py-3 border-t border-slate-200/90 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 sm:gap-3 shrink-0 [&_button]:whitespace-nowrap">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0 [&>p]:w-full sm:[&>p]:w-auto [&>p]:order-first sm:[&>p]:order-none">
                 <button type="button" onClick={clearData} title={t('finance:saharaBalance.form.clearHint')} className="px-3.5 py-2.5 rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0">
                   <Eraser className="w-4 h-4" />
                   {t('finance:ledger.form.clear')}
@@ -1243,8 +1256,8 @@ onValue={v => setForm({ ...form, external: { ...form.external, [s.key]: v } })}
                   <p className="text-xs font-bold text-red-600">{t('finance:ledger.form.overCapacity')}</p>
                 ) : null}
               </div>
-              <div className="flex items-center gap-2.5">
-                <button type="button" onClick={() => setForm(null)} className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 text-xs font-bold cursor-pointer">
+              <div className="flex items-center gap-2 sm:gap-2.5 ms-auto">
+                <button type="button" onClick={() => setForm(null)} className="px-4 sm:px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 text-xs font-bold cursor-pointer">
                   {t('common:actions.cancel')}
                 </button>
                 <button

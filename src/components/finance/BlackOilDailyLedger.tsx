@@ -11,6 +11,8 @@ import { useBlackOilLedger, BlackOilRecord, BLACK_OIL_SITES, BLACK_OIL_SECTION_K
 import { readCentralTanks, useCentralTanks } from '../../lib/centralTanks';
 import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
 import { parseBlackOilReport } from '../../lib/blackOilReportFile';
+import { useSaharaFiles, useReportAttach, removeDayFiles, type SaharaFile } from '../../lib/saharaFiles';
+import { DayFilesCell, ReportAttachNotice } from './DayFilesCell';
 
 export { getBlackOilAvgDaily, DEFAULT_BLACK_OIL_AVG_DAILY } from '../../lib/blackOilLedger';
 
@@ -56,6 +58,15 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
   const { t, i18n } = useTranslation(['finance', 'common']);
   const isArchive = variant === 'archive';
   const { records, computed, avgDaily, update } = useBlackOilLedger(company);
+  // مرفقات الأيام في الأرشيف، وملف الكشف الذي عبّأ نافذة التسجيل (يُرفق باليوم عند الحفظ)
+  const filesApi = useSaharaFiles(isArchive);
+  const filesByRecord = useMemo(() => {
+    const map = new Map<string, SaharaFile[]>();
+    for (const f of filesApi.files) map.set(f.record_id, [...(map.get(f.record_id) || []), f]);
+    return map;
+  }, [filesApi.files]);
+  const reportAttach = useReportAttach();
+  const [reportFile, setReportFile] = useState<File | null>(null);
   // عنوان الطباعة: الصحاري لها كشفها الخاص
   // مواقع التخزين لهذه الشركة (الاتحاد: موقع الريان، موقع السكر)
   const sites = BLACK_OIL_SITES[company];
@@ -112,6 +123,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
     const date = last && last.date >= today ? nextDay(last.date) : today;
     setForm({ id: null, date, previous: '', editPrevious: !last, inbound: '', consumption: '', avgDaily: withCommas(String(avgDaily)), price: fmtInput(computed[computed.length - 1]?.price ?? null), sites: Object.fromEntries(sites.map(x => [x.key, emptySiteForm()])) });
     setReportState({ status: 'idle' });
+    setReportFile(null);
   };
 
   const openEdit = (id: string) => {
@@ -132,6 +144,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
       }))
     });
     setReportState({ status: 'idle' });
+    setReportFile(null);
   };
 
   const autoPrevious = form ? autoPreviousFor(form.date, form.id) : null;
@@ -180,6 +193,8 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
         : {})
     };
     update(prev => (form.id ? prev.map(r => (r.id === form.id ? rec : r)) : [...prev, rec]));
+    if (reportFile) reportAttach.attach(rec.id, reportFile);
+    setReportFile(null);
     setForm(null);
   };
 
@@ -190,6 +205,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
   const fillFromReport = async (file: File) => {
     if (!form) return;
     setReportState({ status: 'reading', fileName: file.name });
+    setReportFile(null);
     try {
       const { sites: report, date } = await parseBlackOilReport(file, sites.map(x => ({ key: x.key, words: x.words })));
       setForm(f => {
@@ -207,6 +223,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
         return { ...f, sites: next, date: !f.id && date ? date : f.date };
       });
       setReportState({ status: 'done', fileName: file.name, found: sites.filter(x => report[x.key]).map(x => x.name) });
+      setReportFile(file);
     } catch (err) {
       setReportState({ status: 'error', message: err instanceof Error ? err.message : t('finance:blackOil.readFailed') });
     }
@@ -222,7 +239,10 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
     if (r) setConfirmDel({ id, date: r.date });
   };
   const doRemove = () => {
-    if (confirmDel) update(prev => prev.filter(r => r.id !== confirmDel.id));
+    if (confirmDel) {
+      update(prev => prev.filter(r => r.id !== confirmDel.id));
+      removeDayFiles(confirmDel.id).catch(() => {});
+    }
     setConfirmDel(null);
   };
 
@@ -628,6 +648,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
                         <td rowSpan={lines.length} className="p-3.5 align-middle">
                           {showActions && (
                           <div className="flex items-center gap-1 justify-center animate-in fade-in duration-150">
+                            {isArchive && <DayFilesCell recordId={r.id} files={filesByRecord.get(r.id) || []} manage api={filesApi} />}
                             <button type="button" onClick={() => openEdit(r.id)} className="p-1.5 rounded-lg text-slate-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/40 cursor-pointer" title={t('common:actions.edit')}>
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
@@ -730,16 +751,16 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
       )}
 
       {/* نافذة التسجيل / التعديل بنفس نمط نافذة الوارد */}
-      {form && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-3 bg-slate-950/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setForm(null)}>
+      {form && createPortal(
+        <div className="no-print fixed inset-0 z-[120] flex items-center justify-center p-2 sm:p-3 bg-slate-950/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setForm(null)}>
           <div
             dir={i18n.dir()}
             onClick={e => e.stopPropagation()}
             className="relative w-[min(880px,94vw)] max-h-[96vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200/90 dark:border-slate-800 flex flex-col overflow-hidden font-cairo animate-in zoom-in-95 duration-150"
           >
             {/* الرأس */}
-            <div className="px-5 sm:px-6 py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
+            <div className="px-4 sm:px-6 py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
                 <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200/80 dark:border-purple-800 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
                   <Droplets className="w-5 h-5 stroke-[2.2]" />
                 </div>
@@ -752,12 +773,12 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
                       {form.date}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                  <p className="hidden sm:block text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                     {t('finance:blackOil.form.formula')}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 ms-auto">
               {hasSites && (
                 <label
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border cursor-pointer transition-all ${
@@ -805,11 +826,11 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <label className="space-y-1">
-                    <div className="h-5 flex items-center"><span className={fieldLabel}>{t('finance:blackOil.col.date')}</span></div>
+                    <div className="min-h-5 flex items-center"><span className={fieldLabel}>{t('finance:blackOil.col.date')}</span></div>
                     <input type="date" className={field} value={toInputDate(form.date)} onChange={e => setForm({ ...form, date: fromInputDate(e.target.value) })} />
                   </label>
                   <div className="space-y-1">
-                    <div className="h-5 flex items-center justify-between">
+                    <div className="min-h-5 flex items-center justify-between">
                       <span className={fieldLabel}>{t('finance:blackOil.form.previousL')}</span>
                       {autoPrevious !== null && (
                         <button
@@ -873,19 +894,19 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                   <label className="space-y-1">
-                    <div className="h-5 flex items-center"><span className={fieldLabel}>{hasSites ? t('finance:blackOil.form.totalInboundL') : t('finance:blackOil.form.inboundL')}</span></div>
+                    <div className="min-h-5 flex items-center"><span className={fieldLabel}>{hasSites ? t('finance:blackOil.form.totalInboundL') : t('finance:blackOil.form.inboundL')}</span></div>
                     <input inputMode="numeric" dir="ltr" autoFocus={!hasSites} disabled={hasSites} className={field} value={hasSites ? formatNumber(fInbound) : form.inbound} placeholder="0" onChange={e => setForm({ ...form, inbound: withCommas(e.target.value) })} />
                   </label>
                   <label className="space-y-1">
-                    <div className="h-5 flex items-center"><span className={fieldLabel}>{hasSites ? t('finance:blackOil.form.totalConsumptionL') : t('finance:blackOil.form.consumptionL')}</span></div>
+                    <div className="min-h-5 flex items-center"><span className={fieldLabel}>{hasSites ? t('finance:blackOil.form.totalConsumptionL') : t('finance:blackOil.form.consumptionL')}</span></div>
                     <input inputMode="numeric" dir="ltr" disabled={hasSites} className={field} value={hasSites ? formatNumber(fConsumption ?? 0) : form.consumption} placeholder="0" onChange={e => setForm({ ...form, consumption: withCommas(e.target.value) })} />
                   </label>
                   <label className="space-y-1">
-                    <div className="h-5 flex items-center"><span className={fieldLabel}>{t('finance:blackOil.form.avgDailyL')}</span></div>
+                    <div className="min-h-5 flex items-center"><span className={fieldLabel}>{t('finance:blackOil.form.avgDailyL')}</span></div>
                     <input inputMode="numeric" dir="ltr" className={field} value={form.avgDaily} onChange={e => setForm({ ...form, avgDaily: withCommas(e.target.value) })} />
                   </label>
                   <label className="space-y-1">
-                    <div className="h-5 flex items-center"><span className={fieldLabel}>{t('finance:blackOil.form.priceIqd')}</span></div>
+                    <div className="min-h-5 flex items-center"><span className={fieldLabel}>{t('finance:blackOil.form.priceIqd')}</span></div>
                     <input
                       inputMode="decimal"
                       dir="ltr"
@@ -930,7 +951,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
             </div>
 
             {/* شريط الأزرار الثابت */}
-            <div className="px-5 py-3 bg-white dark:bg-slate-900 border-t border-slate-200/90 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0">
+            <div className="px-3 sm:px-5 py-3 bg-white dark:bg-slate-900 border-t border-slate-200/90 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0 [&_button]:whitespace-nowrap">
               <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200/80 dark:border-purple-800/80 text-purple-700 dark:text-purple-300 text-xs font-bold">
                     <span className="text-[11px]">{t('finance:blackOil.col.current')}:</span>
                     <span className="font-mono font-black">{fCurrent === null ? '0' : formatNumber(fCurrent)} {t('common:units.liter')}</span>
@@ -955,8 +976,10 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
+      <ReportAttachNotice state={reportAttach.state} onClose={reportAttach.dismiss} />
     </div>
     </>
   );
