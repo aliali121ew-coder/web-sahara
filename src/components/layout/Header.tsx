@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { SectionSearch } from '../navigation/SectionSearch';
 import {
   Menu,
-  Search,
   Bell,
   Sun,
   Moon,
@@ -30,12 +30,15 @@ const NOTIFICATIONS_ENABLED = false;
 interface HeaderProps {
   onOpenQuickAction?: () => void;
   onToggleSidebar?: () => void;
-  onOpenCommandPalette?: () => void;
+  /** بحث أقسام الرئيسية (Ctrl+K يفتحه أيضًا من App) */
+  searchOpen?: boolean;
+  onSearchOpenChange?: (open: boolean) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
   onToggleSidebar,
-  onOpenCommandPalette 
+  searchOpen,
+  onSearchOpenChange
 }) => {
   const { themeMode, toggleThemeMode } = useTheme();
   const { currentLanguage, currentLangInfo, setLanguage } = useLanguage();
@@ -96,16 +99,9 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          {/* Search Trigger (Command Palette) */}
-          <div className="flex-1 min-w-0 relative">
-            <button
-              type="button"
-              onClick={onOpenCommandPalette}
-              className="w-full pl-2.5 pr-9 h-9 text-sm bg-slate-100/80 dark:bg-slate-800/80 hover:bg-slate-200/70 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-xl border border-transparent hover:border-blue-500/40 outline-none transition-all flex items-center justify-between group text-right cursor-pointer"
-            >
-              <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-blue-500 transition-colors" />
-              <span className="truncate text-xs">{t('nav:header.search')}</span>
-            </button>
+          {/* بحث أقسام الصفحة الرئيسية */}
+          <div className="flex-1 min-w-0">
+            <SectionSearch open={!!searchOpen} onOpen={() => onSearchOpenChange?.(true)} onClose={() => onSearchOpenChange?.(false)} />
           </div>
         </div>
 

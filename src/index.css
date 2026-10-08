@@ -604,3 +604,12 @@ html.perf-lite .animate-shimmer {
 html.perf-lite .animate-ping {
   opacity: 0;
 }
+
+/* بحث الأقسام: وميض خفيف حول القسم الذي نُقل إليه (navigation/SectionSearch.tsx) */
+.section-flash {
+  animation: sectionFlash 1.4s ease-out;
+}
+@keyframes sectionFlash {
+  0%, 35% { box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.55); }
+  100% { box-shadow: 0 0 0 3px rgba(37, 99, 235, 0); }
+}

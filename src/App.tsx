@@ -9,7 +9,6 @@ import { Header } from './components/layout/Header';
 import { DemoBanner } from './components/layout/DemoBanner';
 import { Sidebar } from './components/layout/Sidebar';
 import { QuickActionModal } from './components/layout/QuickActionModal';
-import { CommandPalette } from './components/navigation/CommandPalette';
 import { lazyPage } from './lib/lazyPage';
 
 /** عدد الصفحات التي تبقى محفوظة للرجوع الفوري إليها */
@@ -72,7 +71,8 @@ const AppContent: React.FC = () => {
   const toggleSidebarCollapsed = () => setSidebarCollapsed(prev => !prev);
   const [quickActionOpen, setQuickActionOpen] = useState(false);
   const [quickActionData, setQuickActionData] = useState<any>(null);
-  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  // بحث أقسام الصفحة الرئيسية (زر البحث في الشريط العلوي، أو Ctrl+K)
+  const [sectionSearchOpen, setSectionSearchOpen] = useState(false);
 
   // Tab scroll position memory
   const scrollPositions = useRef<Record<string, number>>({});
@@ -131,7 +131,7 @@ const AppContent: React.FC = () => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setCommandPaletteOpen(prev => !prev);
+        setSectionSearchOpen(prev => !prev);
       }
     };
     window.addEventListener('keydown', handleGlobalKeyDown);
@@ -219,7 +219,8 @@ const AppContent: React.FC = () => {
                 setSidebarOpen(prev => !prev);
               }
             }}
-            onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+            searchOpen={sectionSearchOpen}
+            onSearchOpenChange={setSectionSearchOpen}
           />
         </div>
 
@@ -243,12 +244,6 @@ const AppContent: React.FC = () => {
       </div>
 
 
-      {/* ⚡ Command Palette (Ctrl + K) */}
-      <CommandPalette
-        isOpen={commandPaletteOpen}
-        onClose={() => setCommandPaletteOpen(false)}
-        onOpenQuickAction={handleOpenQuickAction}
-      />
 
       {/* Quick Action Modal */}
       <QuickActionModal
