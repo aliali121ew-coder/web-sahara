@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Building2,
+  Factory,
   Tags,
   Truck,
   LogOut,
@@ -286,15 +287,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       groupTitle: t('nav:groups.management'),
       items: [
-        {
-          id: 'finance',
-          label: t('nav:items.finance'),
-          icon: Building2,
-          children: [
-            { id: 'finance-etihad', label: t('nav:items.financeEtihad') },
-            { id: 'finance-sahara', label: t('nav:items.financeSahara') },
-          ]
-        },
+        // الشركتان منفصلتان في القائمة (كانتا تحت "رصيد الشركة")
+        { id: 'finance-etihad', label: t('nav:items.financeEtihad'), icon: Building2 },
+        { id: 'finance-sahara', label: t('nav:items.financeSahara'), icon: Factory },
       ]
     },
     {
