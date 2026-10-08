@@ -418,16 +418,18 @@ export const FinanceBalance: React.FC = () => {
     }
   };
 
-  const handleSaveRecord = (recordPayload: Omit<EtihadBalanceRecord, 'id'>, id?: string) => {
+  // يعيد رقم السجل حتى يُرفق به ملف الكشف في الأرشيف
+  const handleSaveRecord = (recordPayload: Omit<EtihadBalanceRecord, 'id'>, id?: string): string => {
     if (id) {
       setRecords(prev => prev.map(r => r.id === id ? { ...recordPayload, id } : r));
-    } else {
-      const newRecord: EtihadBalanceRecord = {
-        ...recordPayload,
-        id: `rec-${Date.now()}`
-      };
-      setRecords(prev => [newRecord, ...prev]);
+      return id;
     }
+    const newRecord: EtihadBalanceRecord = {
+      ...recordPayload,
+      id: `rec-${Date.now()}`
+    };
+    setRecords(prev => [newRecord, ...prev]);
+    return newRecord.id;
   };
 
   const handleImportBackup = (imported: EtihadBalanceRecord[]) => {

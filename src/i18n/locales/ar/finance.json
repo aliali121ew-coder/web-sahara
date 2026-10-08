@@ -289,7 +289,8 @@
     "uploading": "جارٍ الرفع",
     "attach": "إرفاق",
     "deleteDay": "حذف اليوم",
-    "total": "الإجمالي"
+    "total": "الإجمالي",
+    "attachments": "المرفقات"
   },
   "filePreview": {
     "noSheets": "لا توجد أوراق لعرضها في الملف",
@@ -529,7 +530,7 @@
   "tx": {
     "purchases": "المشتريات",
     "sales": "المبيعات",
-    "etihadExpense": "مصروف الاتحاد",
+    "etihadExpense": "الاستهلاك",
     "editTitle": "تعديل حركة مسجلة",
     "newTitle": "تسجيل حركة رصيد جديدة",
     "etihadIndustrial": "شركة الاتحاد الصناعية",
@@ -540,9 +541,6 @@
     "addInbound": "أضافة وارد وحركة الرصيد",
     "prevAndNew": "الرصيد السابق والوارد الجديد",
     "reference": "مرجعي",
-    "saharaSales": "مبيعات الصحاري",
-    "cableSales": "مبيعات الكبيلات",
-    "otherSales": "مبيعات أخرى",
     "overWarning": "تحذير: مجموع الاستهلاك الكلي يتجاوز الرصيد المتوفر والمشتريات!",
     "displayOnly": "بيانات للعرض فقط",
     "noEffect": "لا تؤثر على الرصيد",
@@ -558,7 +556,16 @@
     "flowVolume": "حجم التدفق",
     "quantity": "الكمية",
     "saveRecord": "حفظ السجل",
-    "noChangeLiters": "0 لتر (بدون تغيير)"
+    "noChangeLiters": "0 لتر (بدون تغيير)",
+    "upload": {
+      "button": "رفع ملف",
+      "hint": "ملف كشف الوقود (PDF أو Excel): يعبّئ المشتريات والاستهلاك والمبيعات",
+      "filled": "عُبّئت الخانات من {{name}}",
+      "checkMatch": "✓ يطابق الرصيد الحالي في الكشف ({{value}})",
+      "checkMismatch": "⚠ لا يطابق الرصيد الحالي في الكشف ({{value}})، الفرق {{diff}}",
+      "prevDiffers": "الرصيد السابق في الكشف {{file}} وفي النظام {{system}}",
+      "noFields": "لم يُعثر في الملف على الوارد أو الاستهلاك أو المبيعات"
+    }
   },
   "etihadArchive": {
     "allCumulative": "كافة السجلات التراكمية",
@@ -649,11 +656,8 @@
       "date": "التاريخ",
       "previousBalance": "الرصيد السابق",
       "purchases": "المشتريات / الوارد",
-      "etihadExpense": "مصروف الاتحاد",
-      "saharaSales": "مبيعات صحاري",
-      "cablesSales": "مبيعات كبلات",
-      "otherSales": "مبيعات أخرى",
-      "totalSales": "إجمالي المبيعات",
+      "etihadExpense": "الاستهلاك",
+      "totalSales": "المبيعات",
       "currentBalance": "الرصيد الحالي",
       "price": "السعر (د.ع)",
       "notes": "ملاحظات / البيان"

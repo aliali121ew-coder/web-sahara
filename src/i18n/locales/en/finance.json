@@ -277,7 +277,8 @@
     "uploading": "Uploading",
     "attach": "Attach",
     "deleteDay": "Delete day",
-    "total": "Total"
+    "total": "Total",
+    "attachments": "Attachments"
   },
   "filePreview": {
     "noSheets": "The file has no sheets to show",
@@ -497,7 +498,7 @@
   "tx": {
     "purchases": "Purchases",
     "sales": "Sales",
-    "etihadExpense": "Etihad expense",
+    "etihadExpense": "Consumption",
     "editTitle": "Edit recorded transaction",
     "newTitle": "Record a new balance transaction",
     "etihadIndustrial": "Etihad Industrial Company",
@@ -508,9 +509,6 @@
     "addInbound": "Add inbound and balance movement",
     "prevAndNew": "Previous balance and new inbound",
     "reference": "reference",
-    "saharaSales": "Sahara sales",
-    "cableSales": "Cable sales",
-    "otherSales": "Other sales",
     "overWarning": "Warning: total consumption exceeds the available balance and purchases!",
     "displayOnly": "Display-only data",
     "noEffect": "Doesn’t affect the balance",
@@ -526,7 +524,16 @@
     "flowVolume": "Flow volume",
     "quantity": "Quantity",
     "saveRecord": "Save record",
-    "noChangeLiters": "0 L (no change)"
+    "noChangeLiters": "0 L (no change)",
+    "upload": {
+      "button": "Upload file",
+      "hint": "Fuel sheet (PDF or Excel): fills purchases, consumption and sales",
+      "filled": "Fields filled from {{name}}",
+      "checkMatch": "✓ Matches the current balance in the sheet ({{value}})",
+      "checkMismatch": "⚠ Does not match the current balance in the sheet ({{value}}), difference {{diff}}",
+      "prevDiffers": "Previous balance is {{file}} in the sheet and {{system}} in the system",
+      "noFields": "No inbound, consumption or sales found in the file"
+    }
   },
   "etihadArchive": {
     "allCumulative": "All cumulative records",
@@ -605,11 +612,8 @@
       "date": "Date",
       "previousBalance": "Previous balance",
       "purchases": "Purchases / inbound",
-      "etihadExpense": "Etihad expense",
-      "saharaSales": "Sahara sales",
-      "cablesSales": "Cable sales",
-      "otherSales": "Other sales",
-      "totalSales": "Total sales",
+      "etihadExpense": "Consumption",
+      "totalSales": "Sales",
       "currentBalance": "Current balance",
       "price": "Price (IQD)",
       "notes": "Notes / description"

@@ -13,7 +13,10 @@ import {
   BarChart2,
   Layers,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  FileUp,
+  Loader2,
+  CheckCircle2
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -29,11 +32,15 @@ import { EtihadBalanceRecord } from '../../types/finance';
 import { formatNumber, getBusinessDate } from '../../lib/utils';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTranslation } from 'react-i18next';
+import { readEtihadReportFile } from '../../lib/etihadReportFile';
+import { useReportAttach } from '../../lib/saharaFiles';
+import { ReportAttachNotice } from './DayFilesCell';
 
 interface EtihadTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (record: Omit<EtihadBalanceRecord, 'id'>, id?: string) => void;
+  /** يعيد رقم السجل المحفوظ (لإرفاق ملف الكشف به في الأرشيف) */
+  onSave: (record: Omit<EtihadBalanceRecord, 'id'>, id?: string) => string | void;
   editRecord?: EtihadBalanceRecord | null;
   lastRecordedPrice?: number;
   defaultPreviousBalance?: number;
@@ -73,9 +80,15 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
 
   // Deductions
   const [etihadExpense, setEtihadExpense] = useState<string>('');
-  const [saharaSales, setSaharaSales] = useState<string>('');
-  const [cablesSales, setCablesSales] = useState<string>('');
-  const [otherSales, setOtherSales] = useState<string>('');
+  // المبيعات خانة واحدة (السجلات القديمة المفصّلة تُجمع فيها عند التعديل)
+  const [sales, setSales] = useState<string>('');
+
+  // ملف الكشف: يعبّئ الخانات، ويُرفق باليوم في الأرشيف عند الحفظ فقط
+  const [reportFile, setReportFile] = useState<File | null>(null);
+  const [upload, setUpload] = useState<
+    { status: 'idle' } | { status: 'reading'; name: string } | { status: 'done'; name: string; check: string } | { status: 'error'; message: string }
+  >({ status: 'idle' });
+  const reportAttach = useReportAttach();
 
   // للعرض فقط (لا تدخل في الاستهلاك ولا الرصيد)
   const [operationalGas, setOperationalGas] = useState<string>('');
@@ -92,9 +105,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
       setPreviousBalance(formatInputValue(editRecord.previousBalance));
       setPurchases(formatInputValue(editRecord.purchases));
       setEtihadExpense(formatInputValue(editRecord.etihadExpense));
-      setSaharaSales(formatInputValue(editRecord.saharaSales));
-      setCablesSales(formatInputValue(editRecord.cablesSales));
-      setOtherSales(formatInputValue(editRecord.otherSales));
+      setSales(formatInputValue((editRecord.saharaSales || 0) + (editRecord.cablesSales || 0) + (editRecord.specialSales || 0) + (editRecord.otherSales || 0)));
       setOperationalGas(formatInputValue(editRecord.operationalGas ?? 0));
       setCleanGas(formatInputValue(editRecord.cleanGas ?? 0));
       setCurrentPrice(formatInputValue(editRecord.currentPrice));
@@ -105,14 +116,14 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
       setPreviousBalance(formatInputValue(defaultPreviousBalance));
       setPurchases('');
       setEtihadExpense('');
-      setSaharaSales('');
-      setCablesSales('');
-      setOtherSales('');
+      setSales('');
       setOperationalGas('');
       setCleanGas('');
       setCurrentPrice('');
       setNotes('');
     }
+    setReportFile(null);
+    setUpload({ status: 'idle' });
   }, [editRecord, isOpen, defaultPreviousBalance, lastRecordedPrice]);
 
   // Keyboard Shortcuts: Esc to close, Ctrl+Enter to submit
@@ -148,13 +159,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
   const calcPurchases = parseNum(purchases);
 
   const calcEtihadExpense = parseNum(etihadExpense);
-  const calcSaharaSales = parseNum(saharaSales);
-  const calcCablesSales = parseNum(cablesSales);
-  const calcOtherSales = parseNum(otherSales);
-
-  const totalSalesDeductions = useMemo(() => {
-    return calcSaharaSales + calcCablesSales + calcOtherSales;
-  }, [calcSaharaSales, calcCablesSales, calcOtherSales]);
+  const totalSalesDeductions = parseNum(sales);
 
   const totalDeductions = useMemo(() => {
     return calcEtihadExpense + totalSalesDeductions;
@@ -181,7 +186,39 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
     { name: t('finance:tx.etihadExpense'), val: calcEtihadExpense, fill: '#ef4444' }
   ], [calcPurchases, totalSalesDeductions, calcEtihadExpense, t]);
 
-  if (!isOpen) return null;
+  const notice = <ReportAttachNotice state={reportAttach.state} onClose={reportAttach.dismiss} />;
+  if (!isOpen) return notice;
+
+  // تعبئة من ملف الكشف: الوارد → المشتريات، الاستهلاك → الاستهلاك، المبيعات → المبيعات
+  const fillFromReport = async (file: File) => {
+    setUpload({ status: 'reading', name: file.name });
+    setReportFile(null);
+    try {
+      const r = await readEtihadReportFile(file);
+      const fmt = (n: number | null) => (n === null ? '' : formatInputValue(Math.round(n)));
+      if (r.inbound !== null) setPurchases(fmt(r.inbound));
+      if (r.consumption !== null) setEtihadExpense(fmt(r.consumption));
+      if (r.sales !== null) setSales(fmt(r.sales));
+      // تاريخ الكشف يصبح تاريخ الحركة (للتسجيل الجديد فقط)
+      if (!editRecord && r.date) setDate(r.date);
+      // التحقق: السابق + الوارد − الاستهلاك − المبيعات = الرصيد الحالي في الكشف
+      let check = '';
+      if (r.current !== null) {
+        const prev = r.previous ?? calcPreviousBalance;
+        const diff = Math.round(prev + (r.inbound ?? 0) - (r.consumption ?? 0) - (r.sales ?? 0) - r.current);
+        check = diff === 0
+          ? t('finance:tx.upload.checkMatch', { value: formatNumber(r.current) })
+          : t('finance:tx.upload.checkMismatch', { value: formatNumber(r.current), diff: formatNumber(diff) });
+      }
+      if (r.previous !== null && Math.round(r.previous) !== Math.round(calcPreviousBalance)) {
+        check = [check, t('finance:tx.upload.prevDiffers', { file: formatNumber(r.previous), system: formatNumber(calcPreviousBalance) })].filter(Boolean).join(' — ');
+      }
+      setUpload({ status: 'done', name: file.name, check });
+      setReportFile(file);
+    } catch (e) {
+      setUpload({ status: 'error', message: e instanceof Error ? e.message : t('finance:ledger.upload.parseFailed') });
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -192,10 +229,11 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
       previousBalance: calcPreviousBalance,
       purchases: calcPurchases,
       etihadExpense: calcEtihadExpense,
-      saharaSales: calcSaharaSales,
-      cablesSales: calcCablesSales,
+      // المبيعات تُحفظ في خانة واحدة
+      saharaSales: 0,
+      cablesSales: 0,
       specialSales: 0,
-      otherSales: calcOtherSales,
+      otherSales: totalSalesDeductions,
       operationalGas: parseNum(operationalGas),
       cleanGas: parseNum(cleanGas),
       totalDeductions,
@@ -210,13 +248,18 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
       createdAt: new Date().toISOString()
     };
 
-    onSave(recordPayload, editRecord?.id);
+    const savedId = onSave(recordPayload, editRecord?.id) || editRecord?.id;
+    if (reportFile && savedId) reportAttach.attach(savedId, reportFile);
+    setReportFile(null);
     onClose();
   };
 
-  return createPortal(
+  return (
+    <>
+    {notice}
+    {createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-y-auto bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-y-auto bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
       dir={i18n.dir()}
     >
       <div
@@ -224,8 +267,8 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Enterprise Clean Header (Matches QuickActionModal) */}
-        <div className="px-5 sm:px-6 py-2.5 sm:py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-2xs select-none shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="px-4 sm:px-6 py-2.5 sm:py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 shadow-2xs select-none shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-8.5 h-8.5 sm:w-9 sm:h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-800 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-2xs shrink-0">
               <Calculator className="w-4.5 h-4.5 stroke-[2.2]" />
             </div>
@@ -238,20 +281,30 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                   {t('finance:tx.etihadIndustrial')}
                 </span>
               </div>
-              <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">
+              <p className="hidden sm:block text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">
                 {t('finance:tx.subtitle')}
               </p>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t('common:actions.close')}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer border border-slate-200/80 dark:border-slate-700"
-          >
-            <X className="w-4 h-4 stroke-[2.5]" />
-          </button>
+          <div className="flex items-center gap-2 ms-auto">
+            <label
+              title={t('finance:tx.upload.hint')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white shadow-sm cursor-pointer transition-all ${upload.status === 'reading' ? 'opacity-60 pointer-events-none' : ''}`}
+            >
+              {upload.status === 'reading' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileUp className="w-3.5 h-3.5" />}
+              {t('finance:tx.upload.button')}
+              <input type="file" accept=".pdf,.xlsx,.xlsm,.xls,.csv" className="hidden" onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) fillFromReport(f); }} />
+            </label>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={t('common:actions.close')}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer border border-slate-200/80 dark:border-slate-700"
+            >
+              <X className="w-4 h-4 stroke-[2.5]" />
+            </button>
+          </div>
         </div>
 
         {/* Modal Form & Body Container (بدون scroll داخلي) */}
@@ -259,6 +312,18 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
 
           {/* Form Cards Area (No Internal Scroll) */}
           <div className="p-3.5 sm:p-4">
+            {upload.status === 'done' && (
+              <div className="mb-3 flex items-start gap-2 px-4 py-2.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 text-emerald-700 dark:text-emerald-300 text-xs font-bold">
+                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{t('finance:tx.upload.filled', { name: upload.name })}{upload.check && <> — {upload.check}</>}</span>
+              </div>
+            )}
+            {upload.status === 'error' && (
+              <div className="mb-3 flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs font-bold">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {upload.message}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
 
@@ -379,8 +444,8 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {/* مصروف الاتحاد */}
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* الاستهلاك */}
                       <div className="space-y-1">
                         <label className="text-[10.5px] font-bold text-slate-700 dark:text-slate-200 truncate block">
                           {t('finance:tx.etihadExpense')}
@@ -400,56 +465,16 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                         </div>
                       </div>
 
-                      {/* مبيعات الصحاري */}
+                      {/* المبيعات */}
                       <div className="space-y-1">
                         <label className="text-[10.5px] font-bold text-slate-700 dark:text-slate-200 truncate block">
-                          {t('finance:tx.saharaSales')}
+                          {t('finance:tx.sales')}
                         </label>
                         <div className="relative">
                           <input
                             type="text"
-                            value={saharaSales}
-                            onChange={handleNumChange(setSaharaSales)}
-                            placeholder="0"
-                            dir="ltr"
-                            className={`w-full h-9 ${isRTL ? 'pr-2.5 pl-9' : 'pl-2.5 pr-9'} py-1 text-xs rounded-xl border ${isOverDeducted ? 'border-rose-400 dark:border-rose-600 bg-rose-50/40 dark:bg-rose-950/40' : 'border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900'} text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-500 focus:bg-white dark:focus:bg-slate-900 outline-none font-sans font-bold tabular-nums transition-all text-left`}
-                          />
-                          <span className={`text-[10px] font-bold text-slate-400 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-2' : 'right-2'}`}>
-                            {t('common:units.liter')}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* مبيعات الكبيلات */}
-                      <div className="space-y-1">
-                        <label className="text-[10.5px] font-bold text-slate-700 dark:text-slate-200 truncate block">
-                          {t('finance:tx.cableSales')}
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            value={cablesSales}
-                            onChange={handleNumChange(setCablesSales)}
-                            placeholder="0"
-                            dir="ltr"
-                            className={`w-full h-9 ${isRTL ? 'pr-2.5 pl-9' : 'pl-2.5 pr-9'} py-1 text-xs rounded-xl border ${isOverDeducted ? 'border-rose-400 dark:border-rose-600 bg-rose-50/40 dark:bg-rose-950/40' : 'border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900'} text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-500 focus:bg-white dark:focus:bg-slate-900 outline-none font-sans font-bold tabular-nums transition-all text-left`}
-                          />
-                          <span className={`text-[10px] font-bold text-slate-400 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-2' : 'right-2'}`}>
-                            {t('common:units.liter')}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* مبيعات أخرى */}
-                      <div className="space-y-1">
-                        <label className="text-[10.5px] font-bold text-slate-700 dark:text-slate-200 truncate block">
-                          {t('finance:tx.otherSales')}
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            value={otherSales}
-                            onChange={handleNumChange(setOtherSales)}
+                            value={sales}
+                            onChange={handleNumChange(setSales)}
                             placeholder="0"
                             dir="ltr"
                             className={`w-full h-9 ${isRTL ? 'pr-2.5 pl-9' : 'pl-2.5 pr-9'} py-1 text-xs rounded-xl border ${isOverDeducted ? 'border-rose-400 dark:border-rose-600 bg-rose-50/40 dark:bg-rose-950/40' : 'border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900'} text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-500 focus:bg-white dark:focus:bg-slate-900 outline-none font-sans font-bold tabular-nums transition-all text-left`}
@@ -688,5 +713,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
       </div>
     </div>,
     document.body
+    )}
+    </>
   );
 };

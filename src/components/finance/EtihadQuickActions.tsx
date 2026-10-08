@@ -7,7 +7,7 @@ import {
   Printer,
   UploadCloud
 } from 'lucide-react';
-import { EtihadBalanceRecord } from '../../types/finance';
+import { EtihadBalanceRecord, etihadSalesOf } from '../../types/finance';
 import { useTranslation } from 'react-i18next';
 
 interface EtihadQuickActionsProps {
@@ -44,9 +44,7 @@ export const EtihadQuickActions: React.FC<EtihadQuickActionsProps> = ({
       t('finance:ledger.previousBalance'),
       t('finance:tx.purchases'),
       t('finance:tx.etihadExpense'),
-      t('finance:tx.saharaSales'),
-      t('finance:tx.cableSales'),
-      t('finance:tx.otherSales'),
+      t('finance:tx.sales'),
       t('finance:quick.netCurrent'),
       t('finance:quick.currentPrice'),
       t('finance:quick.notes')
@@ -57,9 +55,7 @@ export const EtihadQuickActions: React.FC<EtihadQuickActionsProps> = ({
       r.previousBalance,
       r.purchases,
       r.etihadExpense,
-      r.saharaSales,
-      r.cablesSales,
-      r.otherSales,
+      etihadSalesOf(r),
       r.currentBalance,
       r.currentPrice,
       `"${(r.notes || '').replace(/"/g, '""')}"`

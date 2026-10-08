@@ -8,7 +8,7 @@ import {
   Plus,
   Inbox
 } from 'lucide-react';
-import { EtihadBalanceRecord, DateFilterRange } from '../../types/finance';
+import { EtihadBalanceRecord, DateFilterRange, etihadSalesOf } from '../../types/finance';
 import { formatNumber } from '../../lib/utils';
 import { useTranslation } from 'react-i18next';
 
@@ -257,13 +257,7 @@ export const EtihadBalanceTable: React.FC<EtihadBalanceTableProps> = ({
                 {t('finance:tx.etihadExpense')}
               </th>
               <th className="p-3 font-mono text-rose-700 dark:text-rose-400 bg-rose-50/40 dark:bg-rose-950/20">
-                {t('finance:tx.saharaSales')}
-              </th>
-              <th className="p-3 font-mono text-rose-700 dark:text-rose-400 bg-rose-50/40 dark:bg-rose-950/20">
-                {t('finance:tx.cableSales')}
-              </th>
-              <th className="p-3 font-mono text-rose-700 dark:text-rose-400 bg-rose-50/40 dark:bg-rose-950/20">
-                {t('finance:tx.otherSales')}
+                {t('finance:tx.sales')}
               </th>
               <th className="p-3 font-mono text-teal-700 dark:text-teal-300 font-black bg-teal-50/50 dark:bg-teal-950/30">
                 {t('finance:ledger.currentBalance')}
@@ -324,13 +318,7 @@ export const EtihadBalanceTable: React.FC<EtihadBalanceTableProps> = ({
                     {formatNumber(r.etihadExpense)}
                   </td>
                   <td className="p-3 font-bold text-rose-600 dark:text-rose-400 bg-rose-50/20 dark:bg-rose-950/10">
-                    {formatNumber(r.saharaSales)}
-                  </td>
-                  <td className="p-3 font-bold text-rose-600 dark:text-rose-400 bg-rose-50/20 dark:bg-rose-950/10">
-                    {formatNumber(r.cablesSales)}
-                  </td>
-                  <td className="p-3 font-bold text-rose-600 dark:text-rose-400 bg-rose-50/20 dark:bg-rose-950/10">
-                    {formatNumber(r.otherSales)}
+                    {formatNumber(etihadSalesOf(r))}
                   </td>
                   <td className="p-3 font-black text-teal-700 dark:text-teal-300 text-sm bg-teal-50/40 dark:bg-teal-950/20">
                     {formatNumber(r.currentBalance)}
@@ -384,7 +372,7 @@ export const EtihadBalanceTable: React.FC<EtihadBalanceTableProps> = ({
               ))
             ) : (
               <tr>
-                <td colSpan={isEditMode ? 10 : 9} className="p-10 text-center text-slate-400 font-sans">
+                <td colSpan={isEditMode ? 8 : 7} className="p-10 text-center text-slate-400 font-sans">
                   <div className="flex flex-col items-center justify-center space-y-2">
                     <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
                       <Inbox className="w-6 h-6" />
