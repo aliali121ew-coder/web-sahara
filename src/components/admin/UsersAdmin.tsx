@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Users, UserPlus, Search, Loader2, Crown, Ban, CheckCircle2, ArrowRight, ArrowLeft, KeyRound, RefreshCw, Check, ShieldCheck, Inbox, History, Pencil, Eye, EyeOff } from 'lucide-react';
+import { Users, UserPlus, Search, Loader2, Crown, Ban, CheckCircle2, ArrowRight, ArrowLeft, KeyRound, RefreshCw, Check, ShieldCheck, Inbox, History, Pencil, Eye, EyeOff, Timer } from 'lucide-react';
 import { chatApi, type Account, type SupportRequest } from '../chat/chatApi';
 import { useTranslation } from 'react-i18next';
 import { errorText } from '../../i18n/errors';
@@ -9,6 +9,7 @@ import { useSessionProfile } from '../../lib/session';
 import { SwipeTabs } from '../ui/SwipeTabs';
 import { PermissionsEditor } from './PermissionsEditor';
 import { CreateAccountWizard } from './CreateAccountWizard';
+import { DEMO_DURATIONS, demoDurationMs, remainingText, useDemoMode, type DemoDurationKey } from '../../lib/demo';
 import { SupportRequests } from './SupportRequests';
 import { AuditLog } from './AuditLog';
 import { AvatarPicker, CopyButton, Empty, Issued, Skeleton, UserAvatar, btnCls, cardCls, genPassword, inputCls, timeAgo } from './adminUi';
@@ -213,12 +214,16 @@ const UsersTab: React.FC<{
                   </div>
                   <div className="text-[11px] text-slate-500 truncate"><span dir="ltr">@{a.username}</span>{a.role ? ` · ${a.role}` : ''}</div>
                   <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    {/* حساب تجربة منتهٍ: شارة المدة تكفي بدل "نشط" */}
+                    {!(!a.disabled && a.expires_at && a.expires_at <= Date.now()) && (
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${a.disabled ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'}`}>
                       {a.disabled ? t('list.filterDisabled') : t('list.filterActive')}
                     </span>
+                    )}
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                       {a.is_admin ? t('list.allPermissions') : t('list.sections', { count: granted })}
                     </span>
+                    {!!a.expires_at && <TrialBadge expiresAt={a.expires_at} />}
                     <span className="text-[10px] text-slate-400 truncate">{a.last_seen ? `${t('list.lastSeen')} ${timeAgo(a.last_seen)}` : t('list.neverSignedIn')}</span>
                   </div>
                 </button>
@@ -283,6 +288,9 @@ const EditAccount: React.FC<{
   const [showPw, setShowPw] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // النسخة التجريبية: تمديد مدة الحساب (تُحسب من الآن)؛ فارغ = بلا تغيير
+  const demo = useDemoMode();
+  const [extend, setExtend] = useState<DemoDurationKey | ''>('');
 
   const submit = async () => {
     setError('');
@@ -295,6 +303,7 @@ const EditAccount: React.FC<{
         ...(avatar !== (acc.avatar || '') ? { avatar } : {}),
         ...(self ? {} : { is_admin: isAdmin }),
         ...(resetPw ? { password } : {}),
+        ...(extend ? { expires_at: Date.now() + demoDurationMs(extend) } : {}),
       });
       onDone(name.trim(), acc.username, resetPw ? password : undefined);
     } catch (e) {
@@ -353,6 +362,25 @@ const EditAccount: React.FC<{
         )}
       </div>
 
+      {demo && !acc.is_admin && (
+        <div className="rounded-2xl border-2 border-violet-200 dark:border-violet-900 bg-violet-50/40 dark:bg-violet-950/20 p-4 space-y-2.5">
+          <div className="flex items-center gap-2 text-sm font-bold">
+            <Timer className="w-4 h-4 text-violet-600" />
+            <span className="flex-1">{t('demo.extendTitle')}</span>
+            {!!acc.expires_at && <TrialBadge expiresAt={acc.expires_at} />}
+          </div>
+          <div className="grid grid-cols-4 gap-1.5">
+            {DEMO_DURATIONS.map(d => (
+              <button key={d.key} type="button" onClick={() => setExtend(v => (v === d.key ? '' : d.key))} aria-pressed={extend === d.key}
+                className={`px-2 py-2 rounded-xl text-xs font-bold border transition ${extend === d.key ? 'bg-violet-600 border-violet-600 text-white' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:border-violet-300'}`}>
+                {t(`demo.duration.${d.key}`)}
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] text-slate-500">{t('demo.extendHint')}</p>
+        </div>
+      )}
+
       <label className={`flex items-center gap-3 px-4 h-12 rounded-2xl bg-amber-50 dark:bg-amber-500/10 text-sm font-bold ${self ? 'opacity-50' : 'cursor-pointer'}`}>
         <Crown className="w-4 h-4 text-amber-500" />
         <span className="flex-1">{t('edit.makeAdmin')}</span>
@@ -376,5 +404,17 @@ const EditAccount: React.FC<{
         <button className={`${btnCls} bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200`} onClick={onBack}>{t('edit.cancel')}</button>
       </div>
     </div>
+  );
+};
+
+/** شارة مدة حساب التجربة: المتبقي، أو "انتهت" */
+const TrialBadge: React.FC<{ expiresAt: number }> = ({ expiresAt }) => {
+  const { t } = useTranslation('admin');
+  const expired = expiresAt <= Date.now();
+  return (
+    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${expired ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300' : 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300'}`}>
+      <Timer className="w-3 h-3" />
+      {expired ? t('demo.expired') : t('demo.remaining', { time: remainingText(expiresAt) })}
+    </span>
   );
 };

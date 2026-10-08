@@ -5,9 +5,10 @@ import { sessionHeaders } from '../../lib/session';
 /** واجهة لوحة إدارة النظام (/api/system/*) — لمدير النظام فقط */
 
 export interface BackupRow {
-  id: string; kind: 'daily' | 'manual' | 'pre-restore' | 'monthly'; r2_key: string; size: number; raw_size: number;
+  id: string; kind: 'daily' | 'manual' | 'pre-restore' | 'monthly' | 'demo-base'; r2_key: string; size: number; raw_size: number;
   rows: number; tables: number; sha256: string; status: string; note: string; created_at: number; created_by: string;
 }
+export interface DemoStatus { base: { created_at: number; rows: number } | null; lastReset: { finished_at: number; status: string } | null; nextReset: number }
 export interface JobRow { id: number; name: string; started_at: number; finished_at: number; status: 'running' | 'ok' | 'error'; details: string; triggered_by: string }
 export interface Usage { count: number; bytes: number; byPrefix: Record<string, { count: number; bytes: number }> }
 export interface Overview {
@@ -52,6 +53,10 @@ export const systemApi = {
     const p = new URLSearchParams(Object.entries(q).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)]));
     return call<TablePage>(`/tables/${encodeURIComponent(name)}?${p}`);
   },
+  // النسخة التجريبية: البيانات الأساسية وإعادة الضبط الليلية
+  demoStatus: () => call<DemoStatus>('/demo'),
+  setDemoBase: () => post<{ created_at: number }>('/demo/base'),
+  demoReset: () => post<{ restoredRows: number; expiredAccounts: number; base: string | null }>('/demo/reset'),
   backups: () => call<{ items: BackupRow[] }>('/backups'),
   runBackup: () => post<{ item: BackupRow }>('/backups/run'),
   restore: (id: string) => post<{ restoredRows: number; preRestoreId: string }>(`/backups/${encodeURIComponent(id)}/restore`, { confirm: 'استرجاع' }),

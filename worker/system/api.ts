@@ -9,6 +9,7 @@ import { createBackup, ensureSystemTables, getMaintenance, restoreBackup, setMai
 import { cleanup, dailyJob, monthlyJob, nextRun } from './maintenance';
 import { findOrphanFiles, legacyFileCount, listTrash, migrateLegacyFiles, purgeTrash, restoreFromTrash, verifyFiles } from '../storage/files';
 import { collectionCounts } from '../storage/collections';
+import { demoReset, isDemo, latestDemoBase, setDemoBase } from '../demo';
 
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' } });
@@ -96,6 +97,31 @@ export async function handleSystem(request: Request, url: URL, env: Env, session
     const { results: total } = await db.prepare(`SELECT COUNT(*) AS n FROM ${quote(name)} ${where}`).bind(...args).all<{ n: number }>();
     const { results: rows } = await db.prepare(`SELECT * FROM ${quote(name)} ${where} LIMIT ? OFFSET ?`).bind(...args, limit, offset).all();
     return json({ name, columns: cols.map(c => ({ name: c.name, type: c.type, pk: !!c.pk, secret: SECRET_COLS.has(c.name) })), total: total[0]?.n || 0, offset, limit, rows: rows.map(maskRow) });
+  }
+
+  // ───── النسخة التجريبية: البيانات الأساسية وإعادة الضبط ─────
+  if (path.startsWith('/demo')) {
+    if (!isDemo(env)) return json({ error: 'غير متاح', code: 'not_found' }, 404);
+    if (path === '/demo' && method === 'GET') {
+      const base = await latestDemoBase(env);
+      const { results } = await db.prepare("SELECT finished_at, status FROM system_jobs WHERE name = 'demo-reset' ORDER BY id DESC LIMIT 1").all<{ finished_at: number; status: string }>();
+      return json({ base: base ? { created_at: base.created_at, rows: base.rows } : null, lastReset: results[0] || null, nextReset: nextRun() });
+    }
+    if (path === '/demo/base' && method === 'POST') {
+      const row = await setDemoBase(env, session.id);
+      await audit(db, request, session.id, 'system.demo_base', `${row.rows} سطر`);
+      return json({ ok: true, created_at: row.created_at });
+    }
+    if (path === '/demo/reset' && method === 'POST') {
+      try {
+        const r = await demoReset(env, session.id);
+        await audit(db, request, session.id, 'system.demo_reset', `${r.restoredRows} سطر`);
+        return json({ ok: true, ...r });
+      } catch (e) {
+        return json({ error: (e as Error).message, code: errorCode(e) }, 500);
+      }
+    }
+    return json({ error: 'غير موجود', code: 'not_found' }, 404);
   }
 
   // ───── النسخ الاحتياطية ─────

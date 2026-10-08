@@ -320,5 +320,23 @@
       "imageProcess": "Couldn't process the image",
       "imageRead": "Couldn't read the image"
     }
+  },
+  "demo": {
+    "durationLabel": "Trial duration",
+    "durationHint": "Starts when the account is created; then the account stops automatically",
+    "duration": {
+      "h1": "1 hour",
+      "h6": "6 hours",
+      "h12": "12 hours",
+      "d1": "1 day",
+      "d3": "3 days",
+      "w1": "1 week",
+      "w2": "2 weeks",
+      "m1": "1 month"
+    },
+    "extendTitle": "Extend trial",
+    "extendHint": "The new duration counts from now and re-activates an expired account",
+    "remaining": "{{time}} left",
+    "expired": "Trial ended"
   }
 }

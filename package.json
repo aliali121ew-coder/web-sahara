@@ -11,6 +11,8 @@
     "deploy": "npm run build && wrangler deploy",
     "build:staging": "node scripts/i18n-check.mjs && eslint src && tsc && vite build --mode staging",
     "deploy:staging": "npm run build:staging && wrangler deploy",
+    "build:demo": "node scripts/i18n-check.mjs && eslint src && tsc && vite build --mode demo",
+    "deploy:demo": "npm run build:demo && wrangler deploy",
     "lint:i18n": "eslint src",
     "test": "vitest run",
     "spell": "cspell --no-progress \"src/i18n/locales/en/*.json\""

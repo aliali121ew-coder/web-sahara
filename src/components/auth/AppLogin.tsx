@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
+import { DemoLoginBadge } from '../layout/DemoBanner';
 import {
   User, Lock, Eye, EyeOff, Loader2, AlertCircle, Clock, ArrowUpWideNarrow, KeyRound, ShieldCheck, UserCog,
   Sun, Moon, ArrowRight, ArrowLeft, Check, Truck, Fuel, Building2, LockKeyhole, Fingerprint, ScanFace, X,
@@ -413,6 +414,7 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
       <>
       {offerEl}
       {bioEl}
+      <DemoLoginBadge />
       <PhoneFlow
         step={setup ? 'login' : phoneStep}
         setStep={setPhoneStep}
@@ -435,6 +437,7 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
     <div dir={pageDir} className="auth-page relative flex items-center justify-center p-5 lg:p-8">
       {offerEl}
       {bioEl}
+      <DemoLoginBadge />
       <div className="auth-glass-frame relative w-full max-w-[1280px] p-2">
         <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.12fr)] gap-2.5 lg:h-[min(840px,calc(100dvh-5rem))]">
 

@@ -6,6 +6,7 @@ import { QuickActionContext } from './context/QuickActionContext';
 import { getAmbientGradientStyle, getAmbientBgColor } from './lib/themeGradients';
 
 import { Header } from './components/layout/Header';
+import { DemoBanner } from './components/layout/DemoBanner';
 import { Sidebar } from './components/layout/Sidebar';
 import { QuickActionModal } from './components/layout/QuickActionModal';
 import { CommandPalette } from './components/navigation/CommandPalette';
@@ -204,6 +205,7 @@ const AppContent: React.FC = () => {
         
         {/* Global Enterprise Header */}
         <div className="no-print">
+          <DemoBanner />
           <Header
             onOpenQuickAction={handleOpenQuickAction}
             onToggleSidebar={() => {

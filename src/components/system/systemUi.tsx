@@ -13,6 +13,7 @@ export const KIND_META: Record<string, { tone: string }> = {
   manual: { tone: 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300' },
   'pre-restore': { tone: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300' },
   monthly: { tone: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' },
+  'demo-base': { tone: 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-500/15 dark:text-fuchsia-300' },
 };
 
 /** حالة بنص وأيقونة (لا تعتمد على اللون وحده) */

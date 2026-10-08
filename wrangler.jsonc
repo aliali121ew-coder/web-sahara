@@ -52,6 +52,28 @@
       },
       // بلا مهام مجدولة في التجربة (تُشغَّل يدويًا من لوحة إدارة النظام عند الحاجة)
       "triggers": { "crons": [] }
+    },
+    // النسخة التجريبية للزوار (رابط workers.dev المجاني): قاعدة D1 وحاويات R2 وقناة تحديث خاصة بها،
+    // فلا طريق منها إلى بيانات التشغيل الفعلي. حسابات بمدة (ساعة إلى شهر) يُنشئها مديرها،
+    // والبيانات تُعاد كل ليلة إلى "البيانات الأساسية" (worker/demo.ts).
+    // النشر: npm run deploy:demo (يبني بـ vite --mode demo فيختار إضافة Cloudflare هذه البيئة؛ wrangler deploy --env وحده لا يكفي)
+    // ويحتاج مرة واحدة: npx wrangler secret put APP_TOKEN --env demo
+    "demo": {
+      "name": "sahara-demo",
+      "workers_dev": true,
+      "vars": { "DEMO_MODE": "1" },
+      "d1_databases": [
+        { "binding": "DB", "database_name": "sahara-demo-data" }
+      ],
+      "r2_buckets": [
+        { "binding": "FILES", "bucket_name": "sahara-demo-files" },
+        { "binding": "BACKUPS", "bucket_name": "sahara-demo-backups" }
+      ],
+      "durable_objects": {
+        "bindings": [{ "name": "HUB", "class_name": "StateHub" }]
+      },
+      // إعادة البيانات الوهمية وإيقاف الحسابات المنتهية: 00:00 UTC (03:00 بتوقيت العراق)
+      "triggers": { "crons": ["0 0 * * *"] }
     }
   }
 }

@@ -16,6 +16,7 @@ import { handleSystem } from './system/api';
 import { ensureSystemTables, getMaintenance } from './system/backup';
 import { schemaGate } from './storage/schema';
 import { onSchedule } from './system/maintenance';
+import { demoReset, isDemo } from './demo';
 
 export { StateHub } from './realtime/stateHub';
 
@@ -171,7 +172,7 @@ export default {
 
     // تسجيل الدخول والإعداد الأول متاحان بدون جلسة (الإعداد يتحقق من APP_TOKEN بنفسه)
     if (url.pathname.startsWith('/api/chat/auth/') && ['/api/chat/auth/status', '/api/chat/auth/login', '/api/chat/auth/setup', '/api/chat/auth/support', '/api/chat/auth/webauthn/login-options', '/api/chat/auth/webauthn/login', '/api/chat/auth/resume', '/api/chat/auth/resume/forget'].includes(url.pathname)) {
-      return handleChat(request, url, env.DB, env.APP_TOKEN, env.FILES);
+      return handleChat(request, url, env.DB, env.APP_TOKEN, env.FILES, isDemo(env));
     }
 
     // كل ما عدا ذلك يتطلب جلسة حساب معتمد (اسم مستخدم + كلمة مرور)
@@ -303,7 +304,7 @@ export default {
 
     // المحادثة: الحسابات والغرف والرسائل والمرفقات
     if (url.pathname.startsWith('/api/chat/')) {
-      return handleChat(request, url, env.DB, env.APP_TOKEN, env.FILES);
+      return handleChat(request, url, env.DB, env.APP_TOKEN, env.FILES, isDemo(env));
     }
 
     // مرفقات سجلات رصيد الصحاري (PDF و Excel)
@@ -314,6 +315,8 @@ export default {
     // قراءة صورة الكشف اليومي للصحاري وتعبئة نافذة الإدخال
     if (url.pathname === '/api/extract-sahara-report' && request.method === 'POST') {
       if (levelOf(session.perms, session.admin, 'sahara.balance') < 2) return forbidden();
+      // الذكاء الاصطناعي مدفوع: معطّل في النسخة التجريبية
+      if (isDemo(env)) return json({ error: 'هذه الميزة غير متاحة في النسخة التجريبية', code: 'demo_disabled' }, 403);
       if (tooLarge(request, MAX_IMAGE_BODY)) return json({ error: 'حجم الصورة كبير جدًا', code: 'image_too_large' }, 413);
       if (!env.ANTHROPIC_API_KEY) return json({ error: 'لم يُضبط مفتاح الذكاء الاصطناعي على الخادم (ANTHROPIC_API_KEY)', code: 'ai_key_missing' }, 503);
       let body: { image?: string; mediaType?: string; stations?: string[] };
@@ -340,6 +343,8 @@ export default {
 
   /** المهمة المجدولة اليومية (wrangler.jsonc → triggers.crons): نسخة يومية، وفي أول الشهر الصيانة الشهرية */
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-    ctx.waitUntil(onSchedule(env, controller.scheduledTime).catch(e => console.error('scheduled job failed', e)));
+    // النسخة التجريبية: إعادة البيانات الوهمية بدل النسخة الاحتياطية اليومية
+    const job = isDemo(env) ? demoReset(env).then(() => undefined) : onSchedule(env, controller.scheduledTime);
+    ctx.waitUntil(job.catch(e => console.error('scheduled job failed', e)));
   },
 };
