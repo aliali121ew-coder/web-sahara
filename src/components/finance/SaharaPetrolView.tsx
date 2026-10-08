@@ -34,6 +34,7 @@ import { siteName } from '../../i18n/enums';
 import { fmtList } from '../../i18n/format';
 import { usePetrolLedger, petrolPriceStats, PetrolLedgerRecord, PETROL_STATIONS } from '../../lib/petrolLedger';
 import { readPetrolReportFile } from '../../lib/petrolReportFile';
+import { useBulkFill } from '../../lib/bulkUpload';
 import { useReportAttach } from '../../lib/saharaFiles';
 import { ReportAttachNotice } from './DayFilesCell';
 import { useCentralTanks, resolveSaharaPetrolSectionKey, tankLiters } from '../../lib/centralTanks';
@@ -236,14 +237,18 @@ export const SaharaPetrolView: React.FC = () => {
         if (st.consumption !== undefined) { consumption[id] = fmtInput(st.consumption) || '0'; filled++; }
         if (st.balance !== undefined) { balances[id] = fmtInput(st.balance) || '0'; filled++; }
       });
-      const next = { ...form, consumption, balances };
+      // تاريخ الكشف يصبح تاريخ اليوم تلقائيًا (للتسجيل الجديد فقط، ويبقى قابلًا للتعديل يدويًا)
+      const date = !form.id && data.date ? data.date : form.date;
+      const next = { ...form, date, consumption, balances };
+      // الرصيد السابق التلقائي لتاريخ الكشف (قد يختلف عن تاريخ النموذج قبل الرفع)
+      const autoPrev = computed.filter(r => r.date < date && r.id !== form.id).pop()?.current ?? null;
       if (data.inboundQty !== undefined) { next.inboundQty = fmtInput(data.inboundQty); filled++; }
       if (data.inboundInternal !== undefined) { next.inboundInternal = fmtInput(data.inboundInternal); filled++; }
       if (data.inboundPrice !== undefined) { next.inboundPrice = fmtInput(data.inboundPrice); filled++; }
       // الرصيد السابق من الملف يُستعمل فقط إن لم يوجد يوم قبله في النظام
-      if (data.previous !== undefined && autoPrevious === null) { next.previous = fmtInput(data.previous); next.editPrevious = true; filled++; }
+      if (data.previous !== undefined && autoPrev === null) { next.previous = fmtInput(data.previous); next.editPrevious = true; filled++; }
       setForm(next);
-      setUpload({ status: 'done', filled, unmatched, notes: data.notes });
+      setUpload({ status: 'done', filled, unmatched, notes: [!form.id && data.date ? t('finance:saharaBalance.upload.dateFromFile', { date: data.date }) : '', data.notes].filter(Boolean).join(' — ') });
       setReportFile(file);
     } catch (e) {
       setUpload({ status: 'error', message: e instanceof Error ? e.message : t('finance:saharaPetrol.readFailed') });
@@ -271,9 +276,13 @@ export const SaharaPetrolView: React.FC = () => {
     update(prev => (form.id ? prev.map(r => (r.id === form.id ? record : r)) : [...prev, record]));
     if (reportFile) reportAttach.attach(record.id, reportFile);
     setReportFile(null);
+    bulk.markSaved();
     setViewId(null);
     setForm(null);
   };
+
+  // الرفع المتعدد: الملف التالي من نوع "كشف البنزين" يفتح نافذة يوم جديد معبّأة منه للمراجعة والحفظ
+  const bulk = useBulkFill('petrol', true, !!form, () => { openNew(); setEntryMode('upload'); }, file => { void handleUpload(file); });
 
   // ── التأكيد والإلغاء ──
   const [confirmOpen, setConfirmOpen] = useState(false);

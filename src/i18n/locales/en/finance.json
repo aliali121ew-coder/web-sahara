@@ -700,5 +700,38 @@
     "safetyDays_one": "<1>{{count}}</1> <2>full safety day</2>",
     "safetyDays_other": "<1>{{count}}</1> <2>full safety days</2>",
     "empty": "No reserve sites recorded yet"
+  },
+  "bulk": {
+    "button": "Bulk upload",
+    "title": "Upload several sheets at once",
+    "hint": "Up to 5 files. Each section window opens in turn, filled from its file, for you to review and save; the file is then attached to the archive.",
+    "kind": {
+      "balance": "Gasoil balance sheet",
+      "petrol": "Petrol sheet",
+      "black-oil": "Black oil report",
+      "none": "Unknown type"
+    },
+    "problem": {
+      "unknown": "File type not recognised — upload it from its tab",
+      "etihad": "Etihad sheet — upload it from the Etihad page",
+      "inbound": "Inbound file — upload it from the inbound page",
+      "no-permission": "You cannot edit this section",
+      "unreadable": "Could not read the file"
+    },
+    "tooMany": "Only {{max}} files are accepted; {{count}} left out",
+    "willOpen_one": "{{count}} window will open",
+    "willOpen_other": "{{count}} windows will open in turn",
+    "start": "Start",
+    "progress": "Bulk upload: file {{n}} of {{total}}",
+    "reviewHint": "Review the window, then press \"Confirm save\" or close it to skip the file",
+    "stop": "Stop",
+    "summary": "Bulk upload finished: {{saved}} of {{total}} saved",
+    "status": {
+      "saved": "Saved",
+      "skipped": "Not saved",
+      "ready": "Waiting",
+      "active": "Under review"
+    },
+    "preview": "Preview file"
   }
 }

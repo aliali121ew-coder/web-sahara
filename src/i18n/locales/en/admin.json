@@ -192,7 +192,8 @@
       "sahara.reserves": "Reserves",
       "sahara.petrol": "Gasoline",
       "sahara.reports": "Reports",
-      "suppliers": "Suppliers"
+      "suppliers": "Suppliers",
+      "sahara.bulk-upload": "Bulk upload"
     }
   },
   "support": {

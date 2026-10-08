@@ -39,6 +39,7 @@ import { computeDailyBuys, ownSaharaDeliveries } from '../../lib/inboundPrice';
 import { isSpreadsheetOrPdf, readSaharaReportFile, matchStation } from '../../lib/saharaReportFile';
 import { formatNumber, getBusinessDate } from '../../lib/utils';
 import { useReportAttach } from '../../lib/saharaFiles';
+import { useBulkFill } from '../../lib/bulkUpload';
 import { ReportAttachNotice } from './DayFilesCell';
 import { useTranslation, Trans } from 'react-i18next';
 import { siteName } from '../../i18n/enums';
@@ -435,9 +436,13 @@ export const SaharaBalanceView: React.FC = () => {
     update(prev => (form.id ? prev.map(r => (r.id === form.id ? record : r)) : [...prev, record]));
     if (reportFile) reportAttach.attach(record.id, reportFile);
     setReportFile(null);
+    bulk.markSaved();
     setViewId(null);
     setForm(null);
   };
+
+  // الرفع المتعدد: الملف التالي من نوع "كشف الكاز" يفتح نافذة يوم جديد معبّأة منه للمراجعة والحفظ
+  const bulk = useBulkFill('balance', true, !!form, () => { openNew(); setEntryMode('upload'); }, file => { void handleUpload(file); });
 
   // تأكيد البيانات: ينقل أرصدة محطات آخر يوم للخزانات ويعتمد السجل للواجهة الرئيسية
   const confirmPublish = () => {

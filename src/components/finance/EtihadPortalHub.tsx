@@ -17,6 +17,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useFuelNav } from '../../context/FuelDataContext';
 import { EtihadSubtabKey } from './EtihadBalanceHubTabs';
+import { BulkUploadButton } from './BulkUpload';
 
 interface EtihadPortalHubProps {
   onSelectModule: (subtab: EtihadSubtabKey | 'petrol') => void;
@@ -190,6 +191,8 @@ export const EtihadPortalHub: React.FC<EtihadPortalHubProps> = ({
               </p>
             </div>
           </div>
+          {/* الرفع المتعدد: يظهر لمن لديه صلاحية "الرفع المتعدد" (الزر يتحقق بنفسه) */}
+          {isSahara && <BulkUploadButton />}
         </div>
 
         {/* ══════════════════════════════════════════════════════════════════════════ */}

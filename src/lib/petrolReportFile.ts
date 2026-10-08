@@ -1,4 +1,5 @@
 import i18n from '../i18n';
+import { findReportDate } from './reportDate';
 import { normalizeArabic, matchStation, readPdfPages, pdfLineText, pdfNumbersIn, PdfItem } from './saharaReportFile';
 
 /**
@@ -15,6 +16,8 @@ export interface PetrolReportExtraction {
   inboundInternal?: number;
   inboundPrice?: number;
   previous?: number;
+  /** تاريخ الكشف YYYY/MM/DD إن وُجد في الملف */
+  date?: string;
   stations: { nameInFile: string; matched: string | null; consumption?: number; balance?: number }[];
   notes: string;
 }
@@ -41,7 +44,7 @@ const CONSUMPTION_HEADERS = ['المصروف الفعلي', 'الاستهلاك'
 const BALANCE_HEADERS = ['الرصيد الحالي', 'الرصيد التراكمي', 'المتبقي'];
 
 // البنود المفردة: الوارد = الخارجي فقط (الداخلي لا يُحتسب)
-const SINGLE_FIELDS: [keyof Omit<PetrolReportExtraction, 'stations' | 'notes'>, string[]][] = [
+const SINGLE_FIELDS: [keyof Omit<PetrolReportExtraction, 'stations' | 'notes' | 'date'>, string[]][] = [
   ['inboundQty', ['وارد خارجي', 'الوارد الخارجي']],
   ['inboundInternal', ['وارد داخلي', 'الوارد الداخلي']],
   ['previous', ['المدور السابق']],
@@ -163,18 +166,22 @@ const readPdf = async (file: File, stationNames: string[]): Promise<PetrolReport
       }
     }
   }
+  result.date = findReportDate(pages.flatMap(lines => lines.map(l => [pdfLineText(l), ...l.map(it => it.str)]))) ?? undefined;
   return finish(result);
 };
 
 // ───────────── Excel ─────────────
 const readExcel = async (file: File, stationNames: string[]): Promise<PetrolReportExtraction> => {
   const XLSX = await import('xlsx');
-  const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+  // cellDates: خلايا التاريخ تصل كتواريخ (لقراءة تاريخ الكشف)
+  const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
   const result: PetrolReportExtraction = { stations: [], notes: '' };
+  const allRows: unknown[][] = [];
   const seen = new Set<string>();
 
   for (const sheetName of wb.SheetNames) {
     const rows = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[sheetName], { header: 1, raw: true, defval: null });
+    allRows.push(...rows);
 
     // 1) جدول المحطات
     for (let r = 0; r < rows.length && !result.stations.length; r++) {
@@ -226,6 +233,7 @@ const readExcel = async (file: File, stationNames: string[]): Promise<PetrolRepo
       });
     });
   }
+  result.date = findReportDate(allRows) ?? undefined;
   return finish(result);
 };
 

@@ -13,6 +13,7 @@ import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
 import { parseBlackOilReport } from '../../lib/blackOilReportFile';
 import { useSaharaFiles, useReportAttach, removeDayFiles, type SaharaFile } from '../../lib/saharaFiles';
 import { DayFilesCell, ReportAttachNotice } from './DayFilesCell';
+import { useBulkFill } from '../../lib/bulkUpload';
 
 export { getBlackOilAvgDaily, DEFAULT_BLACK_OIL_AVG_DAILY } from '../../lib/blackOilLedger';
 
@@ -195,8 +196,12 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
     update(prev => (form.id ? prev.map(r => (r.id === form.id ? rec : r)) : [...prev, rec]));
     if (reportFile) reportAttach.attach(rec.id, reportFile);
     setReportFile(null);
+    bulk.markSaved();
     setForm(null);
   };
+
+  // الرفع المتعدد (صفحة الصحاري فقط): الملف التالي من نوع "تقرير النفط الأسود" يفتح نافذة يوم جديد معبّأة منه
+  const bulk = useBulkFill('black-oil', company === 'sahara' && !isArchive, !!form, () => openNew(), file => { void fillFromReport(file); });
 
   // ── تعبئة النافذة تلقائيًا من ملف التقرير اليومي (موقف الريان / موقف السكر) ──
   const [reportState, setReportState] = useState<

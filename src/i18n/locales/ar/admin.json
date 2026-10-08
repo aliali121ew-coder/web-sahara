@@ -194,7 +194,8 @@
       "sahara.reserves": "الاحتياطي",
       "sahara.petrol": "البنزين",
       "sahara.reports": "التقارير",
-      "suppliers": "الموردين"
+      "suppliers": "الموردين",
+      "sahara.bulk-upload": "الرفع المتعدد"
     },
     "ofSections_zero": "من دون أقسام",
     "ofSections_one": "من قسم واحد",

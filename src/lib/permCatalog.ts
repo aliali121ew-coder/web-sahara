@@ -45,6 +45,8 @@ export const PERM_GROUPS: SectionGroup[] = [
       { id: 'sahara.reserves', label: 'الاحتياطي' },
       { id: 'sahara.petrol', label: 'البنزين' },
       { id: 'sahara.reports', label: 'التقارير' },
+      // زر "رفع متعدد" في صفحة الصحاري (يعرض الزر فقط؛ حفظ كل ملف يتطلب صلاحية تعديل قسمه)
+      { id: 'sahara.bulk-upload', label: 'الرفع المتعدد' },
     ],
   },
 ];
