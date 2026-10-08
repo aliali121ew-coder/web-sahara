@@ -6,7 +6,8 @@
       "chooseHint": "Excel or PDF — fields fill automatically, then review",
       "checkMatch": "Current balance matches the statement: {{value}} L",
       "checkMismatch": "The calculated balance differs from the statement ({{value}}) by {{diff}} L",
-      "unmatched": "Sites in the statement that aren’t in the system (not filled): {{list}}"
+      "unmatched": "Sites in the statement that aren’t in the system (not filled): {{list}}",
+      "dateFromFile": "Date from the sheet: {{date}}"
     },
     "inboundNote": "Etihad + external",
     "actualConsumption": "Actual consumption",

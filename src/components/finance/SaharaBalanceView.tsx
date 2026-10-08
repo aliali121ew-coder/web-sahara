@@ -256,16 +256,21 @@ export const SaharaBalanceView: React.FC = () => {
       if (r.inboundEtihad > 0) external.etihad = val(r.inboundEtihad);
       const fields = [r.vehicles, r.farms, r.generators, r.sentToFarms, r.inboundExternal, r.inboundEtihad];
       filled += fields.filter(n => n > 0).length;
+      // تاريخ الكشف يصبح تاريخ اليوم تلقائيًا (للتسجيل الجديد فقط، ويبقى قابلًا للتعديل يدويًا)
+      const date = !form.id && r.date ? r.date : form.date;
+      // الرصيد السابق التلقائي لتاريخ الكشف (قد يختلف عن تاريخ النموذج قبل الرفع)
+      const autoPrev = computed.filter(x => x.id !== form.id && x.date < date).pop()?.current ?? null;
       // الرصيد السابق = "المدوّر السابق" في الكشف (مجموع الرصيد السابق لكل المواقع)؛ إن طابق التلقائي يبقى تلقائيًا
       const carried = r.previousCarried;
       const prevPatch: Partial<FormState> = carried !== undefined
-        ? (autoPrevious !== null && Math.round(carried) === Math.round(autoPrevious)
+        ? (autoPrev !== null && Math.round(carried) === Math.round(autoPrev)
           ? { editPrevious: false, prevEditing: false, previous: '' }
           : { editPrevious: true, prevEditing: false, previous: withCommas(String(Math.round(carried))) })
         : {};
       if (carried !== undefined) filled++;
       setForm(f => f && {
         ...f,
+        date,
         ...prevPatch,
         currentOverride: (r.tableTotal ?? r.currentInFile) !== undefined ? withCommas(String(Math.round((r.tableTotal ?? r.currentInFile)!))) : f.currentOverride,
         overrideBase: (r.tableTotal ?? r.currentInFile) !== undefined
@@ -286,7 +291,7 @@ export const SaharaBalanceView: React.FC = () => {
       // التحقق: السابق + الوارد − الاستهلاك يجب أن يساوي "الرصيد الحالي" في الكشف
       let check = '';
       if (r.currentInFile !== undefined) {
-        const previous = carried ?? autoPrevious ?? 0;
+        const previous = carried ?? autoPrev ?? 0;
         const inbound = r.inboundExternal + r.inboundEtihad;
         const consumption = r.vehicles + r.farms + r.generators + r.sentToFarms;
         const diff = Math.round(previous + inbound - consumption - r.currentInFile);
@@ -294,7 +299,7 @@ export const SaharaBalanceView: React.FC = () => {
           ? `✓ ${t('finance:saharaBalance.upload.checkMatch', { value: formatNumber(Math.round(r.currentInFile)) })}`
           : `⚠ ${t('finance:saharaBalance.upload.checkMismatch', { value: formatNumber(Math.round(r.currentInFile)), diff: formatNumber(diff) })}`;
       }
-      setUpload({ status: 'done', fileName: file.name, filled, unmatched, notes: [check, r.notes].filter(Boolean).join(' — ') });
+      setUpload({ status: 'done', fileName: file.name, filled, unmatched, notes: [!form.id && r.date ? t('finance:saharaBalance.upload.dateFromFile', { date: r.date }) : '', check, r.notes].filter(Boolean).join(' — ') });
       setReportFile(file);
     } catch (e) {
       setUpload({ status: 'error', message: e instanceof Error ? e.message : t('finance:ledger.upload.parseFailed') });

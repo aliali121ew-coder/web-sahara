@@ -27,6 +27,8 @@ const LOCAL_ONLY = new Set([
   'sahara_session_resume',
   'sahara_remember_me',
   'sahara_welcome_seen',
+  // بطاقة "ثبّت التطبيق": تأجيلها خاص بهذا الجهاز
+  'sahara_install_dismissed_at',
   PENDING_KEY,
   'sahara_active_tab',
   'sahara_theme_mode',

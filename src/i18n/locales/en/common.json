@@ -308,5 +308,14 @@
     "banner": "Demo version — data is sample data and resets every night",
     "endsIn": "Your account ends in {{time}}",
     "loginBadge": "Demo version"
+  },
+  "install": {
+    "title": "Install the app on your phone",
+    "text": "Open it from your home screen like any app, full screen.",
+    "button": "Install",
+    "later": "Later",
+    "iosStep1": "Tap the Share button in the browser",
+    "iosStep2": "Choose \"Add to Home Screen\"",
+    "iosStep3": "Tap \"Add\" at the top"
   }
 }

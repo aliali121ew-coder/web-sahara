@@ -213,6 +213,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
       if (r.previous !== null && Math.round(r.previous) !== Math.round(calcPreviousBalance)) {
         check = [check, t('finance:tx.upload.prevDiffers', { file: formatNumber(r.previous), system: formatNumber(calcPreviousBalance) })].filter(Boolean).join(' — ');
       }
+      if (!editRecord && r.date) check = [t('finance:saharaBalance.upload.dateFromFile', { date: r.date }), check].filter(Boolean).join(' — ');
       setUpload({ status: 'done', name: file.name, check });
       setReportFile(file);
     } catch (e) {

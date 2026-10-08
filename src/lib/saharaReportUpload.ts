@@ -17,6 +17,8 @@ export interface SaharaReportExtraction {
   currentInFile?: number;
   /** آخر خلية في عمود "الرصيد التراكمي" (إجمالي الجدول) — تُنقل كما هي إلى الرصيد الحالي */
   tableTotal?: number;
+  /** تاريخ الكشف YYYY/MM/DD إن وُجد في الملف */
+  date?: string;
   stations: { nameInImage: string; matchedStation: string | null; balance: number }[];
   notes: string;
 }
