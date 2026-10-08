@@ -11,6 +11,9 @@ import { Sidebar } from './components/layout/Sidebar';
 import { QuickActionModal } from './components/layout/QuickActionModal';
 import { CommandPalette } from './components/navigation/CommandPalette';
 import { lazyPage } from './lib/lazyPage';
+
+/** عدد الصفحات التي تبقى محفوظة للرجوع الفوري إليها */
+const MAX_KEPT_PAGES = 4;
 import { NoAccess } from './components/auth/NoAccess';
 import { useCanOpenTab, TAB_SECTION } from './lib/usePermission';
 import type { NavTabId } from './types';
@@ -137,9 +140,10 @@ const AppContent: React.FC = () => {
 
   // الصفحات التي زارها المستخدم تبقى محفوظة (Activity): العودة إليها فورية بحالتها كما تركها،
   // وتتوقف مؤثراتها وتتأجل تحديثاتها وهي مخفية فلا تستهلك المعالج
+  // أحدث 4 صفحات فقط: كل صفحة محفوظة تستهلك ذاكرة وتُحدَّث في الخلفية، وهذا يثقل الهواتف الضعيفة
   const [visited, setVisited] = useState<NavTabId[]>(() => [activeTab]);
   useEffect(() => {
-    setVisited(prev => (prev.includes(activeTab) ? prev : [...prev, activeTab]));
+    setVisited(prev => (prev.includes(activeTab) ? prev : [...prev, activeTab].slice(-MAX_KEPT_PAGES)));
   }, [activeTab]);
   const mountedTabs = visited.includes(activeTab) ? visited : [...visited, activeTab];
 

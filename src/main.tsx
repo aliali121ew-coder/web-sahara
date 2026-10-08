@@ -1,5 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+// قبل أي عرض: وضع الأجهزة الضعيفة (يطفئ التأثيرات الثقيلة)
+import './lib/perfMode';
 import '@fontsource-variable/noto-kufi-arabic';
 import '@fontsource-variable/cairo';
 import '@fontsource-variable/inter';

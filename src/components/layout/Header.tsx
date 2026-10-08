@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { initials, logout, useSessionProfile } from '../../lib/session';
 import { useTheme } from '../../context/ThemeContext';
-import { useFuelData } from '../../context/FuelDataContext';
+import { useFuelStore } from '../../context/FuelDataContext';
 import { useLanguage, ACTIVE_LANGUAGES } from '../../context/LanguageContext';
 import { useTranslation } from 'react-i18next';
 import { BiometricSettings } from '../auth/BiometricSettings';
@@ -49,7 +49,7 @@ export const Header: React.FC<HeaderProps> = ({
     notifications,
     markNotificationRead,
     markAllNotificationsRead
-  } = useFuelData();
+  } = useFuelStore();
 
   const [showNotifications, setShowNotifications] = useState<boolean>(false);
   const [showProfileMenu, setShowProfileMenu] = useState<boolean>(false);
@@ -80,7 +80,7 @@ export const Header: React.FC<HeaderProps> = ({
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <header className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 transition-colors duration-200 px-3 sm:px-4 py-2">
+    <header className="sticky top-0 z-30 bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 transition-colors duration-200 px-3 sm:px-4 py-2">
       <div className="flex items-center justify-between gap-2 sm:gap-3">
         
         {/* Toggle Sidebar Button & Search Bar */}

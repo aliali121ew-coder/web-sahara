@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, startTransition } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, startTransition } from 'react';
 import { CLOUD_APPLIED_EVENT } from '../lib/cloudSync';
 import {
   TankItem,
@@ -151,7 +151,18 @@ const getInitialTab = (): NavTabId => {
   return 'dashboard';
 };
 
-const FuelDataContext = createContext<FuelDataContextType | undefined>(undefined);
+/** حقول التنقل (الصفحة الحالية، البحث، الصفحة الفرعية): تتغير عند كل تنقل أو حرف في البحث */
+const NAV_KEYS = ['activeTab', 'setActiveTab', 'searchQuery', 'setSearchQuery', 'currentSubpage', 'setCurrentSubpage', 'navigateBack', 'canGoBack'] as const;
+export type FuelNavState = Pick<FuelDataContextType, (typeof NAV_KEYS)[number]>;
+export type FuelStore = Omit<FuelDataContextType, (typeof NAV_KEYS)[number]>;
+
+/**
+ * سياقان منفصلان: البيانات والتنقل. كانا سياقًا واحدًا فكان كل تنقل بين الصفحات وكل حرف في البحث
+ * يعيد رسم كل صفحة تقرأ البيانات (بما فيها الصفحات المحفوظة المخفية)، وهذا أكبر سبب لبطء الاستجابة.
+ * useFuelStore = البيانات فقط، useFuelNav = التنقل فقط، useFuelData = الاثنان (كما كان).
+ */
+const FuelStoreContext = createContext<FuelStore | undefined>(undefined);
+const FuelNavContext = createContext<FuelNavState | undefined>(undefined);
 
 export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activeTab, setActiveTabState] = useState<NavTabId>(getInitialTab);
@@ -734,53 +745,65 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setMessages([...INITIAL_MESSAGES]);
   };
 
+  const nav = useMemo<FuelNavState>(
+    () => ({ activeTab, setActiveTab, searchQuery, setSearchQuery, currentSubpage, setCurrentSubpage, navigateBack, canGoBack }),
+    [activeTab, setActiveTab, searchQuery, currentSubpage, navigateBack, canGoBack]
+  );
+  // الدوال تُنشأ في كل عرض لكنها تقرأ الحالة عبر المتغيرات أعلاه فقط، فيكفي تحديث القيمة عند تغيّر الحالة
+  const store = useMemo<FuelStore>(
+    () => ({
+      tanks,
+      fuelMetrics,
+      supplierPrices,
+      deliveries,
+      saharaDeliveries,
+      etihadDeliveries,
+      supplyRequests,
+      managers,
+      tasks,
+      messages,
+      notifications,
+      addDelivery,
+      updateDelivery,
+      deleteDelivery,
+      resetDeliveries,
+      addSupplyRequest,
+      addMessage,
+      toggleTask,
+      markNotificationRead,
+      markAllNotificationsRead,
+      updateTankLevel,
+      refreshAllData,
+      saveSupplier,
+      deleteSupplier,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tanks, fuelMetrics, supplierPrices, deliveries, saharaDeliveries, etihadDeliveries, supplyRequests, managers, tasks, messages, notifications]
+  );
+
   return (
-    <FuelDataContext.Provider
-      value={{
-        activeTab,
-        setActiveTab,
-        searchQuery,
-        setSearchQuery,
-        currentSubpage,
-        setCurrentSubpage,
-        navigateBack,
-        canGoBack,
-        tanks,
-        fuelMetrics,
-        supplierPrices,
-        deliveries,
-        saharaDeliveries,
-        etihadDeliveries,
-        supplyRequests,
-        managers,
-        tasks,
-        messages,
-        notifications,
-        addDelivery,
-        updateDelivery,
-        deleteDelivery,
-        resetDeliveries,
-        addSupplyRequest,
-        addMessage,
-        toggleTask,
-        markNotificationRead,
-        markAllNotificationsRead,
-        updateTankLevel,
-        refreshAllData,
-        saveSupplier,
-        deleteSupplier,
-      }}
-    >
-      {children}
-    </FuelDataContext.Provider>
+    <FuelNavContext.Provider value={nav}>
+      <FuelStoreContext.Provider value={store}>
+        {children}
+      </FuelStoreContext.Provider>
+    </FuelNavContext.Provider>
   );
 };
 
 
-export const useFuelData = (): FuelDataContextType => {
-  const context = useContext(FuelDataContext);
-  if (!context) {
-    throw new Error('useFuelData must be used within a FuelDataProvider');
-  }
-  return context;
+/** البيانات فقط: لا تعيد الرسم عند التنقل أو البحث */
+export const useFuelStore = (): FuelStore => {
+  const store = useContext(FuelStoreContext);
+  if (!store) throw new Error('useFuelStore must be used within a FuelDataProvider');
+  return store;
 };
+
+/** التنقل فقط (الصفحة الحالية، البحث، الصفحة الفرعية) */
+export const useFuelNav = (): FuelNavState => {
+  const nav = useContext(FuelNavContext);
+  if (!nav) throw new Error('useFuelNav must be used within a FuelDataProvider');
+  return nav;
+};
+
+/** البيانات والتنقل معًا (للمكوّنات التي تحتاج الاثنين) */
+export const useFuelData = (): FuelDataContextType => ({ ...useFuelStore(), ...useFuelNav() });

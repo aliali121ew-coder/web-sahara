@@ -34,7 +34,7 @@ import { enumText, siteName } from '../../i18n/enums';
 import { useCentralTanks, resolveSaharaGasoilSectionKey, tankLiters } from '../../lib/centralTanks';
 import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
 import { useSaharaLedger } from '../../lib/saharaLedger';
-import { useFuelData } from '../../context/FuelDataContext';
+import { useFuelStore } from '../../context/FuelDataContext';
 import { computeInboundPriceStats, computeDailyBuys, ownSaharaDeliveries } from '../../lib/inboundPrice';
 
 const WEEK_DAYS = [
@@ -70,7 +70,7 @@ export const SaharaGasSection: React.FC = () => {
   const { t } = useTranslation(['dashboard', 'common']);
   // متوسط السعر = تكلفة المنتج الكلية ÷ الكمية المستلمة الكلية لوارد الصحاري (نفس كارت صفحة الوارد)،
   // ونسبة التغير = أثر آخر وارد على المتوسط (ارتفاع = أحمر، انخفاض = أخضر)
-  const { saharaDeliveries } = useFuelData();
+  const { saharaDeliveries } = useFuelStore();
   const { avgPrice, change: priceChange, dailyBuys } = React.useMemo(() => {
     // نفس نطاق صفحة وارد الصحاري: شحنات شركة صحاري كربلاء فقط
     const own = ownSaharaDeliveries(saharaDeliveries);

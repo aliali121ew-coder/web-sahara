@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { X, History, Search, ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle, CircleDashed, Camera, Layers } from 'lucide-react';
-import { useFuelData } from '../../context/FuelDataContext';
+import { useFuelStore } from '../../context/FuelDataContext';
 import { formatNumber } from '../../lib/utils';
 import { usePriceLog, lastByKey, logPrice, type PriceLogEntry, type PriceLogSource } from '../../lib/priceLog';
 import { usePurchasePrices } from '../../lib/purchasePrices';
@@ -37,7 +37,7 @@ const stamp = (iso: string) => {
 export const PriceLogModal: React.FC<{ editable: boolean; onClose: () => void }> = ({ editable, onClose }) => {
   const { t } = useTranslation(['suppliers', 'common']);
   const log = usePriceLog();
-  const { supplierPrices } = useFuelData();
+  const { supplierPrices } = useFuelStore();
   const { fuelMetrics, priceOf } = usePurchasePrices();
   const [tab, setTab] = useState<Tab>('ops');
   const [source, setSource] = useState<SourceFilter>('all');

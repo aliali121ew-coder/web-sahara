@@ -15,7 +15,7 @@ import {
   DatabaseBackup
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useFuelData } from '../../context/FuelDataContext';
+import { useFuelNav } from '../../context/FuelDataContext';
 import { EtihadSubtabKey } from './EtihadBalanceHubTabs';
 
 interface EtihadPortalHubProps {
@@ -34,7 +34,7 @@ export const EtihadPortalHub: React.FC<EtihadPortalHubProps> = ({
 }) => {
   const isSahara = company === 'sahara';
   const { t, i18n } = useTranslation(['finance', 'common']);
-  const { setActiveTab } = useFuelData();
+  const { setActiveTab } = useFuelNav();
 
   const baseModules = [
     {

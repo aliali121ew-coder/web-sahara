@@ -34,7 +34,7 @@ import {
   TrendingUp,
   TrendingDown
 } from 'lucide-react';
-import { useFuelData } from '../../context/FuelDataContext';
+import { useFuelStore } from '../../context/FuelDataContext';
 import { computeDailyBuys, ownSaharaDeliveries } from '../../lib/inboundPrice';
 import { isSpreadsheetOrPdf, readSaharaReportFile, matchStation } from '../../lib/saharaReportFile';
 import { formatNumber, getBusinessDate } from '../../lib/utils';
@@ -179,7 +179,7 @@ export const SaharaBalanceView: React.FC = () => {
   const [discardOpen, setDiscardOpen] = useState(false);
   // السعر: للعرض فقط، يتحدث تلقائيًا من سعر شراء اليوم (آخر يوم في وارد الصحاري)،
   // ونسبة التغير = معدل اليومين مقارنة بسعر اليوم السابق (نفس كارت "شراء اليوم" في الرئيسية)
-  const { saharaDeliveries } = useFuelData();
+  const { saharaDeliveries } = useFuelStore();
   const buys = useMemo(() => computeDailyBuys(ownSaharaDeliveries(saharaDeliveries)), [saharaDeliveries]);
   const [priceOpen, setPriceOpen] = useState(false);
 

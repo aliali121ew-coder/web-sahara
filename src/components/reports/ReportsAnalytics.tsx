@@ -2,12 +2,12 @@ import { useTranslation } from 'react-i18next';
 import { enumText } from '../../i18n/enums';
 import React from 'react';
 import { BarChart3, Download, Printer, ShieldCheck } from 'lucide-react';
-import { useFuelData } from '../../context/FuelDataContext';
+import { useFuelStore } from '../../context/FuelDataContext';
 import { formatNumber, getBusinessDate } from '../../lib/utils';
 
 export const ReportsAnalytics: React.FC = () => {
   const { t } = useTranslation(['pages', 'common']);
-  const { tanks, deliveries, supplyRequests } = useFuelData();
+  const { tanks, deliveries, supplyRequests } = useFuelStore();
   // تاريخ الإصدار ورقم المرجع من يوم العمل الحالي (لا تاريخ ثابت)
   const issuedDate = getBusinessDate();
   const reportRef = `SH-REP-${issuedDate.replace(/\D/g, '')}`;

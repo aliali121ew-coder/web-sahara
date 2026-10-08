@@ -20,7 +20,7 @@ import { formatNumber } from '../../lib/utils';
 import { useTranslation } from 'react-i18next';
 import { enumText } from '../../i18n/enums';
 import { EtihadBalanceRecord } from '../../types/finance';
-import { useFuelData } from '../../context/FuelDataContext';
+import { useFuelStore } from '../../context/FuelDataContext';
 import { InboundDelivery } from '../../types';
 import { computeInboundPriceStats, computeDailyBuys } from '../../lib/inboundPrice';
 import { useCentralTanks, resolveEtihadExtractionTank, syncEtihadExtractionTank } from '../../lib/centralTanks';
@@ -72,7 +72,7 @@ export const EtihadGasSection: React.FC = () => {
   const prev = records[1];
   const etihadTotalBalance = latest?.currentBalance ?? 0;
   // متوسط السعر ونسبة تغيره وشراء اليوم: من وارد الاتحاد (نفس معادلات قسم الصحاري)
-  const { etihadDeliveries } = useFuelData();
+  const { etihadDeliveries } = useFuelStore();
   // إن لم يكن في صفحة وارد الاتحاد كميات وتكاليف، تُحوَّل سجلات رصيد الشركة إلى وارد يومي:
   // الكمية = المشتريات، والتكلفة = المشتريات × سعر اللتر الحالي لذلك اليوم
   const priceSource = React.useMemo(() => {

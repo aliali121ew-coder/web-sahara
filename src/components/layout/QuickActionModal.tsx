@@ -27,7 +27,7 @@ import {
   Loader2,
   AlertTriangle,
 } from 'lucide-react';
-import { useFuelData } from '../../context/FuelDataContext';
+import { useFuelStore } from '../../context/FuelDataContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { enumText } from '../../i18n/enums';
 import { useTranslation } from 'react-i18next';
@@ -81,7 +81,7 @@ const DEFAULT_COLORS = ['احمر', 'اصفر', 'عسلي', 'نفط ابيض'];
 const productFromColor = (_color: string) => 'كاز ممتاز';
 
 export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onClose, editData }) => {
-  const { addDelivery, updateDelivery, deliveries } = useFuelData();
+  const { addDelivery, updateDelivery, deliveries } = useFuelStore();
   const { isRTL } = useLanguage();
 
   const { t, i18n } = useTranslation(['deliveries', 'common']);

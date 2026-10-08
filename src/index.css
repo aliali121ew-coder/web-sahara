@@ -497,10 +497,9 @@ body[data-bg-gradient="ocean-cyan"] {
   background-attachment: fixed;
 }
 
-/* نمط الكثافة الحيوية (Vibrant Gradient Mode) */
-body[data-gradient-intensity="vibrant"]:not([data-bg-gradient="none"]) {
-  filter: saturate(1.08) contrast(1.02);
-}
+/* نمط الكثافة الحيوية (Vibrant Gradient Mode): ألوانه من التدرج نفسه.
+   كان هنا filter على body كله، فيُعاد ترشيح الشاشة كاملة مع كل تمرير وحركة (ثقيل جدًا على الأجهزة الضعيفة)،
+   ويجعل العناصر الثابتة (position: fixed) تتحرك مع الصفحة. أُزيل لأجل السلاسة. */
 
 /* تأثير الزجاج والبلورة (Glassmorphism & Frosted Blur) */
 body[data-glassmorphism="true"] .shadow-soft-card {
@@ -573,4 +572,35 @@ html[lang="en"] body * {
 }
 html[lang="ar"] [class*="tracking-"] {
   letter-spacing: normal;
+}
+
+
+/* ───── سلاسة اللمس والتمرير ─────
+   manipulation: يلغي انتظار "النقر المزدوج للتكبير" فيستجيب الزر فور اللمس (التكبير بإصبعين يبقى متاحًا) */
+a, button, input, select, textarea, label, summary, [role="button"], [role="tab"] {
+  touch-action: manipulation;
+}
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ───── وضع الأجهزة الضعيفة (perf-lite — يُفعَّل تلقائيًا في src/lib/perfMode.ts) ─────
+   تأثيرات الزجاج (blur خلف العناصر) والنبض والوميض المستمر تُعاد رسمها مع كل إطار؛
+   تُطفأ هنا وتبقى مؤشرات التحميل (animate-spin) والانتقالات القصيرة */
+html.perf-lite *,
+html.perf-lite *::before,
+html.perf-lite *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html.perf-lite .animate-pulse,
+html.perf-lite .animate-ping,
+html.perf-lite .animate-bounce,
+html.perf-lite .animate-wave-slow,
+html.perf-lite .animate-wave-fast,
+html.perf-lite .animate-shimmer {
+  animation: none !important;
+}
+html.perf-lite .animate-ping {
+  opacity: 0;
 }

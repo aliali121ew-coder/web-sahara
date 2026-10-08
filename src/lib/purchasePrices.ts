@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useFuelData } from '../context/FuelDataContext';
+import { useFuelStore } from '../context/FuelDataContext';
 import type { FuelProductMetric, InboundDelivery } from '../types';
 import { usePetrolLedger } from './petrolLedger';
 import { usePriceOverrides } from './priceOverrides';
@@ -43,7 +43,7 @@ export const MANUAL_ONLY_ID = 'fuel-muhassan';
 const companyOf = (m: FuelProductMetric): 'sahara' | 'etihad' => (m.company === 'شركة الاتحاد' ? 'etihad' : 'sahara');
 
 export const usePurchasePrices = () => {
-  const { fuelMetrics, saharaDeliveries, etihadDeliveries } = useFuelData();
+  const { fuelMetrics, saharaDeliveries, etihadDeliveries } = useFuelStore();
   const { publishedComputed: petrolDays } = usePetrolLedger();
   const { computed: saharaBlackOilDays } = useBlackOilLedger('sahara');
   const { computed: etihadBlackOilDays } = useBlackOilLedger('etihad');
