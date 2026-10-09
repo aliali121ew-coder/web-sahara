@@ -7,53 +7,23 @@ import { formatNumber, getBusinessDate } from '../../lib/utils';
 import { useTranslation, Trans } from 'react-i18next';
 import { fmtList, fmtDate } from '../../i18n/format';
 import { enumText } from '../../i18n/enums';
-import { useBlackOilLedger, BlackOilRecord, BLACK_OIL_SITES, BLACK_OIL_SECTION_KEYS, type BlackOilCompany, type BlackOilSiteEntry, type ComputedBlackOilRecord } from '../../lib/blackOilLedger';
+import { useBlackOilLedger, BlackOilRecord, BLACK_OIL_SITES, BLACK_OIL_SECTION_KEYS, type BlackOilCompany, type ComputedBlackOilRecord } from '../../lib/blackOilLedger';
 import { readCentralTanks, useCentralTanks } from '../../lib/centralTanks';
 import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
 import { parseBlackOilReport } from '../../lib/blackOilReportFile';
 import { useSaharaFiles, useReportAttach, removeDayFiles, type SaharaFile } from '../../lib/saharaFiles';
 import { DayFilesCell, ReportAttachNotice } from './DayFilesCell';
-import { useBulkFill } from '../../lib/bulkUpload';
+import {
+  withCommas, fmtInput, emptySiteForm, newBlackOilForm, applyBlackOilReport, blackOilDerived, blackOilRecord, blackOilSaveBlockers,
+  type BlackOilForm, type SiteForm
+} from '../../lib/blackOilForm';
 
 export { getBlackOilAvgDaily, DEFAULT_BLACK_OIL_AVG_DAILY } from '../../lib/blackOilLedger';
 
-/** كتابة الأرقام بفوارز أثناء الإدخال */
-const withCommas = (v: string) => {
-  const digits = v.replace(/[^\d]/g, '');
-  return digits ? Number(digits).toLocaleString('en-US') : '';
-};
-const num = (v: string) => (v.trim() === '' ? null : Number(v.replace(/,/g, '')));
-/** رقم → نص إدخال بفوارز (فارغ إن لم يوجد) */
-const fmtInput = (n: number | null | undefined) => (n === null || n === undefined ? '' : Number(n).toLocaleString('en-US'));
 const toInputDate = (d: string) => d.replace(/\//g, '-');
 const fromInputDate = (d: string) => d.replace(/-/g, '/');
-const nextDay = (d: string) => {
-  const x = new Date(toInputDate(d) + 'T12:00:00');
-  x.setDate(x.getDate() + 1);
-  return getBusinessDate(x);
-};
-
-interface FormState {
-  id: string | null;
-  date: string;
-  previous: string;
-  editPrevious: boolean; // false = الكمية السابقة تلقائية من اليوم الذي قبله
-  inbound: string;
-  consumption: string;
-  avgDaily: string;
-  /** سعر اللتر (د.ع) */
-  price: string;
-  /** قيم مواقع التخزين (نصوص الإدخال) */
-  sites: Record<string, SiteForm>;
-}
-
-interface SiteForm {
-  inbound: string;
-  consumption: string;
-  actual: string;
-  empty: string;
-}
-const emptySiteForm = (): SiteForm => ({ inbound: '', consumption: '', actual: '', empty: '' });
+// منطق النموذج (يوم جديد، التعبئة من التقرير، الحسابات، السجل، شروط الحفظ) في lib/blackOilForm.ts
+type FormState = BlackOilForm;
 
 export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; company?: BlackOilCompany }> = ({ variant = 'recent', company = 'etihad' }) => {
   const { t, i18n } = useTranslation(['finance', 'common']);
@@ -113,16 +83,9 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
     return { inbound, consumption, actualAvg: visible.length ? Math.round(consumption / visible.length) : 0 };
   }, [visible]);
 
-  // الكمية السابقة التلقائية لتاريخ معيّن = حالية آخر يوم قبله
-  const autoPreviousFor = (date: string, excludeId: string | null) =>
-    computed.filter(r => r.date < date && r.id !== excludeId).pop()?.current ?? null;
-
   // تسجيل جديد: يوم جديد، حالية آخر يوم تصبح "سابقة"، والوارد والاستهلاك فارغان
   const openNew = () => {
-    const today = getBusinessDate();
-    const last = computed[computed.length - 1];
-    const date = last && last.date >= today ? nextDay(last.date) : today;
-    setForm({ id: null, date, previous: '', editPrevious: !last, inbound: '', consumption: '', avgDaily: withCommas(String(avgDaily)), price: fmtInput(computed[computed.length - 1]?.price ?? null), sites: Object.fromEntries(sites.map(x => [x.key, emptySiteForm()])) });
+    setForm(newBlackOilForm(computed, avgDaily, sites));
     setReportState({ status: 'idle' });
     setReportFile(null);
   };
@@ -148,60 +111,29 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
     setReportFile(null);
   };
 
-  const autoPrevious = form ? autoPreviousFor(form.date, form.id) : null;
-  const siteVals = form && hasSites
-    ? sites.map(x => {
-        const f = form.sites[x.key] ?? emptySiteForm();
-        return { key: x.key, inbound: num(f.inbound) ?? 0, consumption: num(f.consumption) ?? 0, actual: num(f.actual), empty: num(f.empty) };
-      })
-    : [];
-  const sitesAllActual = siteVals.length > 0 && siteVals.every(v => v.actual !== null);
-  const fInbound = hasSites ? siteVals.reduce((a, v) => a + v.inbound, 0) : form ? num(form.inbound) ?? 0 : 0;
-  const fConsumption = hasSites ? (form ? siteVals.reduce((a, v) => a + v.consumption, 0) : null) : form ? num(form.consumption) : null;
-  const fAvg = form ? num(form.avgDaily) : null;
-  const sitesActualTotal = sitesAllActual ? siteVals.reduce((a, v) => a + (v.actual as number), 0) : null;
-  // بلا يوم سابق: الكمية السابقة تُشتق من التقرير = الرصيد الحقيقي − الوارد + الاستهلاك
-  const derivedPrevious = sitesActualTotal !== null && fConsumption !== null ? sitesActualTotal - fInbound + fConsumption : null;
-  const fPrevious = form
-    ? form.editPrevious
-      ? num(form.previous) ?? (autoPrevious === null ? derivedPrevious : null)
-      : autoPrevious ?? derivedPrevious
-    : null;
-  const fCurrent = sitesActualTotal !== null
-    ? sitesActualTotal
-    : fPrevious !== null && fConsumption !== null ? fPrevious + fInbound - fConsumption : null;
-  const fAvailable = (fPrevious ?? 0) + fInbound;
-  const fPct = fConsumption !== null && fAvailable > 0 ? (fConsumption / fAvailable) * 100 : null;
+  const derived = form ? blackOilDerived(form, computed, sites) : null;
+  // مناسيب الخزانات الحالية: تُحفظ مع التسجيل الجديد
+  const tankSnapshot = () => Object.fromEntries(readCentralTanks(OFFICIAL_TABLE_TANK_UNITS).map(t => [t.id, t.levelMeters]));
+  const autoPrevious = derived?.autoPrevious ?? null;
+  const fInbound = derived?.fInbound ?? 0;
+  const fConsumption = derived ? derived.fConsumption : null;
+  const fAvg = derived ? derived.fAvg : null;
+  const derivedPrevious = derived?.derivedPrevious ?? null;
+  const fCurrent = derived ? derived.fCurrent : null;
+  const fPct = derived ? derived.fPct : null;
   const dateTaken = !!form && records.some(r => r.date === form.date && r.id !== form.id);
-  const canSave = !!form && fPrevious !== null && fConsumption !== null && !!fAvg && fAvg > 0 && !dateTaken && (fCurrent ?? 0) >= 0;
+  const canSave = !!form && !!derived && blackOilSaveBlockers(form, derived, records).length === 0;
 
   const save = () => {
-    if (!form || !canSave || fConsumption === null || !fAvg) return;
+    if (!form || !canSave || !derived) return;
     const old = form.id ? records.find(r => r.id === form.id) : undefined;
-    const rec: BlackOilRecord = {
-      // تسجيل جديد: تُحفظ مناسيب الخزانات الحالية مع العملية، والتعديل يحتفظ بالصورة الأصلية
-      tanksSnapshot: old?.tanksSnapshot ?? Object.fromEntries(readCentralTanks(OFFICIAL_TABLE_TANK_UNITS).map(t => [t.id, t.levelMeters])),
-      savedAt: old?.savedAt ?? new Date().toISOString(),
-      id: form.id ?? `bo-${Date.now()}`,
-      date: form.date,
-      inbound: fInbound,
-      consumption: fConsumption,
-      avgDaily: fAvg,
-      price: num(form.price) || null,
-      previousOverride: form.editPrevious && fPrevious !== autoPrevious ? fPrevious : null,
-      ...(hasSites
-        ? { sites: Object.fromEntries(siteVals.map(v => [v.key, { inbound: v.inbound, consumption: v.consumption, actual: v.actual, empty: v.empty } as BlackOilSiteEntry])) }
-        : {})
-    };
+    const rec: BlackOilRecord = blackOilRecord(form, derived!, old, tankSnapshot);
     update(prev => (form.id ? prev.map(r => (r.id === form.id ? rec : r)) : [...prev, rec]));
     if (reportFile) reportAttach.attach(rec.id, reportFile);
     setReportFile(null);
-    bulk.markSaved();
     setForm(null);
   };
 
-  // الرفع المتعدد (صفحة الصحاري فقط): الملف التالي من نوع "تقرير النفط الأسود" يفتح نافذة يوم جديد معبّأة منه
-  const bulk = useBulkFill('black-oil', company === 'sahara' && !isArchive, !!form, () => openNew(), file => { void fillFromReport(file); });
 
   // ── تعبئة النافذة تلقائيًا من ملف التقرير اليومي (موقف الريان / موقف السكر) ──
   const [reportState, setReportState] = useState<
@@ -213,20 +145,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
     setReportFile(null);
     try {
       const { sites: report, date } = await parseBlackOilReport(file, sites.map(x => ({ key: x.key, words: x.words })));
-      setForm(f => {
-        if (!f) return f;
-        const next = { ...f.sites };
-        for (const [key, v] of Object.entries(report)) {
-          next[key] = {
-            inbound: fmtInput(v.inbound),
-            consumption: fmtInput(v.consumption),
-            actual: fmtInput(v.actual),
-            empty: fmtInput(v.empty)
-          };
-        }
-        // تاريخ التقرير يصبح تاريخ اليوم (للتسجيل الجديد فقط)
-        return { ...f, sites: next, date: !f.id && date ? date : f.date };
-      });
+      setForm(f => f && applyBlackOilReport(f, report, date));
       setReportState({ status: 'done', fileName: file.name, found: sites.filter(x => report[x.key]).map(x => x.name) });
       setReportFile(file);
     } catch (err) {

@@ -99,6 +99,15 @@ export const petrolPriceStats = (days: ComputedPetrolRecord[]) => {
 };
 
 /** قراءة/كتابة السجل مع مزامنة حية؛ الواجهة الرئيسية تقرأ النسخة المعتمدة فقط */
+/**
+ * حفظ خارج الصفحة (الرفع المتعدد): نفس حفظ الصفحة. إن لم توجد نسخة معتمدة بعد تُعتمد الحالية أولًا،
+ * حتى يظهر اليوم الجديد بانتظار "تأكيد البيانات" ولا يُحسب معتمدًا بلا مراجعة.
+ */
+export const updatePetrolRecords = (fn: (prev: PetrolLedgerRecord[]) => PetrolLedgerRecord[]) => {
+  if (!readList(PUBLISHED_KEY)) localStorage.setItem(PUBLISHED_KEY, JSON.stringify(readPetrolRecords()));
+  write(STORAGE_KEY, fn(readPetrolRecords()));
+};
+
 export const usePetrolLedger = () => {
   const [records, setRecords] = useState<PetrolLedgerRecord[]>(readPetrolRecords);
   // أول تشغيل بدون نسخة معتمدة: البيانات الحالية تُعتبر معتمدة (حتى يظهر "تأكيد البيانات" بعد أول حفظ)

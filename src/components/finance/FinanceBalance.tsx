@@ -24,7 +24,6 @@ import { SaharaBalanceView } from './SaharaBalanceView';
 import { SaharaReportsCenter } from './SaharaReportsCenter';
 import { SaharaTanksView } from './SaharaTanksView';
 import { SaharaPetrolView } from './SaharaPetrolView';
-import { useBulkQueue, BULK_KINDS } from '../../lib/bulkUpload';
 import { SaharaBlackOilView } from './SaharaBlackOilView';
 import { SaharaSiteFarmsView } from './SaharaSiteFarmsView';
 import { getBusinessDate } from '../../lib/utils';
@@ -37,7 +36,7 @@ import { INITIAL_RESERVE_SITES } from './EtihadMultiSiteReservesView';
 type CompanyKey = 'etihad' | 'sahara';
 
 export const FinanceBalance: React.FC = () => {
-  const { activeTab, setActiveTab, setCurrentSubpage } = useFuelData();
+  const { activeTab, setCurrentSubpage } = useFuelData();
   const { t } = useTranslation(['finance', 'common']);
 
   // Determine active company based on activeTab
@@ -58,15 +57,6 @@ export const FinanceBalance: React.FC = () => {
   // صفحة الصحاري الفرعية المفتوحة (reserves = مزارع الموقع عند الصحاري)
   type SaharaSubtab = 'balance' | 'tanks' | 'black-oil' | 'reserves' | 'reports' | 'petrol';
   const [saharaSubtab, setSaharaSubtab] = useSessionState<SaharaSubtab | null>('sahara_subtab', null);
-  // الرفع المتعدد: فتح قسم الملف الحالي (صفحة الصحاري) لتفتح نافذته معبّأة من الملف
-  const bulkActive = useBulkQueue().items.find(i => i.status === 'active');
-  const bulkKind = bulkActive?.kind ?? null;
-  const bulkId = bulkActive?.id ?? null;
-  useEffect(() => {
-    if (!bulkKind || !bulkId) return;
-    setActiveTab('finance-sahara');
-    setSaharaSubtab(BULK_KINDS[bulkKind].subtab);
-  }, [bulkId]); // eslint-disable-line react-hooks/exhaustive-deps
   // صفحة فرعية محفوظة من جلسة سابقة ولم تعد مسموحة لهذا الحساب: العودة لبطاقات الشركة
   const perms = usePermissions();
   useEffect(() => {

@@ -7,7 +7,6 @@ import { getAmbientGradientStyle, getAmbientBgColor } from './lib/themeGradients
 
 import { Header } from './components/layout/Header';
 import { DemoBanner } from './components/layout/DemoBanner';
-import { BulkUploadBar } from './components/finance/BulkUpload';
 import { Sidebar } from './components/layout/Sidebar';
 import { QuickActionModal } from './components/layout/QuickActionModal';
 import { lazyPage } from './lib/lazyPage';
@@ -245,9 +244,6 @@ const AppContent: React.FC = () => {
       </div>
 
 
-
-      {/* الرفع المتعدد: التقدم والملخص (صفحة الصحاري) */}
-      <BulkUploadBar />
 
       {/* Quick Action Modal */}
       <QuickActionModal

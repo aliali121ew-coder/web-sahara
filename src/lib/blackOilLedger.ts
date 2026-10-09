@@ -158,6 +158,10 @@ const writeRecords = (company: BlackOilCompany, records: BlackOilRecord[]) => {
   window.dispatchEvent(new Event(SYNC_EVENT));
 };
 
+/** حفظ خارج الصفحة (الرفع المتعدد): نفس حفظ الصفحة */
+export const updateBlackOilRecords = (company: BlackOilCompany, fn: (prev: BlackOilRecord[]) => BlackOilRecord[]) =>
+  writeRecords(company, fn(readBlackOilRecords(company)));
+
 /** قراءة/كتابة السجل مع مزامنة حية بين كل الصفحات */
 export const useBlackOilLedger = (company: BlackOilCompany = 'etihad') => {
   const [records, setRecords] = useState<BlackOilRecord[]>(() => readBlackOilRecords(company));

@@ -36,10 +36,13 @@ import {
 } from 'lucide-react';
 import { useFuelStore } from '../../context/FuelDataContext';
 import { computeDailyBuys, ownSaharaDeliveries } from '../../lib/inboundPrice';
-import { isSpreadsheetOrPdf, readSaharaReportFile, matchStation } from '../../lib/saharaReportFile';
-import { formatNumber, getBusinessDate } from '../../lib/utils';
+import { isSpreadsheetOrPdf, readSaharaReportFile } from '../../lib/saharaReportFile';
+import { formatNumber } from '../../lib/utils';
 import { useReportAttach } from '../../lib/saharaFiles';
-import { useBulkFill } from '../../lib/bulkUpload';
+import {
+  withCommas, num, formStationsSum, formInbound, formConsumption, newSaharaBalanceForm, applySaharaReport, saharaDraft, saharaSaveBlockers,
+  type SaharaBalanceForm
+} from '../../lib/saharaBalanceForm';
 import { ReportAttachNotice } from './DayFilesCell';
 import { useTranslation, Trans } from 'react-i18next';
 import { siteName } from '../../i18n/enums';
@@ -54,12 +57,6 @@ import {
 import { useCentralTanks, resolveSaharaGasoilSectionKey, tankLiters } from '../../lib/centralTanks';
 import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
 
-/** كتابة الأرقام بفوارز أثناء الإدخال */
-const withCommas = (v: string) => {
-  const digits = v.replace(/[^\d]/g, '');
-  return digits ? Number(digits).toLocaleString('en-US') : '';
-};
-const num = (v: string) => (v.trim() === '' ? 0 : Number(v.replace(/,/g, '')));
 
 /**
  * خانة رقم بفوارز تحافظ على موضع المؤشر: بعد إعادة التنسيق يعود المؤشر بعد نفس عدد الأرقام،
@@ -147,29 +144,8 @@ const EXTERNAL_ICONS: Record<SaharaExternalSource, React.ComponentType<{ classNa
   commercial: Store
 };
 
-interface FormState {
-  id: string | null;
-  date: string;
-  previous: string;
-  editPrevious: boolean; // false = الرصيد السابق تلقائي من اليوم الذي قبله
-  prevEditing: boolean; // خانة الرصيد السابق مفتوحة للإدخال (قبل الضغط على حفظ)
-  vehicles: string;
-  farms: string;
-  generators: string;
-  external: Partial<Record<SaharaExternalSource, string>>; // المصادر المختارة فقط
-  sales: string;
-  stations: Record<string, string>; // { tankId: لتر }
-  currentOverride: string; // الرصيد الحالي من ملف الكشف ('' = يُحسب تلقائيًا)
-  /** مجاميع الحقول لحظة تحميل رصيد الكشف: أي زيادة أو نقص بعدها ينعكس على الرصيد الحالي */
-  overrideBase: { stations: number; inbound: number; consumption: number } | null;
-}
-
-/** مجاميع حقول النموذج المرتبطة بالرصيد الحالي */
-const formStationsSum = (f: Pick<FormState, 'stations'>) => Object.values(f.stations).reduce((a, v) => a + num(v || ''), 0);
-const formInbound = (f: Pick<FormState, 'external'>) =>
-  Object.values(f.external).reduce((a, v) => a + num(v || ''), 0);
-const formConsumption = (f: Pick<FormState, 'vehicles' | 'farms' | 'generators' | 'sales'>) =>
-  num(f.vehicles) + num(f.farms) + num(f.generators) + num(f.sales);
+// منطق النموذج (يوم جديد، التعبئة من الكشف، السجل، شروط الحفظ) في lib/saharaBalanceForm.ts
+type FormState = SaharaBalanceForm;
 
 const MAX_STATION_SLOTS = 8;
 
@@ -236,71 +212,16 @@ export const SaharaBalanceView: React.FC = () => {
         setUpload({ status: 'error', message: t('finance:saharaBalance.upload.imagesUnsupported') });
         return;
       }
-      const names = liveStations.map(s => s.name);
-      const r = await readSaharaReportFile(file, names);
-      const val = (n: number) => (n > 0 ? withCommas(String(Math.round(n))) : '');
-      const stations = { ...form.stations };
-      const unmatched: string[] = [];
-      let filled = 0;
-      for (const st of r.stations) {
-        const matched = (st.matchedStation && matchStation(st.matchedStation, names)) || matchStation(st.nameInImage, names);
-        const target = liveStations.find(ls => ls.name === matched);
-        if (target) {
-          stations[target.id] = withCommas(String(Math.round(st.balance)));
-          filled++;
-        } else {
-          unmatched.push(`${st.nameInImage} (${formatNumber(Math.round(st.balance))})`);
-        }
-      }
-      const external: FormState['external'] = {};
-      if (r.inboundExternal > 0) external.government = val(r.inboundExternal);
-      if (r.inboundEtihad > 0) external.etihad = val(r.inboundEtihad);
-      const fields = [r.vehicles, r.farms, r.generators, r.sentToFarms, r.inboundExternal, r.inboundEtihad];
-      filled += fields.filter(n => n > 0).length;
-      // تاريخ الكشف يصبح تاريخ اليوم تلقائيًا (للتسجيل الجديد فقط، ويبقى قابلًا للتعديل يدويًا)
-      const date = !form.id && r.date ? r.date : form.date;
-      // الرصيد السابق التلقائي لتاريخ الكشف (قد يختلف عن تاريخ النموذج قبل الرفع)
-      const autoPrev = computed.filter(x => x.id !== form.id && x.date < date).pop()?.current ?? null;
-      // الرصيد السابق = "المدوّر السابق" في الكشف (مجموع الرصيد السابق لكل المواقع)؛ إن طابق التلقائي يبقى تلقائيًا
-      const carried = r.previousCarried;
-      const prevPatch: Partial<FormState> = carried !== undefined
-        ? (autoPrev !== null && Math.round(carried) === Math.round(autoPrev)
-          ? { editPrevious: false, prevEditing: false, previous: '' }
-          : { editPrevious: true, prevEditing: false, previous: withCommas(String(Math.round(carried))) })
-        : {};
-      if (carried !== undefined) filled++;
-      setForm(f => f && {
-        ...f,
-        date,
-        ...prevPatch,
-        currentOverride: (r.tableTotal ?? r.currentInFile) !== undefined ? withCommas(String(Math.round((r.tableTotal ?? r.currentInFile)!))) : f.currentOverride,
-        overrideBase: (r.tableTotal ?? r.currentInFile) !== undefined
-          ? {
-              stations: Object.values(stations).reduce((a, v) => a + num(v || ''), 0),
-              inbound: r.inboundExternal + r.inboundEtihad,
-              consumption: r.vehicles + r.farms + r.generators + r.sentToFarms
-            }
-          : f.overrideBase,
-        vehicles: val(r.vehicles),
-        farms: val(r.farms),
-        generators: val(r.generators),
-        sales: val(r.sentToFarms),
-        external,
-        stations
-      });
-
-      // التحقق: السابق + الوارد − الاستهلاك يجب أن يساوي "الرصيد الحالي" في الكشف
-      let check = '';
-      if (r.currentInFile !== undefined) {
-        const previous = carried ?? autoPrev ?? 0;
-        const inbound = r.inboundExternal + r.inboundEtihad;
-        const consumption = r.vehicles + r.farms + r.generators + r.sentToFarms;
-        const diff = Math.round(previous + inbound - consumption - r.currentInFile);
-        check = diff === 0
-          ? `✓ ${t('finance:saharaBalance.upload.checkMatch', { value: formatNumber(Math.round(r.currentInFile)) })}`
-          : `⚠ ${t('finance:saharaBalance.upload.checkMismatch', { value: formatNumber(Math.round(r.currentInFile)), diff: formatNumber(diff) })}`;
-      }
-      setUpload({ status: 'done', fileName: file.name, filled, unmatched, notes: [!form.id && r.date ? t('finance:saharaBalance.upload.dateFromFile', { date: r.date }) : '', check, r.notes].filter(Boolean).join(' — ') });
+      const r = await readSaharaReportFile(file, liveStations.map(s => s.name));
+      const res = applySaharaReport(form, r, liveStations, computed);
+      setForm(res.form);
+      const filled = res.filled;
+      const unmatched = res.unmatched.map(u => `${u.name} (${formatNumber(u.balance)})`);
+      const check = !res.check ? ''
+        : res.check.diff === 0
+          ? `✓ ${t('finance:saharaBalance.upload.checkMatch', { value: formatNumber(res.check.current) })}`
+          : `⚠ ${t('finance:saharaBalance.upload.checkMismatch', { value: formatNumber(res.check.current), diff: formatNumber(res.check.diff) })}`;
+      setUpload({ status: 'done', fileName: file.name, filled, unmatched, notes: [res.dateFromFile ? t('finance:saharaBalance.upload.dateFromFile', { date: res.dateFromFile }) : '', check, r.notes].filter(Boolean).join(' — ') });
       setReportFile(file);
     } catch (e) {
       setUpload({ status: 'error', message: e instanceof Error ? e.message : t('finance:ledger.upload.parseFailed') });
@@ -311,29 +232,7 @@ export const SaharaBalanceView: React.FC = () => {
     setEntryMode('manual');
     setUpload({ status: 'idle' });
     setReportFile(null);
-    // اليوم الجديد: تاريخ اليوم، أو اليوم التالي لآخر يوم مسجّل إن كان اليوم مسجّلًا
-    const today = getBusinessDate();
-    let date = today;
-    if (latest && latest.date >= today) {
-      const d = new Date(toInputDate(latest.date) + 'T12:00:00');
-      d.setDate(d.getDate() + 1);
-      date = fromInputDate(d.toISOString().slice(0, 10));
-    }
-    setForm({
-      id: null,
-      date,
-      previous: '',
-      editPrevious: !latest,
-      prevEditing: !latest,
-      vehicles: '',
-      farms: '',
-      generators: '',
-      external: {},
-      sales: '',
-      stations: Object.fromEntries(liveStations.map(s => [s.id, ''])), // اليوم الجديد يبدأ بخانات فارغة
-      currentOverride: '',
-      overrideBase: null
-    });
+    setForm(newSaharaBalanceForm(latest, liveStations));
   };
 
   const openEdit = (r: SaharaLedgerRecord) => {
@@ -367,27 +266,7 @@ export const SaharaBalanceView: React.FC = () => {
   };
 
   // السجل الناتج عن النموذج ومعاينته محسوبًا ضمن كل السجلات
-  const draft: SaharaLedgerRecord | null = form && {
-    id: form.id || 'draft',
-    date: form.date,
-    vehicles: num(form.vehicles),
-    farms: num(form.farms),
-    generators: num(form.generators),
-    inboundExternal: Object.fromEntries(
-      Object.entries(form.external).map(([k, v]) => [k, num(v || '')])
-    ) as SaharaLedgerRecord['inboundExternal'],
-    sales: num(form.sales),
-    stationBalances: Object.fromEntries(Object.entries(form.stations).map(([id, val]) => [id, num(val)])),
-    currentOverride: form.currentOverride.trim() !== ''
-      ? num(form.currentOverride)
-        + (form.overrideBase
-          ? (formStationsSum(form) - form.overrideBase.stations)
-            + (formInbound(form) - form.overrideBase.inbound)
-            - (formConsumption(form) - form.overrideBase.consumption)
-          : 0)
-      : null,
-    previousOverride: (form.editPrevious || form.prevEditing) && form.previous.trim() !== '' ? num(form.previous) : null
-  };
+  const draft: SaharaLedgerRecord | null = form && saharaDraft(form);
   const preview = draft
     ? computeSahara([...records.filter(r => r.id !== form!.id), draft]).find(r => r.id === draft.id) ?? null
     : null;
@@ -404,7 +283,7 @@ export const SaharaBalanceView: React.FC = () => {
   const dateTaken = !!form && records.some(r => r.date === form.date && r.id !== form.id);
   // محطات تجاوز رصيدها سعة خزانها
   const overCapacity = form ? liveStations.filter(s => num(form.stations[s.id] || '') > s.capacity) : [];
-  const canSave = !!form && !dateTaken && !!form.date && (autoPrevious !== null || form.editPrevious || form.prevEditing) && overCapacity.length === 0;
+  const canSave = !!form && saharaSaveBlockers(form, records, computed, liveStations).length === 0;
 
   // الرصيد السابق: تعديل ← إدخال، حفظ ← تثبيت (القيمة الفارغة أو المطابقة للتلقائي ترجع تلقائية)
   const startEditPrevious = () => {
@@ -436,13 +315,10 @@ export const SaharaBalanceView: React.FC = () => {
     update(prev => (form.id ? prev.map(r => (r.id === form.id ? record : r)) : [...prev, record]));
     if (reportFile) reportAttach.attach(record.id, reportFile);
     setReportFile(null);
-    bulk.markSaved();
     setViewId(null);
     setForm(null);
   };
 
-  // الرفع المتعدد: الملف التالي من نوع "كشف الكاز" يفتح نافذة يوم جديد معبّأة منه للمراجعة والحفظ
-  const bulk = useBulkFill('balance', true, !!form, () => { openNew(); setEntryMode('upload'); }, file => { void handleUpload(file); });
 
   // تأكيد البيانات: ينقل أرصدة محطات آخر يوم للخزانات ويعتمد السجل للواجهة الرئيسية
   const confirmPublish = () => {

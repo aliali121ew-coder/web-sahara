@@ -130,6 +130,15 @@ export const useSaharaPrice = () => {
 };
 
 /** قراءة/كتابة السجل مع مزامنة حية بين كل الصفحات */
+/**
+ * حفظ خارج الصفحة (الرفع المتعدد): نفس حفظ الصفحة. إن لم توجد نسخة معتمدة بعد تُعتمد الحالية أولًا،
+ * حتى يظهر اليوم الجديد بانتظار "تأكيد البيانات" ولا يُحسب معتمدًا بلا مراجعة.
+ */
+export const updateSaharaRecords = (fn: (prev: SaharaLedgerRecord[]) => SaharaLedgerRecord[]) => {
+  if (!readPublished()) localStorage.setItem(PUBLISHED_KEY, JSON.stringify(readSaharaRecords()));
+  writeRecords(fn(readSaharaRecords()));
+};
+
 export const useSaharaLedger = () => {
   const [records, setRecords] = useState<SaharaLedgerRecord[]>(readSaharaRecords);
   // أول تشغيل بدون نسخة معتمدة: البيانات الحالية تُعتبر معتمدة

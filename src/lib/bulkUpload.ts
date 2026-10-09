@@ -1,11 +1,9 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { findReportDate } from './reportDate';
 
 /**
  * الرفع المتعدد (صفحة شركة الصحاري): حتى 5 ملفات مرة واحدة.
- * لا يحفظ شيئًا بنفسه: يحدد نوع كل ملف من محتواه، ثم يفتح نافذة التسجيل العادية لقسمه
- * معبّأة من الملف (كأن المستخدم دخل التبويب ورفعه)، فيراجع ويحفظ، ثم ينتقل للملف التالي.
- * بهذا يمر كل ملف بنفس منطق الحفظ والتحقق وإرفاق الملف بالأرشيف تمامًا كالرفع اليدوي.
+ * هنا: تحديد نوع كل ملف وتاريخه من محتواه، وترتيب التنفيذ. المعالجة نفسها في bulkProcess.ts
+ * (بنفس دوال نافذة كل قسم).
  */
 export type BulkKind = 'balance' | 'petrol' | 'black-oil';
 /** القسم في صفحة الصحاري وصلاحية تعديله */
@@ -99,103 +97,3 @@ export const inspectFile = async (file: File, canEdit: (perm: string) => boolean
 export const orderForRun = (items: BulkItem[]) =>
   items.filter(i => i.kind && !i.problem).sort((a, b) =>
     (a.date || '').localeCompare(b.date || '') || KIND_ORDER.indexOf(a.kind!) - KIND_ORDER.indexOf(b.kind!));
-
-// ───── قائمة الانتظار (في الذاكرة فقط؛ الملفات لا تُحفظ إلا عبر نوافذ الأقسام) ─────
-interface QueueState { items: BulkItem[]; running: boolean; claimed: string | null; finished: boolean }
-let state: QueueState = { items: [], running: false, claimed: null, finished: false };
-const listeners = new Set<() => void>();
-const emit = (next: Partial<QueueState>) => { state = { ...state, ...next }; listeners.forEach(l => l()); };
-
-const activate = (items: BulkItem[]) => {
-  const next = items.find(i => i.status === 'ready');
-  if (!next) return emit({ items, running: false, claimed: null, finished: true });
-  emit({ items: items.map(i => (i.id === next.id ? { ...i, status: 'active' } : i)), running: true, claimed: null, finished: false });
-};
-
-export const bulkQueue = {
-  get: () => state,
-  start: (ordered: BulkItem[]) => activate(ordered.map(i => ({ ...i, status: 'ready' }))),
-  active: () => state.items.find(i => i.status === 'active') ?? null,
-  /** نافذة القسم تأخذ الملف مرة واحدة فقط (يمنع التعبئة المكررة عند إعادة العرض) */
-  claim: (id: string) => {
-    if (state.claimed === id) return false;
-    emit({ claimed: id });
-    return true;
-  },
-  /** انتهى الملف الحالي (حُفظ أو أُغلقت النافذة بدون حفظ) ← الملف التالي */
-  finish: (id: string, status: 'saved' | 'skipped') => {
-    if (!state.items.some(i => i.id === id && i.status === 'active')) return;
-    activate(state.items.map(i => (i.id === id ? { ...i, status } : i)));
-  },
-  /** إيقاف: الملفات الباقية تُعلَّم "لم تُعالج" */
-  stop: () => emit({ items: state.items.map(i => (i.status === 'ready' || i.status === 'active' ? { ...i, status: 'skipped' } : i)), running: false, claimed: null, finished: true }),
-  /** إغلاق الملخص */
-  clear: () => emit({ items: [], running: false, claimed: null, finished: false }),
-};
-
-export const useBulkQueue = () => {
-  const [, rerender] = useState(0);
-  useEffect(() => {
-    const l = () => rerender(n => n + 1);
-    listeners.add(l);
-    return () => { listeners.delete(l); };
-  }, []);
-  return state;
-};
-
-/**
- * لنافذة القسم: الملف المطلوب تعبئته الآن (مرة واحدة)، وإبلاغ القائمة عند إغلاق النافذة.
- * onOpen: يفتح نافذة تسجيل يوم جديد. fill: يعبّئها من الملف (بعد فتحها).
- */
-export const useBulkSlot = (kind: BulkKind, enabled: boolean) => {
-  const q = useBulkQueue();
-  const active = enabled ? q.items.find(i => i.status === 'active' && i.kind === kind) ?? null : null;
-  return {
-    /** الملف النشط لهذا القسم ولم تأخذه النافذة بعد */
-    pending: active && q.claimed !== active.id ? active : null,
-    /** الملف الذي تعالجه النافذة الآن */
-    current: active && q.claimed === active.id ? active : null,
-  };
-};
-
-/**
- * ربط نافذة قسم بالرفع المتعدد. isOpen: هل نافذة التسجيل مفتوحة. open: يفتح يومًا جديدًا.
- * fill: يعبّئ النافذة المفتوحة من الملف (نفس دالة الرفع اليدوي).
- * عند إغلاق النافذة يُبلَّغ: "حُفظ" إن استُدعيت markSaved قبل الإغلاق، وإلا "تُرك".
- */
-export const useBulkFill = (kind: BulkKind, enabled: boolean, isOpen: boolean, open: () => void, fill: (file: File) => void) => {
-  const { pending } = useBulkSlot(kind, enabled);
-  const idRef = useRef<string | null>(null);
-  const openedRef = useRef(false);
-  const savedRef = useRef(false);
-  const [file, setFile] = useState<File | null>(null);
-  const openRef = useRef(open);
-  const fillRef = useRef(fill);
-  useLayoutEffect(() => { openRef.current = open; fillRef.current = fill; });
-
-  // ملف جديد لهذا القسم: فتح نافذة يوم جديد ثم تعبئتها بعد ظهورها
-  useEffect(() => {
-    if (!pending || !bulkQueue.claim(pending.id)) return;
-    idRef.current = pending.id;
-    openedRef.current = false;
-    savedRef.current = false;
-    openRef.current();
-    setFile(pending.file);
-  }, [pending]);
-  useEffect(() => {
-    if (!isOpen || !file) return;
-    setFile(null);
-    openedRef.current = true;
-    fillRef.current(file);
-  }, [isOpen, file]);
-  // أُغلقت النافذة (حفظ أو إلغاء) ← الملف التالي
-  useEffect(() => {
-    if (isOpen || !openedRef.current || !idRef.current) return;
-    const id = idRef.current;
-    idRef.current = null;
-    openedRef.current = false;
-    bulkQueue.finish(id, savedRef.current ? 'saved' : 'skipped');
-  }, [isOpen]);
-
-  return { markSaved: () => { if (idRef.current) savedRef.current = true; } };
-};
