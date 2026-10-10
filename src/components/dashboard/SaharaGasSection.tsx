@@ -122,12 +122,12 @@ export const SaharaGasSection: React.FC = () => {
     },
   ];
   // اللون حسب ترتيب الاستهلاك (لا حسب القطاع): الأعلى أحمر، ثم أصفر، والأقل أزرق
-  // درجات هادئة متقاربة (مريحة للعين) ومميزة بوضوح: الأصفر أصفر لا برتقالي حتى لا يشبه الأحمر.
+  // درجات وسطى (لا حادة ولا باهتة) ومميزة بوضوح: الأصفر أصفر لا برتقالي حتى لا يشبه الأحمر.
   // color للنقطة والشريط والقوس، وtextColor أغمق قليلًا للنص (الأصفر الفاتح لا يُقرأ كنص)
   const RANK_COLORS = [
-    { color: '#F87171', textColor: '#DC2626', glowColor: 'rgba(248, 113, 113, 0.35)', grad: 'url(#rankHigh)' },
-    { color: '#FACC15', textColor: '#A16207', glowColor: 'rgba(250, 204, 21, 0.35)', grad: 'url(#rankMid)' },
-    { color: '#60A5FA', textColor: '#2563EB', glowColor: 'rgba(96, 165, 250, 0.35)', grad: 'url(#rankLow)' },
+    { color: '#EF4444', textColor: '#DC2626', glowColor: 'rgba(239, 68, 68, 0.35)', grad: 'url(#rankHigh)' },
+    { color: '#EAB308', textColor: '#A16207', glowColor: 'rgba(234, 179, 8, 0.35)', grad: 'url(#rankMid)' },
+    { color: '#3B82F6', textColor: '#2563EB', glowColor: 'rgba(59, 130, 246, 0.35)', grad: 'url(#rankLow)' },
   ];
   const rankOf = (i: number) => baseSectors.filter((x, j) => x.volume > baseSectors[i].volume || (x.volume === baseSectors[i].volume && j < i)).length;
   const sectorData = baseSectors.map((sec, i) => ({ ...sec, ...RANK_COLORS[Math.min(rankOf(i), RANK_COLORS.length - 1)] }));
@@ -628,16 +628,16 @@ export const SaharaGasSection: React.FC = () => {
                   <PieChart className="outline-none focus:outline-none select-none">
                     <defs>
                       <linearGradient id="rankHigh" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="#fca5a5" />
-                        <stop offset="100%" stopColor="#f87171" />
+                        <stop offset="0%" stopColor="#f87171" />
+                        <stop offset="100%" stopColor="#ef4444" />
                       </linearGradient>
                       <linearGradient id="rankMid" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="#fde68a" />
-                        <stop offset="100%" stopColor="#facc15" />
+                        <stop offset="0%" stopColor="#facc15" />
+                        <stop offset="100%" stopColor="#eab308" />
                       </linearGradient>
                       <linearGradient id="rankLow" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="#93c5fd" />
-                        <stop offset="100%" stopColor="#60a5fa" />
+                        <stop offset="0%" stopColor="#60a5fa" />
+                        <stop offset="100%" stopColor="#3b82f6" />
                       </linearGradient>
                       <filter id="glowEffect" x="-20%" y="-20%" width="140%" height="140%">
                         <feDropShadow dx="0" dy="3" stdDeviation="3" floodOpacity="0.35" />
@@ -731,11 +731,11 @@ export const SaharaGasSection: React.FC = () => {
                   </span>
                   <div className="flex items-center gap-2 text-[9.5px] shrink-0">
                     <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                       <span>{t('dashboard:flow.inbound')}</span>
                     </span>
                     <span className="flex items-center gap-1 text-red-600 dark:text-red-400 font-bold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
                       <span>{t('dashboard:flow.consumption')}</span>
                     </span>
                   </div>
@@ -752,12 +752,12 @@ export const SaharaGasSection: React.FC = () => {
                     >
                       <defs>
                         <linearGradient id="saharaInboundBar" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#6ee7b7" />
-                          <stop offset="100%" stopColor="#34d399" />
+                          <stop offset="0%" stopColor="#34d399" />
+                          <stop offset="100%" stopColor="#10b981" />
                         </linearGradient>
                         <linearGradient id="saharaConsumptionBar" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#fca5a5" />
-                          <stop offset="100%" stopColor="#f87171" />
+                          <stop offset="0%" stopColor="#f87171" />
+                          <stop offset="100%" stopColor="#ef4444" />
                         </linearGradient>
                       </defs>
                       <XAxis
