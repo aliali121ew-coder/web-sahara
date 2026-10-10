@@ -122,12 +122,12 @@ export const SaharaGasSection: React.FC = () => {
     },
   ];
   // اللون حسب ترتيب الاستهلاك (لا حسب القطاع): الأعلى أحمر، ثم أصفر، والأقل أزرق
-  // درجات وسطى (لا حادة ولا باهتة) ومميزة بوضوح: الأصفر أصفر لا برتقالي حتى لا يشبه الأحمر.
-  // color للنقطة والشريط والقوس، وtextColor أغمق قليلًا للنص (الأصفر الفاتح لا يُقرأ كنص)
+  // لون واحد (الأحمر) يتدرّج حسب الاستهلاك: الأكثر أحمر غامق، ثم أفتح فأفتح — للدائرة والخطوط معًا.
+  // color للقوس والنقطة والخط، وtextColor للنص (الدرجة الفاتحة لا تُقرأ كنص)
   const RANK_COLORS = [
-    { color: '#EF4444', textColor: '#DC2626', glowColor: 'rgba(239, 68, 68, 0.35)', grad: 'url(#rankHigh)' },
-    { color: '#EAB308', textColor: '#A16207', glowColor: 'rgba(234, 179, 8, 0.35)', grad: 'url(#rankMid)' },
-    { color: '#3B82F6', textColor: '#2563EB', glowColor: 'rgba(59, 130, 246, 0.35)', grad: 'url(#rankLow)' },
+    { color: '#B91C1C', textColor: '#991B1B', glowColor: 'rgba(185, 28, 28, 0.35)', grad: '#B91C1C' },
+    { color: '#EF4444', textColor: '#DC2626', glowColor: 'rgba(239, 68, 68, 0.35)', grad: '#EF4444' },
+    { color: '#FCA5A5', textColor: '#DC2626', glowColor: 'rgba(252, 165, 165, 0.45)', grad: '#FCA5A5' },
   ];
   const rankOf = (i: number) => baseSectors.filter((x, j) => x.volume > baseSectors[i].volume || (x.volume === baseSectors[i].volume && j < i)).length;
   const sectorData = baseSectors.map((sec, i) => ({ ...sec, ...RANK_COLORS[Math.min(rankOf(i), RANK_COLORS.length - 1)] }));
@@ -627,18 +627,6 @@ export const SaharaGasSection: React.FC = () => {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart className="outline-none focus:outline-none select-none">
                     <defs>
-                      <linearGradient id="rankHigh" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="#f87171" />
-                        <stop offset="100%" stopColor="#ef4444" />
-                      </linearGradient>
-                      <linearGradient id="rankMid" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="#facc15" />
-                        <stop offset="100%" stopColor="#eab308" />
-                      </linearGradient>
-                      <linearGradient id="rankLow" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="#60a5fa" />
-                        <stop offset="100%" stopColor="#3b82f6" />
-                      </linearGradient>
                       <filter id="glowEffect" x="-20%" y="-20%" width="140%" height="140%">
                         <feDropShadow dx="0" dy="3" stdDeviation="3" floodOpacity="0.35" />
                       </filter>
@@ -649,8 +637,8 @@ export const SaharaGasSection: React.FC = () => {
                       data={[{ value: 100 }]}
                       cx="50%"
                       cy="50%"
-                      innerRadius={40}
-                      outerRadius={56}
+                      innerRadius={38}
+                      outerRadius={59}
                       dataKey="value"
                       fill="currentColor"
                       className="text-slate-100 dark:text-slate-800/60 outline-none focus:outline-none"
@@ -663,9 +651,9 @@ export const SaharaGasSection: React.FC = () => {
                       data={sectorData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={40}
-                      outerRadius={56}
-                      paddingAngle={3}
+                      innerRadius={38}
+                      outerRadius={59}
+                      paddingAngle={2}
                       cornerRadius={0}
                       dataKey="value"
                       className="outline-none focus:outline-none"
