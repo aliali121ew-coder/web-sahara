@@ -1,9 +1,15 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ArrowUp, ArrowDown, Minus, TrendingUp, TrendingDown, BadgeDollarSign } from 'lucide-react';
 import { useFuelData } from '../../context/FuelDataContext';
 import { useTranslation } from 'react-i18next';
 import { Avatar, fmtPrice } from '../suppliers/supplierUi';
 import { SectionHeader } from './SectionHeader';
+import { deliveriesOfSupplier, deliverySupplier, supplierKey } from '../../lib/archiveSuppliers';
+import { deliveryDay } from '../../lib/inboundPrice';
+import type { InboundDelivery } from '../../types';
+
+/** ترتيب حداثة الشحنة: تاريخها ثم وقت تسجيلها (المعرّف del-<الوقت>-...) لشحنات نفس اليوم */
+const recency = (d: InboundDelivery) => `${deliveryDay(d)}|${(d.id.match(/^del-(\d+)/)?.[1] ?? '').padStart(15, '0')}`;
 
 /** مربع الاتجاه لفرق التغيّر: سهم مستقيم داخل كارت صغير بدل الإشارة (+ / −) */
 const DirBox: React.FC<{ v: number }> = ({ v }) => {
@@ -40,13 +46,39 @@ const ChangeCell: React.FC<{ pct: number }> = ({ pct }) => {
  * ومصدرها سجلات الأسعار نفسها؛ للعرض فقط (الصفوف لا تنقل لأي صفحة).
  */
 export const PriceIndexTable: React.FC = () => {
-  const { supplierPrices, searchQuery } = useFuelData();
+  const { supplierPrices, searchQuery, saharaDeliveries, etihadDeliveries } = useFuelData();
   const { t } = useTranslation(['dashboard', 'common']);
+  // آخر شحنة لكل مورد من الأرشيف: المورد الذي ورد منه أحدث وارد يصعد لأعلى الجدول
+  const lastShipment = useMemo(() => {
+    const latest = new Map<string, string>();
+    const scan = (company: 'sahara' | 'etihad', list: InboundDelivery[]) => list.forEach(d => {
+      const k = `${company}|${supplierKey(deliverySupplier(d))}`;
+      const r = recency(d);
+      if (r > (latest.get(k) ?? '')) latest.set(k, r);
+    });
+    scan('sahara', saharaDeliveries);
+    scan('etihad', etihadDeliveries);
+    return (rec: { supplierName: string; company?: 'sahara' | 'etihad'; lastUpdated: string }) => {
+      const companies = rec.company ? [rec.company] : (['sahara', 'etihad'] as const);
+      let best = '';
+      for (const c of companies) {
+        const exact = latest.get(`${c}|${supplierKey(rec.supplierName)}`);
+        // اسم مختلف قليلًا في السجل: مطابقة تقريبية مع شحنات الأرشيف
+        const r = exact ?? deliveriesOfSupplier(c === 'etihad' ? etihadDeliveries : saharaDeliveries, d => d, rec.supplierName)
+          .reduce((m, d) => (recency(d) > m ? recency(d) : m), '');
+        if (r > best) best = r;
+      }
+      // مورد بلا شحنات في الأرشيف (أُضيف يدويًا): تاريخ آخر تحديث لسعره
+      return best || rec.lastUpdated.replace(/-/g, '/');
+    };
+  }, [saharaDeliveries, etihadDeliveries]);
   const rows = supplierPrices
     .filter(item => item.supplierName.includes(searchQuery) || item.product.includes(searchQuery))
-    // الرئيسية تعرض آخر 7 موردين تحديثًا فقط؛ القائمة الكاملة في صفحة الموردين
-    .sort((a, b) => b.lastUpdated.replace(/-/g, '/').localeCompare(a.lastUpdated.replace(/-/g, '/')))
-    .slice(0, 7);
+    // الرئيسية تعرض آخر 7 موردين ورد منهم؛ القائمة الكاملة في صفحة الموردين
+    .map(item => ({ item, last: lastShipment(item) }))
+    .sort((a, b) => b.last.localeCompare(a.last))
+    .slice(0, 7)
+    .map(x => x.item);
 
   // كل العناوين في الوسط؛ خلية المجهز (الشعار والاسم) بمحاذاة البداية
   const th = 'px-3 xl:px-4 pt-3 pb-1 text-center text-[13px] font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap';
