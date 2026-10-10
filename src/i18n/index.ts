@@ -57,4 +57,21 @@ export const i18nReady = i18n.init({
   react: { useSuspense: false },
 }).then(() => applyDocumentLanguage(i18n.language));
 
+/** كل أقسام الترجمة (تُستخرج من الملفات نفسها فلا تتقادم قائمة يدوية) */
+const ALL_NAMESPACES = Object.keys(import.meta.glob('./locales/ar/*.json')).map(p => p.replace(/^.*\/(.+)\.json$/, '$1'));
+
+/**
+ * تحميل بقية الأقسام (لوحة المعلومات والمالية والخزانات...) فور جاهزية الأساسية، دون انتظارها قبل أول عرض.
+ * الصفحات الكسولة تنتظر هذا الوعد قبل ظهورها (lib/lazyPage.ts)، فلا تظهر مفاتيح خام مثل sahara.title لجزء من الثانية.
+ * الفشل (انقطاع الشبكة) لا يمنع العرض: تبقى النصوص الافتراضية. والانتظار بسقف زمني.
+ */
+const MAX_WAIT_MS = 2000;
+export const i18nAllReady: Promise<void> = i18nReady
+  .then(() => Promise.race([
+    i18n.loadNamespaces(ALL_NAMESPACES),
+    // شبكة بطيئة جدًا: لا يُؤخَّر العرض أكثر من ثانيتين (يكمل التحميل في الخلفية وتتحدّث النصوص تلقائيًا)
+    new Promise(resolve => setTimeout(resolve, MAX_WAIT_MS))
+  ]))
+  .then(() => undefined, () => undefined);
+
 export default i18n;
