@@ -199,6 +199,9 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
       if (r.inbound !== null) setPurchases(fmt(r.inbound));
       if (r.consumption !== null) setEtihadExpense(fmt(r.consumption));
       if (r.sales !== null) setSales(fmt(r.sales));
+      // تفاصيل أخرى (للعرض فقط)
+      if (r.operationalGas !== null) setOperationalGas(fmt(r.operationalGas));
+      if (r.cleanGas !== null) setCleanGas(fmt(r.cleanGas));
       // تاريخ الكشف يصبح تاريخ الحركة (للتسجيل الجديد فقط)
       if (!editRecord && r.date) setDate(r.date);
       // التحقق: السابق + الوارد − الاستهلاك − المبيعات = الرصيد الحالي في الكشف

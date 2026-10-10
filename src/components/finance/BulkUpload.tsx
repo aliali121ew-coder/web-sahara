@@ -1,10 +1,11 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Files, Loader2, X, CheckCircle2, AlertTriangle, MinusCircle, Play, FileText, Eye } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { usePermissions } from '../../lib/usePermission';
 import { BULK_ACCEPT, MAX_BULK_FILES, inspectFile, orderForRun, type BulkItem } from '../../lib/bulkUpload';
 import { processBulkFile, type BulkResult } from '../../lib/bulkProcess';
+import { warmFileReaders } from '../../lib/pdfDoc';
 import { SaharaFilePreview } from './SaharaFilePreview';
 
 type RunState = { progress: number; result?: BulkResult };
@@ -28,7 +29,11 @@ export const BulkUploadButton: React.FC = () => {
   const [run, setRun] = useState<Record<string, RunState> | null>(null);
   const [running, setRunning] = useState(false);
 
-  if (level('sahara.bulk-upload') < 1) return null;
+  const allowed = level('sahara.bulk-upload') >= 1;
+  // تجهيز مكتبات القراءة في الخلفية قبل أن يضغط المستخدم (أول ضغطة كانت تجمّد الهاتف)
+  useEffect(() => { if (allowed) warmFileReaders(); }, [allowed]);
+
+  if (!allowed) return null;
 
   const choose = async (list: File[]) => {
     if (!list.length) return;

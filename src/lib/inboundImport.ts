@@ -35,7 +35,7 @@ const HEADERS: [Field, string[]][] = [
   ['productColor', ['لون المنتج', 'اللون']],
   ['productPrice', ['سعر المنتج', 'السعر']],
   ['productCost', ['تكلفه المنتج', 'التكلفه', 'المبلغ']],
-  ['receiptUnloadDate', ['تاريخ الاستلام والتفريغ', 'تاريخ الاستلام', 'التاريخ']]
+  ['receiptUnloadDate', ['تاريخ الاستلام والتفريغ', 'تاريخ الاستلام', 'التاريخ', 'تاريخ']]
 ];
 
 const norm = (s: unknown) =>
@@ -47,13 +47,20 @@ const norm = (s: unknown) =>
 const matchHeader = (text: string): Field | null => {
   const t = norm(text);
   if (!t) return null;
-  for (const [field, names] of HEADERS) if (names.some(n => t === n || t.includes(n))) return field;
+  // PDF قد يقطع العنوان بمسافة داخل الكلمة ("الشر كة المجهزة"): المقارنة أيضًا بدون مسافات
+  const tight = t.replace(/\s/g, '');
+  // "المجهزة" (بالتاء) بدون "اسم" = الشركة المجهزة، و"اسم المجهز" = المجهز
+  if (!tight.includes('اسم') && tight.includes('المجهزه')) return 'supplierCompany';
+  for (const [field, names] of HEADERS) if (names.some(n => t === n || t.includes(n) || tight.includes(n.replace(/\s/g, '')))) return field;
   return null;
 };
 
+/** أول رقم في النص (يتجاهل "د.ع." والفوارز): "د . ع . 5,956,400" → 5956400 */
 const toNumber = (v: unknown) => {
   if (typeof v === 'number') return v;
-  const n = parseFloat(String(v ?? '').replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[^\d.-]/g, ''));
+  const t = String(v ?? '').replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/٬/g, ',').replace(/٫/g, '.');
+  const m = t.match(/-?\d[\d,]*(?:\.\d+)?/);
+  const n = m ? parseFloat(m[0].replace(/,/g, '')) : NaN;
   return Number.isFinite(n) ? n : 0;
 };
 
@@ -74,8 +81,11 @@ export const toIsoSlashDate = (v: unknown): string => {
   return '';
 };
 
+/** خانة فارغة في الكشف تُكتب "_" أو "-": تُعامل كفارغة (وإلا تُعدّ كل شحنة بلا فوجر مكررة بعد أول استيراد) */
+const PLACEHOLDER = /^[_\-–—.]+$/;
+
 const buildRow = (cells: Partial<Record<Field, unknown>>): InboundImportRow | null => {
-  const text = (f: Field) => String(cells[f] ?? '').trim();
+  const text = (f: Field) => { const v = String(cells[f] ?? '').trim(); return PLACEHOLDER.test(v) ? '' : v; };
   const qty = toNumber(cells.receivedQuantity);
   const voucher = text('voucherNumber');
   // صفوف فارغة أو صف المجموع
@@ -131,53 +141,128 @@ const parseExcel = async (file: File): Promise<InboundImportRow[]> => {
   throw new Error(i18n.t('common:fileImport.noHeaderRow'));
 };
 
+/** نص PDF بموضعه: الحافتان الأفقيتان والارتفاع، والنص كما هو (بمسافاته) */
+export interface PdfTextItem { str: string; left: number; right: number; y: number }
+
 /**
- * PDF: النصوص تُجمع في أسطر حسب موقعها العمودي، ثم يُحدد سطر العناوين،
- * وكل نص تحته يُنسب لأقرب عمود أفقيًا.
+ * نص خانة من قطعها: PDF يقطع الكلمة العربية (خصوصًا حرف الياء الأخير) إلى قطع، وبعضها بعرض صفر داخل كلمتها.
+ * القطعة بعرض صفر تُدرج داخل الكلمة التي تحتويها عند أقرب نهاية كلمة، والبقية تُرتَّب من اليمين لليسار
+ * وتُجمع بمسافاتها الأصلية (لا تُضاف مسافة بين قطعتين متلاصقتين: "بر" + "كات" = "بركات").
  */
-const parsePdf = (file: File): Promise<InboundImportRow[]> => withPdf(file, true, async pdf => {
+const joinPdfItems = (items: PdfTextItem[]): string => {
+  const solid = items.filter(i => i.right - i.left > 0.05).map(i => ({ ...i }));
+  for (const z of items.filter(i => i.right - i.left <= 0.05 && i.str.trim())) {
+    const host = solid.find(h => z.left >= h.left - 0.6 && z.left < h.right);
+    if (!host) { solid.push({ ...z, right: z.left + 0.01 }); continue; }
+    const t = host.str;
+    const at = Math.round(((host.right - z.left) / (host.right - host.left)) * t.length);
+    // أقرب نهاية كلمة (قبل مسافة أو نهاية النص)
+    let best = t.length;
+    for (let i = 0; i <= t.length; i++) if ((i === t.length || /\s/.test(t[i])) && i > 0 && !/\s/.test(t[i - 1]) && Math.abs(i - at) < Math.abs(best - at)) best = i;
+    host.str = t.slice(0, best) + z.str.trim() + t.slice(best);
+  }
+  solid.sort((a, b) => b.left - a.left);
+  let out = '';
+  solid.forEach((it, i) => {
+    const prev = solid[i - 1];
+    // فراغ واضح بين قطعتين بلا مسافة مكتوبة: كلمتان منفصلتان
+    if (prev && prev.left - it.right > 1.5 && !/\s$/.test(out) && !/^\s/.test(it.str)) out += ' ';
+    out += it.str;
+  });
+  // الأقواس كما في Excel: "اطراف النخيل ( نشوان )"
+  return out.replace(/\s*\(\s*/g, ' ( ').replace(/\s*\)\s*/g, ' ) ').replace(/\s+/g, ' ').trim();
+};
 
-  type Item = { text: string; x: number; y: number };
-  let columns: { field: Field; x: number }[] | null = null;
-  const rows: InboundImportRow[] = [];
+/** البعد بين قطعة وعمود: صفر إن تداخلا، وإلا المسافة بين الحافتين */
+const gap = (a: { left: number; right: number }, b: { left: number; right: number }) =>
+  Math.max(0, a.left - b.right, b.left - a.right);
 
-  for (let p = 1; p <= pdf.numPages; p++) {
-    const page = await pdf.getPage(p);
-    const content = await page.getTextContent();
-    const items: Item[] = (content.items as { str?: string; transform?: number[]; width?: number }[])
-      .filter(it => it.str?.trim() && it.transform)
-      .map(it => ({ text: it.str!.trim(), x: it.transform![4] + (it.width || 0) / 2, y: it.transform![5] }));
-
+/**
+ * جدول PDF من قطع النص (صفحة بصفحة): سطر العناوين يحدد عرض كل عمود (مع جمع العنوان المقطوع لقطع)،
+ * وكل قطعة في الأسطر التالية تُنسب للعمود الذي يتداخل معها أو الأقرب لحافته — لا لمنتصفه:
+ * الكمية في الكشف تقع بين منتصفي عنوانَي "الفوجر" و"الكمية" فكانت تُلصق برقم الفوجر.
+ */
+export const parsePdfTable = (pages: PdfTextItem[][]): InboundImportRow[] => {
+  type Col = { field: Field; left: number; right: number };
+  let columns: Col[] | null = null;
+  const dataLines: PdfTextItem[][] = [];
+  for (const items of pages) {
     // تجميع الأسطر (فرق عمودي ≤ 3 نقاط)
-    const lines: Item[][] = [];
+    const lines: PdfTextItem[][] = [];
     for (const it of [...items].sort((a, b) => b.y - a.y)) {
+      if (!it.str.trim() && it.right - it.left <= 0.05) continue;
       const line = lines.find(l => Math.abs(l[0].y - it.y) <= 3);
       if (line) line.push(it); else lines.push([it]);
     }
-
     for (const line of lines) {
-      if (!columns) {
-        const found = new Map<Field, number>();
-        for (const it of line) {
-          const f = matchHeader(it.text);
-          if (f && !found.has(f)) found.set(f, it.x);
-        }
-        if (found.size >= 4) columns = [...found].map(([field, x]) => ({ field, x }));
+      // عبارات السطر: قطع متلاصقة (أو متداخلة) تُجمع في عبارة واحدة
+      const phrases: PdfTextItem[][] = [];
+      for (const it of [...line].sort((a, b) => b.right - a.right)) {
+        const last = phrases[phrases.length - 1];
+        const lastLeft = last ? Math.min(...last.map(i => i.left)) : 0;
+        if (last && lastLeft - it.right < 1.5) last.push(it); else phrases.push([it]);
+      }
+      const headers = phrases
+        .map(ph => ({ field: matchHeader(joinPdfItems(ph)), left: Math.min(...ph.map(i => i.left)), right: Math.max(...ph.map(i => i.right)) }))
+        .filter((h): h is Col => !!h.field);
+      if (new Set(headers.map(h => h.field)).size >= 4) {
+        // أول ظهور لكل حقل (سطر العناوين يتكرر أعلى كل صفحة)
+        if (!columns) columns = headers.filter((h, i) => headers.findIndex(x => x.field === h.field) === i);
         continue;
       }
-      // سطر عناوين مكرر في صفحة جديدة
-      if (line.filter(it => matchHeader(it.text)).length >= 4) continue;
-      const cells: Partial<Record<Field, string>> = {};
-      for (const it of [...line].sort((a, b) => b.x - a.x)) { // من اليمين لليسار
-        const col = columns.reduce((best, c) => (Math.abs(c.x - it.x) < Math.abs(best.x - it.x) ? c : best));
-        cells[col.field] = cells[col.field] ? `${cells[col.field]} ${it.text}` : it.text;
-      }
-      const row = buildRow(cells);
-      if (row) rows.push(row);
+      if (columns) dataLines.push(line);
     }
   }
   if (!columns) throw new Error(i18n.t('common:fileImport.noHeaderRowPdf'));
+  const cols = columns;
+
+  const mid = (x: { left: number; right: number }) => (x.left + x.right) / 2;
+  const nearest = (it: PdfTextItem, spans: Col[]) => spans.reduce((best, c) => {
+    const d = gap(it, c) - gap(it, best);
+    if (d !== 0) return d < 0 ? c : best;
+    return Math.abs(mid(c) - mid(it)) < Math.abs(mid(best) - mid(it)) ? c : best;
+  });
+
+  // الجولة الأولى: حسب عرض العناوين. ثم يُحسب لكل عمود موضع بياناته الفعلي (الوسيط) — الأرقام القصيرة
+  // المحاذاة لليمين (مثل كمية 498) أقرب لعنوان الفوجر منها لعنوان الكمية، لكنها داخل موضع أرقام الكمية
+  const seen = new Map<Field, { lefts: number[]; rights: number[] }>();
+  for (const line of dataLines) for (const it of line) {
+    if (!it.str.trim()) continue;
+    const f = nearest(it, cols).field;
+    const e = seen.get(f) || { lefts: [], rights: [] };
+    e.lefts.push(it.left); e.rights.push(it.right);
+    seen.set(f, e);
+  }
+  const median = (a: number[]) => { const b = [...a].sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; };
+  const dataCols: Col[] = cols.map(c => {
+    const e = seen.get(c.field);
+    return e && e.lefts.length >= 3 ? { field: c.field, left: median(e.lefts), right: median(e.rights) } : c;
+  });
+
+  const rows: InboundImportRow[] = [];
+  for (const line of dataLines) {
+    const byField = new Map<Field, PdfTextItem[]>();
+    for (const it of line) {
+      const f = nearest(it, dataCols).field;
+      byField.set(f, [...(byField.get(f) || []), it]);
+    }
+    const cells: Partial<Record<Field, string>> = {};
+    byField.forEach((its, f) => { cells[f] = joinPdfItems(its); });
+    const row = buildRow(cells);
+    if (row) rows.push(row);
+  }
   return rows;
+};
+
+const parsePdf = (file: File): Promise<InboundImportRow[]> => withPdf(file, true, async pdf => {
+  const pages: PdfTextItem[][] = [];
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const content = await (await pdf.getPage(p)).getTextContent();
+    pages.push((content.items as { str?: string; transform?: number[]; width?: number }[])
+      .filter(it => it.str && it.transform)
+      .map(it => ({ str: it.str!, left: it.transform![4], right: it.transform![4] + (it.width || 0), y: it.transform![5] })));
+  }
+  return parsePdfTable(pages);
 });
 
 export const parseInboundFile = async (file: File): Promise<InboundImportRow[]> => {

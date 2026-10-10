@@ -434,6 +434,12 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // مع نقل ما أدخله المستخدم (الهاتف، الموقع، المندوب، الشعار، التصنيف)
       const legacy = list.filter(s => s.id.startsWith('sup-a-') && !s.company);
       if (legacy.length) list = list.filter(s => !legacy.includes(s));
+      // مورد أُضيف تلقائيًا من الأرشيف ولم تعد له أي شحنة (حُذفت، مثل استيراد خاطئ بأسماء مقطوعة) يُحذف،
+      // ما لم يُدخل له المستخدم بيانات. بدون ذلك تبقى الأسماء الخاطئة في مؤشرات الأسعار وتحجب الأسماء الصحيحة
+      const orphan = (x: SupplierPriceRecord) =>
+        x.id.startsWith('sup-a-') && !!x.company && !(x.phone || x.location || x.contactName || x.logo) &&
+        !deliveriesOfSupplier(x.company === 'etihad' ? etihadDeliveries : saharaDeliveries, d => d, x.supplierName).length;
+      if (list.some(orphan)) list = list.filter(x => !orphan(x));
       const missing = buildArchiveSuppliers(saharaDeliveries, etihadDeliveries)
         .filter(a => !list.some(s => (!s.company || s.company === a.company) && sameSupplier(s.supplierName, a.supplierName)))
         .map(a => {

@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { useFuelNav } from '../../context/FuelDataContext';
 import { EtihadSubtabKey } from './EtihadBalanceHubTabs';
 import { BulkUploadButton } from './BulkUpload';
+import { warmFileReaders } from '../../lib/pdfDoc';
 
 interface EtihadPortalHubProps {
   onSelectModule: (subtab: EtihadSubtabKey | 'petrol') => void;
@@ -34,6 +35,8 @@ export const EtihadPortalHub: React.FC<EtihadPortalHubProps> = ({
   company = 'etihad',
 }) => {
   const isSahara = company === 'sahara';
+  // صفحة الصحاري: تجهيز مكتبات قراءة الملفات في الخلفية لكل المستخدمين (رفع الكشوف من أي قسم)
+  useEffect(() => { if (isSahara) warmFileReaders(); }, [isSahara]);
   const { t, i18n } = useTranslation(['finance', 'common']);
   const { setActiveTab } = useFuelNav();
 

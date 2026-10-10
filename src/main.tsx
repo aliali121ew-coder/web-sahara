@@ -6,7 +6,7 @@ import '@fontsource-variable/noto-kufi-arabic';
 import '@fontsource-variable/cairo';
 import '@fontsource-variable/inter';
 import './index.css';
-import { i18nReady } from './i18n';
+import { i18nReady, i18nAllReady } from './i18n';
 import { initCloudSync } from './lib/cloudSync';
 import { AppLogin } from './components/auth/AppLogin';
 import { getProfile, refreshProfile } from './lib/session';
@@ -31,7 +31,8 @@ const start = async () => {
   // فلا ينتظر الفتح الشبكة في الاتصال الضعيف أو المنقطع. بلا نسخة (أول دخول) تُجلب قبل العرض
   if (getProfile()) void refreshProfile();
   else await refreshProfile();
-  const { default: App } = await import('./App');
+  // الترجمات الكاملة تُحمَّل بالتوازي مع كود التطبيق، فلا تظهر مفاتيح خام عند أول عرض
+  const [{ default: App }] = await Promise.all([import('./App'), i18nAllReady]);
   root.render(
     <React.StrictMode>
       <App />
