@@ -19,7 +19,8 @@ export const BulkUploadButton: React.FC = () => {
   const { level, canEdit } = usePermissions();
   const inputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<BulkItem[] | null>(null);
-  const [reading, setReading] = useState(false);
+  // عدد الملفات التي لم تُقرأ بعد
+  const [reading, setReading] = useState(0);
   const [extra, setExtra] = useState(0);
   // معاينة ملف قبل البدء (من الجهاز مباشرة، لم يُرفع بعد)
   const [preview, setPreview] = useState<BulkItem | null>(null);
@@ -31,13 +32,18 @@ export const BulkUploadButton: React.FC = () => {
 
   const choose = async (list: File[]) => {
     if (!list.length) return;
+    const files = list.slice(0, MAX_BULK_FILES);
     setExtra(Math.max(0, list.length - MAX_BULK_FILES));
-    setReading(true);
-    setItems(null);
     setRun(null);
-    const picked = await Promise.all(list.slice(0, MAX_BULK_FILES).map(f => inspectFile(f, canEdit)));
-    setItems(picked);
-    setReading(false);
+    // النافذة تفتح فورًا، والملفات تُقرأ واحدًا بعد الآخر وتظهر تباعًا
+    // (قراءتها معًا كانت تجمّد الهاتف)
+    setItems([]);
+    setReading(files.length);
+    for (const f of files) {
+      const item = await inspectFile(f, canEdit);
+      setItems(prev => [...(prev || []), item]);
+      setReading(n => n - 1);
+    }
   };
   const runnable = items ? orderForRun(items) : [];
 
@@ -52,7 +58,7 @@ export const BulkUploadButton: React.FC = () => {
     }
     setRunning(false);
   };
-  const close = () => { if (!running) { setItems(null); setRun(null); } };
+  const close = () => { if (!running && !reading) { setItems(null); setRun(null); } };
 
   const savedCount = run ? Object.values(run).filter(r => r.result?.status === 'saved').length : 0;
   const finished = !!run && !running;
@@ -77,11 +83,11 @@ export const BulkUploadButton: React.FC = () => {
     <>
       <button
         type="button"
-        disabled={reading || running}
+        disabled={reading > 0 || running}
         onClick={() => inputRef.current?.click()}
         className="flex items-center gap-2 px-4 h-11 rounded-2xl bg-gradient-to-l from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 disabled:opacity-50 text-white text-sm font-black shadow-md shadow-teal-600/25 cursor-pointer whitespace-nowrap active:scale-95 transition"
       >
-        {reading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Files className="w-4 h-4" />}
+        {reading > 0 ? <Loader2 className="w-4 h-4 animate-spin" /> : <Files className="w-4 h-4" />}
         {t('finance:bulk.button')}
       </button>
       <input
@@ -102,7 +108,7 @@ export const BulkUploadButton: React.FC = () => {
                 <h3 className="font-black text-base text-slate-900 dark:text-white">{t('finance:bulk.title')}</h3>
                 <p className="text-xs text-slate-500 mt-0.5">{finished ? t('finance:bulk.summary', { saved: savedCount, total: runnable.length }) : t('finance:bulk.hint')}</p>
               </div>
-              {!running && (
+              {!running && !reading && (
                 <button type="button" onClick={close} aria-label={t('common:actions.close')} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer"><X className="w-4 h-4" /></button>
               )}
             </div>
@@ -158,14 +164,14 @@ export const BulkUploadButton: React.FC = () => {
 
             <div className="flex items-center gap-2 p-4 border-t border-slate-100 dark:border-slate-800">
               <p className="flex-1 text-[11px] text-slate-500">
-                {finished ? t('finance:bulk.confirmHint') : running ? t('finance:bulk.processing') : t('finance:bulk.willProcess', { count: runnable.length })}
+                {finished ? t('finance:bulk.confirmHint') : running ? t('finance:bulk.processing') : reading > 0 ? t('finance:bulk.reading', { count: reading }) : t('finance:bulk.willProcess', { count: runnable.length })}
               </p>
               {finished ? (
                 <button type="button" onClick={close} className="h-10 px-5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-black cursor-pointer">{t('common:actions.done')}</button>
               ) : !running && (
                 <>
                   <button type="button" onClick={close} className="h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-300 cursor-pointer">{t('common:actions.cancel')}</button>
-                  <button type="button" disabled={!runnable.length} onClick={() => void start()} className="h-10 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-40 text-white text-sm font-black flex items-center gap-1.5 cursor-pointer">
+                  <button type="button" disabled={!runnable.length || reading > 0} onClick={() => void start()} className="h-10 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-40 text-white text-sm font-black flex items-center gap-1.5 cursor-pointer">
                     <Play className="w-4 h-4" />{t('finance:bulk.start')}
                   </button>
                 </>

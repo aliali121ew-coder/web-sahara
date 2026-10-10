@@ -1,4 +1,5 @@
 import { findReportDate } from './reportDate';
+import { withPdf } from './pdfDoc';
 
 /**
  * الرفع المتعدد (صفحة شركة الصحاري): حتى 5 ملفات مرة واحدة.
@@ -41,10 +42,7 @@ const skel = (s: string) => norm(s).replace(/[ال\s]/g, '');
 
 /** أسطر نص الملف (PDF أو Excel) لتحديد النوع والتاريخ */
 const readLines = async (file: File): Promise<string[][]> => {
-  if (/\.pdf$/i.test(file.name)) {
-    const pdfjs = await import('pdfjs-dist');
-    pdfjs.GlobalWorkerOptions.workerSrc = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
-    const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  if (/\.pdf$/i.test(file.name)) return withPdf(file, false, async pdf => {
     const lines: string[][] = [];
     for (let p = 1; p <= Math.min(pdf.numPages, 3); p++) {
       const content = await (await pdf.getPage(p)).getTextContent();
@@ -59,9 +57,10 @@ const readLines = async (file: File): Promise<string[][]> => {
       rows.sort((a, b) => b.y - a.y).forEach(r => lines.push([r.parts.join(' '), ...r.parts]));
     }
     return lines;
-  }
+  });
   const XLSX = await import('xlsx');
-  const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
+  // النوع والتاريخ في أعلى الكشف: قراءة أول 3 أوراق وأول 300 صف فقط (القراءة الكاملة تثقل الهاتف)
+  const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true, sheets: [0, 1, 2], sheetRows: 300 });
   const lines: unknown[][] = [];
   for (const name of wb.SheetNames.slice(0, 3)) lines.push(...XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[name], { header: 1, raw: true, defval: '' }));
   return lines.map(r => r.map(c => (c instanceof Date ? c : String(c ?? '')))) as string[][];

@@ -1,4 +1,5 @@
 import i18n from '../i18n';
+import { withPdf } from './pdfDoc';
 /**
  * قراءة تقرير النفط الأسود اليومي (Excel أو PDF) لتعبئة نافذة "تسجيل يوم" تلقائيًا.
  * التقرير مقسّم إلى مواقف (موقف الريان، موقف السكر...) وتحت كل موقف أسطر: عنوان + رقم، مثل:
@@ -107,15 +108,7 @@ const readExcel = async (file: File) => {
   return grid;
 };
 
-const readPdf = async (file: File) => {
-  const pdfjs = await import('pdfjs-dist');
-  pdfjs.GlobalWorkerOptions.workerSrc = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
-  const pdf = await pdfjs.getDocument({
-    data: new Uint8Array(await file.arrayBuffer()),
-    cMapUrl: '/pdfjs/cmaps/',
-    cMapPacked: true,
-    standardFontDataUrl: '/pdfjs/standard_fonts/'
-  }).promise;
+const readPdf = (file: File) => withPdf(file, true, async pdf => {
   const grid: unknown[][] = [];
   for (let p = 1; p <= pdf.numPages; p++) {
     const page = await pdf.getPage(p);
@@ -132,7 +125,7 @@ const readPdf = async (file: File) => {
     for (const l of lines) grid.push([...l].sort((a, b) => b.x - a.x).map(i => i.text));
   }
   return grid;
-};
+});
 
 /** تاريخ التقرير (أول تاريخ في الملف: 29/09/2026 أو 2026/09/29) → YYYY/MM/DD */
 const findDate = (grid: unknown[][]): string | null => {

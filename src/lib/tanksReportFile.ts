@@ -1,3 +1,4 @@
+import { withPdf } from './pdfDoc';
 /**
  * ملف الخزانات اليومي (Excel أو PDF): تُقرأ منه كميات 9 خزانات نفط أسود فقط ويُهمل الباقي:
  * "الخزان الرئيسي 1..6" (جدول مستوى الخزانات الرئيسية، عمود "الكمية")، ثم
@@ -96,10 +97,7 @@ export const parseTanksPdfRows = (rows: PdfItem[][]): (number | null)[] => {
   return TANKS_FILE_SLOTS.map(s => found.get(`${s.kind}:${s.no}`) ?? null);
 };
 
-const readPdf = async (file: File) => {
-  const pdfjs = await import('pdfjs-dist');
-  pdfjs.GlobalWorkerOptions.workerSrc = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
-  const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+const readPdf = (file: File) => withPdf(file, false, async pdf => {
   const rows: PdfItem[][] = [];
   for (let p = 1; p <= Math.min(pdf.numPages, 3); p++) {
     const content = await (await pdf.getPage(p)).getTextContent();
@@ -115,7 +113,7 @@ const readPdf = async (file: File) => {
     page.sort((a, b) => b.y - a.y).forEach(r => rows.push(r.items));
   }
   return parseTanksPdfRows(rows);
-};
+});
 
 /** قراءة الملف: PDF، أو أول ورقة Excel فيها الخزانات */
 export const readTanksReportFile = async (file: File): Promise<(number | null)[]> => {

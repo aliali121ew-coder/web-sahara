@@ -726,6 +726,7 @@
     "willProcess_one": "{{count}} file will be processed",
     "willProcess_other": "{{count}} files will be processed in order",
     "processing": "Processing… keep this page open",
+    "reading": "Reading files… {{count}} left",
     "confirmHint": "Saved days wait for \"Confirm data\" on each section page before reaching the home page and tanks.",
     "reason": {
       "noDate": "No date in the file — upload it from its tab",
