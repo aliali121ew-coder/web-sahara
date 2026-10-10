@@ -122,10 +122,12 @@ export const SaharaGasSection: React.FC = () => {
     },
   ];
   // اللون حسب ترتيب الاستهلاك (لا حسب القطاع): الأعلى أحمر، ثم أصفر، والأقل أزرق
+  // درجات هادئة متقاربة (مريحة للعين) ومميزة بوضوح: الأصفر أصفر لا برتقالي حتى لا يشبه الأحمر.
+  // color للنقطة والشريط والقوس، وtextColor أغمق قليلًا للنص (الأصفر الفاتح لا يُقرأ كنص)
   const RANK_COLORS = [
-    { color: '#DC2626', glowColor: 'rgba(220, 38, 38, 0.35)', grad: 'url(#rankHigh)' },
-    { color: '#D97706', glowColor: 'rgba(217, 119, 6, 0.35)', grad: 'url(#rankMid)' },
-    { color: '#2563EB', glowColor: 'rgba(37, 99, 235, 0.35)', grad: 'url(#rankLow)' },
+    { color: '#F87171', textColor: '#DC2626', glowColor: 'rgba(248, 113, 113, 0.35)', grad: 'url(#rankHigh)' },
+    { color: '#FACC15', textColor: '#A16207', glowColor: 'rgba(250, 204, 21, 0.35)', grad: 'url(#rankMid)' },
+    { color: '#60A5FA', textColor: '#2563EB', glowColor: 'rgba(96, 165, 250, 0.35)', grad: 'url(#rankLow)' },
   ];
   const rankOf = (i: number) => baseSectors.filter((x, j) => x.volume > baseSectors[i].volume || (x.volume === baseSectors[i].volume && j < i)).length;
   const sectorData = baseSectors.map((sec, i) => ({ ...sec, ...RANK_COLORS[Math.min(rankOf(i), RANK_COLORS.length - 1)] }));
@@ -626,16 +628,16 @@ export const SaharaGasSection: React.FC = () => {
                   <PieChart className="outline-none focus:outline-none select-none">
                     <defs>
                       <linearGradient id="rankHigh" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="#f87171" />
-                        <stop offset="100%" stopColor="#dc2626" />
+                        <stop offset="0%" stopColor="#fca5a5" />
+                        <stop offset="100%" stopColor="#f87171" />
                       </linearGradient>
                       <linearGradient id="rankMid" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="#fbbf24" />
-                        <stop offset="100%" stopColor="#d97706" />
+                        <stop offset="0%" stopColor="#fde68a" />
+                        <stop offset="100%" stopColor="#facc15" />
                       </linearGradient>
                       <linearGradient id="rankLow" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="#3b82f6" />
-                        <stop offset="100%" stopColor="#1d4ed8" />
+                        <stop offset="0%" stopColor="#93c5fd" />
+                        <stop offset="100%" stopColor="#60a5fa" />
                       </linearGradient>
                       <filter id="glowEffect" x="-20%" y="-20%" width="140%" height="140%">
                         <feDropShadow dx="0" dy="3" stdDeviation="3" floodOpacity="0.35" />
@@ -702,7 +704,7 @@ export const SaharaGasSection: React.FC = () => {
                     <span 
                       className="font-mono font-black leading-none transition-all duration-300 tracking-tight text-center tabular-nums"
                       style={{ 
-                        color: activeIndex !== null ? sectorData[activeIndex].color : undefined,
+                        color: activeIndex !== null ? sectorData[activeIndex].textColor : undefined,
                         fontSize: activeIndex !== null ? '1.15rem' : '0.8rem',
                         transform: activeIndex !== null ? 'scale(1.08)' : 'scale(1)'
                       }}
@@ -729,11 +731,11 @@ export const SaharaGasSection: React.FC = () => {
                   </span>
                   <div className="flex items-center gap-2 text-[9.5px] shrink-0">
                     <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                       <span>{t('dashboard:flow.inbound')}</span>
                     </span>
                     <span className="flex items-center gap-1 text-red-600 dark:text-red-400 font-bold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>
                       <span>{t('dashboard:flow.consumption')}</span>
                     </span>
                   </div>
@@ -750,12 +752,12 @@ export const SaharaGasSection: React.FC = () => {
                     >
                       <defs>
                         <linearGradient id="saharaInboundBar" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#10b981" />
-                          <stop offset="100%" stopColor="#059669" />
+                          <stop offset="0%" stopColor="#6ee7b7" />
+                          <stop offset="100%" stopColor="#34d399" />
                         </linearGradient>
                         <linearGradient id="saharaConsumptionBar" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#f87171" />
-                          <stop offset="100%" stopColor="#dc2626" />
+                          <stop offset="0%" stopColor="#fca5a5" />
+                          <stop offset="100%" stopColor="#f87171" />
                         </linearGradient>
                       </defs>
                       <XAxis
@@ -843,9 +845,9 @@ export const SaharaGasSection: React.FC = () => {
                       <span 
                         className="font-mono font-black text-[11px] px-1.5 py-0.5 rounded-md shrink-0 shadow-2xs"
                         style={{ 
-                          backgroundColor: `${sec.color}15`, 
-                          color: sec.color,
-                          border: `1px solid ${sec.color}30`
+                          backgroundColor: `${sec.color}1f`, 
+                          color: sec.textColor,
+                          border: `1px solid ${sec.color}55`
                         }}
                       >
                         {sec.value}%
