@@ -179,6 +179,7 @@
   "priceIndex": {
     "title": "مؤشرات أسعار الشركات والموردين",
     "supplier": "المجهز",
+    "lastInbound": "آخر وارد",
     "product": "نوع المنتج",
     "category": "التصنيف",
     "current": "السعر الحالي",

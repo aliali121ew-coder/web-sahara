@@ -152,3 +152,53 @@ export const equipperOf = (d: InboundDelivery) => {
   const n = (d.supplierName || '').replace(/\s+/g, ' ').trim();
   return n === '' || n === '_' || n === '-' ? (d.supplierCompany || '').replace(/\s+/g, ' ').trim() : n;
 };
+
+/** ترتيب حداثة الشحنة: تاريخها ثم وقت تسجيلها (المعرّف del-<الوقت>-...) لشحنات نفس اليوم */
+export const deliveryRecency = (d: InboundDelivery) => `${dateKey(d)}|${(d.id.match(/^del-(\d+)/)?.[1] ?? '').padStart(15, '0')}`;
+
+export interface LatestSupplierPrice {
+  id: string;
+  company: 'sahara' | 'etihad';
+  supplierName: string;
+  product: string;
+  density?: string;
+  color?: string;
+  /** سعر آخر شحنة مسعّرة من هذا المجهز */
+  price: number;
+  /** سعر شحنته التي قبلها مباشرة (null إن لم تكن له إلا شحنة واحدة) */
+  previousPrice: number | null;
+  /** تاريخ آخر وارد منه */
+  date: string;
+  recency: string;
+}
+
+/**
+ * مؤشرات الأسعار من الأرشيف مباشرة (الصحاري والاتحاد معًا): لكل مجهز آخر شحنة له وسعرها،
+ * ويُقارن بسعر شحنته السابقة مباشرة. مرتبة من الأحدث وارد. الشحنة بلا مجهز ولا شركة لا تُنسب لأحد.
+ */
+export const latestSupplierPrices = (sahara: InboundDelivery[], etihad: InboundDelivery[]): LatestSupplierPrice[] => {
+  const out: LatestSupplierPrice[] = [];
+  for (const [company, list] of [['sahara', sahara], ['etihad', etihad]] as const) {
+    for (const [key, group] of indexDeliveries(list)) {
+      if (!key || PLACEHOLDER.has(key)) continue;
+      const sorted = [...group].sort((a, b) => deliveryRecency(b).localeCompare(deliveryRecency(a)));
+      const priced = sorted.filter(d => priceOf(d) > 0);
+      const last = priced[0] ?? sorted[0];
+      const freq = new Map<string, number>();
+      group.forEach(d => { const n = cleanName(deliverySupplier(d)); freq.set(n, (freq.get(n) ?? 0) + 1); });
+      out.push({
+        id: `sup-a-${company}-${key.replace(/\s+/g, '-')}`,
+        company,
+        supplierName: [...freq].sort((a, b) => b[1] - a[1])[0][0],
+        product: last.product || '',
+        density: archiveValue(last.productDensity),
+        color: recordColor(archiveValue(last.productColor)),
+        price: priceOf(last),
+        previousPrice: priced[1] ? priceOf(priced[1]) : null,
+        date: dateKey(last),
+        recency: deliveryRecency(last),
+      });
+    }
+  }
+  return out.sort((a, b) => b.recency.localeCompare(a.recency));
+};

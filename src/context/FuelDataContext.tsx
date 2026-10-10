@@ -291,7 +291,8 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         ...d,
         product,
         company: d.company || 'صحاري كربلاء',
-        supplierCompany: d.supplierCompany || d.supplierName || 'مصفى كربلاء الدولي',
+        // بلا افتراض "مصفى كربلاء الدولي": شحنة بلا مجهز في الكشف كانت تُنسب له فيظهر كأحدث مورد
+        supplierCompany: d.supplierCompany || d.supplierName || '',
         driverName: d.driverName || 'سائق غير محدد',
         truckNumber: formatTruckPlate(d.truckNumber),
         voucherNumber: formatVoucher(d.voucherNumber || d.receiptNumber, d.id),
@@ -560,7 +561,7 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       ...delivery,
       id: newDeliveryId(),
       company: assignedCompany,
-      supplierCompany: delivery.supplierCompany || delivery.supplierName || 'مصفى كربلاء الدولي',
+      supplierCompany: delivery.supplierCompany || delivery.supplierName || '',
       driverName: delivery.driverName || 'سائق غير محدد',
       truckNumber: delivery.truckNumber || 'غير محدد',
       voucherNumber: voucher,

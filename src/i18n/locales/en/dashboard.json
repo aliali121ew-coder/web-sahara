@@ -167,6 +167,7 @@
   "priceIndex": {
     "title": "Company & supplier price index",
     "supplier": "Equipper",
+    "lastInbound": "Last inbound",
     "product": "Product",
     "category": "Category",
     "current": "Current price",
