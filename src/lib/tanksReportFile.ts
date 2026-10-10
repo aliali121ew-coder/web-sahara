@@ -1,5 +1,5 @@
 /**
- * ملف الخزانات اليومي (Excel): تُقرأ منه كميات 9 خزانات نفط أسود فقط ويُهمل الباقي:
+ * ملف الخزانات اليومي (Excel أو PDF): تُقرأ منه كميات 9 خزانات نفط أسود فقط ويُهمل الباقي:
  * "الخزان الرئيسي 1..6" (جدول مستوى الخزانات الرئيسية، عمود "الكمية")، ثم
  * "خزان رقم 1 و2 و4 ( نفط اسود )" (جدول خزانات الكاز، عمود "سعة الخزان").
  * بنفس الترتيب تُملأ خزانات قسم النفط الأسود للصحاري.
@@ -58,8 +58,66 @@ export const parseTanksSheet = (rows: unknown[][]): (number | null)[] => {
   return TANKS_FILE_SLOTS.map(s => found.get(`${s.kind}:${s.no}`) ?? null);
 };
 
-/** قراءة الملف: أول ورقة فيها الخزانات */
+/** نص PDF بموقعه الأفقي */
+export interface PdfItem { str: string; x: number }
+
+/** بدون "ا" و"ل" والمسافات: PDF يستخرج "لا" معكوسة */
+const skel = (s: string) => norm(s).replace(/[ال\s]/g, '');
+const pdfNum = (s: string) => (s.includes('%') ? null : toNum(norm(s)));
+
+/**
+ * PDF بلا أعمدة: في صف كل خزان تُرتّب الأرقام حسب بعدها عن اسم الخزان (يعمل يمينًا أو يسارًا).
+ * الخزان الرئيسي: [مستوى الارتفاع، الكمية، …] ← الثاني. خزان الكاز (نفط أسود): [سعة الخزان، …] ← الأول.
+ * النسب (%) تُهمل، ورقم الخزان إن جاء منفصلًا عن اسمه يُستبعد.
+ */
+export const parseTanksPdfRows = (rows: PdfItem[][]): (number | null)[] => {
+  const found = new Map<string, number>();
+  for (const row of rows) {
+    // النصوص (الاسم قد يأتي مقسّمًا إلى عدة قطع)
+    const texts = row.filter(it => pdfNum(it.str) === null && !it.str.includes('%'));
+    const words = skel(texts.map(it => it.str).join(' '));
+    const kind = words.includes('خزنرئيسي') ? 'main' : words.includes('خزنرقم') && words.includes('نفطسود') ? 'gas' : null;
+    const label = texts.find(it => skel(it.str).includes('خزن'));
+    if (!kind || !label) continue;
+    const nums = row
+      .filter(it => pdfNum(it.str) !== null)
+      .map(it => ({ v: pdfNum(it.str)!, d: Math.abs(it.x - label.x), raw: it.str }))
+      .sort((a, b) => a.d - b.d);
+    // رقم الخزان: داخل نص الاسم، أو أقرب رقم صحيح صغير بجانبه
+    let no = Number(norm(texts.map(it => it.str).join(' ')).match(/(\d+)/)?.[1] ?? NaN);
+    if (Number.isNaN(no) && nums.length && Number.isInteger(nums[0].v) && nums[0].v <= 20 && !/[,.]/.test(nums[0].raw)) no = nums.shift()!.v;
+    if (Number.isNaN(no)) continue;
+    const key = `${kind}:${no}`;
+    const v = nums[kind === 'main' ? 1 : 0]?.v;
+    if (v !== undefined && !found.has(key)) found.set(key, v);
+  }
+  return TANKS_FILE_SLOTS.map(s => found.get(`${s.kind}:${s.no}`) ?? null);
+};
+
+const readPdf = async (file: File) => {
+  const pdfjs = await import('pdfjs-dist');
+  pdfjs.GlobalWorkerOptions.workerSrc = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
+  const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const rows: PdfItem[][] = [];
+  for (let p = 1; p <= Math.min(pdf.numPages, 3); p++) {
+    const content = await (await pdf.getPage(p)).getTextContent();
+    const page: { y: number; items: PdfItem[] }[] = [];
+    for (const it of content.items as { str?: string; transform?: number[]; width?: number }[]) {
+      if (!it.str?.trim() || !it.transform) continue;
+      const y = it.transform[5];
+      let row = page.find(r => Math.abs(r.y - y) < 4);
+      if (!row) page.push(row = { y, items: [] });
+      // منتصف النص أفقيًا
+      row.items.push({ str: it.str.trim(), x: it.transform[4] + (it.width ?? 0) / 2 });
+    }
+    page.sort((a, b) => b.y - a.y).forEach(r => rows.push(r.items));
+  }
+  return parseTanksPdfRows(rows);
+};
+
+/** قراءة الملف: PDF، أو أول ورقة Excel فيها الخزانات */
 export const readTanksReportFile = async (file: File): Promise<(number | null)[]> => {
+  if (/\.pdf$/i.test(file.name)) return readPdf(file);
   const XLSX = await import('xlsx');
   const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
   let best: (number | null)[] = TANKS_FILE_SLOTS.map(() => null);
