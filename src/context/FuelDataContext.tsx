@@ -31,6 +31,8 @@ const MOCK_SUPPLIERS_REMOVED_KEY = 'sahara_supplier_mock_removed';
 const SUPPLIER_NAMES_REPAIRED_KEY = 'sahara_supplier_names_repaired';
 const SUPPLIER_SOURCE_V2_KEY = 'sahara_supplier_source_v2';
 const SUPPLIER_COLOR_YELLOW_KEY = 'sahara_supplier_color_yellow_v1';
+/** إعادة بناء لمرة واحدة (2026/10/10): حذف كل بيانات الموردين وبناؤها من جديد من أرشيف وارد الصحاري والاتحاد */
+const SUPPLIERS_RESET_V3_KEY = 'sahara_supplier_reset_v3';
 
 interface FuelDataContextType {
   activeTab: NavTabId;
@@ -289,7 +291,8 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         ...d,
         product,
         company: d.company || 'صحاري كربلاء',
-        supplierCompany: d.supplierCompany || d.supplierName || 'مصفى كربلاء الدولي',
+        // بلا افتراض "مصفى كربلاء الدولي": شحنة بلا مجهز في الكشف كانت تُنسب له فيظهر كأحدث مورد
+        supplierCompany: d.supplierCompany || d.supplierName || '',
         driverName: d.driverName || 'سائق غير محدد',
         truckNumber: formatTruckPlate(d.truckNumber),
         voucherNumber: formatVoucher(d.voucherNumber || d.receiptNumber, d.id),
@@ -425,6 +428,14 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!saharaDeliveries.length && !etihadDeliveries.length) return;
     setSupplierPrices(prev => {
       let list = prev;
+      // لمرة واحدة: حذف بيانات الموردين الحالية (بما فيها الأسماء المقطوعة من استيراد خاطئ) ونقل الموردين
+      // من أرشيف وارد الصحاري والاتحاد. العلامة تُزامَن مع الخادم فلا يتكرر الحذف على بقية الأجهزة
+      if (!localStorage.getItem(SUPPLIERS_RESET_V3_KEY)) {
+        list = buildArchiveSuppliers(saharaDeliveries, etihadDeliveries);
+        [SUPPLIERS_RESET_V3_KEY, MOCK_SUPPLIERS_REMOVED_KEY, SUPPLIER_NAMES_REPAIRED_KEY, SUPPLIER_SOURCE_V2_KEY, SUPPLIER_COLOR_YELLOW_KEY]
+          .forEach(k => localStorage.setItem(k, '1'));
+        return list;
+      }
       if (!localStorage.getItem(MOCK_SUPPLIERS_REMOVED_KEY)) {
         const seed = new Map(INITIAL_SUPPLIER_PRICES_MOCK.map(m => [m.id, m.supplierName]));
         list = list.filter(s => seed.get(s.id) !== s.supplierName);
@@ -550,7 +561,7 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       ...delivery,
       id: newDeliveryId(),
       company: assignedCompany,
-      supplierCompany: delivery.supplierCompany || delivery.supplierName || 'مصفى كربلاء الدولي',
+      supplierCompany: delivery.supplierCompany || delivery.supplierName || '',
       driverName: delivery.driverName || 'سائق غير محدد',
       truckNumber: delivery.truckNumber || 'غير محدد',
       voucherNumber: voucher,

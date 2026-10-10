@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ArrowUp, ArrowDown, Minus, TrendingUp, TrendingDown, BadgeDollarSign } from 'lucide-react';
 import { useFuelData } from '../../context/FuelDataContext';
 import { useTranslation } from 'react-i18next';
 import { Avatar, fmtPrice } from '../suppliers/supplierUi';
 import { SectionHeader } from './SectionHeader';
+import { latestSupplierPrices, sameSupplier } from '../../lib/archiveSuppliers';
 
 /** مربع الاتجاه لفرق التغيّر: سهم مستقيم داخل كارت صغير بدل الإشارة (+ / −) */
 const DirBox: React.FC<{ v: number }> = ({ v }) => {
@@ -40,13 +41,20 @@ const ChangeCell: React.FC<{ pct: number }> = ({ pct }) => {
  * ومصدرها سجلات الأسعار نفسها؛ للعرض فقط (الصفوف لا تنقل لأي صفحة).
  */
 export const PriceIndexTable: React.FC = () => {
-  const { supplierPrices, searchQuery } = useFuelData();
+  const { supplierPrices, searchQuery, saharaDeliveries, etihadDeliveries } = useFuelData();
   const { t } = useTranslation(['dashboard', 'common']);
-  const rows = supplierPrices
+  // من أرشيف وارد الشركتين مباشرة: أحدث المجهزين ورودًا أولًا، وكل مجهز يُقارن بسعر شحنته السابقة
+  const latest = useMemo(() => latestSupplierPrices(saharaDeliveries, etihadDeliveries), [saharaDeliveries, etihadDeliveries]);
+  const rows = latest
     .filter(item => item.supplierName.includes(searchQuery) || item.product.includes(searchQuery))
-    // الرئيسية تعرض آخر 7 موردين تحديثًا فقط؛ القائمة الكاملة في صفحة الموردين
-    .sort((a, b) => b.lastUpdated.replace(/-/g, '/').localeCompare(a.lastUpdated.replace(/-/g, '/')))
-    .slice(0, 7);
+    .slice(0, 7)
+    .map(item => {
+      // الشعار من سجل المورد إن وُجد
+      const rec = supplierPrices.find(r => r.id === item.id) ?? supplierPrices.find(r => r.company === item.company && sameSupplier(r.supplierName, item.supplierName));
+      const prev = item.previousPrice ?? item.price;
+      const diff = item.price - prev;
+      return { ...item, logo: rec?.logo, prev, diff, pct: prev ? Math.round((diff / prev) * 10000) / 100 : 0 };
+    });
 
   // كل العناوين في الوسط؛ خلية المجهز (الشعار والاسم) بمحاذاة البداية
   const th = 'px-3 xl:px-4 pt-3 pb-1 text-center text-[13px] font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap';
@@ -68,6 +76,7 @@ export const PriceIndexTable: React.FC = () => {
           <thead>
             <tr>
               <th className={th}>{t('dashboard:priceIndex.supplier')}</th>
+              <th className={th}>{t('dashboard:priceIndex.lastInbound')}</th>
               <th className={th}>{t('dashboard:priceIndex.product')}</th>
               <th className={th}>{t('dashboard:priceIndex.density')}</th>
               <th className={th}>{t('dashboard:priceIndex.color')}</th>
@@ -79,7 +88,7 @@ export const PriceIndexTable: React.FC = () => {
           </thead>
           <tbody>
             {rows.length === 0 && (
-              <tr><td colSpan={8} className="py-10 text-center text-sm text-slate-400">{t('dashboard:priceIndex.empty')}</td></tr>
+              <tr><td colSpan={9} className="py-10 text-center text-sm text-slate-400">{t('dashboard:priceIndex.empty')}</td></tr>
             )}
             {rows.map(s => (
               <tr key={s.id}>
@@ -89,20 +98,23 @@ export const PriceIndexTable: React.FC = () => {
                     <span className="text-[14.5px] font-bold text-slate-900 dark:text-white truncate max-w-[200px] xl:max-w-[260px]">{s.supplierName}</span>
                   </div>
                 </td>
+                <td className={`${td} ${plain} tabular-nums`} dir="ltr">{s.date || '—'}</td>
                 <td className={`${td} ${plain}`}><span className="block truncate max-w-[160px] mx-auto">{s.product || '—'}</span></td>
                 <td className={`${td} ${plain} tabular-nums`}>{s.density || '—'}</td>
                 <td className={`${td} ${plain}`}><span className="block truncate max-w-[120px] mx-auto">{s.color || '—'}</span></td>
-                <td className={`${td} font-extrabold text-slate-900 dark:text-white tabular-nums`}>{fmtPrice(s.priceIqd)} <span className={iqd}>{t('common:units.iqd')}</span></td>
-                <td className={`${td} tabular-nums font-normal text-slate-700 dark:text-slate-300`}>{fmtPrice(s.previousPriceIqd)} <span className={iqd}>{t('common:units.iqd')}</span></td>
-                <td className={`${td} tabular-nums font-bold ${toneText(s.priceIqd - s.previousPriceIqd)}`}>
-                  {s.priceIqd - s.previousPriceIqd ? (
+                <td className={`${td} font-extrabold text-slate-900 dark:text-white tabular-nums`}>{fmtPrice(s.price)} <span className={iqd}>{t('common:units.iqd')}</span></td>
+                <td className={`${td} tabular-nums font-normal text-slate-700 dark:text-slate-300`}>
+                  {s.previousPrice === null ? '—' : <>{fmtPrice(s.previousPrice)} <span className={iqd}>{t('common:units.iqd')}</span></>}
+                </td>
+                <td className={`${td} tabular-nums font-bold ${toneText(s.diff)}`}>
+                  {s.diff ? (
                     <span className="inline-flex items-center gap-1.5">
-                      <DirBox v={s.priceIqd - s.previousPriceIqd} />
-                      <span>{fmtPrice(Math.abs(s.priceIqd - s.previousPriceIqd))} <span className={iqd}>{t('common:units.iqd')}</span></span>
+                      <DirBox v={s.diff} />
+                      <span>{fmtPrice(Math.abs(s.diff))} <span className={iqd}>{t('common:units.iqd')}</span></span>
                     </span>
                   ) : '—'}
                 </td>
-                <td className={td}><ChangeCell pct={s.changePercent} /></td>
+                <td className={td}><ChangeCell pct={s.pct} /></td>
               </tr>
             ))}
           </tbody>

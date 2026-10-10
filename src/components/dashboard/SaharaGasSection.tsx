@@ -95,7 +95,7 @@ export const SaharaGasSection: React.FC = () => {
 
   // توزيع الاستهلاك: من قسم "الاستهلاك اليومي" لآخر يوم في رصيد شركة الصحاري، والنسبة من الاستهلاك الفعلي
   const sectorPct = (v: number) => (actualConsumption > 0 ? Math.round((v / actualConsumption) * 100) : 0);
-  const sectorData = [
+  const baseSectors = [
     {
       name: t('dashboard:sahara.sectors.vehicles'),
       value: sectorPct(latestDay?.vehicles ?? 0),
@@ -121,6 +121,14 @@ export const SaharaGasSection: React.FC = () => {
       icon: Zap,
     },
   ];
+  // اللون حسب ترتيب الاستهلاك (لا حسب القطاع): الأعلى أحمر، ثم أصفر، والأقل أزرق
+  const RANK_COLORS = [
+    { color: '#DC2626', glowColor: 'rgba(220, 38, 38, 0.35)', grad: 'url(#rankHigh)' },
+    { color: '#D97706', glowColor: 'rgba(217, 119, 6, 0.35)', grad: 'url(#rankMid)' },
+    { color: '#2563EB', glowColor: 'rgba(37, 99, 235, 0.35)', grad: 'url(#rankLow)' },
+  ];
+  const rankOf = (i: number) => baseSectors.filter((x, j) => x.volume > baseSectors[i].volume || (x.volume === baseSectors[i].volume && j < i)).length;
+  const sectorData = baseSectors.map((sec, i) => ({ ...sec, ...RANK_COLORS[Math.min(rankOf(i), RANK_COLORS.length - 1)] }));
 
   // أرصدة المواقع: مباشرة من منظومة الخزانات — قسم "خزانات الكاز - شركة صحاري كربلاء"
   const [centralTanks] = useCentralTanks(OFFICIAL_TABLE_TANK_UNITS);
@@ -617,17 +625,17 @@ export const SaharaGasSection: React.FC = () => {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart className="outline-none focus:outline-none select-none">
                     <defs>
-                      <linearGradient id="blueGrad" x1="0" y1="0" x2="1" y2="1">
+                      <linearGradient id="rankHigh" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stopColor="#f87171" />
+                        <stop offset="100%" stopColor="#dc2626" />
+                      </linearGradient>
+                      <linearGradient id="rankMid" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stopColor="#fbbf24" />
+                        <stop offset="100%" stopColor="#d97706" />
+                      </linearGradient>
+                      <linearGradient id="rankLow" x1="0" y1="0" x2="1" y2="1">
                         <stop offset="0%" stopColor="#3b82f6" />
                         <stop offset="100%" stopColor="#1d4ed8" />
-                      </linearGradient>
-                      <linearGradient id="purpleGrad" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="#8b5cf6" />
-                        <stop offset="100%" stopColor="#6d28d9" />
-                      </linearGradient>
-                      <linearGradient id="emeraldGrad" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="#10b981" />
-                        <stop offset="100%" stopColor="#047857" />
                       </linearGradient>
                       <filter id="glowEffect" x="-20%" y="-20%" width="140%" height="140%">
                         <feDropShadow dx="0" dy="3" stdDeviation="3" floodOpacity="0.35" />
@@ -662,14 +670,13 @@ export const SaharaGasSection: React.FC = () => {
                       onMouseEnter={(_, index) => setActiveIndex(index)}
                       onMouseLeave={() => setActiveIndex(null)}
                     >
-                      {sectorData.map((_, index) => {
-                        const gradIds = ['url(#blueGrad)', 'url(#purpleGrad)', 'url(#emeraldGrad)'];
+                      {sectorData.map((sec, index) => {
                         const isHovered = activeIndex === index;
 
                         return (
                           <Cell
                             key={`cell-${index}`}
-                            fill={gradIds[index % gradIds.length]}
+                            fill={sec.grad}
                             stroke="none"
                             filter={isHovered ? 'url(#glowEffect)' : undefined}
                             className="outline-none focus:outline-none"
@@ -725,8 +732,8 @@ export const SaharaGasSection: React.FC = () => {
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                       <span>{t('dashboard:flow.inbound')}</span>
                     </span>
-                    <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400 font-bold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                    <span className="flex items-center gap-1 text-red-600 dark:text-red-400 font-bold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
                       <span>{t('dashboard:flow.consumption')}</span>
                     </span>
                   </div>
@@ -747,8 +754,8 @@ export const SaharaGasSection: React.FC = () => {
                           <stop offset="100%" stopColor="#059669" />
                         </linearGradient>
                         <linearGradient id="saharaConsumptionBar" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#3b82f6" />
-                          <stop offset="100%" stopColor="#1d4ed8" />
+                          <stop offset="0%" stopColor="#f87171" />
+                          <stop offset="100%" stopColor="#dc2626" />
                         </linearGradient>
                       </defs>
                       <XAxis
