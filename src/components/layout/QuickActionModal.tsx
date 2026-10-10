@@ -67,13 +67,16 @@ export const IRAQ_PROVINCE_CODES: IraqProvinceCode[] = [
 ];
 
 const DEFAULT_COMPANIES = ['صحاري كربلاء', 'شركة الاتحاد', 'المستودع الرئيسي'];
-const DEFAULT_SUPPLIERS = [
+/** أسماء تجريبية كانت مدرجة سلفًا في قائمة الشركات المجهزة: تُحذف من القائمة المحفوظة (القائمة يدوية أو من الأرشيف) */
+const FAKE_SUPPLIERS = new Set([
   'مصفى كربلاء الدولي',
   'مستودع الفرات الأوسط',
   'مصفى الدورة',
   'شركة توزيع المنتجات النفطية',
   'شركة سومو',
-];
+]);
+const FAKE_DRIVERS = new Set(['سجاد حيدر الموسوي', 'سائق غير محدد']);
+const isRealName = (v?: string) => { const t = (v || '').trim(); return !!t && !/^[_\-–—.]+$/.test(t); };
 const DEFAULT_COLORS = ['احمر', 'اصفر', 'عسلي', 'نفط ابيض'];
 
 /** كشف الوارد خاص بالكاز: كل شحنة (رفع ملف أو إدخال يدوي) كاز مهما كان لونها، ومنها "نفط ابيض".
@@ -112,20 +115,18 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
     return Array.from(new Set([...DEFAULT_COMPANIES, ...fromDeliveries]));
   });
 
+  // الشركات المجهزة: ما أُضيف يدويًا (بلا الأسماء التجريبية القديمة) + ما ورد في الأرشيف (من الملفات)
   const [suppliers, setSuppliers] = useState<string[]>(() => {
-    const saved = localStorage.getItem('sahara_suppliers_list');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        // ignore
-      }
-    }
-    const fromDeliveries = deliveries
-      .map((d) => d.supplierCompany || d.supplierName)
-      .filter(Boolean) as string[];
-    return Array.from(new Set([...DEFAULT_SUPPLIERS, ...fromDeliveries]));
+    let saved: string[] = [];
+    try { saved = JSON.parse(localStorage.getItem('sahara_suppliers_list') || '[]'); } catch { /* تجاهل */ }
+    return Array.isArray(saved) ? saved.filter(n => isRealName(n) && !FAKE_SUPPLIERS.has(n.trim())) : [];
   });
+  const supplierSuggestions = Array.from(new Set([
+    ...suppliers,
+    ...deliveries.map((d) => (d.supplierCompany || '').trim()).filter((n) => isRealName(n) && !FAKE_SUPPLIERS.has(n)),
+  ]));
+  // السائقون من الأرشيف (لا أسماء افتراضية)
+  const driverSuggestions = Array.from(new Set(deliveries.map((d) => (d.driverName || '').trim()).filter((n) => isRealName(n) && !FAKE_DRIVERS.has(n))));
 
   const [colors, setColors] = useState<string[]>(() => {
     const saved = localStorage.getItem('sahara_colors_list');
@@ -141,10 +142,10 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
 
   // Modal form states
   const [deliveryCompany, setDeliveryCompany] = useState('صحاري كربلاء');
-  const [deliverySupplier, setDeliverySupplier] = useState('مصفى كربلاء الدولي'); // الشركة المجهزة
+  const [deliverySupplier, setDeliverySupplier] = useState(''); // الشركة المجهزة
   const [deliverySupplierName, setDeliverySupplierName] = useState(''); // اسم المجهز
   // اقتراحات "اسم المجهز" من الشحنات السابقة
-  const supplierNames = Array.from(new Set(deliveries.map((d) => d.supplierName).filter((n): n is string => !!n && !DEFAULT_SUPPLIERS.includes(n))));
+  const supplierNames = Array.from(new Set(deliveries.map((d) => (d.supplierName || '').trim()).filter((n) => isRealName(n) && !FAKE_SUPPLIERS.has(n))));
 
   // طريقة الإدخال: يدوي أو رفع ملف الوارد اليومي (Excel / PDF بنفس عناوين النافذة)
   const [entryMode, setEntryMode] = useState<'manual' | 'upload'>('manual');
@@ -159,7 +160,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
     | { status: 'ready'; fileName: string; rows: InboundImportRow[] }
     | { status: 'error'; message: string }
   >({ status: 'idle' });
-  const [deliveryDriver, setDeliveryDriver] = useState('سجاد حيدر الموسوي');
+  const [deliveryDriver, setDeliveryDriver] = useState('');
 
   // رقم العجلة: خانة واحدة
   const [truckNumberText, setTruckNumberText] = useState('');
@@ -179,11 +180,11 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
   useEffect(() => {
     if (isOpen && editData) {
       setDeliveryCompany(editData.company || editData.lockedCompany || 'صحاري كربلاء');
-      setDeliverySupplier(editData.supplierCompany || editData.supplierName || 'مصفى كربلاء الدولي');
+      setDeliverySupplier(editData.supplierCompany || '');
       // السجلات القديمة كانت تحفظ نفس القيمة في الحقلين
       setDeliverySupplierName(editData.supplierName && editData.supplierName !== editData.supplierCompany ? editData.supplierName : '');
       setEntryMode('manual');
-      setDeliveryDriver(editData.driverName || 'سجاد حيدر الموسوي');
+      setDeliveryDriver(editData.driverName && !FAKE_DRIVERS.has(editData.driverName) ? editData.driverName : '');
       setTruckNumberText(String(editData.truckNumber || '').trim());
       setDeliveryVoucher(editData.voucherNumber || editData.receiptNumber || '');
       const rawVol = (editData.receivedQuantity ?? editData.volumeLiters ?? 0).toString();
@@ -211,13 +212,13 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
       }
     } else if (isOpen && !editData) {
       setDeliveryCompany('صحاري كربلاء');
-      setDeliverySupplier('مصفى كربلاء الدولي');
+      setDeliverySupplier('');
       setDeliverySupplierName('');
       setEntryMode('manual');
       setImportState({ status: 'idle' });
       setImportFrom(todaySlash());
       setImportTo(todaySlash());
-      setDeliveryDriver('سجاد حيدر الموسوي');
+      setDeliveryDriver('');
       setTruckNumberText('');
       setDeliveryVoucher(`2026${Math.floor(1000 + Math.random() * 9000)}`);
       setRawVolume('36,000');
@@ -331,8 +332,6 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
 
   // In-Cell Quick Add States
 
-  const [isAddingSupplier, setIsAddingSupplier] = useState(false);
-  const [newSupplierName, setNewSupplierName] = useState('');
 
   const [isAddingColor, setIsAddingColor] = useState(false);
   const [newColorName, setNewColorName] = useState('');
@@ -401,18 +400,6 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
 
   const handleGenerateVoucher = () => {
     setDeliveryVoucher(`2026${Math.floor(1000 + Math.random() * 9000)}`);
-  };
-
-  const handleAddNewSupplier = () => {
-    const trimmed = newSupplierName.trim();
-    if (trimmed) {
-      if (!suppliers.includes(trimmed)) {
-        setSuppliers([trimmed, ...suppliers]);
-      }
-      setDeliverySupplier(trimmed);
-      setNewSupplierName('');
-      setIsAddingSupplier(false);
-    }
   };
 
   const handleAddNewColor = () => {
@@ -555,7 +542,6 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
         time: new Date().toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' }),
         attachments: []
       }, receivingCompany);
-      if (r.supplierCompany && !suppliers.includes(r.supplierCompany)) setSuppliers((prev) => [r.supplierCompany, ...prev]);
       if (r.productColor && !colors.includes(r.productColor)) setColors((prev) => [...prev, r.productColor]);
     });
     setImportState({ status: 'idle' });
@@ -822,74 +808,25 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                     </div>
                   </div>
 
-                  {/* 2. الشركة المجهزة */}
+                  {/* 2. الشركة المجهزة: كتابة يدوية أو اختيار مما ورد في الأرشيف (لا قائمة ثابتة) */}
                   <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                        {t('deliveries:col.company')}
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setIsAddingSupplier(!isAddingSupplier)}
-                        className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-0.5 cursor-pointer"
-                      >
-                        <Plus className="w-3 h-3" />
-                        <span>{isAddingSupplier ? t('common:actions.cancel') : t('deliveries:quick.add')}</span>
-                      </button>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                      {t('deliveries:col.company')}
+                    </label>
+                    <div className="relative">
+                      <Building2 className={`w-4.5 h-4.5 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-3.5' : 'left-3.5'} text-slate-400`} />
+                      <input
+                        type="text"
+                        list="inbound-supplier-companies"
+                        value={deliverySupplier}
+                        onChange={(e) => setDeliverySupplier(e.target.value)}
+                        placeholder={t('deliveries:col.company')}
+                        className={`w-full h-11 sm:h-12 ${isRTL ? 'pr-10 pl-3.5' : 'pl-10 pr-3.5'} py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 outline-none font-bold transition-all`}
+                      />
+                      <datalist id="inbound-supplier-companies">
+                        {supplierSuggestions.map((n) => <option key={n} value={n} />)}
+                      </datalist>
                     </div>
-
-                    {isAddingSupplier ? (
-                      <div className="relative w-full h-11 sm:h-12 flex items-center">
-                        <input
-                          type="text"
-                          placeholder={t('deliveries:quick.newSupplierPh')}
-                          value={newSupplierName}
-                          onChange={(e) => setNewSupplierName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleAddNewSupplier();
-                            }
-                            if (e.key === 'Escape') {
-                              setIsAddingSupplier(false);
-                            }
-                          }}
-                          className={`w-full h-full ${isRTL ? 'pl-16 pr-3.5' : 'pr-16 pl-3.5'} text-sm rounded-xl border-2 border-blue-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none font-bold shadow-2xs`}
-                          autoFocus
-                        />
-                        <div className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-1.5' : 'right-1.5'} flex items-center gap-1`}>
-                          <button
-                            type="button"
-                            onClick={handleAddNewSupplier}
-                            className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs cursor-pointer"
-                          >
-                            {t('common:actions.save')}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setIsAddingSupplier(false)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="relative">
-                        <select
-                          value={deliverySupplier}
-                          onChange={(e) => setDeliverySupplier(e.target.value)}
-                          className="w-full h-11 sm:h-12 px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 outline-none font-bold transition-all appearance-none cursor-pointer"
-                        >
-                          {suppliers.map((s) => (
-                            <option key={s} value={s}>
-                              {enumText(s)}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className={`w-4 h-4 text-slate-400 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-3.5' : 'right-3.5'} pointer-events-none`} />
-                      </div>
-                    )}
                   </div>
 
                   {/* 3. اسم السائق */}
@@ -901,12 +838,16 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                       <User className={`w-4.5 h-4.5 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-3.5' : 'left-3.5'} text-slate-400`} />
                       <input
                         type="text"
+                        list="inbound-driver-names"
                         value={deliveryDriver}
                         onChange={(e) => setDeliveryDriver(e.target.value)}
                         required
                         placeholder={t('deliveries:quick.driverPh')}
                         className={`w-full h-11 sm:h-12 ${isRTL ? 'pr-10 pl-3.5' : 'pl-10 pr-3.5'} py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 outline-none font-bold transition-all`}
                       />
+                      <datalist id="inbound-driver-names">
+                        {driverSuggestions.map((n) => <option key={n} value={n} />)}
+                      </datalist>
                     </div>
                   </div>
 

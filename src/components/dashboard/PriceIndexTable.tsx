@@ -53,7 +53,8 @@ export const PriceIndexTable: React.FC = () => {
       const rec = supplierPrices.find(r => r.id === item.id) ?? supplierPrices.find(r => r.company === item.company && sameSupplier(r.supplierName, item.supplierName));
       const prev = item.previousPrice ?? item.price;
       const diff = item.price - prev;
-      return { ...item, logo: rec?.logo, prev, diff, pct: prev ? Math.round((diff / prev) * 10000) / 100 : 0 };
+      // الاسم كما عدّله المستخدم في صفحة الموردين (السجل المرتبط بنفس المعرّف)
+      return { ...item, supplierName: rec?.edited ? rec.supplierName : item.supplierName, logo: rec?.logo, prev, diff, pct: prev ? Math.round((diff / prev) * 10000) / 100 : 0 };
     });
 
   // كل العناوين في الوسط؛ خلية المجهز (الشعار والاسم) بمحاذاة البداية

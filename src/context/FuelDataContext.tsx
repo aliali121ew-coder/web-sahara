@@ -448,11 +448,12 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // مورد أُضيف تلقائيًا من الأرشيف ولم تعد له أي شحنة (حُذفت، مثل استيراد خاطئ بأسماء مقطوعة) يُحذف،
       // ما لم يُدخل له المستخدم بيانات. بدون ذلك تبقى الأسماء الخاطئة في مؤشرات الأسعار وتحجب الأسماء الصحيحة
       const orphan = (x: SupplierPriceRecord) =>
-        x.id.startsWith('sup-a-') && !!x.company && !(x.phone || x.location || x.contactName || x.logo) &&
+        x.id.startsWith('sup-a-') && !!x.company && !x.edited && !(x.phone || x.location || x.contactName || x.logo) &&
         !deliveriesOfSupplier(x.company === 'etihad' ? etihadDeliveries : saharaDeliveries, d => d, x.supplierName).length;
       if (list.some(orphan)) list = list.filter(x => !orphan(x));
       const missing = buildArchiveSuppliers(saharaDeliveries, etihadDeliveries)
-        .filter(a => !list.some(s => (!s.company || s.company === a.company) && sameSupplier(s.supplierName, a.supplierName)))
+        // نفس المعرّف موجود (مورد غيّر المستخدم اسمه) أو نفس الاسم: لا يُضاف مكررًا
+        .filter(a => !list.some(s => s.id === a.id || ((!s.company || s.company === a.company) && sameSupplier(s.supplierName, a.supplierName))))
         .map(a => {
           const old = legacy.find(l => sameSupplier(l.supplierName, a.supplierName));
           return old ? { ...a, phone: old.phone, location: old.location, contactName: old.contactName, contactRole: old.contactRole, logo: old.logo, category: old.category } : a;
@@ -720,6 +721,8 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     const d = new Date();
     const today = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+    // سجل عدّله المستخدم: لا يحذفه التنظيف التلقائي حين يختلف اسمه عن الأرشيف
+    supplier = { ...supplier, edited: true };
     setSupplierPrices(prev => {
       const old = prev.find(s => s.id === supplier.id);
       if (!old) {

@@ -70,10 +70,12 @@ export const deliveriesFromIndex = (idx: Map<string, InboundDelivery[]>, name: s
  * اسم المورد كما في أرشيف شركة السجل: المطابقة التامة أولًا، ثم التقريبية (الأكثر شحنات).
  * يُستخدم لفتح ملف المورد من سجل السعر دون الاعتماد على اسم السجل المعدَّل؛ null إن لم يكن له وارد.
  */
-export const archiveIdentity = (rec: { supplierName: string; company?: 'sahara' | 'etihad' }, sahara: InboundDelivery[], etihad: InboundDelivery[]): string | null => {
+export const archiveIdentity = (rec: { id?: string; supplierName: string; company?: 'sahara' | 'etihad' }, sahara: InboundDelivery[], etihad: InboundDelivery[]): string | null => {
   const pool = rec.company === 'etihad' ? etihad : rec.company === 'sahara' ? sahara : [...sahara, ...etihad];
   const groups = indexDeliveries(pool);
-  let list = groups.get(supplierKey(rec.supplierName));
+  // سجل من الأرشيف غيّر المستخدم اسمه: مفتاحه الأصلي في معرّفه (sup-a-<الشركة>-<المفتاح>)
+  const fromId = rec.id?.match(/^sup-a-(?:sahara|etihad)-(.+)$/)?.[1]?.replace(/-/g, ' ');
+  let list = (fromId ? groups.get(fromId) : undefined) ?? groups.get(supplierKey(rec.supplierName));
   if (!list?.length) {
     for (const [k, l] of groups) if (sameSupplier(k, rec.supplierName) && l.length > (list?.length ?? 0)) list = l;
   }
