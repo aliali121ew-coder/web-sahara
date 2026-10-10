@@ -1,4 +1,5 @@
 import i18n from '../i18n';
+import { withPdf } from './pdfDoc';
 import { findReportDate } from './reportDate';
 import { fmtList } from '../i18n/format';
 import type { SaharaReportExtraction } from './saharaReportUpload';
@@ -170,11 +171,7 @@ export interface PdfItem { str: string; x: number; y: number; w: number }
  * أسطر نص PDF لكل صفحة (مرتبة من الأعلى للأسفل)، كل سطر عناصره مع موضعها الأفقي.
  * مشتركة بين كشف الكاز وكشف البنزين.
  */
-export const readPdfPages = async (file: File): Promise<{ pages: PdfItem[][][]; anyText: boolean }> => {
-  const pdfjs = await import('pdfjs-dist');
-  const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
-  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
-  const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+export const readPdfPages = (file: File): Promise<{ pages: PdfItem[][][]; anyText: boolean }> => withPdf(file, false, async pdf => {
   const pages: PdfItem[][][] = [];
   let anyText = false;
 
@@ -233,7 +230,7 @@ export const readPdfPages = async (file: File): Promise<{ pages: PdfItem[][][]; 
     pages.push(lines);
   }
   return { pages, anyText };
-};
+});
 
 /** نص السطر من اليمين لليسار، والأرقام فيه مع منتصف موضعها الأفقي */
 export const pdfLineText = (l: PdfItem[]) => [...l].sort((a, b) => b.x - a.x).map(i => i.str).join(' ');

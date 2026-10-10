@@ -1,4 +1,5 @@
 import i18n from '../i18n';
+import { withPdf } from './pdfDoc';
 /**
  * استيراد ملف الوارد اليومي (Excel أو PDF) الذي يحمل نفس عناوين نافذة الوارد:
  * اسم المجهز، الشركة المجهزة، اسم السائق، رقم العجلة، رقم الفوجر، الكمية المستلمة،
@@ -134,15 +135,7 @@ const parseExcel = async (file: File): Promise<InboundImportRow[]> => {
  * PDF: النصوص تُجمع في أسطر حسب موقعها العمودي، ثم يُحدد سطر العناوين،
  * وكل نص تحته يُنسب لأقرب عمود أفقيًا.
  */
-const parsePdf = async (file: File): Promise<InboundImportRow[]> => {
-  const pdfjs = await import('pdfjs-dist');
-  pdfjs.GlobalWorkerOptions.workerSrc = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
-  const pdf = await pdfjs.getDocument({
-    data: new Uint8Array(await file.arrayBuffer()),
-    cMapUrl: '/pdfjs/cmaps/',
-    cMapPacked: true,
-    standardFontDataUrl: '/pdfjs/standard_fonts/'
-  }).promise;
+const parsePdf = (file: File): Promise<InboundImportRow[]> => withPdf(file, true, async pdf => {
 
   type Item = { text: string; x: number; y: number };
   let columns: { field: Field; x: number }[] | null = null;
@@ -185,7 +178,7 @@ const parsePdf = async (file: File): Promise<InboundImportRow[]> => {
   }
   if (!columns) throw new Error(i18n.t('common:fileImport.noHeaderRowPdf'));
   return rows;
-};
+});
 
 export const parseInboundFile = async (file: File): Promise<InboundImportRow[]> => {
   const name = file.name.toLowerCase();

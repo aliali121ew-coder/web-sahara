@@ -1,4 +1,5 @@
 import i18n from '../i18n';
+import { withPdf } from './pdfDoc';
 
 /**
  * قراءة كشف وقود الاتحاد اليومي (PDF أو Excel) لتعبئة نافذة "تسجيل حركة رصيد" تلقائيًا.
@@ -113,15 +114,7 @@ export const parseEtihadGrid = (grid: unknown[][]): EtihadReportExtraction => {
   return out;
 };
 
-const readPdfLines = async (file: File): Promise<EtihadPdfItem[][]> => {
-  const pdfjs = await import('pdfjs-dist');
-  pdfjs.GlobalWorkerOptions.workerSrc = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
-  const pdf = await pdfjs.getDocument({
-    data: new Uint8Array(await file.arrayBuffer()),
-    cMapUrl: '/pdfjs/cmaps/',
-    cMapPacked: true,
-    standardFontDataUrl: '/pdfjs/standard_fonts/'
-  }).promise;
+const readPdfLines = (file: File): Promise<EtihadPdfItem[][]> => withPdf(file, true, async pdf => {
   const lines: (EtihadPdfItem & { y: number })[][] = [];
   for (let p = 1; p <= pdf.numPages; p++) {
     const content = await (await pdf.getPage(p)).getTextContent();
@@ -134,7 +127,7 @@ const readPdfLines = async (file: File): Promise<EtihadPdfItem[][]> => {
     }
   }
   return lines;
-};
+});
 
 const readGrid = async (file: File): Promise<unknown[][]> => {
   const XLSX = await import('xlsx');

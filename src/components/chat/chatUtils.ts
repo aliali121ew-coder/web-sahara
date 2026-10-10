@@ -195,6 +195,7 @@ export const pdfThumb = async (file: Blob): Promise<{ thumb?: string; pages?: nu
     const task = pdfjs.getDocument({
       data: new Uint8Array(await file.arrayBuffer()),
       cMapUrl: '/pdfjs/cmaps/', cMapPacked: true, standardFontDataUrl: '/pdfjs/standard_fonts/', wasmUrl: '/pdfjs/wasm/',
+      verbosity: pdfjs.VerbosityLevel.ERRORS,
     });
     const doc = await task.promise;
     const page = await doc.getPage(1);
