@@ -48,6 +48,8 @@ export interface Env {
   BACKUPS: R2Bucket;
   APP_TOKEN?: string;
   ANTHROPIC_API_KEY?: string;
+  /** "1" في النسخة التجريبية (wrangler env demo): حسابات بمدة، وإعادة البيانات الوهمية كل ليلة */
+  DEMO_MODE?: string;
   ASSETS: { fetch(request: Request): Promise<Response> };
   /** قناة التحديث اللحظي (Durable Object StateHub) */
   HUB?: DurableObjectNamespace;

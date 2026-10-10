@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { UserRound, KeyRound, ShieldCheck, ClipboardCheck, Check, ArrowLeft, ArrowRight, RefreshCw, Eye, EyeOff, Crown, Loader2, AtSign, Briefcase, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { UserRound, KeyRound, ShieldCheck, ClipboardCheck, Check, ArrowLeft, ArrowRight, RefreshCw, Eye, EyeOff, Crown, Loader2, AtSign, Briefcase, AlertCircle, CheckCircle2, Timer } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { chatApi } from '../chat/chatApi';
 import { errorText } from '../../i18n/errors';
 import { PERM_GROUPS, ALL_SECTIONS, type Perms } from '../../lib/permCatalog';
 import { PermissionsEditor } from './PermissionsEditor';
+import { DEMO_DURATIONS, DEFAULT_DEMO_DURATION, demoDurationMs, useDemoMode, type DemoDurationKey } from '../../lib/demo';
 import { AvatarPicker, CopyButton, scoreLabel, SCORE_TONE, UserAvatar, btnCls, cardCls, genPassword, inputCls, passwordScore } from './adminUi';
 
 const USERNAME_RE = /^[a-z0-9._-]{3,32}$/;
@@ -58,6 +59,10 @@ export const CreateAccountWizard: React.FC<{
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [touched, setTouched] = useState(false);
+  // النسخة التجريبية: كل حساب غير مدير له مدة (من ساعة إلى شهر)
+  const demo = useDemoMode();
+  const [duration, setDuration] = useState<DemoDurationKey>(DEFAULT_DEMO_DURATION);
+  const timed = demo && !isAdmin;
 
   const taken = useMemo(() => new Set(takenUsernames.map(u => u.toLowerCase())), [takenUsernames]);
   const usernameError = !username ? t('wizard.usernameRequired')
@@ -91,7 +96,12 @@ export const CreateAccountWizard: React.FC<{
     if (!canGo(STEPS.length)) return;
     setBusy(true);
     try {
-      await chatApi.adminCreate({ username, password, name: name.trim(), role: role.trim(), is_admin: isAdmin, perms, ...(avatar ? { avatar } : {}) });
+      await chatApi.adminCreate({
+        username, password, name: name.trim(), role: role.trim(), is_admin: isAdmin, perms,
+        ...(avatar ? { avatar } : {}),
+        // المدة تُحسب من لحظة الإنشاء
+        ...(timed ? { expires_at: Date.now() + demoDurationMs(duration) } : {})
+      });
       onCreated({ name: name.trim(), username, password });
     } catch (e) {
       setError(errorText(e));
@@ -199,6 +209,18 @@ export const CreateAccountWizard: React.FC<{
                   <span className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${isAdmin ? 'rtl:-translate-x-5 ltr:translate-x-5' : ''}`} />
                 </span>
               </button>
+              {timed && (
+                <Field label={t('demo.durationLabel')} required icon={Timer} hint={t('demo.durationHint')}>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {DEMO_DURATIONS.map(d => (
+                      <button key={d.key} type="button" onClick={() => setDuration(d.key)} aria-pressed={duration === d.key}
+                        className={`px-2 py-2 rounded-xl text-xs font-bold border transition ${duration === d.key ? 'bg-violet-600 border-violet-600 text-white' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-violet-300'}`}>
+                        {t(`demo.duration.${d.key}`)}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+              )}
             </div>
           )}
 
@@ -217,6 +239,7 @@ export const CreateAccountWizard: React.FC<{
                 <ReviewRow label={t('wizard.username')} value={<span dir="ltr" className="font-mono">@{username}</span>} onEdit={() => setStep(0)} />
                 <ReviewRow label={t('wizard.roleLabel')} value={role || <span className="text-slate-400">—</span>} onEdit={() => setStep(1)} />
                 <ReviewRow label={t('wizard.accountType')} value={isAdmin ? <span className="inline-flex items-center gap-1 text-amber-600 font-bold"><Crown className="w-3.5 h-3.5" />{t('wizard.admin')}</span> : t('wizard.user')} onEdit={() => setStep(1)} />
+                {timed && <ReviewRow label={t('demo.durationLabel')} value={<span className="inline-flex items-center gap-1 text-violet-600 dark:text-violet-300"><Timer className="w-3.5 h-3.5" />{t(`demo.duration.${duration}`)}</span>} onEdit={() => setStep(1)} />}
                 <ReviewRow label={t('wizard.permissions')} value={isAdmin ? t('wizard.allSections') : granted ? t('list.sections', { count: granted }) : <span className="text-rose-500 font-bold">{t('wizard.noPermissions')}</span>} onEdit={() => setStep(2)} />
               </dl>
               {!isAdmin && granted > 0 && (

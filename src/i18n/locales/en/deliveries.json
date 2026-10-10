@@ -192,7 +192,7 @@
     "manual": "Manual",
     "upload": "Upload file",
     "period": "Inbound file period",
-    "periodHint": "Shipments without a date take the start of the period; those outside it aren’t imported",
+    "periodHint": "Set automatically from the file dates; you can change it",
     "choose": "Choose the daily inbound file or drag it here",
     "chooseHint": "Excel or PDF with the same headings: supplier name, supplier company, driver name, truck number, voucher number, quantity received, density, color, price, cost, receipt and unloading date",
     "totalQty": "Total quantity",

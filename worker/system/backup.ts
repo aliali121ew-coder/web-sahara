@@ -10,7 +10,8 @@ import type { D1Database, Env } from '../types';
 import { gunzipText, gzipText, sha256Hex } from './compress';
 import { schemaGate } from '../storage/schema';
 
-export type BackupKind = 'daily' | 'manual' | 'pre-restore' | 'monthly';
+// demo-base: البيانات الأساسية للنسخة التجريبية (تُعاد إليها كل ليلة — worker/demo.ts)
+export type BackupKind = 'daily' | 'manual' | 'pre-restore' | 'monthly' | 'demo-base';
 export interface BackupRow {
   id: string; kind: BackupKind; r2_key: string; size: number; raw_size: number; rows: number; tables: number;
   sha256: string; status: string; note: string; created_at: number; created_by: string;
@@ -146,7 +147,7 @@ const MAX_PARAMS = 100;
  * استرجاع كامل: وضع صيانة ← نسخة pre-restore ← التحقق من البصمة ← تفريغ كل جدول وإعادة تعبئته على دفعات.
  * يعيد معرّف نسخة pre-restore للرجوع إليها عند الحاجة.
  */
-export const restoreBackup = async (env: Env, backupId: string, by: string) => {
+export const restoreBackup = async (env: Env, backupId: string, by: string, opts: { skipPreRestore?: boolean } = {}) => {
   await ensureSystemTables(env.DB);
   const { results } = await env.DB.prepare('SELECT * FROM backups WHERE id = ?').bind(backupId).all<BackupRow>();
   const target = results[0];
@@ -158,7 +159,8 @@ export const restoreBackup = async (env: Env, backupId: string, by: string) => {
   await setMaintenance(env.DB, { by, since: Date.now(), reason: `استرجاع نسخة ${target.r2_key}` });
   let preRestore: BackupRow | null = null;
   try {
-    preRestore = await createBackup(env, 'pre-restore', by, `قبل استرجاع ${target.r2_key}`);
+    // إعادة الضبط الليلية للنسخة التجريبية لا تحتاج نسخة قبلها (البيانات وهمية)
+    if (!opts.skipPreRestore) preRestore = await createBackup(env, 'pre-restore', by, `قبل استرجاع ${target.r2_key}`);
     const existing = new Set(await userTables(env.DB));
     let restoredRows = 0;
     for (const [table, rows] of Object.entries(snap.tables)) {
@@ -178,7 +180,7 @@ export const restoreBackup = async (env: Env, backupId: string, by: string) => {
       for (let i = 0; i < stmts.length; i += 200) await env.DB.batch(stmts.slice(i, i + 200));
       restoredRows += rows.length;
     }
-    return { restoredRows, preRestoreId: preRestore.id };
+    return { restoredRows, preRestoreId: preRestore?.id ?? null };
   } catch (e) {
     throw Object.assign(new Error(`${(e as Error).message}${preRestore ? ` — نسخة ما قبل الاسترجاع محفوظة (${preRestore.r2_key}) ويمكن استرجاعها` : ''}`), { code: (e as { code?: string }).code });
   } finally {

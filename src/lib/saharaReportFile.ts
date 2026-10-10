@@ -1,4 +1,5 @@
 import i18n from '../i18n';
+import { findReportDate } from './reportDate';
 import { fmtList } from '../i18n/format';
 import type { SaharaReportExtraction } from './saharaReportUpload';
 
@@ -8,7 +9,7 @@ import type { SaharaReportExtraction } from './saharaReportUpload';
  * ومن جدول "تفاصيل الكميات في الموقع" يأخذ اسم الموقع وعمود "الرصيد التراكمي".
  */
 
-type NumberField = Exclude<keyof SaharaReportExtraction, 'stations' | 'notes' | 'tableTotal'>;
+type NumberField = Exclude<keyof SaharaReportExtraction, 'stations' | 'notes' | 'tableTotal' | 'date'>;
 
 const LABELS: Record<NumberField, string> = {
   generators: 'المصروف اليومي للمولدات',
@@ -75,7 +76,8 @@ const finish = (
   values: Partial<Record<NumberField, number>>,
   stations: { nameInImage: string; balance: number }[],
   stationNames: string[],
-  tableTotal?: number
+  tableTotal?: number,
+  date?: string | null
 ): SaharaReportExtraction => {
   const missing = (Object.keys(LABELS) as NumberField[]).filter(k => values[k] === undefined);
   if (missing.length === Object.keys(LABELS).length && stations.length === 0) {
@@ -92,6 +94,7 @@ const finish = (
     previousCarried: values.previousCarried,
     currentInFile: values.currentInFile,
     tableTotal,
+    date: date ?? undefined,
     stations: stations.map(s => ({ ...s, matchedStation: matchStation(s.nameInImage, stationNames) })),
     notes: [
       missing.length ? i18n.t('common:fileImport.missing', { list: fmtList(missing.map(fieldName)) }) : '',
@@ -105,13 +108,16 @@ const finish = (
 // ───────────── Excel ─────────────
 const readExcel = async (file: File, stationNames: string[]) => {
   const XLSX = await import('xlsx');
-  const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+  // cellDates: خلايا التاريخ تصل كتواريخ (لقراءة تاريخ الكشف)
+  const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
   const values: Partial<Record<NumberField, number>> = {};
+  const allRows: unknown[][] = [];
   const stations: { nameInImage: string; balance: number }[] = [];
   let tableTotal: number | undefined;
 
   for (const sheetName of wb.SheetNames) {
     const rows = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[sheetName], { header: 1, raw: true, defval: null });
+    allRows.push(...rows);
 
     // البنود: الرقم الأقرب للعنوان في نفس الصف
     rows.forEach(row => {
@@ -154,7 +160,7 @@ const readExcel = async (file: File, stationNames: string[]) => {
       }
     });
   }
-  return finish(values, stations, stationNames, tableTotal);
+  return finish(values, stations, stationNames, tableTotal, findReportDate(allRows));
 };
 
 // ───────────── PDF ─────────────
@@ -278,7 +284,8 @@ const readPdf = async (file: File, stationNames: string[]) => {
   }
 
   if (!anyText) throw new Error(i18n.t('common:fileImport.scannedPdf'));
-  return finish(values, stations, stationNames, tableTotal);
+  const date = findReportDate(pages.flatMap(lines => lines.map(l => [lineText(l), ...l.map(i => i.str)])));
+  return finish(values, stations, stationNames, tableTotal, date);
 };
 
 export const isSpreadsheetOrPdf = (file: File) => /\.(xlsx|xlsm|xls|pdf)$/i.test(file.name);

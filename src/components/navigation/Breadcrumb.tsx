@@ -2,7 +2,7 @@ import React from 'react';
 import { Home, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTranslation } from 'react-i18next';
-import { useFuelData } from '../../context/FuelDataContext';
+import { useFuelNav } from '../../context/FuelDataContext';
 
 export interface BreadcrumbItem {
   /** Visible label for this step in the path */
@@ -26,7 +26,7 @@ interface BreadcrumbProps {
 export const Breadcrumb: React.FC<BreadcrumbProps> = ({ items, onHomeClick, className = '' }) => {
   const { isRTL } = useLanguage();
   const { t } = useTranslation('nav');
-  const { setActiveTab } = useFuelData();
+  const { setActiveTab } = useFuelNav();
   const Separator = isRTL ? ChevronLeft : ChevronRight;
 
   const handleHome = () => {

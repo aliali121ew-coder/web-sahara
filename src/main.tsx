@@ -1,5 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+// قبل أي عرض: وضع الأجهزة الضعيفة (يطفئ التأثيرات الثقيلة)
+import './lib/perfMode';
 import '@fontsource-variable/noto-kufi-arabic';
 import '@fontsource-variable/cairo';
 import '@fontsource-variable/inter';
@@ -9,6 +11,8 @@ import { initCloudSync } from './lib/cloudSync';
 import { AppLogin } from './components/auth/AppLogin';
 import { getProfile, refreshProfile } from './lib/session';
 import { SyncBadge } from './components/auth/SyncBadge';
+// يلتقط طلب التثبيت (أندرويد) مبكرًا قبل عرض الواجهة
+import { InstallCard } from './components/layout/InstallCard';
 
 // طلب تخزين دائم حتى لا يمسح المتصفح بيانات التطبيق تلقائيًا عند امتلاء المساحة أو إغلاقه
 navigator.storage?.persist?.().catch(() => {});
@@ -20,7 +24,7 @@ const start = async () => {
   // الترجمات الأساسية تُحمَّل قبل أول عرض حتى لا تظهر نصوص بلغة أخرى للحظة
   await i18nReady;
   if ((await initCloudSync()) === 'need-login') {
-    root.render(<AppLogin onSuccess={start} />);
+    root.render(<><AppLogin onSuccess={start} /><InstallCard /></>);
     return;
   }
   // الصلاحيات: بنسخة محفوظة يُعرض التطبيق فورًا وتُحدَّث في الخلفية (الصفحات تتبع حدث session-profile)،
@@ -32,6 +36,7 @@ const start = async () => {
     <React.StrictMode>
       <App />
       <SyncBadge />
+      <InstallCard />
     </React.StrictMode>
   );
 };

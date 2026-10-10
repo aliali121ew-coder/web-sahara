@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ShoppingCart, ChevronRight, ChevronLeft, CalendarDays } from 'lucide-react';
-import { useFuelData } from '../../context/FuelDataContext';
+import { useFuelStore } from '../../context/FuelDataContext';
 import { useTranslation, Trans } from 'react-i18next';
 import { enumText } from '../../i18n/enums';
 import { formatNumber, getBusinessDate } from '../../lib/utils';
@@ -44,7 +44,7 @@ const productBadge = (p: string) =>
 export const PricesView: React.FC = () => {
   const { t, i18n } = useTranslation(['prices', 'common']);
   const rtl = i18n.dir() === 'rtl';
-  const { saharaDeliveries, etihadDeliveries } = useFuelData();
+  const { saharaDeliveries, etihadDeliveries } = useFuelStore();
   const { publishedComputed: petrolDays } = usePetrolLedger();
   // وارد النفط الأسود من السجل اليومي لكل شركة (كشف الوارد خاص بالكاز) مع سعر اللتر المسجّل لكل يوم
   const { computed: saharaBlackOil } = useBlackOilLedger('sahara');

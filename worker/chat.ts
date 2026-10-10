@@ -9,6 +9,7 @@
  * الخادم يأخذ هوية "me" منهما حصرًا ويتجاهل أي me في الجسم أو الرابط؛ فلا يمكن لأحد الإرسال أو القراءة باسم غيره.
  */
 
+import { validDemoExpiry } from './demo';
 import { checkPublicKey, parseClientData, randomChallenge, verifyAssertion } from './webauthn';
 import { ensureFileColumns, loadFile, removeFile, storeFile } from './storage/files';
 import { schemaGate } from './storage/schema';
@@ -39,7 +40,7 @@ const str = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max
 const uid = () => crypto.randomUUID();
 
 // زِد الإصدار عند أي تعديل على التهيئة أدناه (راجع worker/storage/schema.ts)
-const CHAT_SCHEMA = '1';
+const CHAT_SCHEMA = '2';
 const ensureTables = (db: ChatDB) => schemaGate(db, 'chat', CHAT_SCHEMA, async () => {
   await db.exec("CREATE TABLE IF NOT EXISTS chat_users (id TEXT PRIMARY KEY, name TEXT NOT NULL, role TEXT NOT NULL DEFAULT '', bio TEXT NOT NULL DEFAULT '', avatar TEXT NOT NULL DEFAULT '', color TEXT NOT NULL DEFAULT '', last_seen INTEGER NOT NULL DEFAULT 0, typing_room TEXT NOT NULL DEFAULT '', typing_at INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL)");
   await db.exec("CREATE TABLE IF NOT EXISTS chat_rooms (id TEXT PRIMARY KEY, type TEXT NOT NULL, name TEXT NOT NULL DEFAULT '', description TEXT NOT NULL DEFAULT '', avatar TEXT NOT NULL DEFAULT '', created_by TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)");
@@ -65,6 +66,8 @@ const ensureTables = (db: ChatDB) => schemaGate(db, 'chat', CHAT_SCHEMA, async (
     "perms TEXT NOT NULL DEFAULT '{}'",
     // وقت آخر محاولة خاطئة (لتصفير عدّاد الإبطاء بعد 24 ساعة)
     'fail_at INTEGER NOT NULL DEFAULT 0',
+    // انتهاء حساب التجربة (0 = دائم) — يُستخدم في النسخة التجريبية فقط (worker/demo.ts)
+    'expires_at INTEGER NOT NULL DEFAULT 0',
   ]) {
     try { await db.exec(`ALTER TABLE chat_users ADD COLUMN ${col}`); } catch { /* موجود */ }
   }
@@ -241,8 +244,11 @@ const passwordError = (p: string) => (p.length < MIN_PASSWORD ? `كلمة الم
 /** رمز خطأ كلمة المرور للواجهة */
 const passwordCode = (p: string) => (p.length < MIN_PASSWORD ? 'password_short' : 'password_long');
 
-type AccountRow = { id: string; username: string; name: string; role: string; avatar: string; color: string; is_admin: number; disabled: number; last_seen: number; updated_at: number; perms: string };
-const ACCOUNT_COLS = 'id, username, name, role, avatar, color, is_admin, disabled, last_seen, updated_at, perms';
+type AccountRow = { id: string; username: string; name: string; role: string; avatar: string; color: string; is_admin: number; disabled: number; last_seen: number; updated_at: number; perms: string; expires_at: number };
+const ACCOUNT_COLS = 'id, username, name, role, avatar, color, is_admin, disabled, last_seen, updated_at, perms, expires_at';
+/** حساب تجربة انتهت مدته */
+const isExpired = (expiresAt: number | undefined, now = Date.now()) => !!expiresAt && expiresAt <= now;
+const expiredResponse = () => json({ error: 'انتهت مدة حساب التجربة. راجع مدير النظام لتمديدها', code: 'account_expired' }, 403);
 const withPerms = (a: AccountRow | undefined) => a && { ...a, perms: parsePerms(a.perms) };
 
 // ───── كوكي الجلسة ─────
@@ -301,11 +307,13 @@ const authUser = async (request: Request, db: ChatDB) => {
   const key = str(readCookie(request, SESSION_COOKIE), 128);
   if (!id || !key) return null;
   const { results } = await db.prepare(
-    `SELECT u.id, u.is_admin, u.perms, s.token_hash, s.created_at, s.last_used, s.pw_at FROM chat_sessions s JOIN chat_users u ON u.id = s.user_id
+    `SELECT u.id, u.is_admin, u.perms, u.expires_at, s.token_hash, s.created_at, s.last_used, s.pw_at FROM chat_sessions s JOIN chat_users u ON u.id = s.user_id
      WHERE s.token_hash = ? AND u.disabled = 0 AND u.pass_hash != ''`,
-  ).bind(await hashKey(key)).all<{ id: string; is_admin: number; perms: string; token_hash: string; created_at: number; last_used: number; pw_at: number }>();
+  ).bind(await hashKey(key)).all<{ id: string; is_admin: number; perms: string; expires_at: number; token_hash: string; created_at: number; last_used: number; pw_at: number }>();
   const s = results[0];
   if (!s || s.id !== id) return null;
+  // حساب تجربة انتهت مدته: تُرفض كل الطلبات فورًا (حتى الجلسات المفتوحة)
+  if (isExpired(s.expires_at)) return null;
   if (Date.now() - s.created_at > SESSION_MAX_MS) {
     await db.prepare('DELETE FROM chat_sessions WHERE token_hash = ?').bind(s.token_hash).run();
     return null;
@@ -331,7 +339,7 @@ const readBody = async <T>(request: Request): Promise<T | null> => {
   }
 };
 
-export async function handleChat(request: Request, url: URL, db: ChatDB, appToken = '', files?: R2Bucket): Promise<Response> {
+export async function handleChat(request: Request, url: URL, db: ChatDB, appToken = '', files?: R2Bucket, demo = false): Promise<Response> {
   await ensureTables(db);
   const path = url.pathname.slice('/api/chat'.length) || '/';
   const method = request.method;
@@ -352,7 +360,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
   // ───── المصادقة (بدون جلسة) ─────
   // هل النظام بحاجة لإنشاء حساب المدير الأول؟
   if (path === '/auth/status' && method === 'GET') {
-    return json({ setup: (await accountCount()) === 0 });
+    return json({ setup: (await accountCount()) === 0, demo });
   }
 
   // إنشاء حساب المدير الأول — يعمل مرة واحدة فقط ما دام لا يوجد أي حساب
@@ -384,8 +392,8 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     const username = normUser(b?.username);
     const password = str(b?.password, 200);
     if (!username || !password) return json({ error: 'أدخل اسم المستخدم وكلمة المرور', code: 'credentials_required' }, 400);
-    const { results } = await db.prepare('SELECT id, pass_hash, disabled, fail_count, fail_at, lock_until FROM chat_users WHERE username = ?')
-      .bind(username).all<{ id: string; pass_hash: string; disabled: number; fail_count: number; fail_at: number; lock_until: number }>();
+    const { results } = await db.prepare('SELECT id, pass_hash, disabled, fail_count, fail_at, lock_until, expires_at FROM chat_users WHERE username = ?')
+      .bind(username).all<{ id: string; pass_hash: string; disabled: number; fail_count: number; fail_at: number; lock_until: number; expires_at: number }>();
     const u = results[0];
     // أثناء الانتظار لا تُفحص كلمة المرور أصلًا (ولا تُحتسب محاولة)
     if (u && u.lock_until > now) return throttled(u.lock_until, now);
@@ -401,6 +409,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
       }
       return json({ error: 'بيانات الدخول غير صحيحة، يرجى التحقق من اسم المستخدم وكلمة المرور', code: 'bad_credentials' }, 401);
     }
+    if (isExpired(u.expires_at, now)) return expiredResponse();
     if (u.disabled) return json({ error: 'هذا الحساب موقوف. راجع مدير النظام', code: 'disabled' }, 403);
     await db.prepare('UPDATE chat_users SET fail_count = 0, lock_until = 0, last_seen = ? WHERE id = ?').bind(now, u.id).run();
     await db.prepare("INSERT OR IGNORE INTO chat_members (room_id, user_id, role, last_read, joined_at) VALUES (?, ?, 'member', 0, ?)").bind(GENERAL_ROOM, u.id, now).run();
@@ -439,10 +448,11 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     if (!b?.id || !cd || cd.type !== 'webauthn.get' || cd.origin !== expectedOrigin) return fail('بيانات البصمة غير صالحة');
     if (!(await takeChallenge(cd.challenge, 'get'))) return fail('انتهت مهلة التحقق، حاول مجددًا');
     const { results } = await db.prepare(
-      'SELECT c.id, c.user_id, c.public_key, c.alg, c.sign_count, u.disabled FROM webauthn_credentials c JOIN chat_users u ON u.id = c.user_id WHERE c.id = ?',
-    ).bind(str(b.id, 512)).all<{ id: string; user_id: string; public_key: string; alg: number; sign_count: number; disabled: number }>();
+      'SELECT c.id, c.user_id, c.public_key, c.alg, c.sign_count, u.disabled, u.expires_at FROM webauthn_credentials c JOIN chat_users u ON u.id = c.user_id WHERE c.id = ?',
+    ).bind(str(b.id, 512)).all<{ id: string; user_id: string; public_key: string; alg: number; sign_count: number; disabled: number; expires_at: number }>();
     const cred = results[0];
     if (!cred) return fail('البصمة غير مسجلة لأي حساب. سجّل الدخول بكلمة المرور ثم فعّلها من جديد');
+    if (isExpired(cred.expires_at, now)) return expiredResponse();
     if (cred.disabled) return json({ error: 'هذا الحساب موقوف. راجع مدير النظام', code: 'disabled' }, 403);
     const v = await verifyAssertion({
       publicKey: cred.public_key, alg: cred.alg, rpId,
@@ -466,9 +476,11 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     if (!token) return expired();
     await db.prepare('DELETE FROM chat_resume WHERE expires_at < ?').bind(now).run();
     const { results } = await db.prepare(
-      "SELECT r.user_id, r.expires_at, u.username FROM chat_resume r JOIN chat_users u ON u.id = r.user_id WHERE r.token_hash = ? AND u.disabled = 0 AND u.pass_hash != ''",
-    ).bind(await hashKey(token)).all<{ user_id: string; expires_at: number; username: string }>();
+      "SELECT r.user_id, r.expires_at, u.username, u.expires_at AS account_expires FROM chat_resume r JOIN chat_users u ON u.id = r.user_id WHERE r.token_hash = ? AND u.disabled = 0 AND u.pass_hash != ''",
+    ).bind(await hashKey(token)).all<{ user_id: string; expires_at: number; username: string; account_expires: number }>();
     const r = results[0];
+    // حساب تجربة انتهت مدته: رسالة واضحة بدل "انتهى الدخول المحفوظ"
+    if (r && isExpired(r.account_expires, now)) return withCookie(expiredResponse(), clearedResume());
     if (!r) {
       await audit(db, request, '', 'auth.failed', 'دخول محفوظ منتهي أو غير صالح');
       return expired();
@@ -628,7 +640,10 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
 
     if (path === '/admin/users' && method === 'POST') {
       if ((await accountCount()) >= MAX_ACCOUNTS) return json({ error: `وصلت إلى الحد الأقصى (${MAX_ACCOUNTS} حساب)`, code: 'max_accounts', max: MAX_ACCOUNTS }, 403);
-      const b = await readBody<{ username?: string; password?: string; name?: string; role?: string; is_admin?: boolean; perms?: unknown; avatar?: unknown }>(request);
+      const b = await readBody<{ username?: string; password?: string; name?: string; role?: string; is_admin?: boolean; perms?: unknown; avatar?: unknown; expires_at?: number }>(request);
+      // النسخة التجريبية: كل حساب غير مدير له مدة (ساعة إلى شهر). النظام الفعلي: الحسابات دائمة
+      const expiresAt = demo && !b?.is_admin ? Number(b?.expires_at) : 0;
+      if (demo && !b?.is_admin && !validDemoExpiry(expiresAt, now)) return json({ error: 'حدد مدة الحساب التجريبي (من ساعة إلى شهر)', code: 'invalid_expiry' }, 400);
       const username = normUser(b?.username);
       const password = str(b?.password, 200);
       const name = str(b?.name, 60).trim();
@@ -643,11 +658,11 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
       const id = uid();
       const color = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6'][Math.floor(Math.random() * 8)];
       await db.batch([
-        db.prepare('INSERT INTO chat_users (id, name, role, color, last_seen, updated_at, username, pass_hash, is_admin, perms, avatar) VALUES (?1, ?2, ?3, ?4, 0, ?5, ?6, ?7, ?8, ?9, ?10)')
-          .bind(id, name, str(b?.role, 60).trim(), color, now, username, await hashPassword(password), b?.is_admin ? 1 : 0, JSON.stringify(sanitizePerms(b?.perms)), avatar),
+        db.prepare('INSERT INTO chat_users (id, name, role, color, last_seen, updated_at, username, pass_hash, is_admin, perms, avatar, expires_at) VALUES (?1, ?2, ?3, ?4, 0, ?5, ?6, ?7, ?8, ?9, ?10, ?11)')
+          .bind(id, name, str(b?.role, 60).trim(), color, now, username, await hashPassword(password), b?.is_admin ? 1 : 0, JSON.stringify(sanitizePerms(b?.perms)), avatar, expiresAt),
         db.prepare("INSERT OR IGNORE INTO chat_members (room_id, user_id, role, last_read, joined_at) VALUES (?, ?, 'member', 0, ?)").bind(GENERAL_ROOM, id, now),
       ]);
-      await audit(db, request, authId, 'admin.create', `@${username}${b?.is_admin ? ' (مدير النظام)' : ''}`);
+      await audit(db, request, authId, 'admin.create', `@${username}${b?.is_admin ? ' (مدير النظام)' : ''}${expiresAt ? ` (تجربة حتى ${new Date(expiresAt).toISOString().slice(0, 16).replace('T', ' ')} UTC)` : ''}`);
       return json({ ok: true, id });
     }
 
@@ -692,7 +707,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     const m = path.match(/^\/admin\/users\/([^/]+)$/);
     if (m && method === 'PATCH') {
       const id = decodeURIComponent(m[1]);
-      const b = await readBody<{ name?: string; role?: string; password?: string; is_admin?: boolean; disabled?: boolean; perms?: unknown; avatar?: unknown }>(request);
+      const b = await readBody<{ name?: string; role?: string; password?: string; is_admin?: boolean; disabled?: boolean; perms?: unknown; avatar?: unknown; expires_at?: number }>(request);
       if (!b) return json({ error: 'بيانات غير صالحة', code: 'invalid_data' }, 400);
       const { results } = await db.prepare("SELECT id FROM chat_users WHERE id = ? AND pass_hash != ''").bind(id).all();
       if (!results.length) return json({ error: 'الحساب غير موجود', code: 'account_not_found' }, 404);
@@ -711,6 +726,12 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
       }
       if (b.perms !== undefined) stmts.push(db.prepare('UPDATE chat_users SET perms = ?, updated_at = ? WHERE id = ?').bind(JSON.stringify(sanitizePerms(b.perms)), now, id));
       if (b.is_admin !== undefined) stmts.push(db.prepare('UPDATE chat_users SET is_admin = ? WHERE id = ?').bind(b.is_admin ? 1 : 0, id));
+      // تمديد أو تقصير مدة حساب التجربة (النسخة التجريبية فقط)؛ التمديد يعيد تفعيل الحساب الموقوف بانتهاء مدته
+      if (b.expires_at !== undefined && demo) {
+        const exp = Number(b.expires_at);
+        if (!validDemoExpiry(exp, now)) return json({ error: 'حدد مدة الحساب التجريبي (من ساعة إلى شهر)', code: 'invalid_expiry' }, 400);
+        stmts.push(db.prepare('UPDATE chat_users SET expires_at = ?, disabled = 0 WHERE id = ? AND is_admin = 0').bind(exp, id));
+      }
       if (b.password !== undefined) {
         const pErr = passwordError(str(b.password, 200));
         if (pErr) return json({ error: pErr, code: passwordCode(str(b.password, 200)) }, 400);
@@ -730,6 +751,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
           b.name !== undefined && 'الاسم', b.role !== undefined && 'الوظيفة', b.avatar !== undefined && 'الصورة', b.perms !== undefined && 'الصلاحيات',
           b.is_admin !== undefined && (b.is_admin ? 'منح الإدارة' : 'سحب الإدارة'), b.password !== undefined && 'إعادة تعيين كلمة المرور',
           b.disabled !== undefined && (b.disabled ? 'إيقاف الحساب' : 'تفعيل الحساب'),
+          b.expires_at !== undefined && demo && 'مدة التجربة',
         ].filter(Boolean).join('، ');
         await audit(db, request, authId, 'admin.update', `@${target[0]?.username || id}: ${changes}`);
       }

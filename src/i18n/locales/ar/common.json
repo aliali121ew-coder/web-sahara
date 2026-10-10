@@ -35,7 +35,19 @@
     "days_two": "يومان",
     "days_few": "{{count}} أيام",
     "days_many": "{{count}} يومًا",
-    "meter": "م"
+    "meter": "م",
+    "hours_zero": "0 ساعة",
+    "hours_one": "ساعة واحدة",
+    "hours_two": "ساعتان",
+    "hours_few": "{{count}} ساعات",
+    "hours_many": "{{count}} ساعة",
+    "hours_other": "{{count}} ساعة",
+    "minutes_zero": "0 دقيقة",
+    "minutes_one": "دقيقة واحدة",
+    "minutes_two": "دقيقتان",
+    "minutes_few": "{{count}} دقائق",
+    "minutes_many": "{{count}} دقيقة",
+    "minutes_other": "{{count}} دقيقة"
   },
   "time": {
     "minutesShort": "{{count}} د",
@@ -319,5 +331,19 @@
     "noNumbers_many": "لم تُقرأ أرقام {{count}} محطةً (عمودا المصروف الفعلي والرصيد الحالي)",
     "noNumbers_other": "لم تُقرأ أرقام {{count}} محطة (عمودا المصروف الفعلي والرصيد الحالي)",
     "alreadyUploaded": "مرفوع مسبقًا لهذا اليوم: {{list}}"
+  },
+  "demo": {
+    "banner": "نسخة تجريبية — البيانات وهمية وتُعاد كل ليلة",
+    "endsIn": "ينتهي حسابك بعد {{time}}",
+    "loginBadge": "نسخة تجريبية"
+  },
+  "install": {
+    "title": "ثبّت التطبيق على هاتفك",
+    "text": "افتحه من الشاشة الرئيسية مثل أي تطبيق، بشاشة كاملة.",
+    "button": "تثبيت",
+    "later": "لاحقًا",
+    "iosStep1": "اضغط زر المشاركة في المتصفح",
+    "iosStep2": "اختر «إضافة إلى الشاشة الرئيسية»",
+    "iosStep3": "اضغط «إضافة» في الأعلى"
   }
 }

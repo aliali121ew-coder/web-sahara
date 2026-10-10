@@ -16,6 +16,7 @@ import { handleSystem } from './system/api';
 import { ensureSystemTables, getMaintenance } from './system/backup';
 import { schemaGate } from './storage/schema';
 import { onSchedule } from './system/maintenance';
+import { demoReset, isDemo } from './demo';
 
 export { StateHub } from './realtime/stateHub';
 
@@ -29,7 +30,6 @@ const API_SECURITY_HEADERS = {
   'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
 };
 
-const toHex = (buf: ArrayBuffer) => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
 
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -50,6 +50,16 @@ const HUB_NAME = 'state';
 const broadcastVersion = (env: Env, ctx: ExecutionContext, version: string) => {
   if (!env.HUB) return;
   ctx.waitUntil(env.HUB.get(env.HUB.idFromName(HUB_NAME)).fetch('https://hub/notify', { method: 'POST', body: version }).catch(() => undefined));
+};
+/** بصمة نص قصير (FNV-1a مرتين ببذرتين): رخيصة جدًا، تكفي لبصمة النسخة */
+const cheapHash = (text: string) => {
+  let a = 0x811c9dc5, b = 0x01000193 ^ text.length;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    a = Math.imul(a ^ c, 0x01000193);
+    b = Math.imul(b ^ c, 0x5bd1e995);
+  }
+  return (a >>> 0).toString(16).padStart(8, '0') + (b >>> 0).toString(16).padStart(8, '0');
 };
 /** يتغيّر مع كل حفظ للبيانات (system_meta) */
 const STATE_VERSION_KEY = 'state_version';
@@ -171,7 +181,7 @@ export default {
 
     // تسجيل الدخول والإعداد الأول متاحان بدون جلسة (الإعداد يتحقق من APP_TOKEN بنفسه)
     if (url.pathname.startsWith('/api/chat/auth/') && ['/api/chat/auth/status', '/api/chat/auth/login', '/api/chat/auth/setup', '/api/chat/auth/support', '/api/chat/auth/webauthn/login-options', '/api/chat/auth/webauthn/login', '/api/chat/auth/resume', '/api/chat/auth/resume/forget'].includes(url.pathname)) {
-      return handleChat(request, url, env.DB, env.APP_TOKEN, env.FILES);
+      return handleChat(request, url, env.DB, env.APP_TOKEN, env.FILES, isDemo(env));
     }
 
     // كل ما عدا ذلك يتطلب جلسة حساب معتمد (اسم مستخدم + كلمة مرور)
@@ -213,6 +223,19 @@ export default {
     }
 
     if (url.pathname === '/api/state' && request.method === 'GET') {
+      // بصمة النسخة بدون قراءة البيانات: رقم النسخة + عدد وآخر تعديل في الجدولين (يلتقط أيضًا الاسترجاع والأرشفة
+      // التي لا ترفع رقم النسخة) + الحساب وصلاحياته. المزامنة الدورية ترسلها فيُرد 304 بلا بناء النسخة الكاملة
+      // (بناؤها وحساب بصمتها كان يتجاوز حد وقت المعالجة في الخطة المجانية فيرجع 503)
+      const { results: [meta] } = await env.DB.prepare(
+        `SELECT (SELECT value FROM system_meta WHERE key = ?1) AS v,
+                (SELECT COUNT(*) || ':' || IFNULL(MAX(updated_at), 0) FROM app_state) AS s,
+                (SELECT COUNT(*) || ':' || IFNULL(MAX(updated_at), 0) FROM collection_items) AS c`
+      ).bind(STATE_VERSION_KEY).all<{ v: string | null; s: string; c: string }>();
+      const etag = `"${cheapHash([meta?.v || '0', meta?.s, meta?.c, session.id, session.admin ? 1 : 0, JSON.stringify(session.perms)].join('|'))}"`;
+      // Cloudflare يُضعف البصمة عند ضغط الرد (W/"...") فيعيدها المتصفح بهذه الصيغة
+      const sent = (request.headers.get('if-none-match') || '').replace(/^W\//, '');
+      const headers = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', etag, ...API_SECURITY_HEADERS };
+      if (sent === etag) return new Response(null, { status: 304, headers });
       const { results } = await env.DB.prepare('SELECT key, value, updated_at FROM app_state').all<StateRow>();
       // كل حساب يستلم فقط مفاتيح الأقسام المسموح له بعرضها
       const visible = results.filter(r => canReadKey(session.perms, session.admin, r.key));
@@ -226,11 +249,6 @@ export default {
         // قراءة فقط = لا يملك أي نوع كتابة (الإضافة فقط أو تعليم المقروء يُرسلان ويتحقق منهما الخادم)
         readOnly: Object.keys(items).filter(k => !canWriteSome(session.perms, session.admin, k)),
       });
-      // بصمة النسخة: المزامنة الدورية ترسلها، فإن لم يتغيّر شيء يُرد 304 بلا جسم
-      // (كانت النسخة كاملة — أكثر من 1 ميغابايت — تُنزَّل كل 30 ثانية لكل جهاز مفتوح)
-      const etag = `"${toHex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(body))).slice(0, 32)}"`;
-      const headers = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', etag, ...API_SECURITY_HEADERS };
-      if (request.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers });
       return new Response(body, { status: 200, headers });
     }
 
@@ -303,7 +321,7 @@ export default {
 
     // المحادثة: الحسابات والغرف والرسائل والمرفقات
     if (url.pathname.startsWith('/api/chat/')) {
-      return handleChat(request, url, env.DB, env.APP_TOKEN, env.FILES);
+      return handleChat(request, url, env.DB, env.APP_TOKEN, env.FILES, isDemo(env));
     }
 
     // مرفقات سجلات رصيد الصحاري (PDF و Excel)
@@ -314,6 +332,8 @@ export default {
     // قراءة صورة الكشف اليومي للصحاري وتعبئة نافذة الإدخال
     if (url.pathname === '/api/extract-sahara-report' && request.method === 'POST') {
       if (levelOf(session.perms, session.admin, 'sahara.balance') < 2) return forbidden();
+      // الذكاء الاصطناعي مدفوع: معطّل في النسخة التجريبية
+      if (isDemo(env)) return json({ error: 'هذه الميزة غير متاحة في النسخة التجريبية', code: 'demo_disabled' }, 403);
       if (tooLarge(request, MAX_IMAGE_BODY)) return json({ error: 'حجم الصورة كبير جدًا', code: 'image_too_large' }, 413);
       if (!env.ANTHROPIC_API_KEY) return json({ error: 'لم يُضبط مفتاح الذكاء الاصطناعي على الخادم (ANTHROPIC_API_KEY)', code: 'ai_key_missing' }, 503);
       let body: { image?: string; mediaType?: string; stations?: string[] };
@@ -340,6 +360,8 @@ export default {
 
   /** المهمة المجدولة اليومية (wrangler.jsonc → triggers.crons): نسخة يومية، وفي أول الشهر الصيانة الشهرية */
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-    ctx.waitUntil(onSchedule(env, controller.scheduledTime).catch(e => console.error('scheduled job failed', e)));
+    // النسخة التجريبية: إعادة البيانات الوهمية بدل النسخة الاحتياطية اليومية
+    const job = isDemo(env) ? demoReset(env).then(() => undefined) : onSchedule(env, controller.scheduledTime);
+    ctx.waitUntil(job.catch(e => console.error('scheduled job failed', e)));
   },
 };

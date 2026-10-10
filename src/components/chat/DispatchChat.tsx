@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Send, AlertTriangle, Radio } from 'lucide-react';
-import { useFuelData } from '../../context/FuelDataContext';
+import { useFuelStore } from '../../context/FuelDataContext';
 
 export const DispatchChat: React.FC = () => {
   const { t } = useTranslation(['chat', 'common']);
-  const { messages, addMessage } = useFuelData();
+  const { messages, addMessage } = useFuelStore();
   const [inputText, setInputText] = useState('');
   const [isEmergency, setIsEmergency] = useState(false);
 

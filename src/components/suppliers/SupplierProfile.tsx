@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, ArrowUpToLine, ArrowDownToLine, ArrowUpDown, Truck, Droplets, TrendingUp, TrendingDown, Minus, Percent, ChevronLeft, ChevronRight, X, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useFuelData } from '../../context/FuelDataContext';
+import { useFuelStore } from '../../context/FuelDataContext';
 import { formatNumber } from '../../lib/utils';
 import { fmtDate } from '../../i18n/format';
 import { deliveriesOfSupplier, sameSupplier, deliveryCompany, supplierKey } from '../../lib/archiveSuppliers';
@@ -30,7 +30,7 @@ interface Row { d: InboundDelivery; co: Company }
 
 export const SupplierProfile: React.FC<{ name: string; initialCompany?: Company; onBack: () => void }> = ({ name, initialCompany, onBack }) => {
   const { t } = useTranslation(['suppliers', 'common']);
-  const { saharaDeliveries, etihadDeliveries, supplierPrices } = useFuelData();
+  const { saharaDeliveries, etihadDeliveries, supplierPrices } = useFuelStore();
   // يُفتح على شركة السجل الذي فُتح منه (يمكن إلغاء التصفية لرؤية الشركتين)
   const [company, setCompany] = useState<Company | null>(initialCompany ?? null);
   const [equipper, setEquipper] = useState<string | null>(null);

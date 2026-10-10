@@ -2,7 +2,7 @@ import React from 'react';
 import { ArrowRight } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTranslation } from 'react-i18next';
-import { useFuelData } from '../../context/FuelDataContext';
+import { useFuelNav } from '../../context/FuelDataContext';
 
 interface SubpageBackButtonProps {
   onClick?: () => void;
@@ -13,7 +13,7 @@ interface SubpageBackButtonProps {
 export const SubpageBackButton: React.FC<SubpageBackButtonProps> = ({ onClick, title, className = '' }) => {
   const { isRTL } = useLanguage();
   const { t } = useTranslation('nav');
-  const { navigateBack } = useFuelData();
+  const { navigateBack } = useFuelNav();
 
   const handleClick = () => {
     if (onClick) {

@@ -12,6 +12,8 @@ import { systemApi, fmtBytes, fmtDuration, fmtNum, type BackupRow, type JobRow, 
 import { BarList, StatusPill, jobLabel, prefixLabel, tableLabel } from './systemUi';
 import { DbBrowser } from './DbBrowser';
 import { BackupsPanel } from './BackupsPanel';
+import { DemoPanel } from './DemoPanel';
+import { useDemoMode } from '../../lib/demo';
 import { Empty, KpiCard, Skeleton, btnCls, cardCls, fullDate, timeAgo } from '../admin/adminUi';
 
 const TAB_KEY = 'sahara_system_tab';
@@ -40,6 +42,7 @@ export const SystemConsole: React.FC = () => {
     chatApi.adminUsers().then(r => setNames(Object.fromEntries(r.items.map(u => [u.id, u.name])))).catch(() => {});
   }, [loadOverview, loadBackups]);
 
+  const demo = useDemoMode();
   const healthy = ov && !error;
   return (
     <div className="space-y-4">
@@ -69,6 +72,8 @@ export const SystemConsole: React.FC = () => {
       </div>
 
       {error && <p className="text-sm font-bold text-rose-500 px-1">{error}</p>}
+
+      {demo && <DemoPanel onChanged={() => { loadOverview(); loadBackups(); }} />}
 
       <SwipeTabs active={tab} onChange={setTab} tabs={[
         { id: 'overview', label: t('system:tabs.overview'), icon: Gauge, content: <OverviewTab ov={ov} /> },

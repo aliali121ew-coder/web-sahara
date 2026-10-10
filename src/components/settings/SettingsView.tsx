@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
-import { useFuelData } from '../../context/FuelDataContext';
+import { useFuelStore } from '../../context/FuelDataContext';
 import {
   SidebarStyle,
   BgGradientTheme,
@@ -943,7 +943,7 @@ const AppearanceAndNavigationSection: React.FC = () => {
 const DataSection: React.FC = () => {
   const { t } = useTranslation('settings');
   const { setThemeMode, setSidebarStyle } = useTheme();
-  const { refreshAllData } = useFuelData();
+  const { refreshAllData } = useFuelStore();
   const handleResetDefaults = () => {
     if (window.confirm(t('data.confirm'))) {
       localStorage.clear();

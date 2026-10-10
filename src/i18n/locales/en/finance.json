@@ -6,7 +6,8 @@
       "chooseHint": "Excel or PDF — fields fill automatically, then review",
       "checkMatch": "Current balance matches the statement: {{value}} L",
       "checkMismatch": "The calculated balance differs from the statement ({{value}}) by {{diff}} L",
-      "unmatched": "Sites in the statement that aren’t in the system (not filled): {{list}}"
+      "unmatched": "Sites in the statement that aren’t in the system (not filled): {{list}}",
+      "dateFromFile": "Date from the sheet: {{date}}"
     },
     "inboundNote": "Etihad + external",
     "actualConsumption": "Actual consumption",
@@ -699,5 +700,51 @@
     "safetyDays_one": "<1>{{count}}</1> <2>full safety day</2>",
     "safetyDays_other": "<1>{{count}}</1> <2>full safety days</2>",
     "empty": "No reserve sites recorded yet"
+  },
+  "bulk": {
+    "button": "Bulk upload",
+    "title": "Upload several sheets at once",
+    "hint": "Up to 5 files. Each file is read, saved to its section and attached to the archive directly, with the same rules as manual entry.",
+    "kind": {
+      "balance": "Gasoil balance sheet",
+      "petrol": "Petrol sheet",
+      "tanks": "Tanks file (black oil)",
+      "black-oil": "Black oil report",
+      "none": "Unknown type"
+    },
+    "problem": {
+      "unknown": "File type not recognised — upload it from its tab",
+      "etihad": "Etihad sheet — upload it from the Etihad page",
+      "inbound": "Inbound file — upload it from the inbound page",
+      "no-permission": "You cannot edit this section",
+      "unreadable": "Could not read the file"
+    },
+    "tooMany": "Only {{max}} files are accepted; {{count}} left out",
+    "start": "Start",
+    "summary": "Finished: {{saved}} of {{total}} saved",
+    "preview": "Preview file",
+    "willProcess_one": "{{count}} file will be processed",
+    "willProcess_other": "{{count}} files will be processed in order",
+    "processing": "Processing… keep this page open",
+    "confirmHint": "Saved days wait for \"Confirm data\" on each section page before reaching the home page and tanks.",
+    "reason": {
+      "noDate": "No date in the file — upload it from its tab",
+      "dateTaken": "This day already exists (not replaced)",
+      "noPrevious": "No previous balance for this date — upload it from its tab",
+      "overCapacity": "A station balance exceeds its tank capacity",
+      "noConsumption": "No consumption in the file",
+      "noAverage": "No approved daily average",
+      "negative": "Current balance is negative",
+      "noStations": "No Sahara gasoil stations in the tank system",
+      "noTanks": "No tank quantities found in the file, or no Sahara black-oil tanks in the tank system",
+      "readFailed": "Could not read the file"
+    },
+    "note": {
+      "unmatched": "Saved — unmatched sites: {{list}}",
+      "diff": "Saved — differs from the sheet balance by {{diff}}",
+      "attachFailed": "Saved — the file could not be attached to the archive, attach it manually",
+      "tanksMissing": "Tanks updated — not read: {{list}}",
+      "tanksOver": "Quantity above tank capacity (set to full): {{list}}"
+    }
   }
 }

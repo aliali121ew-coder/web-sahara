@@ -116,7 +116,8 @@
     "failed": "Failed",
     "ok": "Succeeded",
     "daily-backup": "Daily backup",
-    "monthly-maintenance": "Monthly maintenance"
+    "monthly-maintenance": "Monthly maintenance",
+    "demo-reset": "Demo reset"
   },
   "jobLog": "Job log",
   "verify": {
@@ -189,7 +190,8 @@
     "daily": "Daily",
     "manual": "Manual",
     "pre-restore": "Pre-restore",
-    "monthly": "Monthly archive"
+    "monthly": "Monthly archive",
+    "demo-base": "Demo base"
   },
   "rows_one": "{{n}} row",
   "rows_other": "{{n}} rows",
@@ -207,5 +209,20 @@
   },
   "dur": {
     "sec": "{{v}} s"
+  },
+  "demo": {
+    "title": "Demo version",
+    "text": "Data resets every night to the \"base data\". Accounts are kept, and expired ones stop automatically.",
+    "base": "Base data",
+    "noBase": "Not set yet",
+    "lastReset": "Last reset",
+    "nextReset": "Next reset",
+    "setBase": "Use current data as base",
+    "resetNow": "Reset now",
+    "confirmBase": "The current data becomes what the demo resets to every night. Continue?",
+    "confirmReset": "All current data will be replaced with the base data. Continue?",
+    "baseDone": "Current data set as base",
+    "resetDone_one": "Reset done; {{count}} expired account stopped",
+    "resetDone_other": "Reset done; {{count}} expired accounts stopped"
   }
 }

@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { TankItem } from '../../types';
 import { enumText, siteName } from '../../i18n/enums';
 import { formatNumber } from '../../lib/utils';
-import { useFuelData } from '../../context/FuelDataContext';
+import { useFuelStore } from '../../context/FuelDataContext';
 
 interface TankVisualGaugeProps {
   tank: TankItem;
@@ -20,7 +20,7 @@ interface TankVisualGaugeProps {
 
 export const TankVisualGauge: React.FC<TankVisualGaugeProps> = ({ tank }) => {
   const { t } = useTranslation(['tanks', 'common']);
-  const { updateTankLevel } = useFuelData();
+  const { updateTankLevel } = useFuelStore();
 
   // Get color gradient for fluid wave based on fuel type and status
   const getFluidGrad = () => {

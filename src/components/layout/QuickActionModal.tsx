@@ -27,7 +27,7 @@ import {
   Loader2,
   AlertTriangle,
 } from 'lucide-react';
-import { useFuelData } from '../../context/FuelDataContext';
+import { useFuelStore } from '../../context/FuelDataContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { enumText } from '../../i18n/enums';
 import { useTranslation } from 'react-i18next';
@@ -81,7 +81,7 @@ const DEFAULT_COLORS = ['احمر', 'اصفر', 'عسلي', 'نفط ابيض'];
 const productFromColor = (_color: string) => 'كاز ممتاز';
 
 export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onClose, editData }) => {
-  const { addDelivery, updateDelivery, deliveries } = useFuelData();
+  const { addDelivery, updateDelivery, deliveries } = useFuelStore();
   const { isRTL } = useLanguage();
 
   const { t, i18n } = useTranslation(['deliveries', 'common']);
@@ -508,6 +508,13 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
     try {
       const rows = await parseInboundFile(file);
       if (!rows.length) throw new Error(t('deliveries:quick.noRows'));
+      // الفترة تُؤخذ من تواريخ الشحنات في الملف تلقائيًا (كانت "اليوم" فتُتجاهل شحنات الأيام الأخرى)،
+      // وتبقى قابلة للتغيير يدويًا من زر الفترة
+      const dates = rows.map(r => r.receiptUnloadDate).filter(Boolean).sort();
+      if (dates.length) {
+        setImportFrom(dates[0]);
+        setImportTo(dates[dates.length - 1]);
+      }
       setImportState({ status: 'ready', fileName: file.name, rows });
     } catch (err) {
       setImportState({ status: 'error', message: err instanceof Error ? err.message : t('deliveries:quick.readFailed') });

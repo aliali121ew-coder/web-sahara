@@ -41,6 +41,8 @@ export interface SessionProfile {
   is_admin: number;
   /** صلاحيات الأقسام (راجع permCatalog.ts) */
   perms?: Perms;
+  /** انتهاء حساب التجربة (0 = دائم) — النسخة التجريبية فقط */
+  expires_at?: number;
 }
 
 /**
@@ -119,7 +121,7 @@ const setSavedLogin = (username: string, until?: number) => {
 };
 
 /** هل النظام بحاجة لإعداد أول (لا توجد حسابات بعد)؟ */
-export async function authStatus(): Promise<{ setup: boolean }> {
+export async function authStatus(): Promise<{ setup: boolean; demo?: boolean }> {
   const res = await fetch('/api/chat/auth/status', { cache: 'no-store' });
   if (!res.ok) throw new AuthError('تعذّر الاتصال بالخادم', 'network');
   return res.json();

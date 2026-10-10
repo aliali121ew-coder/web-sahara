@@ -31,7 +31,11 @@
     "iqd": "IQD",
     "days_one": "{{count}} day",
     "days_other": "{{count}} days",
-    "meter": "m"
+    "meter": "m",
+    "hours_one": "{{count}} hour",
+    "hours_other": "{{count}} hours",
+    "minutes_one": "{{count}} minute",
+    "minutes_other": "{{count}} minutes"
   },
   "time": {
     "minutesShort": "{{count}} min",
@@ -299,5 +303,19 @@
     "noNumbers_one": "Couldn’t read the numbers for {{count}} station (actual consumption and current balance columns)",
     "noNumbers_other": "Couldn’t read the numbers for {{count}} stations (actual consumption and current balance columns)",
     "alreadyUploaded": "Already uploaded for this day: {{list}}"
+  },
+  "demo": {
+    "banner": "Demo version — data is sample data and resets every night",
+    "endsIn": "Your account ends in {{time}}",
+    "loginBadge": "Demo version"
+  },
+  "install": {
+    "title": "Install the app on your phone",
+    "text": "Open it from your home screen like any app, full screen.",
+    "button": "Install",
+    "later": "Later",
+    "iosStep1": "Tap the Share button in the browser",
+    "iosStep2": "Choose \"Add to Home Screen\"",
+    "iosStep3": "Tap \"Add\" at the top"
   }
 }

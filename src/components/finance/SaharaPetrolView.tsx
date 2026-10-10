@@ -28,41 +28,20 @@ import {
   Loader2
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { formatNumber, getBusinessDate } from '../../lib/utils';
+import { formatNumber } from '../../lib/utils';
 import { useTranslation, Trans } from 'react-i18next';
 import { siteName } from '../../i18n/enums';
 import { fmtList } from '../../i18n/format';
 import { usePetrolLedger, petrolPriceStats, PetrolLedgerRecord, PETROL_STATIONS } from '../../lib/petrolLedger';
 import { readPetrolReportFile } from '../../lib/petrolReportFile';
+import { withCommas, num, fmtInput, newPetrolForm, applyPetrolReport, petrolRecord, petrolSaveBlockers, type PetrolForm } from '../../lib/petrolForm';
 import { useReportAttach } from '../../lib/saharaFiles';
 import { ReportAttachNotice } from './DayFilesCell';
 import { useCentralTanks, resolveSaharaPetrolSectionKey, tankLiters } from '../../lib/centralTanks';
 import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
 
-/** كتابة الأرقام بفوارز أثناء الإدخال */
-const withCommas = (v: string) => {
-  const clean = v.replace(/[^\d.]/g, '');
-  if (!clean) return '';
-  const [int, dec] = clean.split('.');
-  return (int ? Number(int).toLocaleString('en-US') : '0') + (dec !== undefined ? `.${dec.slice(0, 2)}` : '');
-};
-const num = (v: string) => (v.trim() === '' ? 0 : Number(v.replace(/,/g, '')) || 0);
-const fmtInput = (n: number | undefined | null) => (n ? withCommas(String(n)) : '');
-
-interface FormState {
-  id?: string;
-  date: string;
-  previous: string;
-  /** الرصيد السابق معدّل يدويًا (وإلا = الرصيد الحالي لليوم الذي قبله) */
-  editPrevious: boolean;
-  /** خانة الرصيد السابق مفتوحة للإدخال */
-  prevEditing: boolean;
-  inboundQty: string;
-  inboundInternal: string;
-  inboundPrice: string;
-  consumption: Record<string, string>;
-  balances: Record<string, string>;
-}
+// منطق النموذج (يوم جديد، التعبئة من الكشف، السجل، شروط الحفظ) في lib/petrolForm.ts
+type FormState = PetrolForm;
 
 const pctLabel = (p: number | null, decimals = 2) =>
   p === null ? '—' : `${p > 0 ? '+' : p < 0 ? '−' : ''}${Math.abs(p).toFixed(decimals)}%`;
@@ -145,22 +124,10 @@ export const SaharaPetrolView: React.FC = () => {
   // ── النموذج ──
   const [form, setForm] = useState<FormState | null>(null);
   const openNew = () => {
-    const today = getBusinessDate();
     setEntryMode('manual');
     setUpload({ status: 'idle' });
     setReportFile(null);
-    setForm({
-      date: computed.some(r => r.date === today) ? '' : today,
-      previous: '',
-      editPrevious: false,
-      prevEditing: computed.length === 0,
-      inboundQty: '',
-      inboundInternal: '',
-      // الكشف لا يحتوي السعر: يُقترح آخر سعر شراء مسجّل
-      inboundPrice: fmtInput([...computed].reverse().find(r => r.inboundPrice > 0)?.inboundPrice),
-      consumption: Object.fromEntries(stations.map(s => [s.id, ''])),
-      balances: Object.fromEntries(stations.map(s => [s.id, fmtInput(s.balance)]))
-    });
+    setForm(newPetrolForm(computed, stations));
   };
   const openEdit = (r: PetrolLedgerRecord) => {
     setUpload({ status: 'idle' });
@@ -190,8 +157,7 @@ export const SaharaPetrolView: React.FC = () => {
   const formCurrent = formPrevious + (form ? num(form.inboundQty) + num(form.inboundInternal) : 0) - formConsumption;
   const formEmpty = !!form && !num(form.inboundQty) && !num(form.inboundInternal) && !formConsumption;
   const overCapacity = form ? stations.filter(s => s.capacity > 0 && num(form.balances[s.id] || '') > s.capacity) : [];
-  const canSave = !!form && /^\d{4}\/\d{2}\/\d{2}$/.test(form.date) && !dateTaken
-    && (form.editPrevious || autoPrevious !== null || form.previous.trim() !== '') && overCapacity.length === 0;
+  const canSave = !!form && petrolSaveBlockers(form, computed, stations).length === 0;
   const startEditPrevious = () => form && setForm({ ...form, prevEditing: true, previous: form.previous || fmtInput(autoPrevious ?? 0) });
   const commitPrevious = () => form && setForm({ ...form, prevEditing: false, editPrevious: form.previous.trim() !== '' });
   // مسح البيانات: يفرّغ الخانات فقط ولا يحذف اليوم
@@ -225,25 +191,10 @@ export const SaharaPetrolView: React.FC = () => {
     setReportFile(null);
     try {
       const data = await readPetrolReportFile(file, stations.map(s => s.name));
-      const byName = new Map(stations.map(s => [s.name, s.id]));
-      const consumption = { ...form.consumption };
-      const balances = { ...form.balances };
-      let filled = 0;
-      const unmatched: string[] = [];
-      data.stations.forEach(st => {
-        const id = st.matched ? byName.get(st.matched) : undefined;
-        if (!id) { unmatched.push(st.nameInFile); return; }
-        if (st.consumption !== undefined) { consumption[id] = fmtInput(st.consumption) || '0'; filled++; }
-        if (st.balance !== undefined) { balances[id] = fmtInput(st.balance) || '0'; filled++; }
-      });
-      const next = { ...form, consumption, balances };
-      if (data.inboundQty !== undefined) { next.inboundQty = fmtInput(data.inboundQty); filled++; }
-      if (data.inboundInternal !== undefined) { next.inboundInternal = fmtInput(data.inboundInternal); filled++; }
-      if (data.inboundPrice !== undefined) { next.inboundPrice = fmtInput(data.inboundPrice); filled++; }
-      // الرصيد السابق من الملف يُستعمل فقط إن لم يوجد يوم قبله في النظام
-      if (data.previous !== undefined && autoPrevious === null) { next.previous = fmtInput(data.previous); next.editPrevious = true; filled++; }
-      setForm(next);
-      setUpload({ status: 'done', filled, unmatched, notes: data.notes });
+      const res = applyPetrolReport(form, data, stations, computed);
+      const { filled, unmatched } = res;
+      setForm(res.form);
+      setUpload({ status: 'done', filled, unmatched, notes: [res.dateFromFile ? t('finance:saharaBalance.upload.dateFromFile', { date: res.dateFromFile }) : '', data.notes].filter(Boolean).join(' — ') });
       setReportFile(file);
     } catch (e) {
       setUpload({ status: 'error', message: e instanceof Error ? e.message : t('finance:saharaPetrol.readFailed') });
@@ -255,18 +206,7 @@ export const SaharaPetrolView: React.FC = () => {
 
   const save = () => {
     if (!form || !canSave) return;
-    const record: PetrolLedgerRecord = {
-      id: form.id || `pet-${Date.now()}`,
-      date: form.date,
-      inboundQty: num(form.inboundQty),
-      inboundInternal: num(form.inboundInternal),
-      inboundPrice: num(form.inboundPrice),
-      consumption: Object.fromEntries(Object.entries(form.consumption).map(([k, v]) => [k, num(v)])),
-      stationBalances: Object.fromEntries(Object.entries(form.balances).map(([k, v]) => [k, num(v)])),
-      // يُحفظ الرصيد السابق فقط إذا عُدّل يدويًا أو لم يوجد يوم قبله (الرصيد الافتتاحي)
-      previousOverride: form.editPrevious || autoPrevious === null ? num(form.previous) : null,
-      savedAt: new Date().toISOString()
-    };
+    const record: PetrolLedgerRecord = petrolRecord(form, computed);
     // الحفظ يحدّث هذه الصفحة فقط؛ الواجهة الرئيسية والخزانات تنتظر "تأكيد البيانات"
     update(prev => (form.id ? prev.map(r => (r.id === form.id ? record : r)) : [...prev, record]));
     if (reportFile) reportAttach.attach(record.id, reportFile);
@@ -274,6 +214,7 @@ export const SaharaPetrolView: React.FC = () => {
     setViewId(null);
     setForm(null);
   };
+
 
   // ── التأكيد والإلغاء ──
   const [confirmOpen, setConfirmOpen] = useState(false);
