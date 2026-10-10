@@ -208,3 +208,30 @@ export const syncSaharaPetrolTanks = (totalLiters: number, stationBalances?: Rec
   });
   if (changed) writeCentralTanks(next);
 };
+
+/**
+ * ملء خزانات قسم بالكميات (لتر) بترتيب خزانات القسم الظاهرة؛ null = يُترك الخزان كما هو.
+ * الكمية الأكبر من السعة تُقصّ إلى الامتلاء. يُرجع الخزانات التي تغيرت والتي تجاوزت سعتها.
+ */
+export const setSectionTankLiters = (sectionKey: string, liters: (number | null)[], fallback: TankUnitRow[] = []) => {
+  const tanks = readCentralTanks(fallback);
+  const section = tanks.filter(t => t.sectionKey === sectionKey && !t.hidden);
+  const target = new Map<string, number>();
+  const over: string[] = [];
+  section.forEach((t, i) => {
+    const v = liters[i];
+    if (v === null || v === undefined || !t.capacityLiters) return;
+    if (v > t.capacityLiters) over.push(t.name);
+    const max = t.maxLevelMeters || 1;
+    target.set(t.id, Math.min(max, Math.max(0, (v / t.capacityLiters) * max)));
+  });
+  let changed = false;
+  const next = tanks.map(t => {
+    const level = target.get(t.id);
+    if (level === undefined || Math.abs(level - t.levelMeters) < 1e-9) return t;
+    changed = true;
+    return { ...t, levelMeters: level };
+  });
+  if (changed) writeCentralTanks(next);
+  return { filled: target.size, sectionSize: section.length, over };
+};

@@ -5,15 +5,16 @@ import { findReportDate } from './reportDate';
  * هنا: تحديد نوع كل ملف وتاريخه من محتواه، وترتيب التنفيذ. المعالجة نفسها في bulkProcess.ts
  * (بنفس دوال نافذة كل قسم).
  */
-export type BulkKind = 'balance' | 'petrol' | 'black-oil';
+export type BulkKind = 'balance' | 'petrol' | 'tanks' | 'black-oil';
 /** القسم في صفحة الصحاري وصلاحية تعديله */
 export const BULK_KINDS: Record<BulkKind, { subtab: BulkKind; perm: string }> = {
   balance: { subtab: 'balance', perm: 'sahara.balance' },
   petrol: { subtab: 'petrol', perm: 'sahara.petrol' },
+  tanks: { subtab: 'tanks', perm: 'sahara.tanks' },
   'black-oil': { subtab: 'black-oil', perm: 'sahara.black-oil' },
 };
-/** ترتيب المعالجة لنفس التاريخ */
-const KIND_ORDER: BulkKind[] = ['balance', 'petrol', 'black-oil'];
+/** ترتيب المعالجة لنفس التاريخ: الخزانات قبل النفط الأسود فتُحفظ مناسيبها الجديدة مع سجل اليوم */
+const KIND_ORDER: BulkKind[] = ['balance', 'petrol', 'tanks', 'black-oil'];
 
 export const MAX_BULK_FILES = 5;
 export const BULK_ACCEPT = '.pdf,.xlsx,.xlsm,.xls,.csv';
@@ -76,6 +77,8 @@ export const detectKind = (allText: string): { kind: BulkKind | null; problem?: 
   if (has(t, 'موقف') && has(t, 'الرصيد الحقيقي', 'مستوى الفارغ')) return { kind: 'black-oil' };
   if (has(t, 'بنزين', 'بانزين') && has(t, 'المدور السابق', 'المصروف الفعلي')) return { kind: 'petrol' };
   if (has(t, 'المرسل الى المزارع', 'الرصيد التراكمي') || (has(t, 'المدور السابق') && has(t, 'المصروف اليومي للمولدات'))) return { kind: 'balance' };
+  // ملف الخزانات: تُقرأ منه كميات خزانات النفط الأسود فقط
+  if (has(t, 'الخزان الرئيسي') && has(t, 'مستوى الخزانات الرئيسية', 'نسبة امتلاء')) return { kind: 'tanks' };
   return { kind: null, problem: 'unknown' };
 };
 

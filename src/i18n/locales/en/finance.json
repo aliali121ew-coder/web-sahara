@@ -708,6 +708,7 @@
     "kind": {
       "balance": "Gasoil balance sheet",
       "petrol": "Petrol sheet",
+      "tanks": "Tanks file (black oil)",
       "black-oil": "Black oil report",
       "none": "Unknown type"
     },
@@ -735,12 +736,15 @@
       "noAverage": "No approved daily average",
       "negative": "Current balance is negative",
       "noStations": "No Sahara gasoil stations in the tank system",
+      "noTanks": "No tank quantities found in the file, or no Sahara black-oil tanks in the tank system",
       "readFailed": "Could not read the file"
     },
     "note": {
       "unmatched": "Saved — unmatched sites: {{list}}",
       "diff": "Saved — differs from the sheet balance by {{diff}}",
-      "attachFailed": "Saved — the file could not be attached to the archive, attach it manually"
+      "attachFailed": "Saved — the file could not be attached to the archive, attach it manually",
+      "tanksMissing": "Tanks updated — not read: {{list}}",
+      "tanksOver": "Quantity above tank capacity (set to full): {{list}}"
     }
   }
 }

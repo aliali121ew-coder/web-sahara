@@ -1,12 +1,13 @@
 import { OFFICIAL_TABLE_TANK_UNITS } from '../components/tanks/TanksOverview';
-import { readCentralTanks, resolveSaharaGasoilSectionKey, resolveSaharaPetrolSectionKey, tankLiters } from './centralTanks';
+import { readCentralTanks, resolveSaharaGasoilSectionKey, resolveSaharaPetrolSectionKey, setSectionTankLiters, tankLiters } from './centralTanks';
+import { readTanksReportFile, slotLabel, TANKS_FILE_SLOTS } from './tanksReportFile';
 import { attachDayReport } from './saharaFiles';
 import { readSaharaReportFile } from './saharaReportFile';
 import { readPetrolReportFile } from './petrolReportFile';
 import { parseBlackOilReport } from './blackOilReportFile';
 import { computeSahara, readSaharaRecords, updateSaharaRecords } from './saharaLedger';
 import { computePetrol, readPetrolRecords, updatePetrolRecords, PETROL_STATIONS } from './petrolLedger';
-import { BLACK_OIL_SITES, computeBlackOil, getBlackOilAvgDaily, readBlackOilRecords, updateBlackOilRecords } from './blackOilLedger';
+import { BLACK_OIL_SECTION_KEYS, BLACK_OIL_SITES, computeBlackOil, getBlackOilAvgDaily, readBlackOilRecords, updateBlackOilRecords } from './blackOilLedger';
 import { applySaharaReport, newSaharaBalanceForm, saharaDraft, saharaSaveBlockers, type SaharaStation } from './saharaBalanceForm';
 import { applyPetrolReport, newPetrolForm, petrolRecord, petrolSaveBlockers, type PetrolStation } from './petrolForm';
 import { applyBlackOilReport, blackOilDerived, blackOilRecord, blackOilSaveBlockers, newBlackOilForm } from './blackOilForm';
@@ -17,14 +18,14 @@ import type { BulkKind } from './bulkUpload';
  * ثم يُحفظ ويُرفق بالأرشيف — بلا فتح النوافذ. اليوم المحفوظ يبقى بانتظار "تأكيد البيانات" كالمعتاد.
  * لا يُستبدل يوم موجود، ولا يُحفظ ملف بلا تاريخ (في النافذة كان المستخدم يرى التاريخ ويصححه).
  */
-export type BulkSkipReason = 'noDate' | 'dateTaken' | 'noPrevious' | 'overCapacity' | 'noConsumption' | 'noAverage' | 'negative' | 'noStations' | 'readFailed';
+export type BulkSkipReason = 'noDate' | 'dateTaken' | 'noPrevious' | 'overCapacity' | 'noConsumption' | 'noAverage' | 'negative' | 'noStations' | 'noTanks' | 'readFailed';
 
 export interface BulkResult {
   status: 'saved' | 'skipped';
   date?: string;
   reasons?: BulkSkipReason[];
   /** ملاحظات لا تمنع الحفظ: مواقع غير مطابقة، فرق عن رصيد الكشف، فشل إرفاق الملف */
-  notes?: { unmatched?: string[]; diff?: number; attachFailed?: boolean };
+  notes?: { unmatched?: string[]; diff?: number; attachFailed?: boolean; tanksMissing?: string[]; tanksOver?: string[] };
   error?: string;
 }
 
@@ -98,6 +99,19 @@ export const processBulkFile = async (kind: BulkKind, file: File, progress: (p: 
       progress(80);
       const attached = await attach(record.id, file);
       return { status: 'saved', date: record.date, notes: { unmatched: applied.unmatched, attachFailed: !attached } };
+    }
+
+    if (kind === 'tanks') {
+      // ملف الخزانات: كميات 9 خزانات نفط أسود فقط → خزانات قسم النفط الأسود للصحاري بالترتيب
+      const liters = await readTanksReportFile(file);
+      progress(45);
+      if (liters.every(v => v === null)) return { status: 'skipped', reasons: ['noTanks'] };
+      const res = setSectionTankLiters(BLACK_OIL_SECTION_KEYS.sahara, liters, OFFICIAL_TABLE_TANK_UNITS);
+      progress(80);
+      if (!res.filled) return { status: 'skipped', reasons: ['noTanks'] };
+      // خزانات الملف التي لم تُقرأ أو لا يقابلها خزان في القسم
+      const missing = TANKS_FILE_SLOTS.filter((_, i) => liters[i] === null || i >= res.sectionSize).map(slotLabel);
+      return { status: 'saved', notes: { tanksMissing: missing, tanksOver: res.over } };
     }
 
     // النفط الأسود (موقف الصحاري في التقرير اليومي)
