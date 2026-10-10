@@ -122,12 +122,12 @@ export const SaharaGasSection: React.FC = () => {
     },
   ];
   // اللون حسب ترتيب الاستهلاك (لا حسب القطاع): الأعلى أحمر، ثم أصفر، والأقل أزرق
-  // لون واحد (الأحمر) يتدرّج حسب الاستهلاك: الأكثر أحمر غامق، ثم أفتح فأفتح — للدائرة والخطوط معًا.
-  // color للقوس والنقطة والخط، وtextColor للنص (الدرجة الفاتحة لا تُقرأ كنص)
+  // لون واحد (الأخضر المزرق، كتصميم Lead Sources) يتدرّج حسب الاستهلاك: الأكثر أغمق، ثم أفتح فأفتح —
+  // للدائرة والخطوط معًا. color للقوس والنقطة والخط، وtextColor للنص (الدرجة الفاتحة لا تُقرأ كنص)
   const RANK_COLORS = [
-    { color: '#B91C1C', textColor: '#991B1B', glowColor: 'rgba(185, 28, 28, 0.35)', grad: '#B91C1C' },
-    { color: '#EF4444', textColor: '#DC2626', glowColor: 'rgba(239, 68, 68, 0.35)', grad: '#EF4444' },
-    { color: '#FCA5A5', textColor: '#DC2626', glowColor: 'rgba(252, 165, 165, 0.45)', grad: '#FCA5A5' },
+    { color: '#0F766E', textColor: '#115E59', glowColor: 'rgba(15, 118, 110, 0.35)', grad: '#0F766E' },
+    { color: '#2DD4BF', textColor: '#0F766E', glowColor: 'rgba(45, 212, 191, 0.35)', grad: '#2DD4BF' },
+    { color: '#99F6E4', textColor: '#0F766E', glowColor: 'rgba(153, 246, 228, 0.45)', grad: '#99F6E4' },
   ];
   const rankOf = (i: number) => baseSectors.filter((x, j) => x.volume > baseSectors[i].volume || (x.volume === baseSectors[i].volume && j < i)).length;
   const sectorData = baseSectors.map((sec, i) => ({ ...sec, ...RANK_COLORS[Math.min(rankOf(i), RANK_COLORS.length - 1)] }));
