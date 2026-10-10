@@ -67,7 +67,7 @@ const buildWeeklyFlow = (days: { date: string; inbound: number; actualConsumptio
 };
 
 export const SaharaGasSection: React.FC = () => {
-  const { t } = useTranslation(['dashboard', 'common']);
+  const { t, i18n } = useTranslation(['dashboard', 'common']);
   // متوسط السعر = تكلفة المنتج الكلية ÷ الكمية المستلمة الكلية لوارد الصحاري (نفس كارت صفحة الوارد)،
   // ونسبة التغير = أثر آخر وارد على المتوسط (ارتفاع = أحمر، انخفاض = أخضر)
   const { saharaDeliveries } = useFuelStore();
@@ -100,6 +100,7 @@ export const SaharaGasSection: React.FC = () => {
       name: t('dashboard:sahara.sectors.vehicles'),
       value: sectorPct(latestDay?.vehicles ?? 0),
       volume: latestDay?.vehicles ?? 0,
+      prevVolume: prevDay ? prevDay.vehicles ?? 0 : null,
       color: '#2563EB',
       glowColor: 'rgba(37, 99, 235, 0.35)',
       icon: Tractor,
@@ -108,6 +109,7 @@ export const SaharaGasSection: React.FC = () => {
       name: t('dashboard:sahara.sectors.generators'),
       value: sectorPct(latestDay?.generators ?? 0),
       volume: latestDay?.generators ?? 0,
+      prevVolume: prevDay ? prevDay.generators ?? 0 : null,
       color: '#6366F1',
       glowColor: 'rgba(99, 102, 241, 0.35)',
       icon: Cpu,
@@ -116,6 +118,7 @@ export const SaharaGasSection: React.FC = () => {
       name: t('dashboard:sahara.sectors.farms'),
       value: sectorPct(latestDay?.farms ?? 0),
       volume: latestDay?.farms ?? 0,
+      prevVolume: prevDay ? prevDay.farms ?? 0 : null,
       color: '#10B981',
       glowColor: 'rgba(16, 185, 129, 0.35)',
       icon: Zap,
@@ -123,14 +126,26 @@ export const SaharaGasSection: React.FC = () => {
   ];
   // اللون حسب ترتيب الاستهلاك (لا حسب القطاع): الأعلى أحمر، ثم أصفر، والأقل أزرق
   // نفس تدرّج شريط "السعة الاستيعابية" (أزرق غامق/نيلي ← سماوي ← فيروزي) يتدرّج حسب الاستهلاك: الأكثر أغمق.
-  // color للنقطة، bar للخط، grad لقوس الدائرة، وtextColor للنص
+  // color للنقطة، from/to لتدرّج الخط، grad لقوس الدائرة، وtextColor للنص
   const RANK_COLORS = [
-    { color: '#2563EB', textColor: '#1D4ED8', glowColor: 'rgba(37, 99, 235, 0.35)', grad: 'url(#rankHigh)', bar: 'linear-gradient(to left, #1D4ED8, #2563EB, #4F46E5)' },
-    { color: '#0EA5E9', textColor: '#0369A1', glowColor: 'rgba(14, 165, 233, 0.35)', grad: 'url(#rankMid)', bar: 'linear-gradient(to left, #2563EB, #0EA5E9)' },
-    { color: '#22D3EE', textColor: '#0E7490', glowColor: 'rgba(34, 211, 238, 0.4)', grad: 'url(#rankLow)', bar: 'linear-gradient(to left, #0EA5E9, #22D3EE)' },
+    { color: '#2563EB', textColor: '#1D4ED8', glowColor: 'rgba(37, 99, 235, 0.35)', grad: 'url(#rankHigh)', from: '#1D4ED8', to: '#4F46E5' },
+    { color: '#0EA5E9', textColor: '#0369A1', glowColor: 'rgba(14, 165, 233, 0.35)', grad: 'url(#rankMid)', from: '#2563EB', to: '#0EA5E9' },
+    { color: '#22D3EE', textColor: '#0E7490', glowColor: 'rgba(34, 211, 238, 0.4)', grad: 'url(#rankLow)', from: '#0EA5E9', to: '#22D3EE' },
   ];
   const rankOf = (i: number) => baseSectors.filter((x, j) => x.volume > baseSectors[i].volume || (x.volume === baseSectors[i].volume && j < i)).length;
-  const sectorData = baseSectors.map((sec, i) => ({ ...sec, ...RANK_COLORS[Math.min(rankOf(i), RANK_COLORS.length - 1)] }));
+  const sectorData = baseSectors.map((sec, i) => {
+    const rank = RANK_COLORS[Math.min(rankOf(i), RANK_COLORS.length - 1)];
+    // زيادة الاستهلاك عن اليوم السابق: الخط يبقى أزرق ثم يتدرّج إلى الأحمر في طرفه،
+    // والجزء الأحمر يتسع بقدر الزيادة (من 15% إلى 60% من طول الخط)
+    const rise = sec.prevVolume && sec.volume > sec.prevVolume ? ((sec.volume - sec.prevVolume) / sec.prevVolume) * 100 : null;
+    const redShare = rise === null ? 0 : Math.min(60, Math.max(15, rise));
+    // الخط يبدأ من جهة بداية السطر (يمين بالعربي)، فالتدرّج نحو نهايته
+    const toEnd = i18n.dir() === 'rtl' ? 'to left' : 'to right';
+    const bar = rise === null
+      ? `linear-gradient(${toEnd}, ${rank.from}, ${rank.to})`
+      : `linear-gradient(${toEnd}, ${rank.from}, ${rank.to} ${100 - redShare}%, #EF4444 100%)`;
+    return { ...sec, ...rank, bar, rise };
+  });
 
   // أرصدة المواقع: مباشرة من منظومة الخزانات — قسم "خزانات الكاز - شركة صحاري كربلاء"
   const [centralTanks] = useCentralTanks(OFFICIAL_TABLE_TANK_UNITS);
