@@ -78,7 +78,8 @@ export const detectKind = (allText: string): { kind: BulkKind | null; problem?: 
   if (has(t, 'بنزين', 'بانزين') && has(t, 'المدور السابق', 'المصروف الفعلي')) return { kind: 'petrol' };
   if (has(t, 'المرسل الى المزارع', 'الرصيد التراكمي') || (has(t, 'المدور السابق') && has(t, 'المصروف اليومي للمولدات'))) return { kind: 'balance' };
   // ملف الخزانات: تُقرأ منه كميات خزانات النفط الأسود فقط
-  if (has(t, 'الخزان الرئيسي') && has(t, 'مستوى الخزانات الرئيسية', 'نسبة امتلاء')) return { kind: 'tanks' };
+  // ("الرئيسي" في PDF تأتي مقسومة "الخزان الرئيس" + "ي" فلا يُعتمد عليها)
+  if (has(t, 'مستوى الخزانات الرئيسية') && has(t, 'نسبة امتلاء')) return { kind: 'tanks' };
   return { kind: null, problem: 'unknown' };
 };
 

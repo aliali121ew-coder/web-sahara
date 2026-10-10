@@ -74,10 +74,12 @@ export const parseTanksPdfRows = (rows: PdfItem[][]): (number | null)[] => {
   const found = new Map<string, number>();
   for (const row of rows) {
     // النصوص (الاسم قد يأتي مقسّمًا إلى عدة قطع)
-    const texts = row.filter(it => pdfNum(it.str) === null && !it.str.includes('%'));
-    const words = skel(texts.map(it => it.str).join(' '));
+    // بترتيب موقعها (يمين ← يسار، وبالعكس): "الخزان الرئيس" + "ي" تأتي مقسومة وبغير ترتيبها
+    const texts = row.filter(it => pdfNum(it.str) === null && !it.str.includes('%')).sort((a, b) => b.x - a.x);
+    const join = (list: PdfItem[]) => skel(list.map(it => it.str).join(' '));
+    const words = `${join(texts)}|${join([...texts].reverse())}`;
     const kind = words.includes('خزنرئيسي') ? 'main' : words.includes('خزنرقم') && words.includes('نفطسود') ? 'gas' : null;
-    const label = texts.find(it => skel(it.str).includes('خزن'));
+    const label = texts.find(it => /خزنرئيس|خزنرقم/.test(skel(it.str))) ?? texts.find(it => skel(it.str).includes('خزن'));
     if (!kind || !label) continue;
     const nums = row
       .filter(it => pdfNum(it.str) !== null)
