@@ -783,7 +783,8 @@ export const TanksOverview: React.FC = () => {
                     className="fixed inset-0 z-30"
                     onClick={() => setIsSectionDropdownOpen(false)}
                   />
-                  <div className="absolute left-0 top-full mt-2 w-72 sm:w-80 max-w-[calc(100vw-32px)] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150 space-y-1">
+                  {/* الهاتف: الزر ينزل لبداية السطر فتمتد القائمة نحو داخل الشاشة؛ الشاشات الأكبر: كما كانت */}
+                  <div className="absolute start-0 sm:start-auto sm:end-0 top-full mt-2 w-72 sm:w-80 max-w-[calc(100vw-32px)] max-h-[70vh] overflow-y-auto rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150 space-y-1">
                     <div className="px-3 py-1.5 border-b border-slate-100 dark:border-slate-800 text-[11px] font-black text-slate-400">
                       {t('tanks:pickSection')}
                     </div>

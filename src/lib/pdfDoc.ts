@@ -7,7 +7,8 @@ import type { PDFDocumentProxy } from 'pdfjs-dist';
 const load = async () => {
   const pdfjs = await import('pdfjs-dist');
   pdfjs.GlobalWorkerOptions.workerSrc = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
-  return { pdfjs, worker: new pdfjs.PDFWorker() };
+  // تحذيرات الخطوط داخل الملفات (TT: undefined function) لا تؤثر على القراءة: الأخطاء فقط
+  return { pdfjs, worker: new pdfjs.PDFWorker({ verbosity: pdfjs.VerbosityLevel.ERRORS }) };
 };
 let ready: ReturnType<typeof load> | null = null;
 
@@ -18,6 +19,7 @@ export const withPdf = async <T>(file: File, fonts: boolean, read: (pdf: PDFDocu
   const task = pdfjs.getDocument({
     data: new Uint8Array(await file.arrayBuffer()),
     worker,
+    verbosity: pdfjs.VerbosityLevel.ERRORS,
     ...(fonts ? { cMapUrl: '/pdfjs/cmaps/', cMapPacked: true, standardFontDataUrl: '/pdfjs/standard_fonts/' } : {})
   });
   try {

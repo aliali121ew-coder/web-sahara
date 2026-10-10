@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Droplets, Plus, Save, X, Pencil, Trash2, CalendarDays, Printer, ChevronRight, ChevronLeft, LayoutTemplate, Check, FileUp, Loader2, AlertTriangle, CheckCircle2, Warehouse } from 'lucide-react';
 import { OfficialReportHeaderRow } from '../print/OfficialReportHeader';
@@ -25,7 +25,14 @@ const fromInputDate = (d: string) => d.replace(/-/g, '/');
 // منطق النموذج (يوم جديد، التعبئة من التقرير، الحسابات، السجل، شروط الحفظ) في lib/blackOilForm.ts
 type FormState = BlackOilForm;
 
-export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; company?: BlackOilCompany }> = ({ variant = 'recent', company = 'etihad' }) => {
+/** طلب من خارج الجدول (تقرير الخزانات): تعديل أو حذف يوم. nonce يميّز تكرار نفس الطلب */
+export type BlackOilDayAction = { kind: 'edit' | 'delete'; id: string; nonce: number };
+
+/**
+ * variant="headless": بلا جدول، فقط نافذة التعديل وتأكيد الحذف لطلبات action
+ * (تقرير الخزانات يعرض نفس أيام النفط الأسود ويعدّلها بنفس النافذة)
+ */
+export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive' | 'headless'; company?: BlackOilCompany; action?: BlackOilDayAction | null }> = ({ variant = 'recent', company = 'etihad', action = null }) => {
   const { t, i18n } = useTranslation(['finance', 'common']);
   const isArchive = variant === 'archive';
   const { records, computed, avgDaily, update } = useBlackOilLedger(company);
@@ -154,14 +161,37 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
   };
 
   // وضع التعديل (زر "تعديل" بجانب "تسجيل يوم"): يُظهر القلم والسلة في الجدول
+  // في الأرشيف: عمود الإجراءات ظاهر دائمًا للمرفقات، والقلم والسلة وتغيير/حذف الملفات بعد "تعديل"
   const [manage, setManage] = useState(false);
   const showActions = isArchive || manage;
+  const editToggle = (
+    <button
+      type="button"
+      onClick={() => setManage(m => !m)}
+      disabled={!visible.length && !manage}
+      title={manage ? t('finance:blackOil.finishEditing') : t('finance:blackOil.manageDays')}
+      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+        manage
+          ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-purple-500/20'
+          : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-slate-900/5'
+      }`}
+    >
+      {manage ? <Check className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
+      {manage ? t('common:actions.done') : t('common:actions.edit')}
+    </button>
+  );
   // تأكيد الحذف داخل التطبيق؛ الحذف من السجل اليومي يحذف اليوم من الأرشيف والتقارير تلقائيًا (نفس المصدر)
   const [confirmDel, setConfirmDel] = useState<{ id: string; date: string } | null>(null);
   const remove = (id: string) => {
     const r = records.find(x => x.id === id);
     if (r) setConfirmDel({ id, date: r.date });
   };
+  useEffect(() => {
+    if (!action) return;
+    if (action.kind === 'edit') openEdit(action.id);
+    else remove(action.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [action?.nonce]);
   const doRemove = () => {
     if (confirmDel) {
       update(prev => prev.filter(r => r.id !== confirmDel.id));
@@ -343,339 +373,8 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
     document.body
   );
 
-  return (
-    <>
-    {printDoc}
-    {previewModal}
-    {confirmDel && createPortal(
-      <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm animate-in fade-in duration-150" dir={i18n.dir()} onClick={() => setConfirmDel(null)}>
-        <div onClick={e => e.stopPropagation()} className="w-full max-w-sm rounded-3xl bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
-          <div className="p-5 flex items-start gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-              <Trash2 className="w-5 h-5" />
-            </div>
-            <div className="min-w-0 space-y-1">
-              <div className="font-black text-slate-900 dark:text-white"><Trans t={t} i18nKey="finance:blackOil.deleteDay" values={{ date: confirmDel.date }} components={{ 1: <span className="font-mono" /> }} /></div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{t('finance:blackOil.deleteText')}</p>
-              <p className="text-[11px] text-rose-600 dark:text-rose-400 font-bold">{t('finance:blackOil.deleteWarning')}</p>
-            </div>
-          </div>
-          <div className="px-5 pb-5 grid grid-cols-[auto_1fr] gap-2.5">
-            <button type="button" autoFocus onClick={() => setConfirmDel(null)} className="px-5 h-11 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold cursor-pointer">
-              {t('common:actions.cancel')}
-            </button>
-            <button type="button" onClick={doRemove} className="h-11 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-black flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] transition-all">
-              <Trash2 className="w-4 h-4" />
-              {t('finance:blackOil.deleteYes')}
-            </button>
-          </div>
-        </div>
-      </div>,
-      document.body
-    )}
-    <div className={`${isArchive ? 'no-print ' : ''}rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-soft-card overflow-hidden`}>
-      <div className="p-4 sm:p-5 border-b border-slate-200/90 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-900/50">
-        <div>
-          <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <Droplets className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-            <span>{isArchive ? t('finance:blackOil.archiveTitle') : t('finance:blackOil.title')}</span>
-          </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            {isArchive ? t('finance:blackOil.archiveHint') : t('finance:blackOil.hint')}
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {isArchive && (
-            <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs">
-              {([['all', t('common:enum.category.all')], ['month', t('common:print.rangeMonth')], ['week', t('common:print.rangeWeek')]] as const).map(([k, l]) => (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => { setRange(k); setPage(1); }}
-                  className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                    range === k ? 'bg-purple-600 text-white' : 'text-slate-600 dark:text-slate-300'
-                  }`}
-                >
-                  {l}
-                </button>
-              ))}
-            </div>
-          )}
-          {isArchive && (
-            <div className="relative">
-              {/* أيقونة التاريخ: تفتح نافذة صغيرة لتحديد الفترة (من / إلى) */}
-              <button
-                type="button"
-                onClick={e => {
-                  const r = e.currentTarget.getBoundingClientRect();
-                  setDatePop(p => (p ? null : { top: r.bottom + 8, left: Math.max(8, r.left) }));
-                }}
-                className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl border text-xs font-bold cursor-pointer transition-colors ${
-                  range === 'custom'
-                    ? 'border-purple-400 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300'
-                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
-                }`}
-                title={t('finance:blackOil.pickRange')}
-              >
-                <CalendarDays className="w-4 h-4" />
-                {range === 'custom' && <span className="font-mono">{fromDate || '…'} — {toDate || '…'}</span>}
-              </button>
-              {datePop && createPortal(
-                <>
-                <div className="fixed inset-0 z-[150]" onClick={() => setDatePop(null)} />
-                <div className="fixed z-[151]" style={{ top: datePop.top, left: datePop.left }}>
-                  <DateRangeCalendar
-                    from={fromDate}
-                    to={toDate}
-                    onApply={(f, t) => { setFromDate(f); setToDate(t); setRange('custom'); setPage(1); setDatePop(null); }}
-                    onClear={() => { setFromDate(''); setToDate(''); setRange('all'); setPage(1); setDatePop(null); }}
-                  />
-                </div>
-                </>,
-                document.body
-              )}
-            </div>
-          )}
-          {isArchive ? (
-            <button
-              type="button"
-              onClick={() => setShowPreview(true)}
-              disabled={visible.length === 0}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 disabled:opacity-40 text-white text-xs font-bold shadow-md active:scale-95 transition-all cursor-pointer"
-            >
-              <Printer className="w-4 h-4" />
-              {t('common:print.print')}
-            </button>
-          ) : (
-          <>
-          <button
-            type="button"
-            onClick={() => setManage(m => !m)}
-            disabled={!visible.length && !manage}
-            title={manage ? t('finance:blackOil.finishEditing') : t('finance:blackOil.manageDays')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-              manage
-                ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-purple-500/20'
-                : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-slate-900/5'
-            }`}
-          >
-            {manage ? <Check className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
-            {manage ? t('common:actions.done') : t('common:actions.edit')}
-          </button>
-          <button
-            type="button"
-            onClick={openNew}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-md shadow-purple-500/20 active:scale-95 transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            {t('finance:blackOil.recordDay')}
-          </button>
-          </>
-          )}
-        </div>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-center text-xs border-collapse font-mono">
-          <thead>
-            <tr className="bg-[#eef2f8] dark:bg-[#1c2b44] text-[#1c3b6f] dark:text-blue-100 border-b-2 border-[#1c3b6f]/70 dark:border-blue-900 font-black text-[11.5px] whitespace-nowrap font-sans select-none">
-              <th className={th}>{t('finance:blackOil.col.date')}</th>
-              {hasSites && <th className={th}>{t('finance:blackOil.col.site')}</th>}
-              <th className={th}>{t('finance:blackOil.col.previous')}</th>
-              <th className={th}>{t('finance:blackOil.col.inbound')}</th>
-              <th className={th}>{t('finance:blackOil.col.price')}</th>
-              <th className={th}>{t('finance:blackOil.col.consumption')}</th>
-              <th className={th}>{t('finance:blackOil.col.current')}</th>
-              <th className={th} title={t('finance:blackOil.col.diffHint')}>{t('finance:blackOil.col.diff')}</th>
-              {hasSites && <th className={th}>{t('finance:blackOil.col.empty')}</th>}
-              <th className={th}>{t('finance:blackOil.col.fill')}</th>
-              <th className={th}></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-            {visible.length === 0 ? (
-              <tr>
-                <td colSpan={hasSites ? 11 : 9} className="p-10 text-center text-sm text-slate-500 dark:text-slate-400 font-sans">
-                  {t('finance:blackOil.empty')}
-                </td>
-              </tr>
-            ) : (
-              pageRows.map(r => {
-                // يوم فيه مواقع: صف لكل موقع + إجمالي اليوم، والتاريخ والإجراءات مدمجة لليوم
-                const lines = linesOf(r);
-                return lines.map((l, j) => {
-                  const f = fillPct(l);
-                  const isTotal = l.kind === 'total';
-                  const ePct = l.empty !== null && l.capacity ? (l.empty / l.capacity) * 100 : null;
-                  return (
-                    <tr
-                      key={`${r.id}-${l.key}`}
-                      className={`transition-colors whitespace-nowrap ${
-                        isTotal
-                          ? 'bg-slate-50/80 dark:bg-slate-800/40 font-black'
-                          : 'hover:bg-purple-50/30 dark:hover:bg-purple-950/20'
-                      } ${j > 0 ? 'border-t border-dashed border-slate-100 dark:border-slate-800' : ''}`}
-                    >
-                      {j === 0 && (
-                        <td rowSpan={lines.length} className="p-3.5 font-sans align-middle border-l border-slate-100 dark:border-slate-800">
-                          <div className="font-bold text-slate-900 dark:text-white font-mono">{r.date}</div>
-                          <div className="text-[10.5px] text-slate-400">{weekday(r.date)}</div>
-                        </td>
-                      )}
-                      {hasSites && (
-                        <td className="p-3.5 font-sans">
-                          {l.kind === 'site' ? (
-                            <span className="font-bold text-slate-800 dark:text-slate-100">{enumText(l.name)}</span>
-                          ) : isTotal ? (
-                            <span className="font-black text-slate-900 dark:text-white">{enumText(l.name)}</span>
-                          ) : <span className="text-slate-400">—</span>}
-                        </td>
-                      )}
-                      <td className={`p-3.5 ${isTotal ? 'text-slate-800 dark:text-slate-100' : 'text-slate-600 dark:text-slate-300'}`}>{formatNumber(l.previous)}</td>
-                      <td className="p-3.5 font-bold text-emerald-600 dark:text-emerald-400">{formatNumber(l.inbound)}</td>
-                      {j === 0 && (
-                        <td rowSpan={lines.length} className="p-3.5 align-middle font-bold text-slate-900 dark:text-white border-x border-slate-100 dark:border-slate-800">
-                          {r.price ? <>{formatNumber(r.price)} <span className="text-[10px] font-sans font-bold text-slate-400">{t('common:units.iqd')}</span></> : <span className="text-slate-400">—</span>}
-                        </td>
-                      )}
-                      <td className="p-3.5 font-bold text-red-600 dark:text-red-400">{formatNumber(l.consumption)}</td>
-                      <td className="p-3.5 font-black text-slate-900 dark:text-white">{formatNumber(l.current)}</td>
-                      <td className="p-3.5">{diffCell(l.diff)}</td>
-                      {hasSites && (
-                        <td className="p-3.5 font-bold text-slate-900 dark:text-white">
-                          {l.empty !== null ? (
-                            <>
-                              {formatNumber(l.empty)}
-                              {ePct !== null && (
-                                <span className="ms-2 inline-block px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold tabular-nums align-middle">
-                                  {ePct.toFixed(1)}%
-                                </span>
-                              )}
-                            </>
-                          ) : <span className="text-slate-400">—</span>}
-                        </td>
-                      )}
-                      <td className="p-3.5">
-                        {f === null ? (
-                          <span className="text-slate-400">—</span>
-                        ) : (
-                          <div className="flex items-center justify-center gap-2.5 min-w-[140px]" title={`${t('finance:blackOil.capacity')}: ${formatNumber(l.capacity ?? 0)} ${t('common:units.liter')}`}>
-                            <div className="flex-1 h-2.5 rounded-full bg-slate-200/80 dark:bg-slate-700/70 overflow-hidden">
-                              <div className="h-full rounded-full bg-gradient-to-l from-purple-600 to-indigo-500" style={{ width: `${Math.min(100, Math.max(0, f))}%` }} />
-                            </div>
-                            <span className="w-12 text-end font-black tabular-nums text-slate-900 dark:text-white">{f.toFixed(1)}%</span>
-                          </div>
-                        )}
-                      </td>
-                      {j === 0 && (
-                        <td rowSpan={lines.length} className="p-3.5 align-middle">
-                          {showActions && (
-                          <div className="flex items-center gap-1 justify-center animate-in fade-in duration-150">
-                            {isArchive && <DayFilesCell recordId={r.id} files={filesByRecord.get(r.id) || []} manage api={filesApi} />}
-                            <button type="button" onClick={() => openEdit(r.id)} className="p-1.5 rounded-lg text-slate-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/40 cursor-pointer" title={t('common:actions.edit')}>
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                            <button type="button" onClick={() => remove(r.id)} className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer" title={t('common:actions.delete')}>
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                          )}
-                        </td>
-                      )}
-                    </tr>
-                  );
-                });
-              })
-            )}
-          </tbody>
-          {!isArchive && visible.length > 0 && (() => {
-            // آخر يوم (الأحدث): الكمية الحالية والفراغ الحاليان
-            const latestLines = linesOf(visible[0]);
-            const latest = latestLines[latestLines.length - 1];
-            const diffSum = visible.reduce((a, r) => a + r.diff, 0);
-            return (
-              <tfoot>
-                <tr className="bg-slate-50 dark:bg-slate-800/60 border-t-2 border-slate-300 dark:border-slate-700 font-black text-slate-900 dark:text-white whitespace-nowrap">
-                  <td className="p-3.5 font-sans" colSpan={hasSites ? 3 : 2}>{t('finance:blackOil.total')} <span className="text-[10px] font-bold text-slate-400">({t('common:units.days', { count: visible.length })})</span></td>
-                  <td className="p-3.5 text-emerald-600 dark:text-emerald-400">{formatNumber(totals.inbound)}</td>
-                  <td className="p-3.5" title={t('finance:blackOil.totalPriceHint')}>
-                    {(() => {
-                      const priced = visible.filter(r => r.price && r.inbound > 0);
-                      const q = priced.reduce((a, r) => a + r.inbound, 0);
-                      return q ? formatNumber(Math.round((priced.reduce((a, r) => a + r.price! * r.inbound, 0) / q) * 10) / 10) : '—';
-                    })()}
-                  </td>
-                  <td className="p-3.5 text-red-600 dark:text-red-400">{formatNumber(totals.consumption)}</td>
-                  <td className="p-3.5" title={t('finance:blackOil.totalCurrentHint')}>{formatNumber(latest.current)}</td>
-                  <td className="p-3.5" title={t('finance:blackOil.totalDiffHint')}>{diffCell(diffSum)}</td>
-                  {hasSites && <td className="p-3.5 text-slate-900 dark:text-white" title={t('finance:blackOil.totalEmptyHint')}>{latest.empty !== null ? formatNumber(latest.empty) : '—'}</td>}
-                  <td className="p-3.5 font-sans text-[11px] text-slate-500" colSpan={2}>
-                    {t('finance:blackOil.approvedAvg')}: <span className="font-mono font-black text-slate-900 dark:text-white">{formatNumber(avgDaily)}</span> {t('common:units.liter')}
-                    <span className="text-slate-400 ms-2">({t('finance:blackOil.actual')}: <span className="font-mono">{formatNumber(totals.actualAvg)}</span>)</span>
-                  </td>
-                </tr>
-              </tfoot>
-            );
-          })()}
-        </table>
-      </div>
-
-      {isArchive && visible.length > 0 && (
-        <div className="p-4 sm:p-5 border-t border-slate-200/90 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-          <div className="text-slate-600 dark:text-slate-400">
-            <Trans
-              t={t}
-              i18nKey="common:pagination.showing"
-              values={{ from: startIndex + 1, to: endIndex, total: visible.length }}
-              components={{ 1: <strong className="font-bold text-slate-900 dark:text-white font-mono" />, 2: <strong className="font-bold text-purple-700 dark:text-purple-400 font-mono" /> }}
-            />
-          </div>
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setPage(Math.max(1, safePage - 1))}
-              disabled={safePage === 1}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-bold disabled:opacity-40 disabled:pointer-events-none cursor-pointer flex items-center gap-1"
-            >
-              <ChevronRight className="w-4 h-4 ltr:rotate-180" />
-              <span>{t('common:pagination.prev')}</span>
-            </button>
-            <div className="flex items-center gap-1 mx-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter(p => totalPages <= 5 || p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
-                .map((p, i, arr) => (
-                  <React.Fragment key={p}>
-                    {i > 0 && p - arr[i - 1] > 1 && <span className="px-1 text-slate-400 font-mono">...</span>}
-                    <button
-                      type="button"
-                      onClick={() => setPage(p)}
-                      className={`w-8 h-8 rounded-xl font-bold font-mono text-xs cursor-pointer ${
-                        safePage === p
-                          ? 'bg-purple-600 text-white font-black'
-                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  </React.Fragment>
-                ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => setPage(Math.min(totalPages, safePage + 1))}
-              disabled={safePage === totalPages}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-bold disabled:opacity-40 disabled:pointer-events-none cursor-pointer flex items-center gap-1"
-            >
-              <span>{t('common:pagination.next')}</span>
-              <ChevronLeft className="w-4 h-4 ltr:rotate-180" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* نافذة التسجيل / التعديل بنفس نمط نافذة الوارد */}
-      {form && createPortal(
+  // النافذتان منفصلتان ليستعملهما تقرير الخزانات أيضًا (variant="headless")
+  const formModal = form && createPortal(
         <div className="no-print fixed inset-0 z-[120] flex items-center justify-center p-2 sm:p-3 bg-slate-950/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setForm(null)}>
           <div
             dir={i18n.dir()}
@@ -902,7 +601,338 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive'; com
           </div>
         </div>,
         document.body
+      );
+  const confirmModal = confirmDel && createPortal(
+      <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm animate-in fade-in duration-150" dir={i18n.dir()} onClick={() => setConfirmDel(null)}>
+        <div onClick={e => e.stopPropagation()} className="w-full max-w-sm rounded-3xl bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
+          <div className="p-5 flex items-start gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+              <Trash2 className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 space-y-1">
+              <div className="font-black text-slate-900 dark:text-white"><Trans t={t} i18nKey="finance:blackOil.deleteDay" values={{ date: confirmDel.date }} components={{ 1: <span className="font-mono" /> }} /></div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{t('finance:blackOil.deleteText')}</p>
+              <p className="text-[11px] text-rose-600 dark:text-rose-400 font-bold">{t('finance:blackOil.deleteWarning')}</p>
+            </div>
+          </div>
+          <div className="px-5 pb-5 grid grid-cols-[auto_1fr] gap-2.5">
+            <button type="button" autoFocus onClick={() => setConfirmDel(null)} className="px-5 h-11 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold cursor-pointer">
+              {t('common:actions.cancel')}
+            </button>
+            <button type="button" onClick={doRemove} className="h-11 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-black flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] transition-all">
+              <Trash2 className="w-4 h-4" />
+              {t('finance:blackOil.deleteYes')}
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  if (variant === 'headless') return <>{confirmModal}{formModal}<ReportAttachNotice state={reportAttach.state} onClose={reportAttach.dismiss} /></>;
+
+  return (
+    <>
+    {printDoc}
+    {previewModal}
+    {confirmModal}
+    <div className={`${isArchive ? 'no-print ' : ''}rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-soft-card overflow-hidden`}>
+      <div className="p-4 sm:p-5 border-b border-slate-200/90 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-900/50">
+        <div>
+          <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+            <Droplets className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            <span>{isArchive ? t('finance:blackOil.archiveTitle') : t('finance:blackOil.title')}</span>
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            {isArchive ? t('finance:blackOil.archiveHint') : t('finance:blackOil.hint')}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {isArchive && (
+            <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs">
+              {([['all', t('common:enum.category.all')], ['month', t('common:print.rangeMonth')], ['week', t('common:print.rangeWeek')]] as const).map(([k, l]) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => { setRange(k); setPage(1); }}
+                  className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    range === k ? 'bg-purple-600 text-white' : 'text-slate-600 dark:text-slate-300'
+                  }`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          )}
+          {isArchive && (
+            <div className="relative">
+              {/* أيقونة التاريخ: تفتح نافذة صغيرة لتحديد الفترة (من / إلى) */}
+              <button
+                type="button"
+                onClick={e => {
+                  const r = e.currentTarget.getBoundingClientRect();
+                  setDatePop(p => (p ? null : { top: r.bottom + 8, left: Math.max(8, r.left) }));
+                }}
+                className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl border text-xs font-bold cursor-pointer transition-colors ${
+                  range === 'custom'
+                    ? 'border-purple-400 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300'
+                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                }`}
+                title={t('finance:blackOil.pickRange')}
+              >
+                <CalendarDays className="w-4 h-4" />
+                {range === 'custom' && <span className="font-mono">{fromDate || '…'} — {toDate || '…'}</span>}
+              </button>
+              {datePop && createPortal(
+                <>
+                <div className="fixed inset-0 z-[150]" onClick={() => setDatePop(null)} />
+                <div className="fixed z-[151]" style={{ top: datePop.top, left: datePop.left }}>
+                  <DateRangeCalendar
+                    from={fromDate}
+                    to={toDate}
+                    onApply={(f, t) => { setFromDate(f); setToDate(t); setRange('custom'); setPage(1); setDatePop(null); }}
+                    onClear={() => { setFromDate(''); setToDate(''); setRange('all'); setPage(1); setDatePop(null); }}
+                  />
+                </div>
+                </>,
+                document.body
+              )}
+            </div>
+          )}
+          {isArchive ? (
+            <>
+            {editToggle}
+            <button
+              type="button"
+              onClick={() => setShowPreview(true)}
+              disabled={visible.length === 0}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 disabled:opacity-40 text-white text-xs font-bold shadow-md active:scale-95 transition-all cursor-pointer"
+            >
+              <Printer className="w-4 h-4" />
+              {t('common:print.print')}
+            </button>
+            </>
+          ) : (
+          <>
+          {editToggle}
+          <button
+            type="button"
+            onClick={openNew}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-md shadow-purple-500/20 active:scale-95 transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            {t('finance:blackOil.recordDay')}
+          </button>
+          </>
+          )}
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-center text-xs border-collapse font-mono">
+          <thead>
+            <tr className="bg-[#eef2f8] dark:bg-[#1c2b44] text-[#1c3b6f] dark:text-blue-100 border-b-2 border-[#1c3b6f]/70 dark:border-blue-900 font-black text-[11.5px] whitespace-nowrap font-sans select-none">
+              <th className={th}>{t('finance:blackOil.col.date')}</th>
+              {hasSites && <th className={th}>{t('finance:blackOil.col.site')}</th>}
+              <th className={th}>{t('finance:blackOil.col.previous')}</th>
+              <th className={th}>{t('finance:blackOil.col.inbound')}</th>
+              <th className={th}>{t('finance:blackOil.col.price')}</th>
+              <th className={th}>{t('finance:blackOil.col.consumption')}</th>
+              <th className={th}>{t('finance:blackOil.col.current')}</th>
+              <th className={th} title={t('finance:blackOil.col.diffHint')}>{t('finance:blackOil.col.diff')}</th>
+              {hasSites && <th className={th}>{t('finance:blackOil.col.empty')}</th>}
+              <th className={th}>{t('finance:blackOil.col.fill')}</th>
+              <th className={th}></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+            {visible.length === 0 ? (
+              <tr>
+                <td colSpan={hasSites ? 11 : 9} className="p-10 text-center text-sm text-slate-500 dark:text-slate-400 font-sans">
+                  {t('finance:blackOil.empty')}
+                </td>
+              </tr>
+            ) : (
+              pageRows.map(r => {
+                // يوم فيه مواقع: صف لكل موقع + إجمالي اليوم، والتاريخ والإجراءات مدمجة لليوم
+                const lines = linesOf(r);
+                return lines.map((l, j) => {
+                  const f = fillPct(l);
+                  const isTotal = l.kind === 'total';
+                  const ePct = l.empty !== null && l.capacity ? (l.empty / l.capacity) * 100 : null;
+                  return (
+                    <tr
+                      key={`${r.id}-${l.key}`}
+                      className={`transition-colors whitespace-nowrap ${
+                        isTotal
+                          ? 'bg-slate-50/80 dark:bg-slate-800/40 font-black'
+                          : 'hover:bg-purple-50/30 dark:hover:bg-purple-950/20'
+                      } ${j > 0 ? 'border-t border-dashed border-slate-100 dark:border-slate-800' : ''}`}
+                    >
+                      {j === 0 && (
+                        <td rowSpan={lines.length} className="p-3.5 font-sans align-middle border-l border-slate-100 dark:border-slate-800">
+                          <div className="font-bold text-slate-900 dark:text-white font-mono">{r.date}</div>
+                          <div className="text-[10.5px] text-slate-400">{weekday(r.date)}</div>
+                        </td>
+                      )}
+                      {hasSites && (
+                        <td className="p-3.5 font-sans">
+                          {l.kind === 'site' ? (
+                            <span className="font-bold text-slate-800 dark:text-slate-100">{enumText(l.name)}</span>
+                          ) : isTotal ? (
+                            <span className="font-black text-slate-900 dark:text-white">{enumText(l.name)}</span>
+                          ) : <span className="text-slate-400">—</span>}
+                        </td>
+                      )}
+                      <td className={`p-3.5 ${isTotal ? 'text-slate-800 dark:text-slate-100' : 'text-slate-600 dark:text-slate-300'}`}>{formatNumber(l.previous)}</td>
+                      <td className="p-3.5 font-bold text-emerald-600 dark:text-emerald-400">{formatNumber(l.inbound)}</td>
+                      {j === 0 && (
+                        <td rowSpan={lines.length} className="p-3.5 align-middle font-bold text-slate-900 dark:text-white border-x border-slate-100 dark:border-slate-800">
+                          {r.price ? <>{formatNumber(r.price)} <span className="text-[10px] font-sans font-bold text-slate-400">{t('common:units.iqd')}</span></> : <span className="text-slate-400">—</span>}
+                        </td>
+                      )}
+                      <td className="p-3.5 font-bold text-red-600 dark:text-red-400">{formatNumber(l.consumption)}</td>
+                      <td className="p-3.5 font-black text-slate-900 dark:text-white">{formatNumber(l.current)}</td>
+                      <td className="p-3.5">{diffCell(l.diff)}</td>
+                      {hasSites && (
+                        <td className="p-3.5 font-bold text-slate-900 dark:text-white">
+                          {l.empty !== null ? (
+                            <>
+                              {formatNumber(l.empty)}
+                              {ePct !== null && (
+                                <span className="ms-2 inline-block px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold tabular-nums align-middle">
+                                  {ePct.toFixed(1)}%
+                                </span>
+                              )}
+                            </>
+                          ) : <span className="text-slate-400">—</span>}
+                        </td>
+                      )}
+                      <td className="p-3.5">
+                        {f === null ? (
+                          <span className="text-slate-400">—</span>
+                        ) : (
+                          <div className="flex items-center justify-center gap-2.5 min-w-[140px]" title={`${t('finance:blackOil.capacity')}: ${formatNumber(l.capacity ?? 0)} ${t('common:units.liter')}`}>
+                            <div className="flex-1 h-2.5 rounded-full bg-slate-200/80 dark:bg-slate-700/70 overflow-hidden">
+                              <div className="h-full rounded-full bg-gradient-to-l from-purple-600 to-indigo-500" style={{ width: `${Math.min(100, Math.max(0, f))}%` }} />
+                            </div>
+                            <span className="w-12 text-end font-black tabular-nums text-slate-900 dark:text-white">{f.toFixed(1)}%</span>
+                          </div>
+                        )}
+                      </td>
+                      {j === 0 && (
+                        <td rowSpan={lines.length} className="p-3.5 align-middle">
+                          {showActions && (
+                          <div className="flex items-center gap-1 justify-center animate-in fade-in duration-150">
+                            {isArchive && <DayFilesCell recordId={r.id} files={filesByRecord.get(r.id) || []} manage={manage} api={filesApi} />}
+                            {/* القلم والسلة في وضع التعديل فقط (في الأرشيف أيضًا، كبقية التبويبات) */}
+                            {manage && (
+                              <>
+                                <button type="button" onClick={() => openEdit(r.id)} className="p-1.5 rounded-lg text-slate-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/40 cursor-pointer" title={t('common:actions.edit')}>
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <button type="button" onClick={() => remove(r.id)} className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer" title={t('common:actions.delete')}>
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  );
+                });
+              })
+            )}
+          </tbody>
+          {!isArchive && visible.length > 0 && (() => {
+            // آخر يوم (الأحدث): الكمية الحالية والفراغ الحاليان
+            const latestLines = linesOf(visible[0]);
+            const latest = latestLines[latestLines.length - 1];
+            const diffSum = visible.reduce((a, r) => a + r.diff, 0);
+            return (
+              <tfoot>
+                <tr className="bg-slate-50 dark:bg-slate-800/60 border-t-2 border-slate-300 dark:border-slate-700 font-black text-slate-900 dark:text-white whitespace-nowrap">
+                  <td className="p-3.5 font-sans" colSpan={hasSites ? 3 : 2}>{t('finance:blackOil.total')} <span className="text-[10px] font-bold text-slate-400">({t('common:units.days', { count: visible.length })})</span></td>
+                  <td className="p-3.5 text-emerald-600 dark:text-emerald-400">{formatNumber(totals.inbound)}</td>
+                  <td className="p-3.5" title={t('finance:blackOil.totalPriceHint')}>
+                    {(() => {
+                      const priced = visible.filter(r => r.price && r.inbound > 0);
+                      const q = priced.reduce((a, r) => a + r.inbound, 0);
+                      return q ? formatNumber(Math.round((priced.reduce((a, r) => a + r.price! * r.inbound, 0) / q) * 10) / 10) : '—';
+                    })()}
+                  </td>
+                  <td className="p-3.5 text-red-600 dark:text-red-400">{formatNumber(totals.consumption)}</td>
+                  <td className="p-3.5" title={t('finance:blackOil.totalCurrentHint')}>{formatNumber(latest.current)}</td>
+                  <td className="p-3.5" title={t('finance:blackOil.totalDiffHint')}>{diffCell(diffSum)}</td>
+                  {hasSites && <td className="p-3.5 text-slate-900 dark:text-white" title={t('finance:blackOil.totalEmptyHint')}>{latest.empty !== null ? formatNumber(latest.empty) : '—'}</td>}
+                  <td className="p-3.5 font-sans text-[11px] text-slate-500" colSpan={2}>
+                    {t('finance:blackOil.approvedAvg')}: <span className="font-mono font-black text-slate-900 dark:text-white">{formatNumber(avgDaily)}</span> {t('common:units.liter')}
+                    <span className="text-slate-400 ms-2">({t('finance:blackOil.actual')}: <span className="font-mono">{formatNumber(totals.actualAvg)}</span>)</span>
+                  </td>
+                </tr>
+              </tfoot>
+            );
+          })()}
+        </table>
+      </div>
+
+      {isArchive && visible.length > 0 && (
+        <div className="p-4 sm:p-5 border-t border-slate-200/90 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div className="text-slate-600 dark:text-slate-400">
+            <Trans
+              t={t}
+              i18nKey="common:pagination.showing"
+              values={{ from: startIndex + 1, to: endIndex, total: visible.length }}
+              components={{ 1: <strong className="font-bold text-slate-900 dark:text-white font-mono" />, 2: <strong className="font-bold text-purple-700 dark:text-purple-400 font-mono" /> }}
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setPage(Math.max(1, safePage - 1))}
+              disabled={safePage === 1}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-bold disabled:opacity-40 disabled:pointer-events-none cursor-pointer flex items-center gap-1"
+            >
+              <ChevronRight className="w-4 h-4 ltr:rotate-180" />
+              <span>{t('common:pagination.prev')}</span>
+            </button>
+            <div className="flex items-center gap-1 mx-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(p => totalPages <= 5 || p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+                .map((p, i, arr) => (
+                  <React.Fragment key={p}>
+                    {i > 0 && p - arr[i - 1] > 1 && <span className="px-1 text-slate-400 font-mono">...</span>}
+                    <button
+                      type="button"
+                      onClick={() => setPage(p)}
+                      className={`w-8 h-8 rounded-xl font-bold font-mono text-xs cursor-pointer ${
+                        safePage === p
+                          ? 'bg-purple-600 text-white font-black'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  </React.Fragment>
+                ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setPage(Math.min(totalPages, safePage + 1))}
+              disabled={safePage === totalPages}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-bold disabled:opacity-40 disabled:pointer-events-none cursor-pointer flex items-center gap-1"
+            >
+              <span>{t('common:pagination.next')}</span>
+              <ChevronLeft className="w-4 h-4 ltr:rotate-180" />
+            </button>
+          </div>
+        </div>
       )}
+
+      {/* نافذة التسجيل / التعديل بنفس نمط نافذة الوارد */}
+      {formModal}
       <ReportAttachNotice state={reportAttach.state} onClose={reportAttach.dismiss} />
     </div>
     </>

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Printer, Droplets, Fuel, Layers, X, ChevronRight, ChevronLeft, History, LayoutGrid, Check, CalendarDays, Table2, ShieldCheck, Cylinder, ClipboardList } from 'lucide-react';
+import { Printer, Droplets, Fuel, Layers, X, ChevronRight, ChevronLeft, History, LayoutGrid, Check, CalendarDays, Table2, ShieldCheck, Cylinder, ClipboardList, Pencil, Trash2 } from 'lucide-react';
+import { BlackOilDailyLedger, type BlackOilDayAction } from './BlackOilDailyLedger';
 import { useBlackOilLedger, ComputedBlackOilRecord, BLACK_OIL_SECTION_KEYS, type BlackOilCompany } from '../../lib/blackOilLedger';
 import { formatNumber, getBusinessDate } from '../../lib/utils';
 import { useCentralTanks, resolveGasoilSectionKey, resolveSaharaGasoilSectionKey, tankLiters, getPreviousLiters } from '../../lib/centralTanks';
@@ -320,6 +321,10 @@ export const EtihadTanksReport: React.FC<{ company?: BlackOilCompany }> = ({ com
   const [sections, setSections] = useState<Record<SectionKey, boolean>>({ balances: true, coverage: true, drawings: true, fill: true });
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<ComputedBlackOilRecord | null>(null);
+  // وضع التعديل (كبقية التبويبات): القلم والسلة لكل يوم. الأيام نفسها أيام النفط الأسود فتُعدّل بنفس نافذته
+  const [manage, setManage] = useState(false);
+  const [dayAction, setDayAction] = useState<BlackOilDayAction | null>(null);
+  const act = (kind: BlackOilDayAction['kind'], id: string) => setDayAction({ kind, id, nonce: Date.now() });
   const [showSections, setShowSections] = useState(false);
   const PAGE_SIZE = 10;
 
@@ -380,17 +385,33 @@ export const EtihadTanksReport: React.FC<{ company?: BlackOilCompany }> = ({ com
 
   return (
     <>
+      <BlackOilDailyLedger variant="headless" company={company} action={dayAction} />
       <div className="no-print">
         {/* سجل عمليات الحفظ */}
         <div className="!mt-2 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-soft-card overflow-hidden">
-          <div className="p-4 sm:p-5 border-b border-slate-200/90 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-            <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-              <History className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              <span>{t('finance:tanksReport.logTitle')}</span>
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              {t('finance:tanksReport.logHint')}
-            </p>
+          <div className="p-4 sm:p-5 border-b border-slate-200/90 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <History className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <span>{t('finance:tanksReport.logTitle')}</span>
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                {t('finance:tanksReport.logHint')}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setManage(m => !m)}
+              disabled={!saves.length && !manage}
+              className={`self-start sm:self-auto flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                manage
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20'
+                  : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-slate-900/5'
+              }`}
+            >
+              {manage ? <Check className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
+              {manage ? t('common:actions.done') : t('common:actions.edit')}
+            </button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-start text-xs border-collapse font-mono">
@@ -436,6 +457,7 @@ export const EtihadTanksReport: React.FC<{ company?: BlackOilCompany }> = ({ com
                         <td className="p-3.5 text-slate-700 dark:text-slate-300">{formatNumber(need)}</td>
                         <td className="p-3.5 font-bold text-slate-900 dark:text-white font-sans">{r.date}</td>
                         <td className="p-3.5">
+                          <div className="flex items-center gap-1">
                           <button
                             type="button"
                             onClick={() => setSelected(r)}
@@ -445,6 +467,17 @@ export const EtihadTanksReport: React.FC<{ company?: BlackOilCompany }> = ({ com
                             <Printer className="w-3.5 h-3.5" />
                             {t('common:print.print')}
                           </button>
+                          {manage && (
+                            <>
+                              <button type="button" onClick={() => act('edit', r.id)} className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 cursor-pointer" title={t('common:actions.edit')}>
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button type="button" onClick={() => act('delete', r.id)} className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer" title={t('common:actions.delete')}>
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
+                          </div>
                         </td>
                       </tr>
                     );

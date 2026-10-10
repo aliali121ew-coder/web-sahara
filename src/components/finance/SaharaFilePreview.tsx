@@ -226,7 +226,9 @@ export const SaharaFilePreview: React.FC<{ file: SaharaFile; onClose: () => void
             cMapUrl: '/pdfjs/cmaps/',
             cMapPacked: true,
             standardFontDataUrl: '/pdfjs/standard_fonts/',
-            wasmUrl: '/pdfjs/wasm/'
+            wasmUrl: '/pdfjs/wasm/',
+            // تحذيرات خطوط الملف لا تؤثر على العرض
+            verbosity: pdfjs.VerbosityLevel.ERRORS
           });
           task = loading;
           const doc: PdfDoc = await loading.promise;
