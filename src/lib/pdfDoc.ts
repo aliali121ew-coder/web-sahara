@@ -29,3 +29,24 @@ export const withPdf = async <T>(file: File, fonts: boolean, read: (pdf: PDFDocu
     void task.destroy();
   }
 };
+
+/**
+ * تجهيز مسبق لمكتبات قراءة الملفات (PDF وExcel) في وقت فراغ المتصفح:
+ * بدونه يُحمَّل ويُجهَّز كودها لحظة اختيار الملفات لأول مرة (نحو 300 KB مضغوطة)، فيتجمّد الهاتف الضعيف عدة ثوانٍ
+ * ثم تصبح المرة الثانية سريعة لأنها جاهزة في الذاكرة. لا يعمل مع "توفير البيانات" أو الشبكة البطيئة جدًا.
+ */
+let warmed = false;
+export const warmFileReaders = () => {
+  if (warmed || typeof window === 'undefined') return;
+  const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  if (conn?.saveData || conn?.effectiveType === 'slow-2g' || conn?.effectiveType === '2g') return;
+  warmed = true;
+  const run = () => {
+    // عامل PDF يبدأ وهو يُحمَّل؛ مكتبة Excel تُجلب وتُجهَّز دون قراءة أي ملف
+    ready ??= load().catch(e => { ready = null; throw e; });
+    void ready.catch(() => undefined);
+    void import('xlsx').catch(() => undefined);
+  };
+  const idle = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+  if (idle) idle(run, { timeout: 6000 }); else setTimeout(run, 3000);
+};
