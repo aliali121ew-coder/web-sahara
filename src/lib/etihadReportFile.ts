@@ -5,6 +5,7 @@ import { withPdf } from './pdfDoc';
  * قراءة كشف وقود الاتحاد اليومي (PDF أو Excel) لتعبئة نافذة "تسجيل حركة رصيد" تلقائيًا.
  * الكشف صف عناوين ثم صف قيم:
  * الرصيد السابق | الاستهلاك | المبيعات | الوارد | الرصيد الحالي | معدل السعر — مع "LAST UPDATED: 2026-10-07".
+ * وتحته جدول "تفاصيل أخرى": كاز تشغيلي | كاز نظيف (للعرض فقط في النافذة، لا يدخلان في الرصيد).
  */
 export interface EtihadReportExtraction {
   previous: number | null;
@@ -13,11 +14,15 @@ export interface EtihadReportExtraction {
   sales: number | null;
   current: number | null;
   price: number | null;
+  /** تفاصيل أخرى: كاز تشغيلي وكاز نظيف */
+  operationalGas: number | null;
+  cleanGas: number | null;
   /** تاريخ الكشف YYYY/MM/DD إن وُجد */
   date: string | null;
 }
 
-type Field = Exclude<keyof EtihadReportExtraction, 'date'>;
+type Field = Exclude<keyof EtihadReportExtraction, 'date' | 'operationalGas' | 'cleanGas'>;
+type ExtraField = 'operationalGas' | 'cleanGas';
 
 const norm = (s: unknown) =>
   String(s ?? '').normalize('NFKC')
@@ -63,7 +68,15 @@ const findDate = (texts: string[]): string | null => {
   return null;
 };
 
-const empty = (): EtihadReportExtraction => ({ previous: null, inbound: null, consumption: null, sales: null, current: null, price: null, date: null });
+const empty = (): EtihadReportExtraction => ({ previous: null, inbound: null, consumption: null, sales: null, current: null, price: null, operationalGas: null, cleanGas: null, date: null });
+
+/** عنوان من جدول "تفاصيل أخرى" ("تشغيلى" بالألف المقصورة تُوحَّد إلى الياء) */
+const matchExtra = (text: string): ExtraField | null => {
+  const t = norm(text);
+  if (t.includes('تشغيل') || skel(t).includes('تشغي')) return 'operationalGas';
+  if (t.includes('نظيف') || t.includes('نضيف')) return 'cleanGas';
+  return null;
+};
 
 /** عنصر نص في سطر PDF مع منتصف موضعه الأفقي */
 export interface EtihadPdfItem { text: string; cx: number }
@@ -93,6 +106,25 @@ export const parseEtihadPdfLines = (lines: EtihadPdfItem[][]): EtihadReportExtra
     });
     break;
   }
+  // تفاصيل أخرى: كل كلمة عنوان تُنسب لأقرب رقم في أول سطر أرقام تحتها
+  for (let i = 0; i < lines.length; i++) {
+    const header = lines[i].filter(it => toNumber(it.text) === null);
+    if (!header.some(it => matchExtra(it.text))) continue;
+    const valuesLine = lines.slice(i + 1, i + 4).find(l => l.some(it => toNumber(it.text) !== null));
+    if (!valuesLine) continue;
+    const nums = valuesLine.map(it => ({ n: toNumber(it.text), cx: it.cx })).filter((v): v is { n: number; cx: number } => v.n !== null);
+    const words: string[][] = nums.map(() => []);
+    for (const w of header) {
+      let best = 0;
+      nums.forEach((v, j) => { if (Math.abs(v.cx - w.cx) < Math.abs(nums[best].cx - w.cx)) best = j; });
+      words[best].push(w.text);
+    }
+    nums.forEach((v, j) => {
+      const f = matchExtra(words[j].join(' '));
+      if (f && out[f] === null) out[f] = v.n;
+    });
+    if (out.operationalGas !== null || out.cleanGas !== null) break;
+  }
   return out;
 };
 
@@ -111,6 +143,17 @@ export const parseEtihadGrid = (grid: unknown[][]): EtihadReportExtraction => {
     });
     break;
   }
+  // تفاصيل أخرى: القيمة في نفس العمود تحت العنوان (أو بجانبه في نفس الصف إن لم توجد تحته)
+  grid.forEach((row, i) => (row || []).forEach((c, j) => {
+    const f = typeof c === 'string' ? matchExtra(c) : null;
+    if (!f || out[f] !== null) return;
+    for (const r of grid.slice(i + 1, i + 4)) {
+      const n = toNumber((r || [])[j]);
+      if (n !== null) { out[f] = n; return; }
+    }
+    const beside = [(row || [])[j - 1], (row || [])[j + 1]].map(toNumber).find(n => n !== null);
+    if (beside !== undefined && beside !== null) out[f] = beside;
+  }));
   return out;
 };
 
