@@ -1,10 +1,10 @@
 {
-  "name": "منظومة وقود صحاري كربلاء 2026",
-  "short_name": "صحاري كربلاء",
+  "name": "Sahara Fuel",
+  "short_name": "Sahara Fuel",
   "description": "منظومة إدارة ورصد الوقود والمشتقات النفطية والخزانات",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0B132B",
+  "background_color": "#191F2B",
   "theme_color": "#0B132B",
   "lang": "ar",
   "dir": "rtl",
@@ -22,7 +22,7 @@
       "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
