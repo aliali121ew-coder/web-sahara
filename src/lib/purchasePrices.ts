@@ -54,9 +54,10 @@ export const usePurchasePrices = () => {
   const inboundSources = useMemo<Record<string, InboundPriceSource>>(() => {
     const petrol = petrolDays.filter(d => d.inboundQty > 0 && d.inboundPrice > 0);
     const petrolDaysDesc = [...petrol].reverse().map(d => ({ date: d.date, price: d.inboundPrice, qty: d.inboundQty }));
-    // النفط الأسود: سعر اللتر المسجّل لكل يوم في السجل اليومي
+    // النفط الأسود: سعر اللتر المسجّل لكل يوم في السجل اليومي (أرشيف النفط الأسود). السعر يُسجَّل يوميًا
+    // حتى بلا وارد، فيكفي وجوده (كان يُشترط وارد مع السعر فيبقى الكارت 0)؛ الكمية = وارد ذلك اليوم
     const fromBlackOil = (list: ComputedBlackOilRecord[]): InboundPriceSource => {
-      const priced = list.filter(d => d.inbound > 0 && (d.price ?? 0) > 0);
+      const priced = list.filter(d => (d.price ?? 0) > 0);
       const days = [...priced].reverse().map(d => ({ date: d.date, price: d.price as number, qty: d.inbound }));
       return { days, sig: `${priced.length}|${days[0]?.date ?? ''}|${priced.reduce((a, d) => a + d.inbound, 0)}` };
     };
