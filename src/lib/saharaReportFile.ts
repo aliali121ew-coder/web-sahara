@@ -57,6 +57,67 @@ export const matchStation = (name: string, stationNames: string[]): string | nul
   return stationNames.find(n => looseKey(stripPrefix(n)) === looseKey(target)) ?? null;
 };
 
+/**
+ * مواقع الكشف (المزارع والمفاقس والخزانات) التي يُضاف رصيدها التراكمي إلى رصيد محطتها،
+ * فيظهر في النظام والرئيسية رصيد الموقع كاملًا لا خزان المحطة وحده. المطابقة ببداية الاسم.
+ */
+export const SITE_GROUPS: Record<string, string[]> = {
+  // محطة التسمين + تسمين مزرعة 1–60 + مفقس التسمين الأول والثاني
+  التسمين: ['تسمين مزرعة', 'مفقس التسمين'],
+  // محطة البوادي + الأمهات التربية 1–12 + إنتاج الأمهات 1–24 + مزرعة الذكور + مفقس الأمهات
+  // ("التربية" تخرج من PDF مقطّعة: "الترر بية"، "الت بية"، فالمطابقة بأولها "الامهات الت")
+  البوادي: ['الامهات الت', 'انتاج الامهات', 'مزرعة الذكور', 'مفقس الامهات'],
+  // محطة أمهات البياض + مزرعة 1–6 أمهات البياض
+  'امهات البياض': ['مزرعة امهات البياض'],
+  // محطة الأجداد + مزرعة 1–6 الأجداد
+  الاجداد: ['مزرعة الاجداد'],
+  // محطة البياض + مفقس البياض + تربيات البياض الموقع 1–6 + إنتاج البياض 1–8 + تصفية ماء البياض
+  البياض: ['مفقس البياض', 'تربيات البياض', 'انتاج البياض', 'تصفية ماء البياض'],
+  // محطة النقل (الطاقة) + خزان الطاقة
+  الطاقة: ['خزان الطاقة'],
+};
+
+/** محطة النظام التي يُجمع إليها موقع من الكشف (null = ليس من مواقع المحطات المجمّعة) */
+export const siteGroupOf = (name: string, stationNames: string[]): string | null => {
+  // بدون الأرقام: رقم المزرعة قد يأتي وسط الاسم ("مزرعة ١ أمهات البياض")
+  const key = looseKey(name).replace(/[0-9٠-٩]/g, '');
+  for (const [station, prefixes] of Object.entries(SITE_GROUPS)) {
+    if (prefixes.some(p => key.startsWith(looseKey(p)))) return matchStation(station, stationNames);
+  }
+  return null;
+};
+
+/** هل المحطة تجمع أرصدة مواقع أخرى (رصيدها قد يتجاوز سعة خزان المحطة وحده) */
+export const isGroupedStation = (name: string) =>
+  Object.keys(SITE_GROUPS).some(st => looseKey(stripPrefix(name)) === looseKey(st));
+
+/**
+ * دمج صفوف الكشف: صف المحطة يأخذ اسمه ورصيده، ومواقعها المجمّعة تُضاف لرصيدها.
+ * الصفوف بلا محطة مطابقة تبقى كما هي (تظهر كغير مطابقة).
+ */
+const mergeSites = (stations: { nameInImage: string; balance: number }[], stationNames: string[]) => {
+  const out: { nameInImage: string; balance: number; matchedStation: string | null }[] = [];
+  const byStation = new Map<string, (typeof out)[number]>();
+  for (const s of stations) {
+    const direct = matchStation(s.nameInImage, stationNames);
+    const target = direct ?? siteGroupOf(s.nameInImage, stationNames);
+    if (!target) {
+      out.push({ ...s, matchedStation: null });
+      continue;
+    }
+    const entry = byStation.get(target);
+    if (entry) {
+      entry.balance += s.balance;
+      if (direct) entry.nameInImage = s.nameInImage;
+    } else {
+      const created = { nameInImage: direct ? s.nameInImage : target, balance: s.balance, matchedStation: target };
+      byStation.set(target, created);
+      out.push(created);
+    }
+  }
+  return out;
+};
+
 /** تحويل نص إلى رقم (يقبل الأرقام العربية الهندية والفواصل) */
 const toNumber = (v: unknown): number | null => {
   if (typeof v === 'number') return Number.isFinite(v) ? v : null;
@@ -96,7 +157,7 @@ const finish = (
     currentInFile: values.currentInFile,
     tableTotal,
     date: date ?? undefined,
-    stations: stations.map(s => ({ ...s, matchedStation: matchStation(s.nameInImage, stationNames) })),
+    stations: mergeSites(stations, stationNames),
     notes: [
       missing.length ? i18n.t('common:fileImport.missing', { list: fmtList(missing.map(fieldName)) }) : '',
       stations.length
@@ -273,9 +334,11 @@ const readPdf = async (file: File, stationNames: string[]) => {
         if (nums.length >= 3) tableTotal = cumOf(nums).n;
         continue;
       }
-      // المحطات والمعامل فقط (الجدول يكمل بالمزارع، وتلك ليست من محطات النظام)
-      if (!matchStation(name, stationNames) && !/^(محطة|معمل|موقع)/.test(name)) continue;
-      if (stations.some(s => s.nameInImage === name)) continue;
+      // المحطات والمعامل، والمواقع التي تُجمع إلى محطاتها (باقي المزارع ليست من محطات النظام)
+      const grouped = !matchStation(name, stationNames) && !!siteGroupOf(name, stationNames);
+      if (!grouped && !matchStation(name, stationNames) && !/^(محطة|معمل|موقع)/.test(name)) continue;
+      // رقم المزرعة قد يُقرأ رقمًا منفصلًا فيتكرر الاسم ("تسمين مزرعة")، فالمواقع المجمّعة لا تُستبعد بالتكرار
+      if (!grouped && stations.some(s => s.nameInImage === name)) continue;
       stations.push({ nameInImage: name, balance: cumOf(nums).n });
     }
   }
