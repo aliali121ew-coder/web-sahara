@@ -45,17 +45,46 @@ export const PriceIndexTable: React.FC = () => {
   const { t } = useTranslation(['dashboard', 'common']);
   // من أرشيف وارد الشركتين مباشرة: أحدث المجهزين ورودًا أولًا، وكل مجهز يُقارن بسعر شحنته السابقة
   const latest = useMemo(() => latestSupplierPrices(saharaDeliveries, etihadDeliveries), [saharaDeliveries, etihadDeliveries]);
-  const rows = latest
-    .filter(item => item.supplierName.includes(searchQuery) || item.product.includes(searchQuery))
-    .slice(0, 7)
-    .map(item => {
-      // الشعار من سجل المورد إن وُجد
+  // سجل الموردين هو المرجع: كل مورد فيه يظهر هنا، وأي تحديث عليه (سعر/اسم/كثافة/لون من صفحة الموردين
+  // ويُسجَّل في سجل الأسعار والمشتريات) يظهر فورًا. الأحدث بين آخر تحديث للسجل وآخر وارد من الأرشيف هو المعروض
+  const rows = useMemo(() => {
+    const day = (d: string) => (d || '').replace(/-/g, '/');
+    const used = new Set<string>();
+    const merged = latest.map(item => {
       const rec = supplierPrices.find(r => r.id === item.id) ?? supplierPrices.find(r => r.company === item.company && sameSupplier(r.supplierName, item.supplierName));
+      if (rec) used.add(rec.id);
+      // تحديث يدوي في سجل الموردين بعد آخر وارد (أو في نفس يومه): قيم السجل
+      const manual = !!rec && (day(rec.lastUpdated) > item.date || (rec.edited === true && day(rec.lastUpdated) === item.date));
+      if (rec && manual) {
+        const prev = rec.previousPriceIqd || rec.priceIqd;
+        return {
+          id: rec.id, supplierName: rec.supplierName, logo: rec.logo, date: day(rec.lastUpdated), product: rec.product || item.product,
+          density: rec.density ?? item.density, color: rec.color ?? item.color, price: rec.priceIqd,
+          previousPrice: rec.previousPriceIqd ? rec.previousPriceIqd : null, prev, diff: rec.priceIqd - prev,
+          pct: rec.changePercent ?? (prev ? Math.round(((rec.priceIqd - prev) / prev) * 10000) / 100 : 0),
+          sortKey: `${day(rec.lastUpdated)}|9`,
+        };
+      }
+      // آخر وارد من الأرشيف: مقارنة بشحنة نفس المجهز السابقة
       const prev = item.previousPrice ?? item.price;
       const diff = item.price - prev;
-      // الاسم كما عدّله المستخدم في صفحة الموردين (السجل المرتبط بنفس المعرّف)
-      return { ...item, supplierName: rec?.edited ? rec.supplierName : item.supplierName, logo: rec?.logo, prev, diff, pct: prev ? Math.round((diff / prev) * 10000) / 100 : 0 };
+      return { ...item, supplierName: rec?.edited ? rec.supplierName : item.supplierName, logo: rec?.logo, prev, diff, pct: prev ? Math.round((diff / prev) * 10000) / 100 : 0, sortKey: `${item.date}|${item.recency}` };
     });
+    // موردو السجل بلا وارد في الأرشيف (أُضيفوا يدويًا): بقيم السجل
+    for (const rec of supplierPrices) {
+      if (used.has(rec.id) || !rec.priceIqd) continue;
+      const prev = rec.previousPriceIqd || rec.priceIqd;
+      merged.push({
+        id: rec.id, company: rec.company ?? 'sahara', supplierName: rec.supplierName, logo: rec.logo, date: day(rec.lastUpdated), product: rec.product,
+        density: rec.density, color: rec.color, price: rec.priceIqd, previousPrice: rec.previousPriceIqd ? rec.previousPriceIqd : null, prev,
+        diff: rec.priceIqd - prev, pct: rec.changePercent ?? 0, sortKey: `${day(rec.lastUpdated)}|9`, recency: '',
+      } as (typeof merged)[number]);
+    }
+    return merged
+      .filter(item => item.supplierName.includes(searchQuery) || (item.product || '').includes(searchQuery))
+      .sort((a, b) => b.sortKey.localeCompare(a.sortKey))
+      .slice(0, 7);
+  }, [latest, supplierPrices, searchQuery]);
 
   // كل العناوين في الوسط؛ خلية المجهز (الشعار والاسم) بمحاذاة البداية
   const th = 'px-3 xl:px-4 pt-3 pb-1 text-center text-[13px] font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap';
