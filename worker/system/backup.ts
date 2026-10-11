@@ -9,6 +9,7 @@ import { codedError } from '../errors';
 import type { D1Database, Env } from '../types';
 import { gunzipText, gzipText, sha256Hex } from './compress';
 import { schemaGate } from '../storage/schema';
+import { bumpStateVersion } from '../storage/stateVersion';
 
 // demo-base: البيانات الأساسية للنسخة التجريبية (تُعاد إليها كل ليلة — worker/demo.ts)
 export type BackupKind = 'daily' | 'manual' | 'pre-restore' | 'monthly' | 'demo-base';
@@ -180,6 +181,8 @@ export const restoreBackup = async (env: Env, backupId: string, by: string, opts
       for (let i = 0; i < stmts.length; i += 200) await env.DB.batch(stmts.slice(i, i + 200));
       restoredRows += rows.length;
     }
+    // الأجهزة المفتوحة تجلب البيانات المسترجعة (بصمة المزامنة تُبنى من رقم النسخة)
+    await bumpStateVersion(env.DB, 'restore');
     return { restoredRows, preRestoreId: preRestore?.id ?? null };
   } catch (e) {
     throw Object.assign(new Error(`${(e as Error).message}${preRestore ? ` — نسخة ما قبل الاسترجاع محفوظة (${preRestore.r2_key}) ويمكن استرجاعها` : ''}`), { code: (e as { code?: string }).code });
