@@ -18,7 +18,7 @@ import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
  */
 export const SaharaPetrolArchive: React.FC = () => {
   const { t, i18n } = useTranslation(['finance', 'common']);
-  const { computed, update } = usePetrolLedger();
+  const { computed, remove: removeDay } = usePetrolLedger();
 
   // المحطات بنفس ترتيب ومعرّفات صفحة البنزين (خزان المنظومة المطابق أو معرّف ثابت بالاسم)
   const [centralTanks] = useCentralTanks(OFFICIAL_TABLE_TANK_UNITS);
@@ -49,7 +49,7 @@ export const SaharaPetrolArchive: React.FC = () => {
 
   // حذف اليوم: من سجل رصيد الشركة (فيختفي من صفحة الإدخال أيضًا) مع مرفقاته
   const deleteDay = (id: string) => {
-    update(prev => prev.filter(r => r.id !== id));
+    removeDay(id);
     (filesByRecord.get(id) || []).forEach(f => remove(f.id));
   };
   // نافذة كل ملفات اليوم (عند أكثر من ملفين)

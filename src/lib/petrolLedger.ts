@@ -152,6 +152,13 @@ export const usePetrolLedger = () => {
   const hasPending = useMemo(() => JSON.stringify(records) !== JSON.stringify(published), [records, published]);
   const publish = useCallback(() => write(PUBLISHED_KEY, readPetrolRecords()), []);
   const discard = useCallback(() => write(STORAGE_KEY, readList(PUBLISHED_KEY) ?? []), []);
+  // حذف يوم (من الأرشيف أو الصفحة): يُحذف من السجل ومن النسخة المعتمدة معًا فيختفي من الرئيسية فورًا،
+  // بلا "تأكيد البيانات" (كان الحذف يُعدّ تعديلًا معلّقًا، و"إلغاء العملية" يعيد الأيام المحذوفة)
+  const remove = useCallback((id: string) => {
+    const pub = readList(PUBLISHED_KEY);
+    if (pub) write(PUBLISHED_KEY, pub.filter(r => r.id !== id));
+    write(STORAGE_KEY, readPetrolRecords().filter(r => r.id !== id));
+  }, []);
 
-  return { records, computed, latest, update, publishedComputed, hasPending, publish, discard };
+  return { records, computed, latest, update, publishedComputed, hasPending, publish, discard, remove };
 };

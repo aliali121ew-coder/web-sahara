@@ -1163,7 +1163,7 @@ onValue={v => setForm({ ...form, external: { ...form.external, [s.key]: v } })}
       )}
 
       {/* نافذة تأكيد البيانات قبل تحديث الواجهة الرئيسية */}
-      {confirmOpen && latest && createPortal(
+      {confirmOpen && createPortal(
         <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm animate-in fade-in duration-150" dir="rtl" onClick={() => setConfirmOpen(false)}>
           <div onClick={e => e.stopPropagation()} className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
             <div className="p-5 flex items-start gap-3.5">
@@ -1173,15 +1173,15 @@ onValue={v => setForm({ ...form, external: { ...form.external, [s.key]: v } })}
               <div className="space-y-1">
                 <div className="font-black text-slate-900 dark:text-white">{t('finance:ledger.confirm.title')}</div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  <Trans t={t} i18nKey="finance:saharaBalance.confirm.text" values={{ date: latest.date }} components={{ 1: <span className="font-mono font-black text-slate-800 dark:text-slate-100" /> }} />
+                  <Trans t={t} i18nKey="finance:saharaBalance.confirm.text" values={{ date: latest?.date ?? '—' }} components={{ 1: <span className="font-mono font-black text-slate-800 dark:text-slate-100" /> }} />
                 </p>
               </div>
             </div>
             <div className="mx-5 mb-4 grid grid-cols-3 gap-2 text-center">
               {[
-                { label: t('finance:ledger.currentBalance'), value: latest.current },
-                { label: t('finance:saharaBalance.actualConsumption'), value: latest.actualConsumption },
-                { label: t('finance:ledger.inbound'), value: latest.inbound }
+                { label: t('finance:ledger.currentBalance'), value: latest?.current ?? 0 },
+                { label: t('finance:saharaBalance.actualConsumption'), value: latest?.actualConsumption ?? 0 },
+                { label: t('finance:ledger.inbound'), value: latest?.inbound ?? 0 }
               ].map(c => (
                 <div key={c.label} className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 px-2 py-2">
                   <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{c.label}</div>

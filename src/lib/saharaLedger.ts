@@ -177,6 +177,13 @@ export const useSaharaLedger = () => {
   const publish = useCallback(() => writePublished(readSaharaRecords()), []);
   // إلغاء العملية: رفض ما حُفظ ولم يُؤكَّد، والعودة لآخر نسخة معتمدة
   const discard = useCallback(() => writeRecords(readPublished() ?? readSaharaRecords()), []);
+  // حذف يوم (من الأرشيف أو الصفحة): يُحذف من السجل ومن النسخة المعتمدة معًا فيختفي من الرئيسية فورًا،
+  // بلا "تأكيد البيانات" (كان الحذف يُعدّ تعديلًا معلّقًا، و"إلغاء العملية" يعيد الأيام المحذوفة)
+  const remove = useCallback((id: string) => {
+    const pub = readPublished();
+    if (pub) writePublished(pub.filter(r => r.id !== id));
+    writeRecords(readSaharaRecords().filter(r => r.id !== id));
+  }, []);
 
-  return { records, computed, latest, update, publishedComputed, hasPending, publish, discard };
+  return { records, computed, latest, update, publishedComputed, hasPending, publish, discard, remove };
 };

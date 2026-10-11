@@ -15,7 +15,7 @@ import { useSaharaLedger } from '../../lib/saharaLedger';
  */
 export const SaharaBalanceArchive: React.FC = () => {
   const { t, i18n } = useTranslation(['finance', 'common']);
-  const { computed, update } = useSaharaLedger();
+  const { computed, remove: removeDay } = useSaharaLedger();
   // مرفقات كل يوم (PDF و Excel) من الخادم
   const { files, busy, error: filesError, clearError, upload, remove, replace } = useSaharaFiles();
   // وضع إدارة المرفقات (زر "تعديل" بجانب الطباعة): يُظهر تغيير وحذف الملفات
@@ -35,7 +35,7 @@ export const SaharaBalanceArchive: React.FC = () => {
 
   // حذف اليوم: من سجل رصيد الشركة (فيختفي من صفحة الإدخال أيضًا) مع مرفقاته
   const deleteDay = (id: string) => {
-    update(prev => prev.filter(r => r.id !== id));
+    removeDay(id);
     (filesByRecord.get(id) || []).forEach(f => remove(f.id));
   };
   // نافذة كل ملفات اليوم (عند أكثر من ملفين)
