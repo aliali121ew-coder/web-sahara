@@ -4,7 +4,7 @@
  * فتجلب التغيير خلال أجزاء من الثانية بدل السؤال المتكرر.
  * - Hibernation: الاتصالات الساكنة لا تُبقي الكائن مستيقظًا (لا تكلفة أثناء الانتظار).
  * - ping/pong يُرد عليه تلقائيًا دون إيقاظ الكائن.
- * - القناة لا تحمل بيانات، فقط رقم النسخة؛ كل جهاز يجلب ما يحق له عبر /api/state بصلاحياته.
+ * - القناة لا تحمل بيانات، فقط رقم النسخة وأسماء المفاتيح التي تغيّرت؛ كل جهاز يجلبها عبر /api/state?keys= بصلاحياته.
  */
 
 interface HubWebSocket {
@@ -27,7 +27,8 @@ export class StateHub {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname === '/notify' && request.method === 'POST') {
-      const version = (await request.text()).slice(0, 200);
+      // رقم النسخة + المفاتيح التي تغيّرت ("v|key1,key2")
+      const version = (await request.text()).slice(0, 8000);
       for (const ws of this.state.getWebSockets()) {
         try { ws.send(version); } catch { /* اتصال مغلق */ }
       }

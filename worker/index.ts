@@ -222,6 +222,24 @@ export default {
       return json({ v: results[0]?.value || '0' });
     }
 
+    // جلب مفاتيح محددة فقط (ما ذكره إشعار التغيير): أخف بكثير من النسخة الكاملة على الهواتف ومع أجهزة عرض كثيرة
+    if (url.pathname === '/api/state' && request.method === 'GET' && url.searchParams.has('keys')) {
+      const keys = Array.from(new Set((url.searchParams.get('keys') || '').split(',').map(k => k.trim()).filter(Boolean)))
+        .slice(0, 100)
+        .filter(k => canReadKey(session.perms, session.admin, k));
+      const plain = keys.filter(k => !isCollectionKey(k));
+      const items: Record<string, string> = {};
+      if (plain.length) {
+        const { results } = await env.DB.prepare(`SELECT key, value FROM app_state WHERE key IN (${plain.map(() => '?').join(',')})`).bind(...plain).all<{ key: string; value: string }>();
+        for (const r of results) items[r.key] = r.value;
+      }
+      Object.assign(items, await readCollections(env.DB, keys.filter(isCollectionKey)));
+      return new Response(JSON.stringify({ items, removed: plain.filter(k => !(k in items)) }), {
+        status: 200,
+        headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...API_SECURITY_HEADERS },
+      });
+    }
+
     if (url.pathname === '/api/state' && request.method === 'GET') {
       // بصمة النسخة بدون قراءة البيانات: رقم النسخة + عدد وآخر تعديل في الجدولين (يلتقط أيضًا الاسترجاع والأرشفة
       // التي لا ترفع رقم النسخة) + الحساب وصلاحياته. المزامنة الدورية ترسلها فيُرد 304 بلا بناء النسخة الكاملة
@@ -261,10 +279,14 @@ export default {
         return json({ error: 'بيانات غير صالحة', code: 'invalid_data' }, 400);
       }
       const now = Date.now();
+      // سطور app_state المطلوب كتابتها/حذفها، مع مفتاح كل سطر لمعرفة ما تغيّر فعلًا بعد التنفيذ
       const statements: D1PreparedStatement[] = [];
+      const statementKeys: string[] = [];
       // المفاتيح التي لا يملك الحساب صلاحية تعديلها تُرفض وتُعاد للتطبيق ليستعيد نسخة الخادم
       const rejected: string[] = [];
-      let collectionOps = 0;
+      // المفاتيح التي تغيّرت فعلًا: حفظ لا يغيّر شيئًا (نفس القيمة) لا يرفع رقم النسخة ولا يُبلّغ الأجهزة،
+      // وإلا تحفظ كل شاشة مفتوحة ما وصلها فتنطلق موجة جلب متكررة على كل الأجهزة وتتأخر التحديثات
+      const changed = new Set<string>();
       // فروق المجموعات (الطريقة الحديثة: عناصر جديدة/معدّلة ومحذوفة فقط)
       for (const [key, ops] of Object.entries(body.collections || {})) {
         if (!isCollectionKey(key) || !ops || typeof ops !== 'object') continue;
@@ -275,7 +297,7 @@ export default {
         }
         const r = await applyCollectionOps(env.DB, key, ops, session.id, now);
         if (typeof r === 'string') return json({ error: r, code: 'invalid_data' }, 400);
-        collectionOps += r;
+        if (r > 0) changed.add(key);
       }
       for (const [key, value] of Object.entries(body.set || {})) {
         if (typeof value !== 'string') continue;
@@ -284,39 +306,45 @@ export default {
         if (isCollectionKey(key)) {
           const r = await replaceCollection(env.DB, key, value, session.id, now);
           if (typeof r === 'string') return json({ error: r, code: 'invalid_data' }, 400);
-          collectionOps += r;
+          if (r > 0) changed.add(key);
           continue;
         }
         statements.push(
           env.DB.prepare(
-            'INSERT INTO app_state (key, value, updated_at) VALUES (?1, ?2, ?3) ON CONFLICT(key) DO UPDATE SET value = ?2, updated_at = ?3'
+            'INSERT INTO app_state (key, value, updated_at) VALUES (?1, ?2, ?3) ON CONFLICT(key) DO UPDATE SET value = ?2, updated_at = ?3 WHERE app_state.value <> excluded.value'
           ).bind(key, value, now)
         );
+        statementKeys.push(key);
       }
       for (const key of body.remove || []) {
         if (typeof key !== 'string') continue;
         if (!canWriteKey(session.perms, session.admin, key)) { rejected.push(key); continue; }
-        if (isCollectionKey(key)) { await clearCollection(env.DB, key); collectionOps++; continue; }
+        if (isCollectionKey(key)) {
+          const { meta } = await clearCollection(env.DB, key);
+          if (Number(meta?.changes ?? 0) > 0) changed.add(key);
+          continue;
+        }
         statements.push(env.DB.prepare('DELETE FROM app_state WHERE key = ?1').bind(key));
+        statementKeys.push(key);
       }
-      const version = statements.length || collectionOps ? `${now}-${session.id}` : null;
+      if (statements.length) {
+        const results = await env.DB.batch(statements);
+        if (Array.isArray(results)) results.forEach((r, i) => { if (Number((r as { meta?: { changes?: number } })?.meta?.changes ?? 0) > 0) changed.add(statementKeys[i]); });
+      }
+      const changedKeys = [...changed];
+      const version = changedKeys.length ? `${now}-${session.id}` : null;
       if (version) {
         // رفع رقم النسخة حتى تلتقط الأجهزة الأخرى التغيير فورًا
-        statements.push(
-          env.DB.prepare('INSERT INTO system_meta (key, value, updated_at) VALUES (?1, ?2, ?3) ON CONFLICT(key) DO UPDATE SET value = ?2, updated_at = ?3')
-            .bind(STATE_VERSION_KEY, version, now)
-        );
-      }
-      if (statements.length) await env.DB.batch(statements);
-      if (version) broadcastVersion(env, ctx, version);
-      if (statements.length || collectionOps) {
+        await env.DB.prepare('INSERT INTO system_meta (key, value, updated_at) VALUES (?1, ?2, ?3) ON CONFLICT(key) DO UPDATE SET value = ?2, updated_at = ?3')
+          .bind(STATE_VERSION_KEY, version, now).run();
+        // الإشعار يحمل المفاتيح التي تغيّرت: كل جهاز يجلبها وحدها بدل النسخة الكاملة (أسماء أقسام ثابتة، بلا بيانات)
+        broadcastVersion(env, ctx, `${version}|${changedKeys.join(',')}`);
         // سجل العمليات: الأقسام التي حُفظت (يُدمج الحفظ التلقائي المتكرر في سطر واحد)
-        const touched = [...Object.keys(body.set || {}), ...(body.remove || []), ...Object.keys(body.collections || {})].filter(k => typeof k === 'string' && !rejected.includes(k));
-        const sections = Array.from(new Set(touched.map(keySectionLabel).filter(l => l !== 'بيانات عامة')));
+        const sections = Array.from(new Set(changedKeys.map(keySectionLabel).filter(l => l !== 'بيانات عامة')));
         if (sections.length) await audit(env.DB, request, session.id, 'data.save', sections.join('، '), { merge: true });
       }
       if (rejected.length) await audit(env.DB, request, session.id, 'data.denied', Array.from(new Set(rejected.map(keySectionLabel))).join('، '), { merge: true });
-      return json({ ok: true, saved: statements.length + collectionOps, rejected, version });
+      return json({ ok: true, saved: changedKeys.length, rejected, version });
     }
 
     // المحادثة: الحسابات والغرف والرسائل والمرفقات

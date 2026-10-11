@@ -5,7 +5,7 @@
  * - الترحيل: مرة واحدة تلقائيًا من app_state، بعد حفظ نسخة من القيمة القديمة في R2 (BACKUPS/migrations/).
  */
 import { COLLECTION_KEYS } from '../../src/lib/permCatalog';
-import type { D1Database, D1PreparedStatement, R2Bucket } from '../types';
+import type { D1Database, D1PreparedStatement, D1Result, R2Bucket } from '../types';
 import { gzipJson } from '../system/compress';
 import { schemaGate } from './schema';
 
@@ -92,10 +92,16 @@ const itemId = (item: unknown, index: number) => {
   return id !== undefined && id !== null && String(id) ? String(id).slice(0, 200) : `auto-${index}`;
 };
 
+// العنصر المطابق لما في الخادم لا يُعاد كتابته (changes = 0): الحفظ الذي لا يغيّر شيئًا لا يُبلّغ الأجهزة
 const upsertStmt = (db: D1Database, key: string, id: string, pos: number, data: string, now: number, by: string) =>
   db.prepare('INSERT INTO collection_items (key, id, pos, data, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?) ' +
-    'ON CONFLICT(key, id) DO UPDATE SET pos = excluded.pos, data = excluded.data, updated_at = excluded.updated_at, updated_by = excluded.updated_by')
+    'ON CONFLICT(key, id) DO UPDATE SET pos = excluded.pos, data = excluded.data, updated_at = excluded.updated_at, updated_by = excluded.updated_by ' +
+    'WHERE collection_items.data <> excluded.data OR collection_items.pos <> excluded.pos')
     .bind(key, id, pos, data, now, by);
+
+/** مجموع الصفوف التي تغيّرت فعلًا في دفعة D1 */
+export const batchChanges = (results: unknown) =>
+  Array.isArray(results) ? results.reduce((a: number, r) => a + Number((r as D1Result<unknown>)?.meta?.changes ?? 0), 0) : 0;
 
 /** المجموعة كنص JSON مرتب (الأقدم موضعًا أولًا، والأحدث تعديلًا عند تساوي الموضع) */
 export const readCollection = async (db: D1Database, key: string) => {
@@ -122,7 +128,7 @@ export const collectionCounts = async (db: D1Database) => {
   return Object.fromEntries(results.map(r => [r.key, r.n]));
 };
 
-/** تطبيق الفرق المرسل من التطبيق. يعيد عدد العمليات أو رسالة خطأ */
+/** تطبيق الفرق المرسل من التطبيق. يعيد عدد الصفوف التي تغيّرت فعلًا أو رسالة خطأ */
 export const applyCollectionOps = async (db: D1Database, key: string, ops: CollectionOps, userId: string, now: number): Promise<number | string> => {
   const stmts: D1PreparedStatement[] = [];
   for (const u of Array.isArray(ops.upsert) ? ops.upsert : []) {
@@ -134,8 +140,9 @@ export const applyCollectionOps = async (db: D1Database, key: string, ops: Colle
     if (typeof id !== 'string') continue;
     stmts.push(db.prepare('DELETE FROM collection_items WHERE key = ? AND id = ?').bind(key, id));
   }
-  for (let i = 0; i < stmts.length; i += BATCH) await db.batch(stmts.slice(i, i + BATCH));
-  return stmts.length;
+  let changed = 0;
+  for (let i = 0; i < stmts.length; i += BATCH) changed += batchChanges(await db.batch(stmts.slice(i, i + BATCH)));
+  return changed;
 };
 
 /** نص JSON بمفاتيح مرتبة (للمقارنة بغض النظر عن ترتيب الحقول) */
