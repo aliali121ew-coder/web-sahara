@@ -36,7 +36,7 @@ import {
 } from 'lucide-react';
 import { useFuelStore } from '../../context/FuelDataContext';
 import { computeDailyBuys, ownSaharaDeliveries } from '../../lib/inboundPrice';
-import { isSpreadsheetOrPdf, readSaharaReportFile } from '../../lib/saharaReportFile';
+import { isGroupedStation, isSpreadsheetOrPdf, readSaharaReportFile } from '../../lib/saharaReportFile';
 import { formatNumber } from '../../lib/utils';
 import { useReportAttach } from '../../lib/saharaFiles';
 import {
@@ -281,8 +281,8 @@ export const SaharaBalanceView: React.FC = () => {
   const autoPrevious = prevSource?.current ?? null;
   const prevSourceDate = prevSource?.date ?? null;
   const dateTaken = !!form && records.some(r => r.date === form.date && r.id !== form.id);
-  // محطات تجاوز رصيدها سعة خزانها
-  const overCapacity = form ? liveStations.filter(s => num(form.stations[s.id] || '') > s.capacity) : [];
+  // محطات تجاوز رصيدها سعة خزانها (عدا المحطات التي تجمع أرصدة مواقعها من الكشف)
+  const overCapacity = form ? liveStations.filter(s => !isGroupedStation(s.name) && num(form.stations[s.id] || '') > s.capacity) : [];
   const canSave = !!form && saharaSaveBlockers(form, records, computed, liveStations).length === 0;
 
   // الرصيد السابق: تعديل ← إدخال، حفظ ← تثبيت (القيمة الفارغة أو المطابقة للتلقائي ترجع تلقائية)

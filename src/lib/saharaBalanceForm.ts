@@ -1,5 +1,5 @@
 import { getBusinessDate } from './utils';
-import { matchStation } from './saharaReportFile';
+import { isGroupedStation, matchStation } from './saharaReportFile';
 import type { SaharaReportExtraction } from './saharaReportUpload';
 import type { ComputedSaharaRecord, SaharaExternalSource, SaharaLedgerRecord } from './saharaLedger';
 
@@ -191,6 +191,7 @@ export const saharaSaveBlockers = (
   if (!form.date) out.push('noDate');
   if (records.some(r => r.date === form.date && r.id !== form.id)) out.push('dateTaken');
   if (autoPreviousFor(computed, form.date, form.id) === null && !form.editPrevious && !form.prevEditing) out.push('noPrevious');
-  if (stationsList.some(s => num(form.stations[s.id] || '') > s.capacity)) out.push('overCapacity');
+  // المحطات التي تجمع أرصدة مواقعها (التسمين، البوادي، البياض، الطاقة) يتجاوز رصيدها سعة خزان المحطة وحده طبيعيًا
+  if (stationsList.some(s => !isGroupedStation(s.name) && num(form.stations[s.id] || '') > s.capacity)) out.push('overCapacity');
   return out;
 };
