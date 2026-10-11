@@ -35,18 +35,22 @@ export interface DailyBuy {
 }
 
 /**
- * شراء اليوم = آخر يوم وارد، والسابق = يوم الوارد الذي قبله.
+ * شراء اليوم = آخر يوم وارد (أو اليوم المحدد onDay: بلا وارد فيه = null)، والسابق = يوم الوارد الذي قبله.
  * نسبة التغير: معدل اليومين معًا (تكلفتهما ÷ كميتهما) مقارنة بسعر اليوم السابق.
  */
-export const computeDailyBuys = (deliveries: InboundDelivery[]) => {
+export const computeDailyBuys = (deliveries: InboundDelivery[], onDay?: string) => {
   const byDay = new Map<string, { qty: number; cost: number }>();
   deliveries.forEach(d => {
     const day = deliveryDay(d);
     const acc = byDay.get(day) ?? { qty: 0, cost: 0 };
     byDay.set(day, { qty: acc.qty + qtyOf(d), cost: acc.cost + costOf(d) });
   });
-  const days = [...byDay.keys()].filter(k => byDay.get(k)!.qty > 0).sort().slice(-2);
-  const [prev, today] = days.length === 2 ? days : [undefined, days[0]];
+  const allDays = [...byDay.keys()].filter(k => byDay.get(k)!.qty > 0).sort();
+  // onDay: شراء يوم محدد (اليوم المعروض في الكارت) — بلا وارد فيه = لا شراء (يُعرض صفرًا)،
+  // والسابق = آخر يوم وارد قبله. بدونه: آخر يومي وارد كما كان
+  const before = onDay ? allDays.filter(k => k < onDay) : allDays.slice(0, -1);
+  const today = onDay ? (allDays.includes(onDay) ? onDay : undefined) : allDays[allDays.length - 1];
+  const prev = before[before.length - 1];
   const toBuy = (day?: string): DailyBuy | null => {
     if (!day) return null;
     const { qty, cost } = byDay.get(day)!;

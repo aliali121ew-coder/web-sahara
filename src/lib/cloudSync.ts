@@ -80,9 +80,20 @@ const readPending = (): Pending => {
 const writePending = (p: Pending) => rawSet.call(localStorage, PENDING_KEY, JSON.stringify(p));
 
 let flushTimer: ReturnType<typeof setTimeout> | undefined;
-const scheduleFlush = (delay = 1000) => {
+let flushDue = 0;
+/**
+ * إرسال التعديلات بعد لحظة قصيرة (لتجميع التعديلات المتتالية في طلب واحد). تعديل جديد لا يؤخّر إرسالًا
+ * مجدولًا أقرب (كان كل تعديل يعيد العدّ ثانية كاملة، فالإدخال المتعدد يتأخر وصوله لشاشة العرض)
+ */
+const scheduleFlush = (delay = 300) => {
+  const due = Date.now() + delay;
+  if (flushTimer !== undefined && flushDue <= due) return;
   clearTimeout(flushTimer);
-  flushTimer = setTimeout(flush, delay);
+  flushDue = due;
+  flushTimer = setTimeout(() => {
+    flushTimer = undefined;
+    void flush();
+  }, delay);
 };
 
 // مفاتيح لا يملك هذا الحساب صلاحية تعديلها (يحددها الخادم): التغييرات عليها تبقى محلية ولا تُرسل
@@ -164,9 +175,8 @@ const buildPayload = (pending: Pending) => {
 
 /** رقم نسخة البيانات التي وصلت لهذا الجهاز (يرسله الخادم عبر القناة اللحظية مع كل حفظ) */
 let knownVersion: string | null = null;
-/** وصل إشعار تغيير ولم يُجلب (تعديلات معلّقة هنا): يُجلب بعد انتهاء الإرسال */
-let missedUpdate = false;
-let onMissedUpdate: (() => void) | null = null;
+/** يُستدعى بعد انتهاء كل إرسال (نجح أو فشل): يُكمل جلبًا أُجّل أثناء الإرسال */
+let onFlushDone: (() => void) | null = null;
 
 let flushing = false;
 /** يزيد مع كل إرسال ناجح: جلبٌ بدأ قبله قد يحمل نسخة أقدم مما أُرسل فلا يُطبَّق */
@@ -206,15 +216,15 @@ async function flush(): Promise<void> {
     flushing = false;
     if (Object.keys(latest).length) scheduleFlush(200);
     else setStatus('saved');
-    // وصل تغيير من جهاز آخر أثناء الإرسال: يُجلب الآن (حتى لو بقيت تعديلات معلّقة، فهي لا تُستبدل)
-    if (missedUpdate) onMissedUpdate?.();
+    // وصل تغيير من جهاز آخر أثناء الإرسال، أو مفاتيح تُركت لأنها كانت معلّقة هنا: تُجلب الآن
+    onFlushDone?.();
   } catch (e) {
     flushing = false;
     // فشل الاتصال نفسه (TypeError) = غير متصل، حتى لو ظن المتصفح أن الشبكة متاحة (إشارة ضعيفة أو الخادم لا يُصل)
     setStatus(e instanceof TypeError || !navigator.onLine ? 'offline' : 'error');
     scheduleFlush(15000); // إعادة المحاولة لاحقًا، والتعديلات محفوظة محليًا حتى تصل
     // تعثّر الإرسال لا يوقف استلام تعديلات الأجهزة الأخرى (كانت الرئيسية تتجمّد حتى إعادة التحميل)
-    if (missedUpdate) onMissedUpdate?.();
+    onFlushDone?.();
   }
 }
 
@@ -251,12 +261,23 @@ const notifyApplied = (keys: string[]) => {
   }
 };
 
-/** يطبّق نسخة الخادم محليًا (عدا ما تغيّر هنا ولم يُرسل بعد). يعيد المفاتيح التي تغيّرت */
-const applyServerState = (items: Record<string, string>): string[] => {
+/** مفاتيح وصل لها من الخادم ما يخالف القيمة المحلية وتُركت لأنها معلّقة هنا: تُجلب ثانيةً بعد الإرسال */
+const skippedWhilePending = new Set<string>();
+
+/**
+ * يطبّق نسخة الخادم محليًا (عدا ما تغيّر هنا ولم يُرسل بعد). يعيد المفاتيح التي تغيّرت.
+ * removed: للجلب الجزئي — المفاتيح المطلوبة غير الموجودة في الخادم (الحذف يُفحص ضمنها فقط، لا في كل المفاتيح)
+ */
+const applyServerState = (items: Record<string, string>, removed?: string[]): string[] => {
   const pending = readPending();
   const changed: string[] = [];
   for (const [key, value] of Object.entries(items)) {
-    if (!shouldSync(key) || key in pending) continue;
+    if (!shouldSync(key)) continue;
+    if (key in pending) {
+      // لا يُستبدل تعديل لم يُرسل، لكن لا يُنسى ما وصل: كان يبقى قديمًا حتى المزامنة الدورية (≈30 ثانية) أو الرفرش
+      if (rawGet.call(localStorage, key) !== value) skippedWhilePending.add(key);
+      continue;
+    }
     if (rawGet.call(localStorage, key) !== value) {
       rawSet.call(localStorage, key, value);
       changed.push(key);
@@ -264,8 +285,8 @@ const applyServerState = (items: Record<string, string>): string[] => {
     if (isCollection(key)) setShadow(key, value);
   }
   // مفاتيح حُذفت من جهاز آخر
-  for (const key of localSyncKeys()) {
-    if (!(key in items) && !(key in pending)) {
+  for (const key of removed ?? localSyncKeys()) {
+    if (!(key in items) && !(key in pending) && rawGet.call(localStorage, key) !== null) {
       rawRemove.call(localStorage, key);
       changed.push(key);
     }
@@ -388,51 +409,87 @@ export async function initCloudSync(): Promise<InitResult> {
     })();
   }
 
-  // أثناء فتح الصفحة: جلب تعديلات الأجهزة الأخرى بهدوء (بدون إعادة تحميل)،
-  // والصفحات المشتركة في الحدث تحدّث نفسها فورًا.
-  // التعديلات المعلّقة في هذا الجهاز لا توقف الجلب: تبقى كما هي (applyServerState يتخطاها) ويُطبَّق الباقي.
-  // (كان أي مفتاح معلّق — ولو كتابة تلقائية من الرئيسية نفسها أو إرسال متعثّر — يوقف التحديث كليًا
-  // فلا يظهر الوارد الجديد على شاشة العرض إلا بإعادة تحميل الصفحة)
-  const pullOnce = async (): Promise<boolean> => {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      if (flushing) return false;
-      const gen = flushGen;
-      lastBackgroundSync = Date.now();
-      try {
-        const res = await fetchState(8000, true);
+  // ───── جلب تعديلات الأجهزة الأخرى أثناء فتح الصفحة (بدون إعادة تحميل) ─────
+  // إشعار التغيير يحمل أسماء المفاتيح التي تغيّرت، فيُجلب ما تغيّر فقط (بدل النسخة الكاملة لكل حفظ على كل جهاز).
+  // الطلبات تتجمّع في قائمة واحدة: إشعار يصل أثناء جلب جارٍ يُضاف ولا يضيع، والفشل يُعاد بعد ثوانٍ لا بعد 30 ثانية.
+  // التعديلات المعلّقة في هذا الجهاز لا توقف الجلب: تبقى كما هي، وما وصل لها يُجلب ثانيةً بعد إرسالها.
+  let wantFull = false;
+  const wantKeys = new Set<string>();
+  let pulling: Promise<void> | null = null;
+  let pullFailures = 0;
+  let pullRetryTimer: ReturnType<typeof setTimeout> | undefined;
+
+  /** جلب واحد: true = طُبّق (أو لا جديد)، false = فشل، 'again' = اكتمل إرسال أثناءه فيُعاد، 'later' = إرسال جارٍ */
+  const fetchOnce = async (keys: string[] | null): Promise<boolean | 'again' | 'later'> => {
+    if (flushing) return 'later';
+    const gen = flushGen;
+    lastBackgroundSync = Date.now();
+    try {
+      let res: Response;
+      if (keys) {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 8000);
+        try {
+          res = await api(`/api/state?keys=${encodeURIComponent(keys.join(','))}`, { signal: ctrl.signal });
+        } finally {
+          clearTimeout(t);
+        }
+      } else {
+        res = await fetchState(8000, true);
         if (res.status === 304) return true;
-        if (!res.ok) return false;
-        const { items } = (await res.json()) as { items: Record<string, string> };
-        // اكتمل إرسال من هذا الجهاز أثناء الجلب: النسخة قد تسبقه، فيُعاد الجلب
-        if (gen !== flushGen) continue;
-        if (flushing) return false;
-        const changed = applyServerState(items);
-        rememberEtag(res);
-        if (changed.length) notifyApplied(changed);
-        return true;
-      } catch {
-        return false;
       }
+      if (!res.ok) return false;
+      const data = (await res.json()) as { items: Record<string, string>; removed?: string[] };
+      // اكتمل إرسال من هذا الجهاز أثناء الجلب: النسخة قد تسبقه، فيُعاد الجلب
+      if (gen !== flushGen) return 'again';
+      if (flushing) return 'later';
+      const changed = applyServerState(data.items, keys ? (data.removed ?? []) : undefined);
+      if (!keys) rememberEtag(res);
+      if (changed.length) notifyApplied(changed);
+      return true;
+    } catch {
+      return false;
     }
-    return false;
   };
-  let pullPromise: Promise<boolean> | null = null;
-  let pullAgain = false;
-  /** طلب جلب أثناء جلب جارٍ لا يُهمل: يُعاد الجلب بعده (حفظان متتاليان من جهاز آخر كان الثاني يضيع) */
-  const pull = (): Promise<boolean> => {
-    if (pullPromise) {
-      pullAgain = true;
-      return pullPromise;
+
+  const drain = async () => {
+    for (let guard = 0; guard < 10 && (wantFull || wantKeys.size); guard++) {
+      const keys = wantFull ? null : [...wantKeys];
+      wantFull = false;
+      wantKeys.clear();
+      const r = await fetchOnce(keys);
+      if (r === true) {
+        pullFailures = 0;
+        continue;
+      }
+      // يُعاد ما لم يُجلب إلى القائمة
+      if (keys) keys.forEach(k => wantKeys.add(k));
+      else wantFull = true;
+      if (r === 'again') continue;
+      if (r === 'later') return; // يُكمل بعد انتهاء الإرسال (onFlushDone)
+      // فشل (شبكة/ضغط على الخادم): إعادة بعد 1، 2، 4... ثوانٍ حتى 15 ثانية
+      clearTimeout(pullRetryTimer);
+      pullRetryTimer = setTimeout(() => void runPull(), Math.min(15_000, 1000 * 2 ** pullFailures++));
+      return;
     }
-    pullPromise = (async () => {
-      let ok = false;
-      do {
-        pullAgain = false;
-        ok = await pullOnce();
-      } while (pullAgain);
-      return ok;
-    })().finally(() => { pullPromise = null; });
-    return pullPromise;
+  };
+  const runPull = (): Promise<void> => {
+    if (!pulling) pulling = drain().finally(() => { pulling = null; });
+    else void pulling.then(() => { if (wantFull || wantKeys.size) void runPull(); });
+    return pulling;
+  };
+  /** طلب جلب: مفاتيح محددة، أو النسخة الكاملة بلا مفاتيح */
+  const pull = (keys?: string[]) => {
+    if (keys?.length) keys.forEach(k => wantKeys.add(k));
+    else wantFull = true;
+    return runPull();
+  };
+  onFlushDone = () => {
+    if (skippedWhilePending.size) {
+      skippedWhilePending.forEach(k => wantKeys.add(k));
+      skippedWhilePending.clear();
+    }
+    if (wantFull || wantKeys.size) void runPull();
   };
 
   // عودة الاتصال: إرسال التعديلات المعلّقة ثم جلب تعديلات الأجهزة الأخرى
@@ -454,26 +511,21 @@ export async function initCloudSync(): Promise<InitResult> {
       }).catch(() => {});
     }
   });
-  // عند العودة للتطبيق: جلب تعديلات الأجهزة الأخرى (فورًا إن فات إشعار تغيير أثناء الخلفية)
+  // عند العودة للتطبيق: جلب تعديلات الأجهزة الأخرى (الهاتف يوقف الاتصال في الخلفية فتفوته الإشعارات)
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
-    if (!missedUpdate && Date.now() - lastBackgroundSync < 10_000) return;
-    onMissedUpdate?.();
+    if (Date.now() - lastBackgroundSync < 10_000 && !wantFull && !wantKeys.size) return;
+    void pull();
   });
 
-  /** رقم نسخة جديد وصل (من القناة اللحظية أو السؤال الاحتياطي): يُجلب التغيير ويُحفظ الرقم بعد تطبيقه فعلًا */
-  const onVersion = async (v: string) => {
+  /** إشعار تغيير ("رقم النسخة|المفاتيح"): يُجلب ما تغيّر فقط، أو النسخة الكاملة إن لم تُذكر المفاتيح */
+  const onVersion = (msg: string) => {
+    const sep = msg.indexOf('|');
+    const v = sep < 0 ? msg : msg.slice(0, sep);
     if (!v || v === knownVersion) return;
-    if (await pull()) {
-      knownVersion = v;
-      missedUpdate = false;
-    } else {
-      // تعذّر الآن (إرسال جارٍ أو انقطاع): يُجلب بعد انتهاء الإرسال أو عند العودة للصفحة
-      missedUpdate = true;
-    }
-  };
-  onMissedUpdate = () => {
-    void pull().then(ok => { if (ok) missedUpdate = false; });
+    knownVersion = v;
+    const keys = sep < 0 ? [] : msg.slice(sep + 1).split(',').filter(Boolean);
+    void pull(keys.length ? keys : undefined);
   };
 
   // ───── القناة اللحظية (WebSocket): الخادم يبلّغ هذا الجهاز فور أي حفظ من أي جهاز ─────
@@ -482,6 +534,19 @@ export async function initCloudSync(): Promise<InitResult> {
   let retries = 0;
   let retryTimer: ReturnType<typeof setTimeout> | undefined;
   let pingTimer: ReturnType<typeof setInterval> | undefined;
+  let lastSeen = 0;
+  /** إسقاط اتصال ميت وفتح غيره فورًا (لا ننتظر إغلاقه، فقد لا يصل حدث الإغلاق أبدًا) */
+  const dropSocket = (ws: WebSocket) => {
+    if (socket !== ws) return;
+    clearInterval(pingTimer);
+    ws.onclose = null;
+    ws.onmessage = null;
+    try { ws.close(); } catch { /* مغلق */ }
+    socket = null;
+    socketOpen = false;
+    retries = 0;
+    connect();
+  };
   const connect = () => {
     if (socket || !getToken() || typeof WebSocket === 'undefined') return;
     clearTimeout(retryTimer);
@@ -491,14 +556,23 @@ export async function initCloudSync(): Promise<InitResult> {
     ws.onopen = () => {
       socketOpen = true;
       retries = 0;
+      lastSeen = Date.now();
       // ما فات أثناء الانقطاع
       void pull();
-      // نبضة تُبقي الاتصال حيًا عبر الشبكات (يرد عليها الخادم تلقائيًا دون تكلفة تشغيل)
+      // نبضة تُبقي الاتصال حيًا عبر الشبكات (يرد عليها الخادم تلقائيًا دون تكلفة تشغيل).
+      // اتصال "مفتوح" لا يرد (شبكة الهاتف أسقطته بصمت) لا يصله أي إشعار: يُغلق ويُعاد فورًا مع جلب ما فات
       clearInterval(pingTimer);
-      pingTimer = setInterval(() => { try { ws.send('ping'); } catch { /* يُغلق ويُعاد */ } }, 25_000);
+      pingTimer = setInterval(() => {
+        if (Date.now() - lastSeen > 45_000) {
+          dropSocket(ws);
+          return;
+        }
+        try { ws.send('ping'); } catch { dropSocket(ws); }
+      }, 20_000);
     };
     ws.onmessage = e => {
-      if (typeof e.data === 'string' && e.data !== 'pong') void onVersion(e.data);
+      lastSeen = Date.now();
+      if (typeof e.data === 'string' && e.data !== 'pong') onVersion(e.data);
     };
     ws.onclose = () => {
       clearInterval(pingTimer);
@@ -513,9 +587,16 @@ export async function initCloudSync(): Promise<InitResult> {
   connect();
   // العودة للتطبيق (الهاتف يغلق الاتصال في الخلفية): إعادة الاتصال فورًا
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && !socket) {
+    if (document.visibilityState !== 'visible') return;
+    if (!socket) {
       retries = 0;
       connect();
+    } else if (socketOpen) {
+      // فحص فوري للاتصال بعد الخلفية: إن لم يرد خلال 5 ثوانٍ يُعاد فتحه
+      const ws = socket;
+      const sentAt = Date.now();
+      try { ws.send('ping'); } catch { dropSocket(ws); return; }
+      setTimeout(() => { if (lastSeen < sentAt) dropSocket(ws); }, 5_000);
     }
   });
   window.addEventListener('online', () => {
@@ -534,7 +615,7 @@ export async function initCloudSync(): Promise<InitResult> {
       const { v } = (await res.json()) as { v: string };
       // أول سؤال يحفظ الرقم فقط
       if (knownVersion === null) knownVersion = v;
-      else await onVersion(v);
+      else onVersion(v);
     } catch {
       /* تجاهل */
     }

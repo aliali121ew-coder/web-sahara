@@ -48,21 +48,21 @@ const WEEK_DAYS = [
 ];
 
 /**
- * بيانات الأسبوع (السبت ← الجمعة) للأسبوع الذي فيه آخر يوم مسجّل:
+ * بيانات آخر 7 أيام تنتهي بآخر يوم مسجّل (الأقدم يسارًا والأحدث يمينًا):
  * الوارد والاستهلاك الفعلي من جدول رصيد شركة الصحاري، واليوم غير المسجّل = 0.
+ * (كانت أسبوعًا ثابتًا من السبت إلى الجمعة، فتختفي الأيام السابقة أول كل أسبوع ويبقى عمود واحد)
  */
 const buildWeeklyFlow = (days: { date: string; inbound: number; actualConsumption: number }[], anchor?: string) => {
   const pad = (n: number) => String(n).padStart(2, '0');
   const base = anchor ? new Date(anchor.replace(/\//g, '-') + 'T12:00:00') : new Date();
-  const saturday = new Date(base);
-  saturday.setDate(base.getDate() - ((base.getDay() + 1) % 7)); // السبت = بداية الأسبوع
   const byDate = new Map(days.map(d => [d.date, d]));
-  return WEEK_DAYS.map((w, i) => {
-    const d = new Date(saturday);
-    d.setDate(saturday.getDate() + i);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(base);
+    d.setDate(base.getDate() - 6 + i);
     const date = `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}`;
     const rec = byDate.get(date);
-    return { ...w, date, inbound: rec?.inbound ?? 0, consumption: rec?.actualConsumption ?? 0 };
+    // getDay: الأحد = 0، وWEEK_DAYS يبدأ بالسبت
+    return { ...WEEK_DAYS[(d.getDay() + 1) % 7], date, inbound: rec?.inbound ?? 0, consumption: rec?.actualConsumption ?? 0 };
   });
 };
 
@@ -71,19 +71,20 @@ export const SaharaGasSection: React.FC = () => {
   // متوسط السعر = تكلفة المنتج الكلية ÷ الكمية المستلمة الكلية لوارد الصحاري (نفس كارت صفحة الوارد)،
   // ونسبة التغير = أثر آخر وارد على المتوسط (ارتفاع = أحمر، انخفاض = أخضر)
   const { saharaDeliveries } = useFuelStore();
-  const { avgPrice, change: priceChange, dailyBuys } = React.useMemo(() => {
-    // نفس نطاق صفحة وارد الصحاري: شحنات شركة صحاري كربلاء فقط
-    const own = ownSaharaDeliveries(saharaDeliveries);
-    const stats = computeInboundPriceStats(own);
-    // شراء اليوم ونسبة التغير (معدل اليومين مقارنة بسعر أمس) — نفس حساب صفحة رصيد الشركة
-    const buys = computeDailyBuys(own);
-    const today = buys.today ? { day: buys.today.day, price: buys.today.price, twoDayAvg: buys.twoDayAvg, pct: buys.pct } : null;
-    return { ...stats, dailyBuys: { today } };
-  }, [saharaDeliveries]);
   // آخر يوم مسجّل في رصيد شركة الصحاري، وفرق الاستهلاك الفعلي عن اليوم الذي قبله
   // النسخة المعتمدة فقط: تتحدث بعد "تأكيد البيانات" في صفحة رصيد الشركة
   const { publishedComputed: saharaDays } = useSaharaLedger();
   const latestDay = saharaDays[saharaDays.length - 1];
+  const { avgPrice, change: priceChange, dailyBuys } = React.useMemo(() => {
+    // نفس نطاق صفحة وارد الصحاري: شحنات شركة صحاري كربلاء فقط
+    const own = ownSaharaDeliveries(saharaDeliveries);
+    const stats = computeInboundPriceStats(own);
+    // شراء اليوم = وارد اليوم المعروض في الكارت (آخر يوم مسجّل)؛ بلا وارد فيه = صفر.
+    // نسبة التغير: معدل اليومين مقارنة بسعر يوم الوارد السابق
+    const buys = computeDailyBuys(own, latestDay?.date);
+    const today = buys.today ? { day: buys.today.day, price: buys.today.price, twoDayAvg: buys.twoDayAvg, pct: buys.pct } : null;
+    return { ...stats, dailyBuys: { today } };
+  }, [saharaDeliveries, latestDay?.date]);
   const prevDay = saharaDays[saharaDays.length - 2];  const weeklyFlow = React.useMemo(() => buildWeeklyFlow(saharaDays, latestDay?.date), [saharaDays, latestDay?.date]);
   const totalInbound = latestDay?.inbound ?? 0;
   const actualConsumption = latestDay?.actualConsumption ?? 0;
@@ -392,7 +393,7 @@ export const SaharaGasSection: React.FC = () => {
                         >
                           <div className="text-[9px] font-bold leading-tight text-slate-400">{t('dashboard:price.todayBuy')}</div>
                           <div className="mt-0.5 font-mono font-black kpi-sub tabular-nums text-slate-700 dark:text-slate-200">
-                            {buy ? buy.price.toFixed(1) : '—'}{buy && <span className="text-[8.5px] font-bold text-slate-400"> {t('common:units.iqd')}</span>}
+                            {buy ? buy.price.toFixed(1) : '0.0'}<span className="text-[8.5px] font-bold text-slate-400"> {t('common:units.iqd')}</span>
                           </div>
                         </div>
                         <div className="rounded-lg ring-1 min-w-0 bg-white dark:bg-slate-900/70 ring-slate-200 dark:ring-slate-700 px-1.5 py-1 text-center" title={buy?.twoDayAvg ? `${t('dashboard:price.twoDayAvg')}: ${buy.twoDayAvg.toFixed(1)} ${t('common:units.iqd')} · ${t('dashboard:price.vsPrevBuy')}` : t('dashboard:price.vsPrevBuy')}>
