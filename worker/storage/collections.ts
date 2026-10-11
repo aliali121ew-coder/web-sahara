@@ -20,10 +20,12 @@ export interface CollectionOps {
 }
 
 // زِد الإصدار عند تعديل الجداول أو العروض (VIEWS) أو إضافة مفتاح إلى COLLECTION_KEYS
-const COLLECTIONS_SCHEMA = '1';
+const COLLECTIONS_SCHEMA = '2';
 export const ensureCollections = (db: D1Database, backups?: R2Bucket) => schemaGate(db, 'collections', `${COLLECTIONS_SCHEMA}:${COLLECTION_KEYS.length}`, async () => {
   await db.exec('CREATE TABLE IF NOT EXISTS collection_items (key TEXT NOT NULL, id TEXT NOT NULL, pos REAL NOT NULL DEFAULT 0, data TEXT NOT NULL, updated_at INTEGER NOT NULL, updated_by TEXT NOT NULL DEFAULT \'\', PRIMARY KEY (key, id))');
   await db.exec('CREATE INDEX IF NOT EXISTS collection_items_order ON collection_items (key, pos, updated_at)');
+  // آخر العناصر تعديلًا لكل مجموعة (أحدث الإشعارات) بقراءة ما يُرسل فقط
+  await db.exec('CREATE INDEX IF NOT EXISTS collection_items_recent ON collection_items (key, updated_at)');
   await db.exec('CREATE TABLE IF NOT EXISTS system_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL)');
   for (const key of COLLECTION_KEYS) await migrateKey(db, key, backups);
   await ensureViews(db);
@@ -116,11 +118,27 @@ export const readCollection = async (db: D1Database, key: string) => {
 export const readCollections = async (db: D1Database, keys: string[]): Promise<Record<string, string>> => {
   const out: Record<string, string[]> = Object.fromEntries(keys.map(k => [k, []]));
   if (!keys.length) return {};
-  const { results } = await db.prepare(`SELECT key, data FROM collection_items WHERE key IN (${keys.map(() => '?').join(',')}) ORDER BY key, pos, updated_at DESC`)
-    .bind(...keys).all<{ key: string; data: string }>();
-  for (const r of results) out[r.key]?.push(r.data);
+  const full = keys.filter(k => !(k in COLLECTION_SEND_LIMIT));
+  if (full.length) {
+    const { results } = await db.prepare(`SELECT key, data FROM collection_items WHERE key IN (${full.map(() => '?').join(',')}) ORDER BY key, pos, updated_at DESC`)
+      .bind(...full).all<{ key: string; data: string }>();
+    for (const r of results) out[r.key]?.push(r.data);
+  }
+  for (const key of keys.filter(k => k in COLLECTION_SEND_LIMIT)) {
+    const { results } = await db.prepare(
+      'SELECT data FROM (SELECT data, pos, updated_at FROM collection_items WHERE key = ? ORDER BY updated_at DESC LIMIT ?) ORDER BY pos, updated_at DESC'
+    ).bind(key, COLLECTION_SEND_LIMIT[key]).all<{ data: string }>();
+    out[key] = results.map(r => r.data);
+  }
   return Object.fromEntries(Object.entries(out).map(([k, rows]) => [k, `[${rows.join(',')}]`]));
 };
+
+/**
+ * مجموعات تُرسل منها آخر العناصر فقط (الباقي محفوظ في الخادم ويُؤرشف شهريًا):
+ * الإشعارات تجاوزت 2700 عنصر، فكانت النسخة الكاملة تملأ مساحة المتصفح في iPhone (≈5MB، مع نسخة المقارنة)
+ * فيتوقف حفظ ما بعدها (سجلات الأرصدة)، وتستهلك آلاف القراءات من D1 عند كل فتح.
+ */
+export const COLLECTION_SEND_LIMIT: Record<string, number> = { sahara_notifications: 300 };
 
 /** عدد العناصر لكل مجموعة (للوحة الإدارة) */
 export const collectionCounts = async (db: D1Database) => {

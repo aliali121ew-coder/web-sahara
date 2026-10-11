@@ -275,18 +275,25 @@ const skippedWhilePending = new Set<string>();
 const applyServerState = (items: Record<string, string>, removed?: string[]): string[] => {
   const pending = readPending();
   const changed: string[] = [];
-  for (const [key, value] of Object.entries(items)) {
+  // الأصغر أولًا والإشعارات آخرًا: إن امتلأت مساحة المتصفح (iPhone ≈5MB) لا يضيع ما بعد المفتاح الكبير
+  const entries = Object.entries(items).sort((a, b) => (a[0] === 'sahara_notifications' ? 1 : 0) - (b[0] === 'sahara_notifications' ? 1 : 0) || a[1].length - b[1].length);
+  for (const [key, value] of entries) {
     if (!shouldSync(key)) continue;
     if (key in pending) {
       // لا يُستبدل تعديل لم يُرسل، لكن لا يُنسى ما وصل: كان يبقى قديمًا حتى المزامنة الدورية (≈30 ثانية) أو الرفرش
       if (rawGet.call(localStorage, key) !== value) skippedWhilePending.add(key);
       continue;
     }
-    if (rawGet.call(localStorage, key) !== value) {
-      rawSet.call(localStorage, key, value);
-      changed.push(key);
+    // فشل حفظ مفتاح (امتلاء المساحة) لا يوقف بقية المفاتيح (كانت سجلات الأرصدة لا تصل لأجهزة iPhone الجديدة)
+    try {
+      if (rawGet.call(localStorage, key) !== value) {
+        rawSet.call(localStorage, key, value);
+        changed.push(key);
+      }
+      if (isCollection(key)) setShadow(key, value);
+    } catch (e) {
+      console.warn('cloud sync: could not store', key, e);
     }
-    if (isCollection(key)) setShadow(key, value);
   }
   // مفاتيح حُذفت من جهاز آخر
   for (const key of removed ?? localSyncKeys()) {
