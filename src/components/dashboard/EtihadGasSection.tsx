@@ -30,17 +30,17 @@ import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
 const WEEK_DAYS = ['السبت', 'الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
 
 /**
- * بيانات الأسبوع (السبت ← الجمعة) للأسبوع الذي فيه آخر يوم مسجّل في رصيد شركة الاتحاد:
+ * بيانات آخر 7 أيام تنتهي بآخر يوم مسجّل في رصيد شركة الاتحاد (الأيام السابقة تبقى ظاهرة للمقارنة):
  * الوارد = المشتريات، والاستهلاك = مصروف الاتحاد + كل المبيعات، واليوم غير المسجّل = 0.
  */
 const buildWeeklyFlow = (records: EtihadBalanceRecord[], anchor?: string) => {
   const pad = (n: number) => String(n).padStart(2, '0');
   const base = anchor ? new Date(anchor.replace(/\//g, '-') + 'T12:00:00') : new Date();
-  const saturday = new Date(base);
-  saturday.setDate(base.getDate() - ((base.getDay() + 1) % 7));
-  return WEEK_DAYS.map((day, i) => {
-    const d = new Date(saturday);
-    d.setDate(saturday.getDate() + i);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(base);
+    d.setDate(base.getDate() - 6 + i);
+    // getDay: الأحد = 0، وWEEK_DAYS يبدأ بالسبت
+    const day = WEEK_DAYS[(d.getDay() + 1) % 7];
     const date = `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}`;
     const dayRecords = records.filter(r => r.date === date);
     return {
@@ -86,7 +86,8 @@ export const EtihadGasSection: React.FC = () => {
       }) as InboundDelivery);
   }, [etihadDeliveries, records]);
   const { avgPrice, change: priceChange } = React.useMemo(() => computeInboundPriceStats(priceSource), [priceSource]);
-  const buys = React.useMemo(() => computeDailyBuys(priceSource), [priceSource]);
+  // شراء اليوم = وارد آخر يوم مسجّل (اليوم المعروض في الكارت)؛ بلا وارد فيه = صفر
+  const buys = React.useMemo(() => computeDailyBuys(priceSource, latest?.date), [priceSource, latest?.date]);
   const totalInbound = latest?.purchases ?? 0;
   const totalConsumption = latest?.etihadExpense ?? 0;
   const totalSales = recordSales(latest);
@@ -306,16 +307,16 @@ export const EtihadGasSection: React.FC = () => {
               <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
                 {formatNumber(totalInbound)} <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </div>
-              {buys.today ? (() => {
+              {latest ? (() => {
                 // شراء اليوم ونسبة التغير (معدل اليومين مقارنة بسعر اليوم السابق) — نفس كارت الصحاري
                 const pct = buys.pct !== null && Math.abs(buys.pct) < 0.005 ? 0 : buys.pct;
                 const tone = pct === null || pct === 0 ? 'text-slate-500' : pct > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400';
                 return (
                   <div className="mt-1.5 grid grid-cols-2 gap-1.5">
-                    <div className="rounded-lg ring-1 min-w-0 bg-white dark:bg-slate-900/70 ring-slate-200 dark:ring-slate-700 px-1.5 py-1 text-center" title={`${t('dashboard:price.buyAvg')} · ${buys.today.day}`}>
+                    <div className="rounded-lg ring-1 min-w-0 bg-white dark:bg-slate-900/70 ring-slate-200 dark:ring-slate-700 px-1.5 py-1 text-center" title={`${t('dashboard:price.buyAvg')} · ${latest.date}`}>
                       <div className="text-[9px] font-bold leading-tight text-slate-400">{t('dashboard:price.todayBuy')}</div>
                       <div className="mt-0.5 font-mono font-black kpi-sub tabular-nums text-slate-700 dark:text-slate-200">
-                        {buys.today.price.toFixed(1)}<span className="text-[8.5px] font-bold text-slate-400"> {t('common:units.iqd')}</span>
+                        {(buys.today?.price ?? 0).toFixed(1)}<span className="text-[8.5px] font-bold text-slate-400"> {t('common:units.iqd')}</span>
                       </div>
                     </div>
                     <div
