@@ -13,7 +13,6 @@ import {
   Calendar,
   Sparkles,
   Gauge,
-  Plus,
   ChevronDown,
   Paperclip,
   UploadCloud,
@@ -77,7 +76,18 @@ const FAKE_SUPPLIERS = new Set([
 ]);
 const FAKE_DRIVERS = new Set(['سجاد حيدر الموسوي', 'سائق غير محدد']);
 const isRealName = (v?: string) => { const t = (v || '').trim(); return !!t && !/^[_\-–—.]+$/.test(t); };
-const DEFAULT_COLORS = ['احمر', 'اصفر', 'عسلي', 'نفط ابيض'];
+/** ألوان المنتج: أربعة فقط (لا إضافة) */
+const PRODUCT_COLORS = ['عسلي', 'احمر', 'اصفر', 'نفط ابيض'];
+/** لون من ملف أو سجل قديم → أقرب الألوان الأربعة ("عسل ي" المقطوع من PDF = عسلي)؛ غير المعروف يبقى كما هو */
+const canonicalColor = (v?: string): string => {
+  const t = (v || '').normalize('NFKC').replace(/[أإآ]/g, 'ا').replace(/\s+/g, '');
+  if (!t) return '';
+  if (t.includes('عسل')) return 'عسلي';
+  if (t.includes('احمر')) return 'احمر';
+  if (t.includes('ابيض') || t.includes('نفط')) return 'نفط ابيض';
+  if (t.includes('اصفر')) return 'اصفر';
+  return (v || '').trim();
+};
 
 /** كشف الوارد خاص بالكاز: كل شحنة (رفع ملف أو إدخال يدوي) كاز مهما كان لونها، ومنها "نفط ابيض".
  *  النفط الأسود يُسجَّل من قسمه الخاص وليس من هنا. */
@@ -128,17 +138,6 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
   // السائقون من الأرشيف (لا أسماء افتراضية)
   const driverSuggestions = Array.from(new Set(deliveries.map((d) => (d.driverName || '').trim()).filter((n) => isRealName(n) && !FAKE_DRIVERS.has(n))));
 
-  const [colors, setColors] = useState<string[]>(() => {
-    const saved = localStorage.getItem('sahara_colors_list');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        // ignore
-      }
-    }
-    return DEFAULT_COLORS;
-  });
 
   // Modal form states
   const [deliveryCompany, setDeliveryCompany] = useState('صحاري كربلاء');
@@ -191,7 +190,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
       const cleanVol = rawVol.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
       setRawVolume(cleanVol);
       setDeliveryDensity(editData.productDensity || '0.840');
-      setDeliveryColor(editData.productColor || 'احمر');
+      setDeliveryColor(canonicalColor(editData.productColor) || 'احمر');
       const prc = (editData.productPrice ?? editData.pricePerLiter ?? 0).toString();
       const cleanPrc = prc.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
       setRawPrice(cleanPrc);
@@ -333,8 +332,6 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
   // In-Cell Quick Add States
 
 
-  const [isAddingColor, setIsAddingColor] = useState(false);
-  const [newColorName, setNewColorName] = useState('');
 
 
   const [submitted, setSubmitted] = useState(false);
@@ -348,9 +345,6 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
     localStorage.setItem('sahara_suppliers_list', JSON.stringify(suppliers));
   }, [suppliers]);
 
-  useEffect(() => {
-    localStorage.setItem('sahara_colors_list', JSON.stringify(colors));
-  }, [colors]);
 
   if (!isOpen) return null;
 
@@ -402,17 +396,6 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
     setDeliveryVoucher(`2026${Math.floor(1000 + Math.random() * 9000)}`);
   };
 
-  const handleAddNewColor = () => {
-    const trimmed = newColorName.trim();
-    if (trimmed) {
-      if (!colors.includes(trimmed)) {
-        setColors([...colors, trimmed]);
-      }
-      setDeliveryColor(trimmed);
-      setNewColorName('');
-      setIsAddingColor(false);
-    }
-  };
 
   const handleDeliverySubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -423,9 +406,6 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
     }
     if (deliveryCompany && !companies.includes(deliveryCompany)) {
       setCompanies((prev) => [deliveryCompany, ...prev]);
-    }
-    if (deliveryColor && !colors.includes(deliveryColor)) {
-      setColors((prev) => [...prev, deliveryColor]);
     }
 
     const targetComp = (editData?.lockedCompany || deliveryCompany) as ('صحاري كربلاء' | 'شركة الاتحاد');
@@ -526,13 +506,13 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
         voucherNumber: r.voucherNumber || `VCH-${Date.now().toString().slice(-4)}`,
         receivedQuantity: r.receivedQuantity,
         productDensity: r.productDensity,
-        productColor: r.productColor,
+        productColor: canonicalColor(r.productColor),
         productPrice: r.productPrice,
         productCost: r.productCost,
         receiptUnloadDate: date,
         stationName: '',
         tankCode: '',
-        product: productFromColor(r.productColor),
+        product: productFromColor(canonicalColor(r.productColor)),
         volumeLiters: r.receivedQuantity,
         pricePerLiter: r.productPrice,
         totalCostIqd: r.productCost,
@@ -542,7 +522,6 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
         time: new Date().toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' }),
         attachments: []
       }, receivingCompany);
-      if (r.productColor && !colors.includes(r.productColor)) setColors((prev) => [...prev, r.productColor]);
     });
     setImportState({ status: 'idle' });
     setSubmitted(true);
@@ -946,74 +925,26 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                     </div>
                   </div>
 
-                  {/* 8. لون المنتج (احمر - اصفر - عسلي - نفط ابيض - اضافة لون) */}
+                  {/* 8. لون المنتج: أربعة ألوان فقط */}
                   <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                        {t('deliveries:col.color')}
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setIsAddingColor(!isAddingColor)}
-                        className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-0.5 cursor-pointer"
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                      {t('deliveries:col.color')}
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={deliveryColor}
+                        onChange={(e) => setDeliveryColor(e.target.value)}
+                        className="w-full h-11 sm:h-12 px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-900 outline-none font-bold transition-all appearance-none cursor-pointer"
                       >
-                        <Plus className="w-3 h-3" />
-                        <span>{isAddingColor ? t('common:actions.cancel') : t('deliveries:quick.add')}</span>
-                      </button>
+                        {/* شحنة قديمة بلون خارج الأربعة: يظهر لونها حتى لا يضيع عند الحفظ */}
+                        {[...PRODUCT_COLORS, ...(deliveryColor && !PRODUCT_COLORS.includes(deliveryColor) ? [deliveryColor] : [])].map((c) => (
+                          <option key={c} value={c}>
+                            {enumText(c)}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className={`w-4 h-4 text-slate-400 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-3.5' : 'right-3.5'} pointer-events-none`} />
                     </div>
-
-                    {isAddingColor ? (
-                      <div className="relative w-full h-11 sm:h-12 flex items-center">
-                        <input
-                          type="text"
-                          placeholder={t('deliveries:quick.newColorPh')}
-                          value={newColorName}
-                          onChange={(e) => setNewColorName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleAddNewColor();
-                            }
-                            if (e.key === 'Escape') {
-                              setIsAddingColor(false);
-                            }
-                          }}
-                          className={`w-full h-full ${isRTL ? 'pl-16 pr-3.5' : 'pr-16 pl-3.5'} text-sm rounded-xl border-2 border-indigo-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none font-bold shadow-2xs`}
-                          autoFocus
-                        />
-                        <div className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-1.5' : 'right-1.5'} flex items-center gap-1`}>
-                          <button
-                            type="button"
-                            onClick={handleAddNewColor}
-                            className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs cursor-pointer"
-                          >
-                            {t('common:actions.save')}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setIsAddingColor(false)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="relative">
-                        <select
-                          value={deliveryColor}
-                          onChange={(e) => setDeliveryColor(e.target.value)}
-                          className="w-full h-11 sm:h-12 px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-900 outline-none font-bold transition-all appearance-none cursor-pointer"
-                        >
-                          {colors.map((c) => (
-                            <option key={c} value={c}>
-                              {enumText(c)}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className={`w-4 h-4 text-slate-400 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-3.5' : 'right-3.5'} pointer-events-none`} />
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>

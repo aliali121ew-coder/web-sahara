@@ -298,7 +298,8 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         voucherNumber: formatVoucher(d.voucherNumber || d.receiptNumber, d.id),
         receivedQuantity: qty,
         productDensity: d.productDensity || '0.840',
-        productColor: d.productColor || 'أصفر مخضر',
+        // بلا لون افتراضي: الكشف لا يذكر "أصفر مخضر"
+        productColor: d.productColor || '',
         productPrice: price,
         productCost: cost,
         receiptUnloadDate: d.receiptUnloadDate ? d.receiptUnloadDate.split(' ')[0] : (d.date || '2026/08/20'),
@@ -586,7 +587,7 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       voucherNumber: voucher,
       receivedQuantity: qty,
       productDensity: delivery.productDensity || '0.840',
-      productColor: delivery.productColor || 'أصفر مخضر',
+      productColor: delivery.productColor || '',
       productPrice: price,
       productCost: cost,
       receiptUnloadDate: (delivery.receiptUnloadDate ? delivery.receiptUnloadDate.split(' ')[0] : new Date().toISOString().split('T')[0].replace(/-/g, '/')),
