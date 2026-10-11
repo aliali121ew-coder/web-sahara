@@ -793,7 +793,8 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     if (!me) return json({ error: 'الحساب غير محدد', code: 'account_missing' }, 400);
 
     const [, usersRes, presenceRes, memberOf] = await Promise.all([
-      db.prepare('UPDATE chat_users SET last_seen = ? WHERE id = ?').bind(now, me).run(),
+      // "آخر ظهور" يُكتب مرة كل 30 ثانية على الأكثر (كان مع كل مزامنة: عشرات آلاف الكتابات يوميًا لكل جهاز)
+      db.prepare('UPDATE chat_users SET last_seen = ? WHERE id = ? AND last_seen < ?').bind(now, me, now - 30_000).run(),
       db.prepare('SELECT id, name, role, bio, avatar, color, last_seen, typing_room, typing_at, updated_at FROM chat_users WHERE updated_at > ?').bind(since).all<UserRow>(),
       db.prepare('SELECT id, last_seen, typing_room, typing_at FROM chat_users').all<Pick<UserRow, 'id' | 'last_seen' | 'typing_room' | 'typing_at'>>(),
       db.prepare('SELECT room_id FROM chat_members WHERE user_id = ?').bind(me).all<{ room_id: string }>(),

@@ -15,6 +15,7 @@ import type { D1Database, D1PreparedStatement, Env, ExecutionContext, R2Bucket, 
 import { handleSystem } from './system/api';
 import { ensureSystemTables, getMaintenance } from './system/backup';
 import { schemaGate } from './storage/schema';
+import { bumpStateVersion, readStateVersion, STATE_VERSION_KEY } from './storage/stateVersion';
 import { onSchedule } from './system/maintenance';
 import { demoReset, isDemo } from './demo';
 
@@ -42,10 +43,16 @@ const ensureTable = (db: D1Database) => schemaGate(db, 'app_state', '1', async (
   // تنظيف مفاتيح سرّية خاصة بالأجهزة رُفعت قديمًا قبل استثنائها من المزامنة
   const { results } = await db.prepare('SELECT key FROM app_state').all<{ key: string }>();
   const leaked = results.map(r => r.key).filter(isServerForbiddenKey);
-  if (leaked.length) await db.batch(leaked.map(k => db.prepare('DELETE FROM app_state WHERE key = ?').bind(k)));
+  if (leaked.length) {
+    await db.batch(leaked.map(k => db.prepare('DELETE FROM app_state WHERE key = ?').bind(k)));
+    await bumpStateVersion(db, 'cleanup');
+  }
 });
 
 const HUB_NAME = 'state';
+/** تشغيل الرسائل (مع CHAT_ENABLED في src/lib/features.ts) */
+const CHAT_MESSAGING_ENABLED = false;
+const CHAT_MESSAGING_PATHS = new Set(['/api/chat/sync', '/api/chat/messages', '/api/chat/read', '/api/chat/typing', '/api/chat/rooms', '/api/chat/prefs']);
 /** إبلاغ كل الأجهزة المتصلة برقم النسخة الجديد (لا يؤخّر رد الحفظ) */
 const broadcastVersion = (env: Env, ctx: ExecutionContext, version: string) => {
   if (!env.HUB) return;
@@ -61,8 +68,9 @@ const cheapHash = (text: string) => {
   }
   return (a >>> 0).toString(16).padStart(8, '0') + (b >>> 0).toString(16).padStart(8, '0');
 };
-/** يتغيّر مع كل حفظ للبيانات (system_meta) */
-const STATE_VERSION_KEY = 'state_version';
+/** بصمة المزامنة: رقم النسخة + الحساب وصلاحياته (ما يُعاد لكل حساب يختلف بصلاحياته) */
+const stateEtag = (version: string, session: Session) =>
+  `"${cheapHash([version, session.id, session.admin ? 1 : 0, JSON.stringify(session.perms)].join('|'))}"`;
 const MAX_STATE_BODY = 8 * 1024 * 1024;
 const MAX_IMAGE_BODY = 6 * 1024 * 1024;
 const forbidden = (error = 'لا تملك صلاحية لهذا القسم') => json({ error, code: 'forbidden' }, 403);
@@ -191,6 +199,11 @@ export default {
       headers.set('x-chat-user', url.searchParams.get('u') || '');
       request = new Request(request, { headers });
     }
+    // المحادثة متوقفة مؤقتًا (قيد التطوير): واجهات الرسائل تُرفض قبل أي قراءة من القاعدة
+    // (تشمل نسخ التطبيق القديمة المفتوحة التي ما زالت تسأل كل ثانية). الحسابات والدخول تبقى كما هي
+    if (!CHAT_MESSAGING_ENABLED && CHAT_MESSAGING_PATHS.has(url.pathname)) {
+      return json({ error: 'المحادثة متوقفة مؤقتًا (قيد التطوير)', code: 'chat_disabled' }, 503);
+    }
     const session = await verifySession(request, env.DB);
     if (!session) return json({ error: 'انتهت الجلسة، سجّل الدخول مجددًا', code: 'chat_auth' }, 401);
 
@@ -218,8 +231,7 @@ export default {
 
     // رقم نسخة البيانات (سطر واحد): الأجهزة تسأل عنه كل ثوانٍ قليلة، ولا تنزّل النسخة الكاملة إلا إن تغيّر
     if (url.pathname === '/api/state/version' && request.method === 'GET') {
-      const { results } = await env.DB.prepare('SELECT value FROM system_meta WHERE key = ?').bind(STATE_VERSION_KEY).all<{ value: string }>();
-      return json({ v: results[0]?.value || '0' });
+      return json({ v: await readStateVersion(env.DB) });
     }
 
     // جلب مفاتيح محددة فقط (ما ذكره إشعار التغيير): أخف بكثير من النسخة الكاملة على الهواتف ومع أجهزة عرض كثيرة
@@ -234,22 +246,18 @@ export default {
         for (const r of results) items[r.key] = r.value;
       }
       Object.assign(items, await readCollections(env.DB, keys.filter(isCollectionKey)));
-      return new Response(JSON.stringify({ items, removed: plain.filter(k => !(k in items)) }), {
+      // رقم النسخة وبصمتها: الجهاز المتزامن يحفظها فلا يعيد المزامنة الدورية تنزيل النسخة الكاملة
+      const v = await readStateVersion(env.DB);
+      return new Response(JSON.stringify({ items, removed: plain.filter(k => !(k in items)), v }), {
         status: 200,
-        headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...API_SECURITY_HEADERS },
+        headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', etag: stateEtag(v, session), ...API_SECURITY_HEADERS },
       });
     }
 
     if (url.pathname === '/api/state' && request.method === 'GET') {
-      // بصمة النسخة بدون قراءة البيانات: رقم النسخة + عدد وآخر تعديل في الجدولين (يلتقط أيضًا الاسترجاع والأرشفة
-      // التي لا ترفع رقم النسخة) + الحساب وصلاحياته. المزامنة الدورية ترسلها فيُرد 304 بلا بناء النسخة الكاملة
-      // (بناؤها وحساب بصمتها كان يتجاوز حد وقت المعالجة في الخطة المجانية فيرجع 503)
-      const { results: [meta] } = await env.DB.prepare(
-        `SELECT (SELECT value FROM system_meta WHERE key = ?1) AS v,
-                (SELECT COUNT(*) || ':' || IFNULL(MAX(updated_at), 0) FROM app_state) AS s,
-                (SELECT COUNT(*) || ':' || IFNULL(MAX(updated_at), 0) FROM collection_items) AS c`
-      ).bind(STATE_VERSION_KEY).all<{ v: string | null; s: string; c: string }>();
-      const etag = `"${cheapHash([meta?.v || '0', meta?.s, meta?.c, session.id, session.admin ? 1 : 0, JSON.stringify(session.perms)].join('|'))}"`;
+      // بصمة النسخة من سطر واحد (رقم النسخة + الحساب وصلاحياته). المزامنة الدورية ترسلها فيُرد 304 بلا قراءة البيانات.
+      // (كانت تعدّ الجدولين كاملين عند كل فحص، فاستهلكت حد القراءة اليومي في D1؛ الاسترجاع والأرشفة يرفعان الرقم الآن)
+      const etag = stateEtag(await readStateVersion(env.DB), session);
       // Cloudflare يُضعف البصمة عند ضغط الرد (W/"...") فيعيدها المتصفح بهذه الصيغة
       const sent = (request.headers.get('if-none-match') || '').replace(/^W\//, '');
       const headers = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', etag, ...API_SECURITY_HEADERS };
@@ -344,7 +352,8 @@ export default {
         if (sections.length) await audit(env.DB, request, session.id, 'data.save', sections.join('، '), { merge: true });
       }
       if (rejected.length) await audit(env.DB, request, session.id, 'data.denied', Array.from(new Set(rejected.map(keySectionLabel))).join('، '), { merge: true });
-      return json({ ok: true, saved: changedKeys.length, rejected, version });
+      // بصمة النسخة الجديدة: الجهاز المتزامن يحفظها فلا يعيد تنزيل النسخة الكاملة بسبب حفظه هو
+      return json({ ok: true, saved: changedKeys.length, rejected, version, etag: version ? stateEtag(version, session) : undefined });
     }
 
     // المحادثة: الحسابات والغرف والرسائل والمرفقات

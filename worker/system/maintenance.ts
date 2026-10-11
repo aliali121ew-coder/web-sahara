@@ -7,6 +7,7 @@
 import { codedError } from '../errors';
 import type { Env } from '../types';
 import { createBackup, ensureSystemTables } from './backup';
+import { bumpStateVersion } from '../storage/stateVersion';
 import { gunzipText, gzipText, sha256Hex } from './compress';
 import { findOrphanFiles, migrateLegacyFiles, purgeTrash, verifyFiles } from '../storage/files';
 
@@ -110,6 +111,7 @@ export const monthlyJob = (env: Env, by = 'scheduler', month?: string) =>
           const part = ids.slice(i, i + 90);
           await env.DB.prepare(`DELETE FROM collection_items WHERE key = 'sahara_notifications' AND id IN (${part.map(() => '?').join(',')})`).bind(...part).run();
         }
+        await bumpStateVersion(env.DB, 'archive');
       }
       if (oldAudit.length) await env.DB.prepare('DELETE FROM audit_log WHERE at < ?').bind(now - AUDIT_KEEP_MS).run();
       Object.assign(result, { archive: key, size: gz.length, dailies: dailies.length, notifications: oldNotifs.length, audit: oldAudit.length });

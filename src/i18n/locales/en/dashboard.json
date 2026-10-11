@@ -32,7 +32,9 @@
   "compare": {
     "prevDay": "vs. previous day",
     "noPrevDay": "No previous day to compare",
-    "sevenDays": "7-day comparison"
+    "sevenDays": "7-day comparison",
+    "share7": "of 7-day total",
+    "noChange": "No change"
   },
   "coverage": {
     "until": "Covers",
