@@ -317,5 +317,9 @@
     "iosStep1": "Tap the Share button in the browser",
     "iosStep2": "Choose \"Add to Home Screen\"",
     "iosStep3": "Tap \"Add\" at the top"
+  },
+  "comingSoon": {
+    "badge": "Under development",
+    "body": "This service is being built and will be available soon."
   }
 }

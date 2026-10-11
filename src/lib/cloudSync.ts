@@ -177,6 +177,8 @@ const buildPayload = (pending: Pending) => {
 let knownVersion: string | null = null;
 /** يُستدعى بعد انتهاء كل إرسال (نجح أو فشل): يُكمل جلبًا أُجّل أثناء الإرسال */
 let onFlushDone: (() => void) | null = null;
+/** لا جلب جارٍ ولا مطلوب (الجهاز متزامن مع آخر ما وصله) — يضبطه initCloudSync */
+let pullIdle: () => boolean = () => false;
 
 let flushing = false;
 /** يزيد مع كل إرسال ناجح: جلبٌ بدأ قبله قد يحمل نسخة أقدم مما أُرسل فلا يُطبَّق */
@@ -201,7 +203,7 @@ async function flush(): Promise<void> {
       return;
     }
     if (!res.ok) throw new Error(String(res.status));
-    const { rejected = [], version } = (await res.json().catch(() => ({}))) as { rejected?: string[]; version?: string | null };
+    const { rejected = [], version, etag } = (await res.json().catch(() => ({}))) as { rejected?: string[]; version?: string | null; etag?: string };
     // إشعار هذا الحفظ سيصل لهذا الجهاز أيضًا: لا داعي لجلب ما أرسله بنفسه
     if (version) knownVersion = version;
     // إزالة ما وصل فقط، وإبقاء ما تغيّر أثناء الإرسال
@@ -212,6 +214,8 @@ async function flush(): Promise<void> {
     for (const [k, v] of Object.entries(snapshots)) if (!rejected.includes(k)) setShadow(k, v);
     writePending(latest);
     flushGen++;
+    // الجهاز متزامن (لا معلّق ولا جلب منتظر): بصمة نسخة حفظه هي بصمته، فلا تنزّل المزامنة الدورية النسخة الكاملة
+    if (etag && !rejected.length && !Object.keys(latest).length && pullIdle()) stateEtag = etag;
     if (rejected.length) restoreRejected(rejected);
     flushing = false;
     if (Object.keys(latest).length) scheduleFlush(200);
@@ -439,12 +443,13 @@ export async function initCloudSync(): Promise<InitResult> {
         if (res.status === 304) return true;
       }
       if (!res.ok) return false;
-      const data = (await res.json()) as { items: Record<string, string>; removed?: string[] };
+      const data = (await res.json()) as { items: Record<string, string>; removed?: string[]; v?: string };
       // اكتمل إرسال من هذا الجهاز أثناء الجلب: النسخة قد تسبقه، فيُعاد الجلب
       if (gen !== flushGen) return 'again';
       if (flushing) return 'later';
       const changed = applyServerState(data.items, keys ? (data.removed ?? []) : undefined);
-      if (!keys) rememberEtag(res);
+      // الجلب الجزئي لآخر نسخة معروفة يُبقي الجهاز متزامنًا: تُحفظ بصمتها (وإلا نزّلت المزامنة الدورية كل شيء)
+      if (!keys || (data.v && data.v === knownVersion && !wantFull && !wantKeys.size)) rememberEtag(res);
       if (changed.length) notifyApplied(changed);
       return true;
     } catch {
@@ -484,6 +489,7 @@ export async function initCloudSync(): Promise<InitResult> {
     else wantFull = true;
     return runPull();
   };
+  pullIdle = () => !pulling && !wantFull && !wantKeys.size && !skippedWhilePending.size;
   onFlushDone = () => {
     if (skippedWhilePending.size) {
       skippedWhilePending.forEach(k => wantKeys.add(k));

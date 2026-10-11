@@ -6,6 +6,7 @@
  */
 import type { Env } from './types';
 import { createBackup, ensureSystemTables, restoreBackup, type BackupRow } from './system/backup';
+import { bumpStateVersion } from './storage/stateVersion';
 import { runJob } from './system/maintenance';
 import { findOrphanFiles } from './storage/files';
 
@@ -61,7 +62,6 @@ export const demoReset = (env: Env, by = 'scheduler') =>
     const expired = await expireDemoAccounts(env, now);
     const orphans = await findOrphanFiles(env.FILES, env.DB);
     for (let i = 0; i < orphans.length; i += 1000) await env.FILES.delete(orphans.slice(i, i + 1000));
-    await env.DB.prepare('INSERT INTO system_meta (key, value, updated_at) VALUES (?1, ?2, ?3) ON CONFLICT(key) DO UPDATE SET value = ?2, updated_at = ?3')
-      .bind('state_version', `${now}-demo-reset`, now).run();
+    await bumpStateVersion(env.DB, 'demo-reset');
     return { base: base?.r2_key ?? null, restoredRows: restored?.restoredRows ?? 0, expiredAccounts: expired, orphanFiles: orphans.length };
   });
