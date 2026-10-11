@@ -3,6 +3,9 @@ import { CLOUD_APPLIED_EVENT } from './cloudSync';
 
 const LOCAL_EVENT = 'synced-storage-updated';
 
+/** إبلاغ من يقرأ المفتاح عبر useSyncedStorage بأن قيمته تغيّرت في هذا الجهاز (لمن يكتب localStorage مباشرة) */
+export const notifySyncedStorage = (key: string) => window.dispatchEvent(new CustomEvent(LOCAL_EVENT, { detail: key }));
+
 const read = <T,>(key: string, fallback: T): T => {
   try {
     const raw = localStorage.getItem(key);

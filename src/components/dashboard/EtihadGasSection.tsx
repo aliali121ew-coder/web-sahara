@@ -1,4 +1,5 @@
 import React from 'react';
+import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { SectionHeader } from './SectionHeader';
 import {
   Building2,
@@ -51,15 +52,6 @@ const buildWeeklyFlow = (records: EtihadBalanceRecord[], anchor?: string) => {
   });
 };
 
-/** سجلات صفحة "رصيد شركة الاتحاد" مرتبة من الأحدث للأقدم */
-const loadEtihadRecords = (): EtihadBalanceRecord[] => {
-  try {
-    const parsed = JSON.parse(localStorage.getItem('sahara_etihad_balance_records_v2') || '[]');
-    return Array.isArray(parsed) ? [...parsed].sort((a: EtihadBalanceRecord, b: EtihadBalanceRecord) => b.date.localeCompare(a.date)) : [];
-  } catch {
-    return [];
-  }
-};
 
 const recordSales = (r?: EtihadBalanceRecord) =>
   r ? (r.saharaSales || 0) + (r.cablesSales || 0) + (r.specialSales || 0) + (r.otherSales || 0) : 0;
@@ -67,7 +59,10 @@ const recordSales = (r?: EtihadBalanceRecord) =>
 export const EtihadGasSection: React.FC = () => {
   const { t } = useTranslation(['dashboard', 'common']);
   // آخر يوم مسجّل في  رصيد شركة الاتحاد واليوم الذي قبله
-  const [records] = React.useState(loadEtihadRecords);
+  // سجلات "رصيد شركة الاتحاد" (الأحدث أولًا) — حيّة: تتحدث فور الحفظ في هذا الجهاز أو أي جهاز آخر
+  // (كانت تُقرأ مرة عند الفتح، والرئيسية تبقى مفتوحة في الخلفية فلا يظهر اليوم الجديد إلا بإعادة التحميل)
+  const [rawRecords] = useSyncedStorage<EtihadBalanceRecord[]>('sahara_etihad_balance_records_v2', []);
+  const records = React.useMemo(() => (Array.isArray(rawRecords) ? [...rawRecords].sort((a, b) => b.date.localeCompare(a.date)) : []), [rawRecords]);
   const latest = records[0];
   const prev = records[1];
   const etihadTotalBalance = latest?.currentBalance ?? 0;
