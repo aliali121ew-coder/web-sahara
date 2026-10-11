@@ -20,11 +20,15 @@ describe('site groups (farm balances added to their station)', () => {
     expect(siteGroupOf('انتاج البياض ٨', NAMES)).toBe('البياض');
     expect(siteGroupOf('تصفية ماء البياض', NAMES)).toBe('البياض');
     expect(siteGroupOf('خزان الطاقة', NAMES)).toBe('الطاقة');
-    // ليست من المواقع المجمّعة
-    expect(siteGroupOf('مفقس الامهات', NAMES)).toBeNull();
-    expect(siteGroupOf('مزرعة ١ أمهات البياض', NAMES)).toBeNull();
-    expect(siteGroupOf('مزرعة ٣ الاجداد', NAMES)).toBeNull();
+    expect(siteGroupOf('مفقس االمهات', NAMES)).toBe('البوادي');
+    expect(siteGroupOf('مزرعة ١ أمهات البياض', NAMES)).toBe('امهات البياض');
+    expect(siteGroupOf('مزرعة أمهات البياض', NAMES)).toBe('امهات البياض');
+    expect(siteGroupOf('مزرعة١ الأجداد', NAMES)).toBe('الاجداد');
+    expect(siteGroupOf('مزرعة٣ الاجداد', NAMES)).toBe('الاجداد');
+    // صف المحطة نفسها يُطابق مباشرة (لا كموقع مجمّع)، والمحطات الأخرى لا تُجمع
     expect(siteGroupOf('محطة امهات البياض', NAMES)).toBeNull();
+    expect(siteGroupOf('معمل الاسفلت', NAMES)).toBeNull();
+    expect(siteGroupOf('مدينة الحجاج', NAMES)).toBeNull();
   });
 
   it('sums an Excel sheet into station balances and still saves over the station tank capacity', async () => {
@@ -50,8 +54,7 @@ describe('site groups (farm balances added to their station)', () => {
     expect(bal['الطاقة']).toBe(1248261 + 106383);
     expect(bal['البياض']).toBe(119491 + 3002);
     expect(bal['التسمين']).toBe(238588 + 48108 + 42599);
-    expect(bal['البوادي']).toBe(119844 + 67865 + 96402);
-    expect(bal['مفقس الامهات']).toBe(52615); // يبقى غير مطابق
+    expect(bal['البوادي']).toBe(119844 + 67865 + 96402 + 52615);
 
     const stations = [{ id: 'tasmeen', name: 'التسمين', balance: 0, capacity: 100_000 }, { id: 'asphalt', name: 'الاسفلت', balance: 0, capacity: 100_000 }];
     const applied = applySaharaReport(newSaharaBalanceForm(null, stations), { ...r, date: '2026/10/10', previousCarried: 1 }, stations, []);
