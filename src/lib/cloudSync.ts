@@ -169,6 +169,8 @@ let missedUpdate = false;
 let onMissedUpdate: (() => void) | null = null;
 
 let flushing = false;
+/** يزيد مع كل إرسال ناجح: جلبٌ بدأ قبله قد يحمل نسخة أقدم مما أُرسل فلا يُطبَّق */
+let flushGen = 0;
 async function flush(): Promise<void> {
   if (flushing || !getToken()) return;
   const pending = readPending();
@@ -199,19 +201,20 @@ async function flush(): Promise<void> {
     rejected.forEach(k => { blocked.add(k); delete latest[k]; });
     for (const [k, v] of Object.entries(snapshots)) if (!rejected.includes(k)) setShadow(k, v);
     writePending(latest);
+    flushGen++;
     if (rejected.length) restoreRejected(rejected);
     flushing = false;
     if (Object.keys(latest).length) scheduleFlush(200);
-    else {
-      setStatus('saved');
-      // وصل تغيير من جهاز آخر أثناء الإرسال (كان مؤجّلًا بسبب التعديلات المعلّقة): يُجلب الآن
-      if (missedUpdate) onMissedUpdate?.();
-    }
+    else setStatus('saved');
+    // وصل تغيير من جهاز آخر أثناء الإرسال: يُجلب الآن (حتى لو بقيت تعديلات معلّقة، فهي لا تُستبدل)
+    if (missedUpdate) onMissedUpdate?.();
   } catch (e) {
     flushing = false;
     // فشل الاتصال نفسه (TypeError) = غير متصل، حتى لو ظن المتصفح أن الشبكة متاحة (إشارة ضعيفة أو الخادم لا يُصل)
     setStatus(e instanceof TypeError || !navigator.onLine ? 'offline' : 'error');
     scheduleFlush(15000); // إعادة المحاولة لاحقًا، والتعديلات محفوظة محليًا حتى تصل
+    // تعثّر الإرسال لا يوقف استلام تعديلات الأجهزة الأخرى (كانت الرئيسية تتجمّد حتى إعادة التحميل)
+    if (missedUpdate) onMissedUpdate?.();
   }
 }
 
@@ -385,21 +388,57 @@ export async function initCloudSync(): Promise<InitResult> {
     })();
   }
 
+  // أثناء فتح الصفحة: جلب تعديلات الأجهزة الأخرى بهدوء (بدون إعادة تحميل)،
+  // والصفحات المشتركة في الحدث تحدّث نفسها فورًا.
+  // التعديلات المعلّقة في هذا الجهاز لا توقف الجلب: تبقى كما هي (applyServerState يتخطاها) ويُطبَّق الباقي.
+  // (كان أي مفتاح معلّق — ولو كتابة تلقائية من الرئيسية نفسها أو إرسال متعثّر — يوقف التحديث كليًا
+  // فلا يظهر الوارد الجديد على شاشة العرض إلا بإعادة تحميل الصفحة)
+  const pullOnce = async (): Promise<boolean> => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (flushing) return false;
+      const gen = flushGen;
+      lastBackgroundSync = Date.now();
+      try {
+        const res = await fetchState(8000, true);
+        if (res.status === 304) return true;
+        if (!res.ok) return false;
+        const { items } = (await res.json()) as { items: Record<string, string> };
+        // اكتمل إرسال من هذا الجهاز أثناء الجلب: النسخة قد تسبقه، فيُعاد الجلب
+        if (gen !== flushGen) continue;
+        if (flushing) return false;
+        const changed = applyServerState(items);
+        rememberEtag(res);
+        if (changed.length) notifyApplied(changed);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  };
+  let pullPromise: Promise<boolean> | null = null;
+  let pullAgain = false;
+  /** طلب جلب أثناء جلب جارٍ لا يُهمل: يُعاد الجلب بعده (حفظان متتاليان من جهاز آخر كان الثاني يضيع) */
+  const pull = (): Promise<boolean> => {
+    if (pullPromise) {
+      pullAgain = true;
+      return pullPromise;
+    }
+    pullPromise = (async () => {
+      let ok = false;
+      do {
+        pullAgain = false;
+        ok = await pullOnce();
+      } while (pullAgain);
+      return ok;
+    })().finally(() => { pullPromise = null; });
+    return pullPromise;
+  };
+
   // عودة الاتصال: إرسال التعديلات المعلّقة ثم جلب تعديلات الأجهزة الأخرى
   window.addEventListener('online', async () => {
     await flush();
-    if (Object.keys(readPending()).length) return;
-    try {
-      const res = await fetchState(15000, true);
-      if (!res.ok) return;
-      const { items } = (await res.json()) as { items: Record<string, string> };
-      if (Object.keys(readPending()).length) return;
-      const changed = applyServerState(items);
-      rememberEtag(res);
-      if (changed.length) notifyApplied(changed);
-    } catch {
-      /* تجاهل: المحاولة التالية في المزامنة الدورية */
-    }
+    void pull();
   });
   // عند الإغلاق: محاولة أخيرة لإرسال ما تبقّى
   window.addEventListener('pagehide', () => {
@@ -415,62 +454,26 @@ export async function initCloudSync(): Promise<InitResult> {
       }).catch(() => {});
     }
   });
-  // عند العودة للتطبيق: جلب تعديلات الأجهزة الأخرى
-  document.addEventListener('visibilitychange', async () => {
-    if (document.visibilityState !== 'visible' || Object.keys(readPending()).length) return;
-    if (Date.now() - lastBackgroundSync < 10_000) return;
-    lastBackgroundSync = Date.now();
-    try {
-      // 304 = لا جديد منذ آخر نسخة (res.ok خاطئ فيُتجاهل بلا تنزيل)
-      const res = await fetchState(8000, true);
-      if (!res.ok) return;
-      const { items } = (await res.json()) as { items: Record<string, string> };
-      if (Object.keys(readPending()).length) return;
-      // الصفحات تحدّث نفسها من الحدث، فلا حاجة لإعادة تحميل الصفحة كاملة
-      const changed = applyServerState(items);
-      rememberEtag(res);
-      if (changed.length) notifyApplied(changed);
-    } catch {
-      /* تجاهل */
-    }
+  // عند العودة للتطبيق: جلب تعديلات الأجهزة الأخرى (فورًا إن فات إشعار تغيير أثناء الخلفية)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    if (!missedUpdate && Date.now() - lastBackgroundSync < 10_000) return;
+    onMissedUpdate?.();
   });
 
-  // أثناء فتح الصفحة: جلب تعديلات الأجهزة الأخرى بهدوء (بدون إعادة تحميل)،
-  // والصفحات المشتركة في الحدث تحدّث نفسها فورًا
-  let pulling = false;
-  const pull = async (): Promise<boolean> => {
-    if (pulling || document.visibilityState !== 'visible' || Object.keys(readPending()).length || flushing) return false;
-    pulling = true;
-    lastBackgroundSync = Date.now();
-    try {
-      const res = await fetchState(8000, true);
-      if (res.status === 304) return true;
-      if (!res.ok) return false;
-      const { items } = (await res.json()) as { items: Record<string, string> };
-      if (Object.keys(readPending()).length) return false;
-      const changed = applyServerState(items);
-      rememberEtag(res);
-      if (changed.length) notifyApplied(changed);
-      return true;
-    } catch {
-      return false;
-    } finally {
-      pulling = false;
-    }
-  };
   /** رقم نسخة جديد وصل (من القناة اللحظية أو السؤال الاحتياطي): يُجلب التغيير ويُحفظ الرقم بعد تطبيقه فعلًا */
   const onVersion = async (v: string) => {
     if (!v || v === knownVersion) return;
     if (await pull()) {
       knownVersion = v;
       missedUpdate = false;
-    } else if (Object.keys(readPending()).length || flushing) {
+    } else {
+      // تعذّر الآن (إرسال جارٍ أو انقطاع): يُجلب بعد انتهاء الإرسال أو عند العودة للصفحة
       missedUpdate = true;
     }
   };
   onMissedUpdate = () => {
-    missedUpdate = false;
-    void pull();
+    void pull().then(ok => { if (ok) missedUpdate = false; });
   };
 
   // ───── القناة اللحظية (WebSocket): الخادم يبلّغ هذا الجهاز فور أي حفظ من أي جهاز ─────
@@ -537,7 +540,7 @@ export async function initCloudSync(): Promise<InitResult> {
     }
   }, 3_000);
   // احتياط أخير: نسخة كاملة كل 30 ثانية (تعديلات لا تغيّر رقم النسخة، مثل استرجاع نسخة احتياطية)
-  setInterval(() => void pull(), 30_000);
+  setInterval(() => { if (document.visibilityState === 'visible') void pull(); }, 30_000);
 
   return 'ready';
 }
