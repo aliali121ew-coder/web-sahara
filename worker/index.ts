@@ -50,6 +50,9 @@ const ensureTable = (db: D1Database) => schemaGate(db, 'app_state', '1', async (
 });
 
 const HUB_NAME = 'state';
+/** تشغيل الرسائل (مع CHAT_ENABLED في src/lib/features.ts) */
+const CHAT_MESSAGING_ENABLED = false;
+const CHAT_MESSAGING_PATHS = new Set(['/api/chat/sync', '/api/chat/messages', '/api/chat/read', '/api/chat/typing', '/api/chat/rooms', '/api/chat/prefs']);
 /** إبلاغ كل الأجهزة المتصلة برقم النسخة الجديد (لا يؤخّر رد الحفظ) */
 const broadcastVersion = (env: Env, ctx: ExecutionContext, version: string) => {
   if (!env.HUB) return;
@@ -195,6 +198,11 @@ export default {
       const headers = new Headers(request.headers);
       headers.set('x-chat-user', url.searchParams.get('u') || '');
       request = new Request(request, { headers });
+    }
+    // المحادثة متوقفة مؤقتًا (قيد التطوير): واجهات الرسائل تُرفض قبل أي قراءة من القاعدة
+    // (تشمل نسخ التطبيق القديمة المفتوحة التي ما زالت تسأل كل ثانية). الحسابات والدخول تبقى كما هي
+    if (!CHAT_MESSAGING_ENABLED && CHAT_MESSAGING_PATHS.has(url.pathname)) {
+      return json({ error: 'المحادثة متوقفة مؤقتًا (قيد التطوير)', code: 'chat_disabled' }, 503);
     }
     const session = await verifySession(request, env.DB);
     if (!session) return json({ error: 'انتهت الجلسة، سجّل الدخول مجددًا', code: 'chat_auth' }, 401);

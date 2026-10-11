@@ -89,6 +89,7 @@
     "reauth_required": "Re-enter your password to enable biometric sign-in",
     "account_expired": "This trial account has ended. Ask the administrator to extend it",
     "invalid_expiry": "Choose a trial duration (1 hour to 1 month)",
-    "demo_disabled": "This feature is not available in the demo version"
+    "demo_disabled": "This feature is not available in the demo version",
+    "chat_disabled": "Chat is temporarily unavailable (under development)"
   }
 }

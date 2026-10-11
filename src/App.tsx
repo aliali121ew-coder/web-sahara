@@ -10,6 +10,9 @@ import { DemoBanner } from './components/layout/DemoBanner';
 import { Sidebar } from './components/layout/Sidebar';
 import { QuickActionModal } from './components/layout/QuickActionModal';
 import { lazyPage } from './lib/lazyPage';
+import { CHAT_ENABLED } from './lib/features';
+import { ComingSoonPage } from './components/layout/ComingSoonPage';
+import i18n from './i18n';
 
 /** عدد الصفحات التي تبقى محفوظة للرجوع الفوري إليها */
 const MAX_KEPT_PAGES = 4;
@@ -173,7 +176,8 @@ const AppContent: React.FC = () => {
       case 'reports':
         return <ReportsAnalytics />;
       case 'chat':
-        return <ChatApp />;
+        // المحادثة متوقفة مؤقتًا (قيد التطوير): لا تُحمَّل ولا تسأل الخادم
+        return CHAT_ENABLED ? <ChatApp /> : <ComingSoonPage title={i18n.t('nav:items.chat')} />;
       case 'settings':
         return <SettingsView />;
       default:

@@ -21,8 +21,11 @@ const saveSet = (key: string, set: Set<string>) => {
 /** هل تشير الرسالة إليّ؟ (@اسمي أو @الكل) */
 export const mentionsMe = (text: string, name?: string) =>
   !!text && (text.includes('@الكل') || (!!name && text.includes('@' + name)));
-const POLL_VISIBLE = 1200;
+// كل 4 ثوانٍ (كانت 1.2 ثانية: كل جهاز يفتح المحادثة يستهلك ملايين القراءات يوميًا من D1)
+const POLL_VISIBLE = 4000;
 const POLL_HIDDEN = 8000;
+/** بعد فشل (انقطاع أو خدمة متوقفة): لا تكرار سريع */
+const POLL_FAILED = 15000;
 
 export type ConnState = 'connecting' | 'online' | 'offline';
 
@@ -155,6 +158,7 @@ export function useChat() {
     inflight.current?.abort();
     const ctrl = new AbortController();
     inflight.current = ctrl;
+    let failed = false;
     try {
       const p = await chatApi.sync(id, sinceRef.current, ctrl.signal);
       apply(p, id);
@@ -164,9 +168,10 @@ export function useChat() {
       // مفتاح الحساب غير صالح (تغيّر من جهاز آخر أو حُذف): اخرج وأظهر شاشة الدخول
       if (isChatAuthError(e)) { logoutRef.current(); return; }
       setConn('offline');
+      failed = true;
     }
     if (inflight.current === ctrl) inflight.current = null;
-    timerRef.current = setTimeout(poll, document.visibilityState === 'visible' ? POLL_VISIBLE : POLL_HIDDEN);
+    timerRef.current = setTimeout(poll, failed ? POLL_FAILED : document.visibilityState === 'visible' ? POLL_VISIBLE : POLL_HIDDEN);
   }, [apply]);
 
   // جلسة هذا الجهاز (رمز يصدره الخادم عند تسجيل الدخول)
