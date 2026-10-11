@@ -25,7 +25,7 @@ import {
   INITIAL_NOTIFICATIONS
 } from '../lib/mockData';
 import { logPrice } from '../lib/priceLog';
-import { buildArchiveSuppliers, sameSupplier, deliveriesOfSupplier, archiveValue, recordColor } from '../lib/archiveSuppliers';
+import { buildArchiveSuppliers, sameSupplier, supplierKey, deliveriesOfSupplier, archiveValue, recordColor } from '../lib/archiveSuppliers';
 
 const MOCK_SUPPLIERS_REMOVED_KEY = 'sahara_supplier_mock_removed';
 const SUPPLIER_NAMES_REPAIRED_KEY = 'sahara_supplier_names_repaired';
@@ -445,14 +445,33 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // مع نقل ما أدخله المستخدم (الهاتف، الموقع، المندوب، الشعار، التصنيف)
       const legacy = list.filter(s => s.id.startsWith('sup-a-') && !s.company);
       if (legacy.length) list = list.filter(s => !legacy.includes(s));
-      // مورد أُضيف تلقائيًا من الأرشيف ولم تعد له أي شحنة (حُذفت، مثل استيراد خاطئ بأسماء مقطوعة) يُحذف،
-      // ما لم يُدخل له المستخدم بيانات. بدون ذلك تبقى الأسماء الخاطئة في مؤشرات الأسعار وتحجب الأسماء الصحيحة
+      // سجل الموردين يتبع الأرشيف (الصحاري والاتحاد) بمعرّف المورد في الأرشيف — مطابقة تامة لا تقريبية:
+      // التقريبية كانت تُبقي "بركات الساقي" لأنها تطابق شحنات "محطة بركات الساقي" بعد تعديل الاسم في الأرشيف
+      const built = buildArchiveSuppliers(saharaDeliveries, etihadDeliveries);
+      const builtById = new Map(built.map(b => [b.id, b]));
+      const userData = (x: SupplierPriceRecord) => !!(x.phone || x.location || x.contactName || x.logo);
+      const day = (d?: string) => (d || '').replace(/-/g, '/');
+      // 1) مورد أُضيف تلقائيًا ولم يعد في الأرشيف (أُعيدت تسميته أو حُذفت شحناته): يُحذف، ما لم يُدخل له المستخدم بيانات أو يعدّله
       const orphan = (x: SupplierPriceRecord) =>
-        x.id.startsWith('sup-a-') && !!x.company && !(x.phone || x.location || x.contactName || x.logo) &&
-        !deliveriesOfSupplier(x.company === 'etihad' ? etihadDeliveries : saharaDeliveries, d => d, x.supplierName).length;
+        x.id.startsWith('sup-a-') && !!x.company && !x.edited && !userData(x) && !builtById.has(x.id);
       if (list.some(orphan)) list = list.filter(x => !orphan(x));
-      const missing = buildArchiveSuppliers(saharaDeliveries, etihadDeliveries)
-        .filter(a => !list.some(s => (!s.company || s.company === a.company) && sameSupplier(s.supplierName, a.supplierName)))
+      // 2) الموجودون: يُحدَّث السعر والسابق والتاريخ والكثافة واللون والاسم من آخر وارد في الأرشيف إن كان أحدث
+      //    من آخر تحديث للسجل (التعديل اليدوي الأحدث من آخر وارد يبقى)، وبيانات المستخدم (هاتف، موقع، شعار) تبقى
+      let refreshed = false;
+      const updated = list.map(x => {
+        const b = builtById.get(x.id);
+        if (!b || !(b.lastUpdated > day(x.lastUpdated))) return x;
+        refreshed = true;
+        return {
+          ...x, priceIqd: b.priceIqd, previousPriceIqd: b.previousPriceIqd, changePercent: b.changePercent, lastUpdated: b.lastUpdated,
+          history: b.history, product: b.product || x.product, density: b.density ?? x.density, color: b.color ?? x.color,
+          supplierName: x.edited ? x.supplierName : b.supplierName,
+        };
+      });
+      if (refreshed) list = updated;
+      // 3) مورد جديد في الأرشيف: يُضاف فورًا (نفس المعرّف أو نفس الاسم تمامًا لا يُكرَّر)
+      const missing = built
+        .filter(a => !list.some(s => s.id === a.id || ((!s.company || s.company === a.company) && supplierKey(s.supplierName) === supplierKey(a.supplierName))))
         .map(a => {
           const old = legacy.find(l => sameSupplier(l.supplierName, a.supplierName));
           return old ? { ...a, phone: old.phone, location: old.location, contactName: old.contactName, contactRole: old.contactRole, logo: old.logo, category: old.category } : a;
@@ -720,6 +739,8 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     const d = new Date();
     const today = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+    // سجل عدّله المستخدم: لا يحذفه التنظيف التلقائي حين يختلف اسمه عن الأرشيف
+    supplier = { ...supplier, edited: true };
     setSupplierPrices(prev => {
       const old = prev.find(s => s.id === supplier.id);
       if (!old) {

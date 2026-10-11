@@ -96,6 +96,8 @@ export interface SupplierPriceRecord {
   color?: string;
   /** سجل تغيّر السعر، الأحدث أولًا */
   history?: { date: string; price: number }[];
+  /** عدّله المستخدم من نافذة المورد: لا يُحذف تلقائيًا ولو تغيّر اسمه عن الأرشيف (يبقى مرتبطًا بشحناته بمعرّفه) */
+  edited?: boolean;
 }
 
 export interface InboundDelivery {

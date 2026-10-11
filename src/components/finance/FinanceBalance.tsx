@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { notifySyncedStorage } from '../../lib/useSyncedStorage';
 import { usePermissions } from '../../lib/usePermission';
 import { useSessionState } from '../../lib/useSessionState';
 import { Wallet } from 'lucide-react';
@@ -178,6 +179,8 @@ export const FinanceBalance: React.FC = () => {
   useEffect(() => {
     try {
       localStorage.setItem('sahara_etihad_balance_records_v2', JSON.stringify(records));
+      // الرئيسية (قسم الاتحاد) تبقى مفتوحة في الخلفية: تُبلَّغ فتتحدث فورًا
+      notifySyncedStorage('sahara_etihad_balance_records_v2');
       // ملء خزان "موقع الاستخلاص" تلقائيًا من الرصيد الحالي لآخر يوم
       const latestBalance = readEtihadLatestBalance();
       if (latestBalance !== null) syncEtihadExtractionTank(latestBalance);

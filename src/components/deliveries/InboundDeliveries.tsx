@@ -171,6 +171,29 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [openMenuDeliveryId, setOpenMenuDeliveryId] = useState<string | null>(null);
+  // قائمة الإجراءات تتبع زرها عند تمرير الصفحة (كانت تبقى في مكانها على الشاشة فتنفصل عن صفها وتخرج من الشاشة)،
+  // وتُغلق إن خرج الصف نفسه من الشاشة
+  const menuAnchorRef = useRef<HTMLElement | null>(null);
+  const placeMenu = (el: HTMLElement) => {
+    const rect = el.getBoundingClientRect();
+    const menuW = 176, menuH = 100;
+    const openUp = rect.bottom + menuH + 8 > window.innerHeight;
+    setMenuPos({ top: openUp ? rect.top - menuH - 8 : rect.bottom + 8, left: isRTL ? rect.left : rect.right - menuW });
+    return rect;
+  };
+  useEffect(() => {
+    if (!openMenuDeliveryId) return;
+    const follow = () => {
+      const el = menuAnchorRef.current;
+      if (!el || !el.isConnected) { setOpenMenuDeliveryId(null); return; }
+      const rect = placeMenu(el);
+      if (rect.bottom < 0 || rect.top > window.innerHeight) setOpenMenuDeliveryId(null);
+    };
+    window.addEventListener('scroll', follow, true);
+    window.addEventListener('resize', follow);
+    return () => { window.removeEventListener('scroll', follow, true); window.removeEventListener('resize', follow); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openMenuDeliveryId]);
   // موضع قائمة الإجراءات على الشاشة (ثابت) حتى لا تُقص داخل حاوية الجدول عند قلة الصفوف
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   useEffect(() => {
@@ -1249,13 +1272,8 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              const rect = e.currentTarget.getBoundingClientRect();
-                              const menuW = 176, menuH = 100;
-                              const openUp = rect.bottom + menuH + 8 > window.innerHeight;
-                              setMenuPos({
-                                top: openUp ? rect.top - menuH - 8 : rect.bottom + 8,
-                                left: isRTL ? rect.left : rect.right - menuW
-                              });
+                              menuAnchorRef.current = e.currentTarget;
+                              placeMenu(e.currentTarget);
                               setOpenMenuDeliveryId((prev) => (prev === itemKey ? null : itemKey));
                             }}
                             className={`p-1.5 rounded-xl transition-all cursor-pointer border ${
@@ -1268,8 +1286,9 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                             <Edit className="w-4 h-4 stroke-[2.2]" />
                           </button>
 
-                          {/* Dropdown Menu */}
-                          {isMenuOpen && (
+                          {/* القائمة على مستوى الصفحة (portal): داخل عنصر متحرك كان موضعها "fixed" ينحرف بمقدار التمرير،
+                              فتظهر بعيدًا عن الصف عند الصعود ولا تظهر عند النزول */}
+                          {isMenuOpen && typeof document !== 'undefined' && createPortal(
                             <>
                               <div
                                 className="fixed inset-0 z-30"
@@ -1306,7 +1325,8 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                                   <span>{t('deliveries:deleteRecord')}</span>
                                 </button>
                               </div>
-                            </>
+                            </>,
+                            document.body
                           )}
                         </div>
                       </td>
