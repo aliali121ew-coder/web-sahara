@@ -226,7 +226,21 @@ export default {
       if (!env.HUB) return json({ error: 'القناة اللحظية غير مفعّلة', code: 'not_found' }, 404);
       const origin = request.headers.get('origin');
       if (origin && origin !== url.origin) return forbidden();
-      return env.HUB.get(env.HUB.idFromName(HUB_NAME)).fetch(request);
+      // الحضور: القناة تعرف صاحب كل اتصال (للمتصلين الآن)، و«آخر ظهور» يُسجَّل عند الاتصال (مرة في الدقيقة على الأكثر)
+      // وعند انقطاع آخر اتصال للحساب (في القناة نفسها)
+      const now = Date.now();
+      ctx.waitUntil(env.DB.prepare('UPDATE chat_users SET last_seen = ? WHERE id = ? AND last_seen < ?').bind(now, session.id, now - 60_000).run().catch(() => undefined));
+      const headers = new Headers(request.headers);
+      headers.set('x-hub-user', session.id);
+      return env.HUB.get(env.HUB.idFromName(HUB_NAME)).fetch(new Request(request, { headers }));
+    }
+
+    // المتصلون الآن (لصفحة المستخدمين، لمدير النظام فقط): من اتصالات القناة اللحظية بلا قراءة من D1
+    if (url.pathname === '/api/chat/admin/presence' && request.method === 'GET') {
+      if (!session.admin) return forbidden('هذه الصلاحية لمدير النظام فقط');
+      if (!env.HUB) return json({ online: [] });
+      const res = await env.HUB.get(env.HUB.idFromName(HUB_NAME)).fetch('https://hub/online');
+      return json(res.ok ? await res.json() : { online: [] });
     }
 
     // رقم نسخة البيانات (سطر واحد): الأجهزة تسأل عنه كل ثوانٍ قليلة، ولا تنزّل النسخة الكاملة إلا إن تغيّر
