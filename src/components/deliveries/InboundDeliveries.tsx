@@ -38,10 +38,17 @@ import { useTranslation, Trans } from 'react-i18next';
 import { enumText } from '../../i18n/enums';
 import { Breadcrumb } from '../navigation/Breadcrumb';
 import { useQuickAction } from '../../context/QuickActionContext';
-import { formatNumber, formatIQD, getBusinessDate } from '../../lib/utils';
+import { formatNumber, formatIQD } from '../../lib/utils';
 import { InboundDelivery } from '../../types';
 import { computeInboundPriceStats, deliveryDay } from '../../lib/inboundPrice';
 import { takeInboundFocus, FOCUS_EVENT, type InboundFocus } from '../../lib/inboundFocus';
+
+/** أول يوم في نافذة الأيام السبعة المنتهية بيوم معيّن (YYYY/MM/DD) */
+const weekStartFor = (day: string) => {
+  const [y, m, d] = day.split('/').map(Number);
+  const start = new Date(y, m - 1, d - 6);
+  return `${start.getFullYear()}/${String(start.getMonth() + 1).padStart(2, '0')}/${String(start.getDate()).padStart(2, '0')}`;
+};
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
 import {
   InboundPrintReport,
@@ -117,22 +124,23 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
   // - In Sahara section: strictly saharaDeliveries
   // - In Etihad section: strictly etihadDeliveries
   // - Global: combined deliveries
-  // يوم العمل الحالي — يُحدَّث كل دقيقة ليتبدّل تلقائيًا عند الساعة 7 صباحًا
-  const [businessDay, setBusinessDay] = useState(() => getBusinessDate());
-  useEffect(() => {
-    const id = setInterval(() => setBusinessDay(getBusinessDate()), 60_000);
-    return () => clearInterval(id);
-  }, []);
-
   const scopedDeliveries = useMemo(() => {
     const base = isSaharaScoped ? saharaDeliveries : isEtihadScoped ? etihadDeliveries : deliveries;
     if (isArchive) return base;
 
-    // الوارد اليومي: يظهر أحدث تاريخ فقط ضمن يوم العمل الحالي، والأقدم يبقى في الأرشيف
+    // الوارد اليومي: آخر 7 أيام حتى آخر يوم مسجّل (وارد اليوم يُدخل في اليوم التالي، فلا يُربط العرض بتاريخ اليوم)،
+    // والأقدم يبقى في الأرشيف
     const latest = base.reduce((max, d) => (deliveryDay(d) > max ? deliveryDay(d) : max), '');
-    const target = latest >= businessDay ? latest : businessDay;
-    return base.filter(d => deliveryDay(d) === target);
-  }, [isSaharaScoped, isEtihadScoped, saharaDeliveries, etihadDeliveries, deliveries, isArchive, businessDay]);
+    if (!latest) return [];
+    const from = weekStartFor(latest);
+    return base.filter(d => { const day = deliveryDay(d); return day >= from && day <= latest; });
+  }, [isSaharaScoped, isEtihadScoped, saharaDeliveries, etihadDeliveries, deliveries, isArchive]);
+
+  // الفترة المعروضة في الصفحة اليومية (من ← إلى)
+  const shownRange = useMemo(() => {
+    const latest = scopedDeliveries.reduce((max, d) => (deliveryDay(d) > max ? deliveryDay(d) : max), '');
+    return latest ? `${weekStartFor(latest)} — ${latest}` : '';
+  }, [scopedDeliveries]);
 
   const [localSearch, setLocalSearch] = useState('');
   const [filterCompany, setFilterCompany] = useState<string>(() => {
@@ -569,9 +577,9 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                     ? t('deliveries:titleEtihad')
                     : t('deliveries:title')}
                 </h2>
-                {!isArchive && (
+                {!isArchive && shownRange && (
                   <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-mono">
-                    {t('deliveries:businessDay')} {businessDay}
+                    {shownRange}
                   </span>
                 )}
               </div>
