@@ -49,6 +49,13 @@ export const PriceIndexTable: React.FC = () => {
   // ويُسجَّل في سجل الأسعار والمشتريات) يظهر فورًا. الأحدث بين آخر تحديث للسجل وآخر وارد من الأرشيف هو المعروض
   const rows = useMemo(() => {
     const day = (d: string) => (d || '').replace(/-/g, '/');
+    // «آخر وارد» من الأرشيف دائمًا (لا تاريخ آخر تعديل في صفحة الموردين): آخر شحنة للمورد في شركة الصف،
+    // وإن لم يكن له وارد فيها فآخر شحنة له في أي من الأرشيفين
+    const lastInbound = (company: string | undefined, name: string) => {
+      const mine = latest.filter(l => sameSupplier(l.supplierName, name));
+      const own = mine.find(l => l.company === company);
+      return own?.date ?? mine.reduce((m, l) => (l.date > m ? l.date : m), '');
+    };
     const used = new Set<string>();
     const merged = latest.map(item => {
       const rec = supplierPrices.find(r => r.id === item.id) ?? supplierPrices.find(r => r.company === item.company && sameSupplier(r.supplierName, item.supplierName));
@@ -58,7 +65,7 @@ export const PriceIndexTable: React.FC = () => {
       if (rec && manual) {
         const prev = rec.previousPriceIqd || rec.priceIqd;
         return {
-          id: rec.id, company: rec.company ?? item.company, supplierName: rec.supplierName, logo: rec.logo, date: day(rec.lastUpdated), product: rec.product || item.product,
+          id: rec.id, company: rec.company ?? item.company, supplierName: rec.supplierName, logo: rec.logo, date: item.date, product: rec.product || item.product,
           density: rec.density ?? item.density, color: rec.color ?? item.color, price: rec.priceIqd,
           previousPrice: rec.previousPriceIqd ? rec.previousPriceIqd : null, prev, diff: rec.priceIqd - prev,
           pct: rec.changePercent ?? (prev ? Math.round(((rec.priceIqd - prev) / prev) * 10000) / 100 : 0),
@@ -76,7 +83,7 @@ export const PriceIndexTable: React.FC = () => {
       if (used.has(rec.id) || !rec.priceIqd) continue;
       const prev = rec.previousPriceIqd || rec.priceIqd;
       merged.push({
-        id: rec.id, company: rec.company ?? 'sahara', supplierName: rec.supplierName, logo: rec.logo, date: day(rec.lastUpdated), product: rec.product,
+        id: rec.id, company: rec.company ?? 'sahara', supplierName: rec.supplierName, logo: rec.logo, date: lastInbound(rec.company ?? 'sahara', rec.supplierName), product: rec.product,
         density: rec.density, color: rec.color, price: rec.priceIqd, previousPrice: rec.previousPriceIqd ? rec.previousPriceIqd : null, prev,
         diff: rec.priceIqd - prev, pct: rec.changePercent ?? 0, sortKey: `${day(rec.lastUpdated)}|9`, recency: '',
       } as (typeof merged)[number]);
