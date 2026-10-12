@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CLOUD_APPLIED_EVENT } from './cloudSync';
+import { keepIfSame } from './keepIfSame';
 
 /**
  * السعر اليدوي لكروت الأسعار (ضغط مطوّل على الكارت ← تعديل السعر).
@@ -35,10 +36,12 @@ export const usePriceOverrides = () => {
   const [overrides, setOverrides] = useState<Record<string, PriceOverride>>(read);
 
   useEffect(() => {
-    const refresh = () => setOverrides(read());
+    const refresh = () => setOverrides(keepIfSame(read()));
     const onStorage = (e: StorageEvent) => { if (e.key === KEY) refresh(); };
     // تعديلات من متصفح/جهاز آخر وصلت من السحابة أثناء فتح الصفحة
     const onCloud = (e: Event) => { const keys = (e as CustomEvent<string[]>).detail ?? []; if (keys.includes(KEY)) refresh(); };
+    // الصفحة المخفية (Activity) لا تسمع الأحداث: تُعاد القراءة عند ظهورها
+    refresh();
     window.addEventListener(SYNC_EVENT, refresh);
     window.addEventListener('storage', onStorage);
     window.addEventListener(CLOUD_APPLIED_EVENT, onCloud);
