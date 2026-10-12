@@ -24,6 +24,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useTranslation, Trans } from 'react-i18next';
 import { EtihadPrintModal } from './EtihadPrintModal';
 import { Breadcrumb } from '../navigation/Breadcrumb';
+import { usePermissions } from '../../lib/usePermission';
 
 export interface EtihadArchiveViewProps {
   records: EtihadBalanceRecord[];
@@ -53,6 +54,8 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
   const { isRTL } = useLanguage();
 
   const { t } = useTranslation(['finance', 'common']);
+  // صلاحية العرض فقط: أزرار الإضافة والتعديل والحذف مخفية
+  const editable = usePermissions().canEdit('etihad.balance');
 
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -451,6 +454,7 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
             </button>
 
             {/* Toggle Edit Mode */}
+            {editable && (
             <button
               type="button"
               onClick={() => setIsEditMode(!isEditMode)}
@@ -463,6 +467,7 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
               <Edit3 className="w-3.5 h-3.5" />
               <span>{isEditMode ? t('finance:etihadArchive.hideControls') : t('finance:etihadArchive.editDelete')}</span>
             </button>
+            )}
 
           </div>
         </div>
@@ -623,6 +628,7 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
                       <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
                         {t('finance:etihadArchive.empty')}
                       </p>
+                      {editable && (
                       <button
                         type="button"
                         onClick={onAddNew}
@@ -631,6 +637,7 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
                         <Plus className="w-3.5 h-3.5" />
                         <span>{t('finance:etihadArchive.add')}</span>
                       </button>
+                      )}
                     </div>
                   </td>
                 </tr>

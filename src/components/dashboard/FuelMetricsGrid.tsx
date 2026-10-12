@@ -18,6 +18,7 @@ import { formatNumber } from '../../lib/utils';
 import { FuelProductMetric } from '../../types';
 import { PriceEditPopover } from './PriceEditPopover';
 import { usePurchasePrices, MANUAL_ONLY_ID } from '../../lib/purchasePrices';
+import { usePermissions } from '../../lib/usePermission';
 
 
 /** layout="side": بدون ترويسة وفي عمودين (للعمود الجانبي في صفحة المشتريات) */
@@ -25,6 +26,8 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
   const isSide = layout === 'side';
   const { fuelMetrics, priceOf: getLinkedSupplierData, savePrice, resetPrice, saveManual } = usePurchasePrices();
   const { t } = useTranslation(['dashboard', 'common']);
+  // تعديل السعر من البطاقة لمن يملك صلاحية تعديل الأسعار فقط
+  const canEditPrices = usePermissions().canEdit('prices');
 
 
   // ── الضغط المطوّل على الكارت يفتح نافذة السعر في مكانه ──
@@ -412,7 +415,7 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
             autoDate={d.auto?.date ?? null}
             days={d.src?.days ?? []}
             manual={d.manual ? { price: d.manual.price, setAt: d.manual.setAt } : null}
-            readOnly={!isSide}
+            readOnly={!isSide || !canEditPrices}
             standalone={item.id === MANUAL_ONLY_ID ? { volume: d.volume, date: d.priceUpdatedAt, onSave: v => saveManual(item, v) } : undefined}
             onSave={price => savePrice(item, price)}
             onReset={() => resetPrice(item)}

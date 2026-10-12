@@ -56,6 +56,7 @@ import {
 } from '../../lib/saharaLedger';
 import { useCentralTanks, resolveSaharaGasoilSectionKey, tankLiters } from '../../lib/centralTanks';
 import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
+import { usePermissions } from '../../lib/usePermission';
 
 
 /**
@@ -151,6 +152,8 @@ const MAX_STATION_SLOTS = 8;
 
 export const SaharaBalanceView: React.FC = () => {
   const { t } = useTranslation(['finance', 'common']);
+  // صلاحية العرض فقط: أزرار الإضافة والتعديل والحذف مخفية
+  const editable = usePermissions().canEdit('sahara.balance');
   const { records, computed, latest, update, hasPending, publish, discard } = useSaharaLedger();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
@@ -544,7 +547,7 @@ onValue={v => setForm({ ...form!, [key]: v })}
         </div>
         <div className="flex flex-wrap items-center gap-2 [&_button]:whitespace-nowrap">
           {/* يظهر بعد حفظ بيانات جديدة، ويختفي بعد تأكيدها ونقلها للواجهة الرئيسية */}
-          {hasPending && (
+          {editable && hasPending && (
             <button
               type="button"
               onClick={() => setConfirmOpen(true)}
@@ -555,7 +558,7 @@ onValue={v => setForm({ ...form!, [key]: v })}
             </button>
           )}
           {/* إلغاء العملية: رفض البيانات المحفوظة غير المؤكدة والعودة لآخر نسخة معتمدة */}
-          {hasPending && (
+          {editable && hasPending && (
             <button
               type="button"
               onClick={() => setDiscardOpen(true)}
@@ -644,7 +647,7 @@ onValue={v => setForm({ ...form!, [key]: v })}
               document.body
             )}
           </div>
-          {v && (
+          {editable && v && (
             <button
               type="button"
               onClick={() => openEdit(v)}
@@ -654,6 +657,7 @@ onValue={v => setForm({ ...form!, [key]: v })}
               {t('finance:ledger.editDay')}
             </button>
           )}
+          {editable && (
           <button
             type="button"
             onClick={openNew}
@@ -662,6 +666,7 @@ onValue={v => setForm({ ...form!, [key]: v })}
             <Plus className="w-4 h-4" />
             {t('finance:ledger.newDay')}
           </button>
+          )}
         </div>
       </div>
 

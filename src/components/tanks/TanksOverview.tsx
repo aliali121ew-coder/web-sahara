@@ -28,6 +28,7 @@ import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { usePetrolLedger } from '../../lib/petrolLedger';
 import { enumText, siteName } from '../../i18n/enums';
 import i18n from '../../i18n';
+import { usePermissions } from '../../lib/usePermission';
 
 // Model for Detailed Tank Unit
 export interface TankUnitRow {
@@ -461,7 +462,10 @@ const EMPTY_OVERRIDES: Record<string, { name: string; description: string }> = {
 
 export const TanksOverview: React.FC = () => {
   const { t } = useTranslation(['tanks', 'common']);
-  const [isEditMode, setIsEditMode] = useState<boolean>(false);
+  // صلاحية العرض فقط: لا أزرار تعديل أو إضافة أو ترتيب
+  const editable = usePermissions().canEdit('tanks');
+  const [editModeOn, setIsEditMode] = useState<boolean>(false);
+  const isEditMode = editable && editModeOn;
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [editingTank, setEditingTank] = useState<TankUnitRow | null>(null);
   const [isAddSectionModalOpen, setIsAddSectionModalOpen] = useState<boolean>(false);
@@ -729,6 +733,7 @@ export const TanksOverview: React.FC = () => {
           </div>
 
           {/* Controls & Action Buttons */}
+          {editable && (
           <div className="flex flex-wrap items-center gap-2.5">
 
             {/* Edit Mode Toggle Button */}
@@ -843,6 +848,7 @@ export const TanksOverview: React.FC = () => {
             </div>
 
           </div>
+          )}
 
         </div>
 

@@ -8,6 +8,7 @@ import { DateRangeCalendar } from '../ui/DateRangeCalendar';
 import { formatNumber, getBusinessDate } from '../../lib/utils';
 import { useTranslation, Trans } from 'react-i18next';
 import { useSaharaLedger } from '../../lib/saharaLedger';
+import { usePermissions } from '../../lib/usePermission';
 
 /**
  * تقرير كشف رصيد شركة الصحاري: كل الأيام المسجلة مع فلتر الفترة، ترقيم الصفحات، ومعاينة الطباعة الرسمية.
@@ -19,7 +20,10 @@ export const SaharaBalanceArchive: React.FC = () => {
   // مرفقات كل يوم (PDF و Excel) من الخادم
   const { files, busy, error: filesError, clearError, upload, remove, replace } = useSaharaFiles();
   // وضع إدارة المرفقات (زر "تعديل" بجانب الطباعة): يُظهر تغيير وحذف الملفات
-  const [manageFiles, setManageFiles] = useState(false);
+  // صلاحية العرض فقط: لا رفع ولا تغيير ولا حذف للمرفقات أو الأيام
+  const editable = usePermissions().canEdit('sahara.balance');
+  const [manageFilesOn, setManageFiles] = useState(false);
+  const manageFiles = editable && manageFilesOn;
   const filesByRecord = useMemo(() => {
     const map = new Map<string, SaharaFile[]>();
     for (const f of files) map.set(f.record_id, [...(map.get(f.record_id) || []), f]);
@@ -377,6 +381,7 @@ export const SaharaBalanceArchive: React.FC = () => {
               )}
             </div>
             {/* تعديل: وضع إدارة المرفقات (تغيير وحذف الملفات في عمود الإجراءات) */}
+            {editable && (
             <button
               type="button"
               onClick={() => setManageFiles(m => !m)}
@@ -386,6 +391,7 @@ export const SaharaBalanceArchive: React.FC = () => {
               {manageFiles ? <Check className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
               {manageFiles ? t('common:actions.done') : t('common:actions.edit')}
             </button>
+            )}
             <button
               type="button"
               onClick={() => setShowPreview(true)}
@@ -453,7 +459,7 @@ export const SaharaBalanceArchive: React.FC = () => {
                           </button>
                         )}
                         {/* الإرفاق: دائمًا لليوم بلا ملفات، ولليوم الذي فيه ملفات من وضع الإدارة فقط */}
-                        {(manageFiles || !filesByRecord.get(r.id)?.length) && (
+                        {editable && (manageFiles || !filesByRecord.get(r.id)?.length) && (
                         <label
                           title={t('finance:archive.attachHint')}
                           className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:ring-teal-400 hover:text-teal-700 dark:hover:text-teal-300 text-[10px] font-bold transition-colors ${busy === r.id ? 'opacity-60 pointer-events-none' : 'cursor-pointer'}`}

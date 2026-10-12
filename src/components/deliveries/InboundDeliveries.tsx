@@ -42,13 +42,6 @@ import { formatNumber, formatIQD } from '../../lib/utils';
 import { InboundDelivery } from '../../types';
 import { computeInboundPriceStats, deliveryDay } from '../../lib/inboundPrice';
 import { takeInboundFocus, FOCUS_EVENT, type InboundFocus } from '../../lib/inboundFocus';
-
-/** أول يوم في نافذة الأيام السبعة المنتهية بيوم معيّن (YYYY/MM/DD) */
-const weekStartFor = (day: string) => {
-  const [y, m, d] = day.split('/').map(Number);
-  const start = new Date(y, m - 1, d - 6);
-  return `${start.getFullYear()}/${String(start.getMonth() + 1).padStart(2, '0')}/${String(start.getDate()).padStart(2, '0')}`;
-};
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
 import {
   InboundPrintReport,
@@ -58,6 +51,14 @@ import {
   PrintOrientation,
   PrintDensity,
 } from './InboundPrintReport';
+import { usePermissions } from '../../lib/usePermission';
+
+/** أول يوم في نافذة الأيام السبعة المنتهية بيوم معيّن (YYYY/MM/DD) */
+const weekStartFor = (day: string) => {
+  const [y, m, d] = day.split('/').map(Number);
+  const start = new Date(y, m - 1, d - 6);
+  return `${start.getFullYear()}/${String(start.getMonth() + 1).padStart(2, '0')}/${String(start.getDate()).padStart(2, '0')}`;
+};
 
 /** عنوان العمود: deliveries:col.<id> */
 export interface ColumnConfig {
@@ -175,7 +176,13 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
   const setEditingDelivery = (_val?: any) => { void _val; };
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   // وضع التعديل: تعديل مباشر للحقول داخل الجدول + تحديد متعدد للحذف
-  const [editMode, setEditMode] = useState(false);
+  // صلاحية العرض فقط: لا إضافة ولا تعديل ولا حذف (عمود الإجراءات يختفي)
+  const perms = usePermissions();
+  const editable = isSaharaScoped ? perms.canEdit('deliveries-sahara')
+    : isEtihadScoped ? perms.canEdit('deliveries-etihad')
+      : perms.canEdit('deliveries-sahara') || perms.canEdit('deliveries-etihad');
+  const [editModeOn, setEditMode] = useState(false);
+  const editMode = editable && editModeOn;
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [openMenuDeliveryId, setOpenMenuDeliveryId] = useState<string | null>(null);
@@ -331,7 +338,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
   };
 
   // Total visible columns count (+2 for sequence # and actions, +1 for the selection checkbox in edit mode)
-  const activeColumnsCount = Object.values(visibleColumns).filter(Boolean).length + 2 + (editMode ? 1 : 0);
+  const activeColumnsCount = Object.values(visibleColumns).filter(Boolean).length + (editable ? 2 : 1) + (editMode ? 1 : 0);
 
   // Extract unique companies & suppliers with useMemo
   const companiesList = useMemo(() => {
@@ -593,6 +600,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
 
           {/* Action Toolbar */}
           <div className="flex flex-wrap items-center gap-2.5">
+            {editable && (
             <button
               type="button"
               onClick={() => (editMode ? exitEditMode() : setEditMode(true))}
@@ -606,6 +614,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
               {editMode ? <Check className="w-4 h-4" /> : <Edit className="w-4 h-4" />}
               <span>{editMode ? t('deliveries:finishEditing') : t('common:actions.edit')}</span>
             </button>
+            )}
 
             <button
               onClick={() => setShowPrintReportModal(true)}
@@ -616,7 +625,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
               <span>{t('deliveries:printReport')}</span>
             </button>
 
-            {!isArchive && (
+            {!isArchive && editable && (
             <button
               onClick={() => (onOpenModal ?? openQuickAction)(lockedCompanyName ? { lockedCompany: lockedCompanyName } : undefined)}
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 active:scale-95 transition-all cursor-pointer"
@@ -1068,8 +1077,8 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                   <th className="py-3.5 px-3.5 text-center whitespace-nowrap text-white font-cairo">{t('deliveries:col.attachments')}</th>
                 )}
 
-                {/* الإجراءات - دائم */}
-                <th className="py-3.5 px-3.5 text-center whitespace-nowrap w-20 text-white font-cairo">{t('deliveries:actions')}</th>
+                {/* الإجراءات (تعديل وحذف): لمن يملك صلاحية التعديل فقط */}
+                {editable && <th className="py-3.5 px-3.5 text-center whitespace-nowrap w-20 text-white font-cairo">{t('deliveries:actions')}</th>}
               </tr>
             </thead>
 
@@ -1274,6 +1283,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                       )}
 
                       {/* الإجراءات: زر القلم وقائمته المنسدلة */}
+                      {editable && (
                       <td className="py-3.5 px-3.5 text-center whitespace-nowrap relative">
                         <div className="relative inline-flex items-center justify-center">
                           <button
@@ -1338,6 +1348,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                           )}
                         </div>
                       </td>
+                      )}
                     </tr>
                   );
                 })

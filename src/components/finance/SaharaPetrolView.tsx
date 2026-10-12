@@ -39,6 +39,7 @@ import { useReportAttach } from '../../lib/saharaFiles';
 import { ReportAttachNotice } from './DayFilesCell';
 import { useCentralTanks, resolveSaharaPetrolSectionKey, tankLiters } from '../../lib/centralTanks';
 import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
+import { usePermissions } from '../../lib/usePermission';
 
 // منطق النموذج (يوم جديد، التعبئة من الكشف، السجل، شروط الحفظ) في lib/petrolForm.ts
 type FormState = PetrolForm;
@@ -48,6 +49,8 @@ const pctLabel = (p: number | null, decimals = 2) =>
 
 export const SaharaPetrolView: React.FC = () => {
   const { t } = useTranslation(['finance', 'common']);
+  // صلاحية العرض فقط: أزرار الإضافة والتعديل والحذف مخفية
+  const editable = usePermissions().canEdit('sahara.petrol');
   const { records, computed, latest, update, hasPending, publish, discard } = usePetrolLedger();
 
   // محطات البنزين (ثابتة، بهذا الترتيب) — الاستهلاك والأرصدة لهذه المحطات فقط.
@@ -325,7 +328,7 @@ export const SaharaPetrolView: React.FC = () => {
           </button>
         </div>
         <div className="flex flex-wrap items-center gap-2 [&_button]:whitespace-nowrap">
-          {hasPending && (
+          {editable && hasPending && (
             <>
               <button type="button" onClick={() => setConfirmOpen(true)} className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-700 to-emerald-600 hover:from-emerald-800 hover:to-emerald-700 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-700/25 cursor-pointer active:scale-95 transition-all animate-pulse">
                 <CheckCircle2 className="w-4 h-4" />
@@ -360,16 +363,18 @@ export const SaharaPetrolView: React.FC = () => {
               </div>
             );
           })()}
-          {view && (
+          {editable && view && (
             <button type="button" onClick={() => openEdit(view)} className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold flex items-center gap-1.5 cursor-pointer">
               <Pencil className="w-3.5 h-3.5" />
               {t('finance:ledger.editDay')}
             </button>
           )}
+          {editable && (
           <button type="button" onClick={openNew} className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-700 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-700/25 cursor-pointer active:scale-95 transition-all">
             <Plus className="w-4 h-4" />
             {t('finance:ledger.newDay')}
           </button>
+          )}
         </div>
       </div>
 

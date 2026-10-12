@@ -4,8 +4,16 @@ import { Paperclip, FileText, FileSpreadsheet, Loader2, RefreshCw, Trash2, Check
 import { useTranslation } from 'react-i18next';
 import { fileKind, ACCEPT_FILES, type SaharaFile, type ReportAttachState, type useSaharaFiles } from '../../lib/saharaFiles';
 import { SaharaFilePreview } from './SaharaFilePreview';
+import { usePermissions } from '../../lib/usePermission';
 
 type FilesApi = ReturnType<typeof useSaharaFiles>;
+
+/** أقسام التعديل التي تسمح بإرفاق ملفات لليوم (نفس قاعدة الخادم: من بادئة رقم السجل) */
+const fileSectionsFor = (recordId: string): string[] =>
+  recordId.startsWith('pet-') ? ['sahara.petrol']
+    : recordId.startsWith('rec-') ? ['etihad.balance']
+      : recordId.startsWith('bo-') ? ['sahara.black-oil', 'etihad.black-oil']
+        : ['sahara.balance'];
 
 const formatSize = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
 
@@ -18,6 +26,10 @@ export const DayFilesCell: React.FC<{ recordId: string; files: SaharaFile[]; man
   const [preview, setPreview] = useState<SaharaFile | null>(null);
   const [confirm, setConfirm] = useState<SaharaFile | null>(null);
   const { busy, upload, remove, replace } = api;
+  // صلاحية العرض فقط: الملفات تُعرض ولا تُرفع أو تُغيَّر أو تُحذف
+  const perms = usePermissions();
+  const editable = fileSectionsFor(recordId).some(s => perms.canEdit(s));
+  manage = manage && editable;
 
   return (
     <>
@@ -57,7 +69,7 @@ export const DayFilesCell: React.FC<{ recordId: string; files: SaharaFile[]; man
           </span>
         );
       })}
-      {(manage || !files.length) && (
+      {editable && (manage || !files.length) && (
         <label
           title={t('finance:archive.attachHint')}
           className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:ring-purple-400 hover:text-purple-700 dark:hover:text-purple-300 text-[10px] font-bold transition-colors ${busy === recordId ? 'opacity-60 pointer-events-none' : 'cursor-pointer'}`}
