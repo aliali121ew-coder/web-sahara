@@ -4,6 +4,14 @@
   "name": "sahara-fuel",
   "main": "worker/index.ts",
   "compatibility_date": "2026-09-23",
+  // النطاق الخاص: Cloudflare ينشئ سجلات DNS وشهادة SSL تلقائيًا عند النشر (لا تُضاف سجلات يدويًا)،
+  // و www يُحوَّل إلى النطاق الأساسي بقاعدة Redirect في لوحة Cloudflare
+  "routes": [
+    { "pattern": "etihad-fuel.com", "custom_domain": true },
+    { "pattern": "www.etihad-fuel.com", "custom_domain": true }
+  ],
+  // رابط workers.dev القديم يبقى فترة انتقالية (حتى ينتقل المستخدمون وتُرسل تعديلاتهم المعلّقة)، ثم يصبح false
+  "workers_dev": true,
   "observability": {
     "enabled": true
   },
@@ -40,6 +48,8 @@
   "env": {
     "staging": {
       "name": "etihad-company-staging",
+      // routes تُورَث من الإعداد الأعلى: بدون هذا السطر يحاول النشر ربط النطاق الحقيقي بنسخة التجربة
+      "routes": [],
       "d1_databases": [
         { "binding": "DB", "database_name": "etihad-company-data-staging" }
       ],
@@ -60,6 +70,8 @@
     // ويحتاج مرة واحدة: npx wrangler secret put APP_TOKEN --env demo
     "demo": {
       "name": "sahara-demo",
+      // لا يُورَث النطاق الحقيقي (انظر staging)
+      "routes": [],
       "workers_dev": true,
       "vars": { "DEMO_MODE": "1" },
       "d1_databases": [
