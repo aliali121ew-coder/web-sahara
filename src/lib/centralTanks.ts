@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CLOUD_APPLIED_EVENT } from './cloudSync';
 import type { TankUnitRow } from '../components/tanks/TanksOverview';
 import { getBusinessDate } from './utils';
+import { keepIfSame } from './keepIfSame';
 
 /**
  * المخزن المركزي للخزانات (صفحة منظومة الخزانات هي المرجع).
@@ -36,10 +37,12 @@ export const useCentralTanks = (fallback: TankUnitRow[], opts: { includeHidden?:
   useEffect(() => {
     // تسجيل كميات اليوم عند الفتح حتى لو لم يُعدَّل أي خزان
     recordDailySnapshot(readCentralTanks(fallback));
-    const refresh = () => setUnits(readCentralTanks(fallback));
+    const refresh = () => setUnits(keepIfSame(readCentralTanks(fallback)));
     const onStorage = (e: StorageEvent) => { if (e.key === CENTRAL_TANKS_KEY) refresh(); };
     // تعديلات من جهاز آخر وصلت أثناء فتح الصفحة
     const onCloud = (e: Event) => { if ((e as CustomEvent<string[]>).detail?.includes(CENTRAL_TANKS_KEY)) refresh(); };
+    // الصفحة المخفية (Activity) لا تسمع الأحداث: تُعاد القراءة عند ظهورها
+    refresh();
     window.addEventListener(SYNC_EVENT, refresh);
     window.addEventListener('storage', onStorage);
     window.addEventListener(CLOUD_APPLIED_EVENT, onCloud);

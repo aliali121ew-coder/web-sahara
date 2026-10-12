@@ -33,6 +33,7 @@ import { readEtihadLatestBalance, syncEtihadExtractionTank, useCentralTanks, res
 import { useBlackOilLedger } from '../../lib/blackOilLedger';
 import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
 import { INITIAL_RESERVE_SITES } from './EtihadMultiSiteReservesView';
+import { keepIfSame } from '../../lib/keepIfSame';
 
 type CompanyKey = 'etihad' | 'sahara';
 
@@ -164,14 +165,18 @@ export const FinanceBalance: React.FC = () => {
 
   // نسخة الخادم تصل بعد فتح الصفحة (المزامنة في الخلفية): تُعاد قراءة السجلات إن تغيّرت
   useEffect(() => {
-    const onCloud = (e: Event) => {
-      const keys = (e as CustomEvent<string[]>).detail || [];
-      if (!keys.includes('sahara_etihad_balance_records_v2')) return;
+    const reload = () => {
       try {
         const parsed = JSON.parse(localStorage.getItem('sahara_etihad_balance_records_v2') || '[]');
-        if (Array.isArray(parsed)) setRecords(parsed);
+        if (Array.isArray(parsed)) setRecords(keepIfSame(parsed));
       } catch { /* تجاهل */ }
     };
+    const onCloud = (e: Event) => {
+      const keys = (e as CustomEvent<string[]>).detail || [];
+      if (keys.includes('sahara_etihad_balance_records_v2')) reload();
+    };
+    // الصفحة المخفية (Activity) لا تسمع الأحداث: تُعاد القراءة عند ظهورها، حتى لا يُحفظ تعديل فوق نسخة قديمة
+    reload();
     window.addEventListener(CLOUD_APPLIED_EVENT, onCloud);
     return () => window.removeEventListener(CLOUD_APPLIED_EVENT, onCloud);
   }, []);

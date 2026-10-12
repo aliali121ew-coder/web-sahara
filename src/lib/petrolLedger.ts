@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CLOUD_APPLIED_EVENT } from './cloudSync';
 import { syncSaharaPetrolTanks } from './centralTanks';
+import { keepIfSame } from './keepIfSame';
 
 /**
  * السجل اليومي لبنزين شركة صحاري كربلاء.
@@ -121,12 +122,14 @@ export const usePetrolLedger = () => {
 
   useEffect(() => {
     const refresh = () => {
-      setRecords(readPetrolRecords());
-      setPublished(readList(PUBLISHED_KEY) ?? []);
+      setRecords(keepIfSame(readPetrolRecords()));
+      setPublished(keepIfSame(readList(PUBLISHED_KEY) ?? []));
     };
     const onStorage = (e: StorageEvent) => { if (e.key === STORAGE_KEY || e.key === PUBLISHED_KEY) refresh(); };
     // تعديلات من متصفح/جهاز آخر وصلت من السحابة أثناء فتح الصفحة
     const onCloud = (e: Event) => { const keys = (e as CustomEvent<string[]>).detail ?? []; if (keys.includes(STORAGE_KEY) || keys.includes(PUBLISHED_KEY)) refresh(); };
+    // الصفحة المخفية (Activity) لا تسمع الأحداث: تُعاد القراءة عند ظهورها
+    refresh();
     window.addEventListener(SYNC_EVENT, refresh);
     window.addEventListener('storage', onStorage);
     window.addEventListener(CLOUD_APPLIED_EVENT, onCloud);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CLOUD_APPLIED_EVENT } from './cloudSync';
 import { getProfile } from './session';
+import { keepIfSame } from './keepIfSame';
 
 /**
  * سجل الأسعار والمشتريات: الملف المرجعي لكل عملية حفظ في جدول «كل الموردين» وأسعار كروت المشتريات.
@@ -62,10 +63,12 @@ export const logPrice = (e: Omit<PriceLogEntry, 'id' | 'at' | 'by'>) => {
 export const usePriceLog = () => {
   const [log, setLog] = useState<PriceLogEntry[]>(read);
   useEffect(() => {
-    const refresh = () => setLog(read());
+    const refresh = () => setLog(keepIfSame(read()));
     const onStorage = (e: StorageEvent) => { if (e.key === PRICE_LOG_KEY) refresh(); };
     // تعديلات من متصفح/جهاز آخر وصلت من السحابة أثناء فتح الصفحة
     const onCloud = (e: Event) => { const keys = (e as CustomEvent<string[]>).detail ?? []; if (keys.includes(PRICE_LOG_KEY)) refresh(); };
+    // الصفحة المخفية (Activity) لا تسمع الأحداث: تُعاد القراءة عند ظهورها
+    refresh();
     window.addEventListener(SYNC_EVENT, refresh);
     window.addEventListener('storage', onStorage);
     window.addEventListener(CLOUD_APPLIED_EVENT, onCloud);

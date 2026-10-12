@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { keepIfSame } from './keepIfSame';
 
 /**
  * السجل اليومي لرصيد شركة الصحاري.
@@ -111,8 +112,10 @@ export const useSaharaPrice = () => {
   const [price, setPriceState] = useState<number>(readPrice);
 
   useEffect(() => {
-    const refresh = () => setPriceState(readPrice());
+    const refresh = () => setPriceState(keepIfSame(readPrice()));
     const onStorage = (e: StorageEvent) => { if (e.key === PRICE_KEY) refresh(); };
+    // الصفحة المخفية (Activity) لا تسمع الأحداث: تُعاد القراءة عند ظهورها
+    refresh();
     window.addEventListener(PRICE_EVENT, refresh);
     window.addEventListener('storage', onStorage);
     return () => {
@@ -152,10 +155,12 @@ export const useSaharaLedger = () => {
 
   useEffect(() => {
     const refresh = () => {
-      setRecords(readSaharaRecords());
-      setPublished(readPublished() ?? readSaharaRecords());
+      setRecords(keepIfSame(readSaharaRecords()));
+      setPublished(keepIfSame(readPublished() ?? readSaharaRecords()));
     };
     const onStorage = (e: StorageEvent) => { if (e.key === STORAGE_KEY || e.key === PUBLISHED_KEY) refresh(); };
+    // الصفحة المخفية (Activity) لا تسمع الأحداث: تُعاد القراءة عند ظهورها
+    refresh();
     window.addEventListener(SYNC_EVENT, refresh);
     window.addEventListener('storage', onStorage);
     return () => {

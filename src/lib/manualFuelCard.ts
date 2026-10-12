@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CLOUD_APPLIED_EVENT } from './cloudSync';
+import { keepIfSame } from './keepIfSame';
 
 /**
  * كارت يدوي بالكامل (كاز محطات): لا يرتبط بأي وارد أو سجل، ويُدخل السعر والكمية والتاريخ للعرض فقط.
@@ -35,10 +36,12 @@ export const useManualFuelCards = () => {
   const [cards, setCards] = useState<Record<string, ManualFuelCard>>(read);
 
   useEffect(() => {
-    const refresh = () => setCards(read());
+    const refresh = () => setCards(keepIfSame(read()));
     const onStorage = (e: StorageEvent) => { if (e.key === KEY) refresh(); };
     // تعديلات من متصفح/جهاز آخر وصلت من السحابة أثناء فتح الصفحة
     const onCloud = (e: Event) => { const keys = (e as CustomEvent<string[]>).detail ?? []; if (keys.includes(KEY)) refresh(); };
+    // الصفحة المخفية (Activity) لا تسمع الأحداث: تُعاد القراءة عند ظهورها
+    refresh();
     window.addEventListener(SYNC_EVENT, refresh);
     window.addEventListener('storage', onStorage);
     window.addEventListener(CLOUD_APPLIED_EVENT, onCloud);

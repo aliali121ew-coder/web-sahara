@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CLOUD_APPLIED_EVENT } from './cloudSync';
+import { keepIfSame } from './keepIfSame';
 
 const LOCAL_EVENT = 'synced-storage-updated';
 
@@ -25,10 +26,12 @@ export function useSyncedStorage<T>(key: string, fallback: T) {
   const [value, setValue] = useState<T>(() => read(key, fallback));
 
   useEffect(() => {
-    const refresh = () => setValue(read(key, fallbackRef.current));
+    const refresh = () => setValue(keepIfSame(read(key, fallbackRef.current)));
     const onStorage = (e: StorageEvent) => { if (e.key === key) refresh(); };
     const onLocal = (e: Event) => { if ((e as CustomEvent<string>).detail === key) refresh(); };
     const onCloud = (e: Event) => { if ((e as CustomEvent<string[]>).detail?.includes(key)) refresh(); };
+    // الصفحة المخفية (Activity) لا تسمع الأحداث: تُعاد القراءة عند ظهورها
+    refresh();
     window.addEventListener('storage', onStorage);
     window.addEventListener(LOCAL_EVENT, onLocal);
     window.addEventListener(CLOUD_APPLIED_EVENT, onCloud);
