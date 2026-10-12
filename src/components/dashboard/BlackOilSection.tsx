@@ -84,8 +84,9 @@ export const BlackOilSection: React.FC = () => {
   const grandTotalBalance = saharaTotalBalance + etihadTotalBalance;
   const grandTotalInbound = saharaInbound + etihadInbound;
   const grandTotalOutbound = saharaOutbound + etihadOutbound;
-  // أيام التغطية المشتركة = الرصيد الكلي ÷ مجموع الاستهلاك اليومي للشركتين
-  const combinedDaily = saharaLedger.avgDaily + etihadLedger.avgDaily;
+  // أيام التغطية المشتركة = الرصيد الكلي ÷ الاستهلاك الكلي الفعلي لآخر يوم (الظاهر في البطاقة)،
+  // فتتحدث مع كل يوم يُسجَّل؛ بلا استهلاك مسجّل بعد: مجموع المتوسط المعتمد للشركتين
+  const combinedDaily = grandTotalOutbound > 0 ? grandTotalOutbound : saharaLedger.avgDaily + etihadLedger.avgDaily;
   const grandTotalDays = combinedDaily > 0 ? Math.floor(grandTotalBalance / combinedDaily) : 0;
   const grandTotalCoverageDate = (() => {
     const d = new Date();

@@ -133,7 +133,9 @@ export const computeBlackOil = (records: BlackOilRecord[]): ComputedBlackOilReco
     return {
       ...r,
       consumption,
-      avgDaily: r.avgDaily || DEFAULT_BLACK_OIL_AVG_DAILY,
+      // الاستهلاك اليومي لحساب أيام التغطية = الاستهلاك الفعلي لذلك اليوم (لم يعد يُدخل متوسط معتمد يدويًا)؛
+      // يوم بلا استهلاك: القيمة القديمة المحفوظة أو الافتراضية
+      avgDaily: consumption > 0 ? consumption : r.avgDaily || DEFAULT_BLACK_OIL_AVG_DAILY,
       previous,
       current,
       pct: available > 0 ? (consumption / available) * 100 : null,
