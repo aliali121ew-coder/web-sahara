@@ -529,10 +529,6 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive' | 'h
                     <input inputMode="numeric" dir="ltr" disabled={hasSites} className={field} value={hasSites ? formatNumber(fConsumption ?? 0) : form.consumption} placeholder="0" onChange={e => setForm({ ...form, consumption: withCommas(e.target.value) })} />
                   </label>
                   <label className="space-y-1">
-                    <div className="min-h-5 flex items-center"><span className={fieldLabel}>{t('finance:blackOil.form.avgDailyL')}</span></div>
-                    <input inputMode="numeric" dir="ltr" className={field} value={form.avgDaily} onChange={e => setForm({ ...form, avgDaily: withCommas(e.target.value) })} />
-                  </label>
-                  <label className="space-y-1">
                     <div className="min-h-5 flex items-center"><span className={fieldLabel}>{t('finance:blackOil.form.priceIqd')}</span></div>
                     <input
                       inputMode="decimal"

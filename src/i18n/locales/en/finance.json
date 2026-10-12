@@ -204,7 +204,7 @@
     "totalCurrentHint": "Current quantity of the latest day",
     "totalDiffHint": "Sum of differences in the period",
     "totalEmptyHint": "Tank space on the latest day",
-    "approvedAvg": "Approved average consumption",
+    "approvedAvg": "Last day's consumption",
     "actual": "Actual",
     "form": {
       "editTitle": "Edit black oil day record",

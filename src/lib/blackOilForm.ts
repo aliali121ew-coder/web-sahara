@@ -94,14 +94,13 @@ export const blackOilDerived = (form: BlackOilForm, computed: Day[], sites: Site
 };
 export type BlackOilDerived = ReturnType<typeof blackOilDerived>;
 
-export type BlackOilSaveBlocker = 'noPrevious' | 'noConsumption' | 'noAverage' | 'dateTaken' | 'negative';
+export type BlackOilSaveBlocker = 'noPrevious' | 'noConsumption' | 'dateTaken' | 'negative';
 
 /** ما يمنع الحفظ (فارغ = يمكن الحفظ) — نفس شروط زر الحفظ في النافذة */
 export const blackOilSaveBlockers = (form: BlackOilForm, d: BlackOilDerived, records: { id: string; date: string }[]): BlackOilSaveBlocker[] => {
   const out: BlackOilSaveBlocker[] = [];
   if (d.fPrevious === null) out.push('noPrevious');
   if (d.fConsumption === null) out.push('noConsumption');
-  if (!d.fAvg || d.fAvg <= 0) out.push('noAverage');
   if (records.some(r => r.date === form.date && r.id !== form.id)) out.push('dateTaken');
   if ((d.fCurrent ?? 0) < 0) out.push('negative');
   return out;
@@ -118,7 +117,8 @@ export const blackOilRecord = (form: BlackOilForm, d: BlackOilDerived, old: Blac
   date: form.date,
   inbound: d.fInbound,
   consumption: d.fConsumption ?? 0,
-  avgDaily: d.fAvg ?? 0,
+  // لا متوسط يدوي بعد الآن: يُحفظ استهلاك اليوم نفسه
+  avgDaily: d.fConsumption ?? 0,
   price: num(form.price) || null,
   previousOverride: form.editPrevious && d.fPrevious !== d.autoPrevious ? d.fPrevious : null,
   ...(d.hasSites

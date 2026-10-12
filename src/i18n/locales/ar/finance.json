@@ -216,7 +216,7 @@
     "totalCurrentHint": "الكمية الحالية لآخر يوم",
     "totalDiffHint": "مجموع الفروقات في الفترة",
     "totalEmptyHint": "فراغ الخزانات لآخر يوم",
-    "approvedAvg": "متوسط الاستهلاك المعتمد",
+    "approvedAvg": "استهلاك آخر يوم",
     "actual": "الفعلي",
     "form": {
       "editTitle": "تعديل سجل يوم النفط الأسود",
