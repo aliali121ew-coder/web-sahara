@@ -203,7 +203,10 @@ export const FinanceBalance: React.FC = () => {
   const [activeRecordId, setActiveRecordId] = useState<string | null>(null);
   
   // Edit Mode (Toggle icons on hover)
-  const [isEditMode, setIsEditMode] = useState(false);
+  // رصيد الاتحاد: صلاحية العرض فقط = لا وضع تعديل ولا نوافذ إضافة/تعديل (الأزرار نفسها مخفية في مكوّناتها)
+  const etihadEditable = perms.canEdit('etihad.balance');
+  const [editModeOn, setIsEditMode] = useState(false);
+  const isEditMode = etihadEditable && editModeOn;
 
   // 1. First date-filter the records
   const dateFilteredRecords = useMemo(() => {
@@ -395,11 +398,13 @@ export const FinanceBalance: React.FC = () => {
 
   // Handlers for Add, Edit, Delete
   const handleAddNew = () => {
+    if (!etihadEditable) return;
     setEditingRecord(null);
     setIsModalOpen(true);
   };
 
   const handleEdit = (record: EtihadBalanceRecord) => {
+    if (!etihadEditable) return;
     setEditingRecord(record);
     setIsModalOpen(true);
   };

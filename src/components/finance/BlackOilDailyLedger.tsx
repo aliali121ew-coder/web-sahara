@@ -17,6 +17,7 @@ import {
   withCommas, fmtInput, emptySiteForm, newBlackOilForm, applyBlackOilReport, blackOilDerived, blackOilRecord, blackOilSaveBlockers,
   type BlackOilForm, type SiteForm
 } from '../../lib/blackOilForm';
+import { usePermissions } from '../../lib/usePermission';
 
 export { getBlackOilAvgDaily, DEFAULT_BLACK_OIL_AVG_DAILY } from '../../lib/blackOilLedger';
 
@@ -162,9 +163,12 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive' | 'h
 
   // وضع التعديل (زر "تعديل" بجانب "تسجيل يوم"): يُظهر القلم والسلة في الجدول
   // في الأرشيف: عمود الإجراءات ظاهر دائمًا للمرفقات، والقلم والسلة وتغيير/حذف الملفات بعد "تعديل"
-  const [manage, setManage] = useState(false);
+  // صلاحية العرض فقط: لا تسجيل يوم ولا تعديل ولا حذف (المرفقات للعرض فقط)
+  const editable = usePermissions().canEdit(company === 'sahara' ? 'sahara.black-oil' : 'etihad.black-oil');
+  const [manageOn, setManage] = useState(false);
+  const manage = editable && manageOn;
   const showActions = isArchive || manage;
-  const editToggle = (
+  const editToggle = editable && (
     <button
       type="button"
       onClick={() => setManage(m => !m)}
@@ -187,7 +191,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive' | 'h
     if (r) setConfirmDel({ id, date: r.date });
   };
   useEffect(() => {
-    if (!action) return;
+    if (!action || !editable) return;
     if (action.kind === 'edit') openEdit(action.id);
     else remove(action.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -715,6 +719,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive' | 'h
           ) : (
           <>
           {editToggle}
+          {editable && (
           <button
             type="button"
             onClick={openNew}
@@ -723,6 +728,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive' | 'h
             <Plus className="w-4 h-4" />
             {t('finance:blackOil.recordDay')}
           </button>
+          )}
           </>
           )}
         </div>

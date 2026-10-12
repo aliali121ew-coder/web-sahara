@@ -11,6 +11,7 @@ import { siteName } from '../../i18n/enums';
 import { usePetrolLedger, PETROL_STATIONS, type ComputedPetrolRecord } from '../../lib/petrolLedger';
 import { useCentralTanks, resolveSaharaPetrolSectionKey } from '../../lib/centralTanks';
 import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
+import { usePermissions } from '../../lib/usePermission';
 
 /**
  * أرشيف بنزين الصحاري: كل الأيام المسجلة مع استهلاك كل محطة، فلتر الفترة، ترقيم الصفحات، ومعاينة الطباعة الرسمية.
@@ -33,7 +34,10 @@ export const SaharaPetrolArchive: React.FC = () => {
   // مرفقات كل يوم (PDF و Excel) من الخادم
   const { files, busy, error: filesError, clearError, upload, remove, replace } = useSaharaFiles();
   // وضع إدارة المرفقات (زر "تعديل" بجانب الطباعة): يُظهر تغيير وحذف الملفات
-  const [manageFiles, setManageFiles] = useState(false);
+  // صلاحية العرض فقط: لا رفع ولا تغيير ولا حذف للمرفقات أو الأيام
+  const editable = usePermissions().canEdit('sahara.petrol');
+  const [manageFilesOn, setManageFiles] = useState(false);
+  const manageFiles = editable && manageFilesOn;
   const filesByRecord = useMemo(() => {
     const map = new Map<string, SaharaFile[]>();
     for (const f of files) map.set(f.record_id, [...(map.get(f.record_id) || []), f]);
@@ -388,6 +392,7 @@ export const SaharaPetrolArchive: React.FC = () => {
               )}
             </div>
             {/* تعديل: وضع إدارة المرفقات (تغيير وحذف الملفات في عمود الإجراءات) */}
+            {editable && (
             <button
               type="button"
               onClick={() => setManageFiles(m => !m)}
@@ -397,6 +402,7 @@ export const SaharaPetrolArchive: React.FC = () => {
               {manageFiles ? <Check className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
               {manageFiles ? t('common:actions.done') : t('common:actions.edit')}
             </button>
+            )}
             <button
               type="button"
               onClick={() => setShowPreview(true)}
@@ -468,7 +474,7 @@ export const SaharaPetrolArchive: React.FC = () => {
                           </button>
                         )}
                         {/* الإرفاق: دائمًا لليوم بلا ملفات، ولليوم الذي فيه ملفات من وضع الإدارة فقط */}
-                        {(manageFiles || !filesByRecord.get(r.id)?.length) && (
+                        {editable && (manageFiles || !filesByRecord.get(r.id)?.length) && (
                         <label
                           title={t('finance:archive.attachHint')}
                           className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:ring-teal-400 hover:text-teal-700 dark:hover:text-teal-300 text-[10px] font-bold transition-colors ${busy === r.id ? 'opacity-60 pointer-events-none' : 'cursor-pointer'}`}

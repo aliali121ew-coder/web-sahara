@@ -71,7 +71,7 @@
   "title": "Inbound fuel shipments",
   "businessDay": "Business day",
   "archiveSubtitle": "The cumulative log of all inbound shipments across all dates",
-  "subtitle": "Current work day's inbound (7 AM – 7 AM)",
+  "subtitle": "Inbound for the last 7 days up to the latest recorded day",
   "editHint": "Edit fields and select shipments to delete",
   "finishEditing": "Finish editing",
   "printHint": "Print the official inbound report and table",

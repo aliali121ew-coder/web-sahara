@@ -10,6 +10,7 @@ import { OfficialReportHeaderRow } from '../print/OfficialReportHeader';
 import { RealisticTank } from '../tanks/RealisticTank';
 import { getBlackOilAvgDaily } from './BlackOilDailyLedger';
 import { useTranslation, Trans } from 'react-i18next';
+import { usePermissions } from '../../lib/usePermission';
 
 type GroupKey = 'black-oil' | 'gasoil';
 type SectionKey = 'balances' | 'coverage' | 'drawings' | 'fill';
@@ -322,7 +323,10 @@ export const EtihadTanksReport: React.FC<{ company?: BlackOilCompany }> = ({ com
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<ComputedBlackOilRecord | null>(null);
   // وضع التعديل (كبقية التبويبات): القلم والسلة لكل يوم. الأيام نفسها أيام النفط الأسود فتُعدّل بنفس نافذته
-  const [manage, setManage] = useState(false);
+  // صلاحية العرض فقط: لا تعديل ولا حذف للأيام
+  const editable = usePermissions().canEdit(company === 'sahara' ? 'sahara.black-oil' : 'etihad.black-oil');
+  const [manageOn, setManage] = useState(false);
+  const manage = editable && manageOn;
   const [dayAction, setDayAction] = useState<BlackOilDayAction | null>(null);
   const act = (kind: BlackOilDayAction['kind'], id: string) => setDayAction({ kind, id, nonce: Date.now() });
   const [showSections, setShowSections] = useState(false);
@@ -399,6 +403,7 @@ export const EtihadTanksReport: React.FC<{ company?: BlackOilCompany }> = ({ com
                 {t('finance:tanksReport.logHint')}
               </p>
             </div>
+            {editable && (
             <button
               type="button"
               onClick={() => setManage(m => !m)}
@@ -412,6 +417,7 @@ export const EtihadTanksReport: React.FC<{ company?: BlackOilCompany }> = ({ com
               {manage ? <Check className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
               {manage ? t('common:actions.done') : t('common:actions.edit')}
             </button>
+            )}
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-start text-xs border-collapse font-mono">

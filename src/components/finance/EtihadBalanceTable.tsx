@@ -11,6 +11,7 @@ import {
 import { EtihadBalanceRecord, DateFilterRange, etihadSalesOf } from '../../types/finance';
 import { formatNumber } from '../../lib/utils';
 import { useTranslation } from 'react-i18next';
+import { usePermissions } from '../../lib/usePermission';
 
 interface EtihadBalanceTableProps {
   records: EtihadBalanceRecord[];
@@ -46,6 +47,8 @@ export const EtihadBalanceTable: React.FC<EtihadBalanceTableProps> = ({
   maxRows,
 }) => {
   const { t } = useTranslation(['finance', 'common']);
+  // صلاحية العرض فقط: أزرار الإضافة والتعديل والحذف مخفية
+  const editable = usePermissions().canEdit('etihad.balance');
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -380,6 +383,7 @@ export const EtihadBalanceTable: React.FC<EtihadBalanceTableProps> = ({
                     <p className="text-sm font-bold text-slate-600 dark:text-slate-300">
                       {t('finance:table.empty')}
                     </p>
+                    {editable && (
                     <button
                       type="button"
                       onClick={onAddNew}
@@ -388,6 +392,7 @@ export const EtihadBalanceTable: React.FC<EtihadBalanceTableProps> = ({
                       <Plus className="w-3.5 h-3.5" />
                       <span>{t('finance:table.addNow')}</span>
                     </button>
+                    )}
                   </div>
                 </td>
               </tr>

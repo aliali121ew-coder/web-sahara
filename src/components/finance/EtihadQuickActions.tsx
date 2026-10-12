@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { EtihadBalanceRecord, etihadSalesOf } from '../../types/finance';
 import { useTranslation } from 'react-i18next';
+import { usePermissions } from '../../lib/usePermission';
 
 interface EtihadQuickActionsProps {
   onAddNew: () => void;
@@ -30,6 +31,8 @@ export const EtihadQuickActions: React.FC<EtihadQuickActionsProps> = ({
   onOpenPrintModal
 }) => {
   const { t } = useTranslation(['finance', 'common']);
+  // صلاحية العرض فقط: أزرار الإضافة والتعديل والحذف مخفية
+  const editable = usePermissions().canEdit('etihad.balance');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Export to CSV / Excel-ready file
@@ -145,6 +148,7 @@ export const EtihadQuickActions: React.FC<EtihadQuickActionsProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3 w-full">
         
         {/* 1. إضافة بيانات جديدة */}
+        {editable && (
         <button
           type="button"
           onClick={onAddNew}
@@ -153,8 +157,10 @@ export const EtihadQuickActions: React.FC<EtihadQuickActionsProps> = ({
           <PlusCircle className="w-4 h-4" />
           <span>{t('finance:quick.add')}</span>
         </button>
+        )}
 
         {/* 2. تعديل */}
+        {editable && (
         <button
           type="button"
           onClick={() => setIsEditMode(!isEditMode)}
@@ -167,6 +173,7 @@ export const EtihadQuickActions: React.FC<EtihadQuickActionsProps> = ({
           <Edit className="w-4 h-4" />
           <span>{isEditMode ? t('finance:quick.cancelEdit') : t('finance:quick.edit')}</span>
         </button>
+        )}
 
         {/* 3. تصدير */}
         <button
@@ -200,6 +207,7 @@ export const EtihadQuickActions: React.FC<EtihadQuickActionsProps> = ({
             <span>{t('finance:quick.backup')}</span>
           </button>
 
+          {editable && (
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -208,6 +216,7 @@ export const EtihadQuickActions: React.FC<EtihadQuickActionsProps> = ({
           >
             <UploadCloud className="w-4 h-4" />
           </button>
+          )}
 
           <input
             ref={fileInputRef}
