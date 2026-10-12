@@ -2,6 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 // قبل أي عرض: وضع الأجهزة الضعيفة (يطفئ التأثيرات الثقيلة)
 import './lib/perfMode';
+// بعد نشر نسخة جديدة: إعادة تحميل تلقائية إن طلب الجهاز ملفات نسخة قديمة حُذفت
+import './lib/staleBuild';
 import '@fontsource-variable/noto-kufi-arabic';
 import '@fontsource-variable/cairo';
 import '@fontsource-variable/inter';

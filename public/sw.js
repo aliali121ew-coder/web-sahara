@@ -5,7 +5,9 @@
 // - البيانات (/api/): من الشبكة دائمًا (البيانات نفسها محفوظة في الجهاز وتُزامَن عند عودة الاتصال)
 // كانت النسخة السابقة تخزّن الصفحة الرئيسية فقط بلا ملفات JS/CSS، فتظهر شاشة بيضاء بلا إنترنت.
 // v3: أيقونة واسم جديدان (Sahara Fuel) — تجديد ذاكرة الملفات الثابتة
-const VERSION = 'v3';
+// v4: ملف بناء محذوف (بعد نشر جديد) كان يرد بصفحة HTML فيُخزَّن مكان ملف JS ويبقى العطل حتى بعد التحديث؛
+//     تجديد الذاكرة لحذف ما خُزّن خطأً، ولا يُخزَّن بعد الآن إلا رد ليس HTML
+const VERSION = 'v4';
 const SHELL = `sahara-shell-${VERSION}`;
 const ASSETS = `sahara-assets-${VERSION}`;
 const STATIC = `sahara-static-${VERSION}`;
@@ -57,7 +59,7 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/assets/')) {
     event.respondWith(
       caches.match(req, { cacheName: ASSETS }).then((hit) => hit || fetch(req).then((res) => {
-        if (res.ok) {
+        if (res.ok && !(res.headers.get('content-type') || '').includes('text/html')) {
           const copy = res.clone();
           event.waitUntil(caches.open(ASSETS).then((c) => c.put(req, copy)).then(() => trim(ASSETS, MAX_ASSETS)));
         }
