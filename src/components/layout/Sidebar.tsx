@@ -5,7 +5,6 @@ import {
   Database,
   MessageSquare,
   Settings,
-  Flame,
   Menu,
   X,
   ShieldCheck,
@@ -540,9 +539,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   tabIndex={0}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleItemClick('dashboard'); } }}
                   title={t('common:brand.name')}
-                  className="relative w-[34px] h-[34px] rounded-xl bg-gradient-to-tr from-blue-700 via-blue-600 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-600/30 ring-2 ring-blue-500/20 shrink-0 cursor-pointer transform transition-transform hover:scale-105 active:scale-95"
+                  className="relative w-[34px] h-[34px] rounded-xl shadow-md shadow-slate-900/20 ring-1 ring-black/5 dark:ring-white/10 shrink-0 cursor-pointer transform transition-transform hover:scale-105 active:scale-95"
                 >
-                  <Flame className="w-4 h-4 text-amber-300" />
+                  {/* أيقونة البرنامج نفسها (نفس أيقونة التثبيت على الهاتف) */}
+                  <img src="/icon-192.png" alt="" draggable={false} className="w-full h-full rounded-xl object-cover" />
                   <span
                     className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-[1.5px] ring-white dark:ring-slate-900"
                     title={t('common:status.online')}
