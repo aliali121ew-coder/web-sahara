@@ -162,6 +162,8 @@ export const chatApi = {
   changePassword: (current: string, next: string) => call('/auth/password', send('POST', { current, next })),
   // ───── إدارة الحسابات (للمدير) ─────
   adminUsers: () => call<{ items: Account[]; max: number }>('/admin/users'),
+  /** الحسابات المتصلة الآن (من اتصالات قناة التحديث اللحظي) */
+  adminPresence: () => call<{ online: string[] }>('/admin/presence'),
   adminCreate: (body: { username: string; password: string; name: string; role: string; is_admin: boolean; perms?: Perms; avatar?: string; expires_at?: number }) => call<{ id: string }>('/admin/users', send('POST', body)),
   adminSupport: () => call<{ items: SupportRequest[] }>('/admin/support'),
   adminAuditStats: () => call<{ since: number; items: { action: string; n: number; users: number }[] }>('/admin/audit/stats'),

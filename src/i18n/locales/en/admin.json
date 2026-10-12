@@ -31,6 +31,7 @@
     "neverSignedIn": "Never signed in",
     "neverShort": "Never",
     "lastSeen": "Last seen",
+    "online": "Online now",
     "viewProfile": "View profile",
     "viewProfileOf": "View profile: {{name}}",
     "edit": "Edit account & permissions",

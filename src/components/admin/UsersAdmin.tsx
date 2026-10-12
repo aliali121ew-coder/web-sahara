@@ -39,6 +39,18 @@ export const UsersAdmin: React.FC = () => {
   const loadUsers = useCallback(() => chatApi.adminUsers().then(r => { setItems(r.items); setMax(r.max); }).catch(e => setError(errorText(e))), []);
   const loadRequests = useCallback(() => chatApi.adminSupport().then(r => setRequests(r.items)).catch(e => setError(errorText(e))), []);
   useEffect(() => { loadUsers(); loadRequests(); }, [loadUsers, loadRequests]);
+  // المتصلون الآن: يُحدَّث كل 20 ثانية أثناء فتح الصفحة، ومعه «آخر ظهور» لمن خرج
+  const [online, setOnline] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState !== 'visible') return;
+      chatApi.adminPresence().then(r => setOnline(new Set(r.online))).catch(() => undefined);
+      loadUsers();
+    };
+    chatApi.adminPresence().then(r => setOnline(new Set(r.online))).catch(() => undefined);
+    const id = setInterval(tick, 20_000);
+    return () => clearInterval(id);
+  }, [loadUsers]);
 
   /** إغلاق طلب الدعم تلقائيًا بعد تنفيذه (إنشاء الحساب أو إعادة تعيين كلمة المرور) */
   const closeRequest = async (id?: string) => {
@@ -86,7 +98,7 @@ export const UsersAdmin: React.FC = () => {
         onChange={setTab}
         tabs={[
           { id: 'users', label: t('tabs.users'), icon: Users, content: (
-            <UsersTab items={items} reload={loadUsers} editTarget={editTarget} setEditTarget={setEditTarget} onRequestDone={closeRequest} />
+            <UsersTab items={items} online={online} reload={loadUsers} editTarget={editTarget} setEditTarget={setEditTarget} onRequestDone={closeRequest} />
           ) },
           { id: 'requests', label: t('tabs.requests'), icon: Inbox, badge: openRequests, content: (
             <SupportRequests items={requests} users={items || []} reload={loadRequests}
@@ -136,7 +148,9 @@ const UsersTab: React.FC<{
   editTarget: EditTarget | null;
   setEditTarget: (t: EditTarget | null) => void;
   onRequestDone: (id?: string) => void;
-}> = ({ items, reload, editTarget, setEditTarget, onRequestDone }) => {
+  /** الحسابات المتصلة الآن */
+  online: Set<string>;
+}> = ({ items, online, reload, editTarget, setEditTarget, onRequestDone }) => {
   const { t } = useTranslation('admin');
   const me = useSessionProfile();
   const [q, setQ] = useState('');
@@ -224,7 +238,13 @@ const UsersTab: React.FC<{
                       {a.is_admin ? t('list.allPermissions') : t('list.sections', { count: granted })}
                     </span>
                     {!!a.expires_at && <TrialBadge expiresAt={a.expires_at} />}
-                    <span className="text-[10px] text-slate-400 truncate">{a.last_seen ? `${t('list.lastSeen')} ${timeAgo(a.last_seen)}` : t('list.neverSignedIn')}</span>
+                    {online.has(a.id) ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />{t('list.online')}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 truncate">{a.last_seen ? `${t('list.lastSeen')} ${timeAgo(a.last_seen)}` : t('list.neverSignedIn')}</span>
+                    )}
                   </div>
                 </button>
                 <div className="flex flex-col gap-1">
@@ -256,7 +276,7 @@ const UsersTab: React.FC<{
             isRtl
             sectionsCount={v.is_admin ? null : Object.keys(v.perms || {}).length}
             status={v.disabled ? { label: t('list.filterDisabled'), on: false } : { label: t('list.filterActive'), on: true }}
-            lastStat={{ label: t('list.lastSeen'), value: v.last_seen ? timeAgo(v.last_seen) : t('list.neverShort') }}
+            lastStat={{ label: t('list.lastSeen'), value: online.has(v.id) ? t('list.online') : v.last_seen ? timeAgo(v.last_seen) : t('list.neverShort') }}
             actionLabel={t('list.edit')}
             onOpenProfile={() => setEditTarget({ acc: v })}
             onClose={() => setViewing(null)}
