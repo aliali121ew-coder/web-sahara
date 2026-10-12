@@ -330,8 +330,10 @@ export const SuppliersView: React.FC = () => {
         const lastDay = hits[0] ? dateKey(hits[0].d.receiptUnloadDate || hits[0].d.date) : '';
         const dayHits = lastDay ? hits.filter(({ d }) => dateKey(d.receiptUnloadDate || d.date) === lastDay) : [];
         const lastDayQty = dayHits.reduce((a, { d }) => a + (d.receivedQuantity || d.volumeLiters || 0), 0);
-        // الشركة المستلمة: أرشيف الصحاري أو الاتحاد (أو كلاهما)
-        const companies = (['sahara', 'etihad'] as Company[]).filter(c => hits.some(h => h.tab === (c === 'etihad' ? 'deliveries-etihad' : 'deliveries-sahara')));
+        // الشركة المستلمة: أرشيف الصحاري أو الاتحاد (أو كلاهما)، وإلا شركة الصف نفسه
+        // (صف أُضيف للمورد في شركة ليس له فيها وارد بعد)
+        const fromArchive = (['sahara', 'etihad'] as Company[]).filter(c => hits.some(h => h.tab === (c === 'etihad' ? 'deliveries-etihad' : 'deliveries-sahara')));
+        const companies = fromArchive.length ? fromArchive : s.company ? [s.company] : [];
         cache.set(s.id, { last: hits[0], count: hits.length, lastDay, lastDayCount: dayHits.length, lastDayQty, companies });
       }
       return cache.get(s.id)!;

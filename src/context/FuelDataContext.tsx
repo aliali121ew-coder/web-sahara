@@ -727,6 +727,16 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const saveSupplier = (supplier: SupplierPriceRecord) => {
+    // تغيير الشركة المستلمة لمورد موجود: لكل شركة صف مستقل للمورد نفسه، فلا يُنقل صفه من شركته
+    // (ولا يُمس الأرشيف): يُحدَّث صفه في الشركة المختارة إن وُجد، وإلا يُضاف له صف جديد فيها
+    const original = supplierPrices.find(s => s.id === supplier.id);
+    if (original?.company && supplier.company && original.company !== supplier.company) {
+      const twin = supplierPrices.find(s => s.id !== supplier.id && s.company === supplier.company && sameSupplier(s.supplierName, supplier.supplierName));
+      supplier = twin
+        ? { ...supplier, id: twin.id }
+        // معرّف يدوي (ليس sup-a-): مزامنة السجل مع الأرشيف لا تحذفه
+        : { ...supplier, id: `sup-m-${supplier.company}-${Date.now()}`, previousPriceIqd: 0, history: undefined };
+    }
     // السجل: يُكتب خارج دالة التحديث (قد تُستدعى مرتين في وضع التطوير)
     const before = supplierPrices.find(s => s.id === supplier.id);
     const fields: [keyof SupplierPriceRecord, string][] = [['supplierName', 'name'], ['product', 'product'], ['density', 'density'], ['color', 'color'], ['priceIqd', 'price'], ['company', 'company'], ['category', 'category'], ['phone', 'phone'], ['location', 'location'], ['logo', 'logo']];
