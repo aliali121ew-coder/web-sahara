@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { ArrowUp, ArrowDown, Minus, TrendingUp, TrendingDown, BadgeDollarSign } from 'lucide-react';
 import { useFuelData } from '../../context/FuelDataContext';
 import { useTranslation } from 'react-i18next';
-import { Avatar, fmtPrice } from '../suppliers/supplierUi';
+import { Avatar, CompanyBadges, fmtPrice } from '../suppliers/supplierUi';
 import { SectionHeader } from './SectionHeader';
 import { latestSupplierPrices, sameSupplier } from '../../lib/archiveSuppliers';
 
@@ -58,7 +58,7 @@ export const PriceIndexTable: React.FC = () => {
       if (rec && manual) {
         const prev = rec.previousPriceIqd || rec.priceIqd;
         return {
-          id: rec.id, supplierName: rec.supplierName, logo: rec.logo, date: day(rec.lastUpdated), product: rec.product || item.product,
+          id: rec.id, company: rec.company ?? item.company, supplierName: rec.supplierName, logo: rec.logo, date: day(rec.lastUpdated), product: rec.product || item.product,
           density: rec.density ?? item.density, color: rec.color ?? item.color, price: rec.priceIqd,
           previousPrice: rec.previousPriceIqd ? rec.previousPriceIqd : null, prev, diff: rec.priceIqd - prev,
           pct: rec.changePercent ?? (prev ? Math.round(((rec.priceIqd - prev) / prev) * 10000) / 100 : 0),
@@ -68,7 +68,8 @@ export const PriceIndexTable: React.FC = () => {
       // آخر وارد من الأرشيف: مقارنة بشحنة نفس المجهز السابقة
       const prev = item.previousPrice ?? item.price;
       const diff = item.price - prev;
-      return { ...item, supplierName: rec?.edited ? rec.supplierName : item.supplierName, logo: rec?.logo, prev, diff, pct: prev ? Math.round((diff / prev) * 10000) / 100 : 0, sortKey: `${item.date}|${item.recency}` };
+      // الشركة المستلمة: من سجل المورد إن عُدّلت فيه، وإلا من الأرشيف الذي ورد إليه
+      return { ...item, company: rec?.company ?? item.company, supplierName: rec?.edited ? rec.supplierName : item.supplierName, logo: rec?.logo, prev, diff, pct: prev ? Math.round((diff / prev) * 10000) / 100 : 0, sortKey: `${item.date}|${item.recency}` };
     });
     // موردو السجل بلا وارد في الأرشيف (أُضيفوا يدويًا): بقيم السجل
     for (const rec of supplierPrices) {
@@ -126,6 +127,7 @@ export const PriceIndexTable: React.FC = () => {
                   <div className="flex items-center gap-2.5">
                     <Avatar s={s} size="w-8 h-8" text="text-xs" />
                     <span className="text-[14.5px] font-bold text-slate-900 dark:text-white truncate max-w-[200px] xl:max-w-[260px]">{s.supplierName}</span>
+                    <CompanyBadges companies={[s.company]} />
                   </div>
                 </td>
                 <td className={`${td} ${plain} tabular-nums`} dir="ltr">{s.date || '—'}</td>
