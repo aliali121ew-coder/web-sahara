@@ -134,6 +134,12 @@
     "legendView": "View only",
     "previewNote": "The preview updates as you type. The account starts active and can sign in right away."
   },
+  "singlePage": {
+    "title": "Single page only",
+    "hint": "No sidebar: the account opens this page only and cannot navigate elsewhere. Permissions stay as set, and the account needs at least view access to the chosen page.",
+    "adminNote": "Not applied to the system administrator.",
+    "none": "All pages (by permissions)"
+  },
   "perm": {
     "levels": {
       "0": {

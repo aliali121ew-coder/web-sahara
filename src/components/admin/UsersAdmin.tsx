@@ -8,6 +8,7 @@ import { type Perms } from '../../lib/permCatalog';
 import { useSessionProfile } from '../../lib/session';
 import { SwipeTabs } from '../ui/SwipeTabs';
 import { PermissionsEditor } from './PermissionsEditor';
+import { SinglePagePicker } from './SinglePagePicker';
 import { CreateAccountWizard } from './CreateAccountWizard';
 import { DEMO_DURATIONS, demoDurationMs, remainingText, useDemoMode, type DemoDurationKey } from '../../lib/demo';
 import { SupportRequests } from './SupportRequests';
@@ -303,6 +304,7 @@ const EditAccount: React.FC<{
   const [avatar, setAvatar] = useState(acc.avatar || '');
   const [isAdmin, setIsAdmin] = useState(!!acc.is_admin);
   const [perms, setPerms] = useState<Perms>(acc.perms || {});
+  const [singlePage, setSinglePage] = useState(acc.single_page || '');
   const [resetPw, setResetPw] = useState(!!startReset);
   const [password, setPassword] = useState(() => (startReset ? genPassword() : ''));
   const [showPw, setShowPw] = useState(true);
@@ -319,7 +321,7 @@ const EditAccount: React.FC<{
     setBusy(true);
     try {
       await chatApi.adminUpdate(acc.id, {
-        name: name.trim(), role: role.trim(), perms,
+        name: name.trim(), role: role.trim(), perms, single_page: isAdmin ? '' : singlePage,
         ...(avatar !== (acc.avatar || '') ? { avatar } : {}),
         ...(self ? {} : { is_admin: isAdmin }),
         ...(resetPw ? { password } : {}),
@@ -415,6 +417,8 @@ const EditAccount: React.FC<{
         </div>
         <PermissionsEditor value={perms} onChange={setPerms} disabled={isAdmin} />
       </div>
+
+      <SinglePagePicker value={isAdmin ? '' : singlePage} onChange={setSinglePage} disabled={isAdmin} />
 
       {error && <p className="text-sm font-bold text-rose-500">{error}</p>}
       <div className="flex gap-2 sticky bottom-2">
