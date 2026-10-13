@@ -10,11 +10,31 @@ import { useTranslation } from 'react-i18next';
 // النصوص في auth:onboarding.s<n>Tag / s<n>Title / s<n>Text
 type Slide = { img: string; n: number; from: string; to: string };
 const SLIDE_MS = 5000;
-// شريحتان بنصّ مختصر من تعريف الشركة. الشريحة الثانية تستخدم الصورة الأولى مؤقتًا بلقطة مختلفة،
-// وحين تُحفظ صورتها في public/onboarding (sama-karbala.jpg) يُغيَّر مسارها هنا فقط.
 const SLIDES: Slide[] = [
-  { img: '/onboarding/factory.jpg', n: 1, from: '25% center', to: '50% center' },
-  { img: '/onboarding/factory.jpg', n: 2, from: '60% center', to: '90% center' },
+  {
+    img: '/onboarding/lpg.jpg',
+    n: 1,
+    from: 'center 48%',
+    to: 'center 60%',
+  },
+  {
+    img: '/onboarding/fuel-tanks.jpg',
+    n: 2,
+    from: '38% center',
+    to: '58% center',
+  },
+  {
+    img: '/onboarding/port.jpg',
+    n: 3,
+    from: '35% center',
+    to: '55% center',
+  },
+  {
+    img: '/onboarding/operations.jpg',
+    n: 4,
+    from: '40% center',
+    to: '60% center',
+  },
 ];
 
 export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
@@ -52,7 +72,7 @@ export const Onboarding: React.FC<{ onDone: () => void }> = ({ onDone }) => {
       <div ref={track} onScroll={onScroll} onPointerDown={() => setPaused(true)} onPointerUp={() => setPaused(false)} onPointerCancel={() => setPaused(false)}
         className="auth-onb-track h-full flex overflow-x-auto snap-x snap-mandatory">
         {SLIDES.map((s, i) => (
-          <section key={s.n} className="relative shrink-0 w-full h-full snap-start overflow-hidden" aria-label={t('onboarding.slideOf', { n: i + 1, total: SLIDES.length })} aria-hidden={i !== index}>
+          <section key={s.img} className="relative shrink-0 w-full h-full snap-start overflow-hidden" aria-label={t('onboarding.slideOf', { n: i + 1, total: SLIDES.length })} aria-hidden={i !== index}>
             <img key={`img${index === i}`} src={s.img} alt="" decoding="async" draggable={false}
               className={`absolute inset-0 w-full h-full object-cover ${i === index && motion ? 'auth-onb-pan' : ''}`}
               style={{ objectPosition: s.from, ['--from' as string]: s.from, ['--to' as string]: s.to, animationPlayState: paused ? 'paused' : 'running' }} />
