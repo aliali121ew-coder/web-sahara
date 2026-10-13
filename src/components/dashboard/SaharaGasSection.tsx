@@ -126,12 +126,13 @@ export const SaharaGasSection: React.FC = () => {
     },
   ];
   // اللون حسب ترتيب الاستهلاك (لا حسب القطاع): الأعلى أحمر، ثم أصفر، والأقل أزرق
-  // نفس تدرّج شريط "السعة الاستيعابية" (أزرق غامق/نيلي ← سماوي ← فيروزي) يتدرّج حسب الاستهلاك: الأكثر أغمق.
+  // ثلاثة ألوان من عائلة باردة واحدة (بنفسجي ← أزرق ← أخضر مزرق): مختلفة بوضوح وتنسجم معًا،
+  // الأعلى استهلاكًا بنفسجي، ثم أزرق، والأقل أخضر مزرق.
   // color للنقطة، from/to لتدرّج الخط، grad لقوس الدائرة، وtextColor للنص
   const RANK_COLORS = [
-    { color: '#2563EB', textColor: '#1D4ED8', glowColor: 'rgba(37, 99, 235, 0.35)', grad: 'url(#rankHigh)', from: '#1D4ED8', to: '#4F46E5' },
-    { color: '#0EA5E9', textColor: '#0369A1', glowColor: 'rgba(14, 165, 233, 0.35)', grad: 'url(#rankMid)', from: '#2563EB', to: '#0EA5E9' },
-    { color: '#22D3EE', textColor: '#0E7490', glowColor: 'rgba(34, 211, 238, 0.4)', grad: 'url(#rankLow)', from: '#0EA5E9', to: '#22D3EE' },
+    { color: '#7C3AED', textColor: '#6D28D9', glowColor: 'rgba(124, 58, 237, 0.35)', grad: 'url(#rankHigh)', from: '#6D28D9', to: '#8B5CF6' },
+    { color: '#2563EB', textColor: '#1D4ED8', glowColor: 'rgba(37, 99, 235, 0.35)', grad: 'url(#rankMid)', from: '#1D4ED8', to: '#3B82F6' },
+    { color: '#14B8A6', textColor: '#0F766E', glowColor: 'rgba(20, 184, 166, 0.4)', grad: 'url(#rankLow)', from: '#0D9488', to: '#2DD4BF' },
   ];
   const rankOf = (i: number) => baseSectors.filter((x, j) => x.volume > baseSectors[i].volume || (x.volume === baseSectors[i].volume && j < i)).length;
   const sectorData = baseSectors.map((sec, i) => {
@@ -479,9 +480,6 @@ export const SaharaGasSection: React.FC = () => {
               <Calendar className="w-4 h-4 text-amber-500 shrink-0" />
               <span className="truncate">{t('dashboard:coverage.smartTitle')}</span>
             </div>
-            <span className="text-[9.5px] font-mono font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-200/60 dark:border-amber-800/40">
-              {t('dashboard:coverage.predictive')}
-            </span>
           </div>
 
           {/* 1. Prediction Headline (Enlarged) */}
@@ -644,17 +642,16 @@ export const SaharaGasSection: React.FC = () => {
                   <PieChart className="outline-none focus:outline-none select-none">
                     <defs>
                       <linearGradient id="rankHigh" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="#1d4ed8" />
-                        <stop offset="50%" stopColor="#2563eb" />
-                        <stop offset="100%" stopColor="#4f46e5" />
+                        <stop offset="0%" stopColor="#6d28d9" />
+                        <stop offset="100%" stopColor="#8b5cf6" />
                       </linearGradient>
                       <linearGradient id="rankMid" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="#2563eb" />
-                        <stop offset="100%" stopColor="#0ea5e9" />
+                        <stop offset="0%" stopColor="#1d4ed8" />
+                        <stop offset="100%" stopColor="#3b82f6" />
                       </linearGradient>
                       <linearGradient id="rankLow" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="#0ea5e9" />
-                        <stop offset="100%" stopColor="#22d3ee" />
+                        <stop offset="0%" stopColor="#0d9488" />
+                        <stop offset="100%" stopColor="#2dd4bf" />
                       </linearGradient>
                       <filter id="glowEffect" x="-20%" y="-20%" width="140%" height="140%">
                         <feDropShadow dx="0" dy="3" stdDeviation="3" floodOpacity="0.35" />

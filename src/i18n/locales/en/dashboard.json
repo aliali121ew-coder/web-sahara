@@ -42,8 +42,7 @@
     "secured": "Covered",
     "dueDate": "Expected due date:",
     "runOutDate": "Expected run-out date:",
-    "smartTitle": "Smart coverage forecast",
-    "predictive": "Predictive"
+    "smartTitle": "Smart coverage forecast"
   },
   "price": {
     "change": "Change",

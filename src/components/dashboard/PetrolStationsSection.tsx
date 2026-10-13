@@ -369,9 +369,6 @@ export const PetrolStationsSection: React.FC = () => {
               <Calendar className="w-4 h-4 text-[#146f82] dark:text-teal-400 shrink-0" />
               <span className="truncate">{t('dashboard:coverage.smartTitle')}</span>
             </div>
-            <span className="text-[9.5px] font-mono font-bold text-[#146f82] dark:text-teal-300 bg-[#146f82]/10 dark:bg-[#146f82]/25 px-2 py-0.5 rounded-full border border-[#146f82]/25 dark:border-[#146f82]/40">
-              {t('dashboard:coverage.predictive')}
-            </span>
           </div>
 
           {/* 1. Prediction Headline (الرصيد الفعلي الحالي) */}
