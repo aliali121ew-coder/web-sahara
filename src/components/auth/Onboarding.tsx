@@ -24,16 +24,16 @@ const SLIDES: Slide[] = [
     to: '58% center',
   },
   {
-    img: '/onboarding/port.jpg',
+    img: '/onboarding/sama-karbala.jpg',
     n: 3,
-    from: '35% center',
-    to: '55% center',
+    from: '46% center',
+    to: '66% center',
   },
   {
-    img: '/onboarding/operations.jpg',
+    img: '/onboarding/farms.jpg',
     n: 4,
-    from: '40% center',
-    to: '60% center',
+    from: '30% center',
+    to: '75% center',
   },
 ];
 
