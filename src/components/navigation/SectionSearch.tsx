@@ -13,9 +13,9 @@ export const DASHBOARD_SECTIONS = [
   { id: 'dash-etihad-gas', key: 'etihadGas' },
   { id: 'dash-black-oil', key: 'blackOil' },
   { id: 'dash-petrol', key: 'petrol' },
-  { id: 'dash-tanks', key: 'tanks' },
   { id: 'dash-purchases', key: 'purchases' },
   { id: 'dash-prices', key: 'prices' },
+  { id: 'dash-tanks', key: 'tanks' },
 ] as const;
 
 const norm = (s: string) =>
