@@ -190,7 +190,7 @@ export const PetrolStationsSection: React.FC = () => {
       } />
 
       {/* 🌟 3 Main Columns Container */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
         
         {/* 🌟 Hero Card 1: Actual Balance & Metrics (Wider 5 cols matching Sahara) */}
         <div className="col-span-1 md:col-span-12 xl:col-span-5 rounded-[28px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-soft-card hover:shadow-soft-hover transition-all flex flex-col justify-between space-y-3 h-full overflow-hidden">
@@ -361,7 +361,7 @@ export const PetrolStationsSection: React.FC = () => {
         </div>
 
         {/* 🌟 Card 2: Coverage Prediction Card (Narrower 3 cols matching Sahara) */}
-        <div className="col-span-1 md:col-span-6 xl:col-span-3 rounded-[28px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-3.5 sm:p-4 shadow-soft-card hover:shadow-soft-hover transition-all flex flex-col justify-between space-y-2.5 h-full overflow-hidden">
+        <div className="col-span-1 md:col-span-12 xl:col-span-3 rounded-[28px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-3.5 sm:p-4 shadow-soft-card hover:shadow-soft-hover transition-all flex flex-col justify-between space-y-2.5 h-full overflow-hidden">
           
           {/* Header */}
           <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100 dark:border-slate-800">
@@ -369,9 +369,6 @@ export const PetrolStationsSection: React.FC = () => {
               <Calendar className="w-4 h-4 text-[#146f82] dark:text-teal-400 shrink-0" />
               <span className="truncate">{t('dashboard:coverage.smartTitle')}</span>
             </div>
-            <span className="text-[9.5px] font-mono font-bold text-[#146f82] dark:text-teal-300 bg-[#146f82]/10 dark:bg-[#146f82]/25 px-2 py-0.5 rounded-full border border-[#146f82]/25 dark:border-[#146f82]/40">
-              {t('dashboard:coverage.predictive')}
-            </span>
           </div>
 
           {/* 1. Prediction Headline (الرصيد الفعلي الحالي) */}
@@ -439,7 +436,7 @@ export const PetrolStationsSection: React.FC = () => {
         </div>
 
         {/* 🌟 Card 3: Futuristic World-Class Telemetry & Chart Card (4 cols on xl) */}
-        <div className="col-span-1 md:col-span-6 xl:col-span-4 rounded-[28px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-3.5 sm:p-4 shadow-soft-card hover:shadow-soft-hover transition-all flex flex-col justify-between gap-2.5 overflow-hidden relative group">
+        <div className="col-span-1 md:col-span-12 xl:col-span-4 rounded-[28px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-3.5 sm:p-4 shadow-soft-card hover:shadow-soft-hover transition-all flex flex-col justify-between gap-2.5 overflow-hidden relative group">
           
           {/* Ambient Cyber Background Glow */}
           <div className="absolute top-0 right-1/4 w-32 h-32 bg-teal-500/10 dark:bg-teal-500/15 rounded-full blur-3xl pointer-events-none transition-opacity" />

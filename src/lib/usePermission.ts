@@ -16,7 +16,9 @@ export function usePermissions() {
   const group = useCallback((groupId: string): Level => groupLevel(perms, isAdmin, groupId), [perms, isAdmin]);
   const canView = useCallback((section: string) => level(section) >= 1, [level]);
   const canEdit = useCallback((section: string) => level(section) >= 2, [level]);
-  return useMemo(() => ({ isAdmin, level, group, canView, canEdit }), [isAdmin, level, group, canView, canEdit]);
+  // «صفحة واحدة فقط»: لا تُطبَّق على مدير النظام
+  const singlePage = !isAdmin ? profile?.single_page || '' : '';
+  return useMemo(() => ({ isAdmin, level, group, canView, canEdit, singlePage }), [isAdmin, level, group, canView, canEdit, singlePage]);
 }
 
 /** درجة صلاحية قسم واحد */
@@ -45,6 +47,8 @@ export const TAB_SECTION: Record<string, { section?: string; group?: string }> =
 export const useCanOpenTab = () => {
   const p = usePermissions();
   return useCallback((tab: string) => {
+    // حساب مقيَّد بصفحة واحدة: لا يفتح غيرها (الباقي يتبع الصلاحيات كالمعتاد)
+    if (p.singlePage && tab !== p.singlePage) return false;
     const t = TAB_SECTION[tab];
     if (!t) return p.isAdmin;
     if (t.group === 'deliveries') return p.canView('deliveries-sahara') || p.canView('deliveries-etihad');

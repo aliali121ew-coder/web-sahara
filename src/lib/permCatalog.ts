@@ -52,6 +52,15 @@ export const PERM_GROUPS: SectionGroup[] = [
 ];
 
 export const ALL_SECTIONS = PERM_GROUPS.flatMap(g => g.sections.map(s => s.id));
+
+/**
+ * «صفحة واحدة فقط»: حساب لا يرى القائمة الجانبية ولا يتنقل بين الصفحات، ويفتح صفحته التي حدّدتها الإدارة فقط.
+ * واجهة فقط (الصلاحيات الفعلية وحماية البيانات على الخادم كما هي)، ولا تُطبَّق على مدير النظام.
+ */
+export const SINGLE_PAGE_TABS = ['dashboard', 'tanks', 'prices', 'suppliers', 'deliveries-sahara', 'deliveries-etihad', 'finance-etihad', 'finance-sahara', 'chat', 'settings'] as const;
+export type SinglePageTab = (typeof SINGLE_PAGE_TABS)[number];
+export const sanitizeSinglePage = (v: unknown): string =>
+  typeof v === 'string' && (SINGLE_PAGE_TABS as readonly string[]).includes(v) ? v : '';
 const SECTION_SET = new Set(ALL_SECTIONS);
 
 /** تنظيف صلاحيات قادمة من العميل: أقسام معروفة فقط ودرجات 0..2 */

@@ -17,7 +17,7 @@ import i18n from './i18n';
 /** عدد الصفحات التي تبقى محفوظة للرجوع الفوري إليها */
 const MAX_KEPT_PAGES = 4;
 import { NoAccess } from './components/auth/NoAccess';
-import { useCanOpenTab, TAB_SECTION } from './lib/usePermission';
+import { useCanOpenTab, usePermissions, TAB_SECTION } from './lib/usePermission';
 import type { NavTabId } from './types';
 
 // كل صفحة في ملف مستقل يُحمَّل عند أول زيارة، ويُجلب مسبقاً وقت الخمول بعد ظهور الصفحة الأولى
@@ -44,6 +44,8 @@ const AppContent: React.FC = () => {
   const { themeMode, bgGradient, gradientIntensity, shadeLevel } = useTheme();
   const { activeTab, setActiveTab } = useFuelData();
   const canOpenTab = useCanOpenTab();
+  // حساب مقيَّد بصفحة واحدة: بلا قائمة جانبية ولا تنقّل
+  const singlePage = usePermissions().singlePage;
   const firstAllowed = Object.keys(TAB_SECTION).find(canOpenTab) as NavTabId | undefined;
 
   // صفحة غير مسموحة (رابط قديم أو صفحة البداية الافتراضية): الانتقال لأول صفحة مسموحة
@@ -199,6 +201,7 @@ const AppContent: React.FC = () => {
     >
       
       {/* 🌟 Embedded In-Page Sidebar Navigation (Desktop embedded & sticky, Mobile drawer) */}
+      {!singlePage && (
       <div className="no-print shrink-0 md:w-[54px]">
         <Sidebar
           isOpen={sidebarOpen}
@@ -207,6 +210,7 @@ const AppContent: React.FC = () => {
           onToggleCollapse={toggleSidebarCollapsed}
         />
       </div>
+      )}
 
       {/* Main Workspace Container - Expansive Full Width beside sidebar */}
       <div className="flex-1 flex flex-col min-w-0 w-full transition-all duration-300 print:p-0 print:m-0">
@@ -216,7 +220,7 @@ const AppContent: React.FC = () => {
           <DemoBanner />
           <Header
             onOpenQuickAction={handleOpenQuickAction}
-            onToggleSidebar={() => {
+            onToggleSidebar={singlePage ? undefined : () => {
               if (window.innerWidth >= 768) {
                 toggleSidebarCollapsed();
               } else {

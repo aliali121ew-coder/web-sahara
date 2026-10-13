@@ -42,8 +42,7 @@
     "secured": "Covered",
     "dueDate": "Expected due date:",
     "runOutDate": "Expected run-out date:",
-    "smartTitle": "Smart coverage forecast",
-    "predictive": "Predictive"
+    "smartTitle": "Smart coverage forecast"
   },
   "price": {
     "change": "Change",
@@ -134,7 +133,7 @@
     "coverageFull": "Covers (overall)",
     "balanceColon": "Balance:",
     "analysis": "Inbound, consumption & flow analysis",
-    "neon": "Neon waves",
+    "neon": "Curve",
     "bars": "3D bars",
     "toggleInbound": "Click to show or hide inbound",
     "inboundLegend": "Inbound",

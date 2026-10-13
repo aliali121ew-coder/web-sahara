@@ -14,7 +14,7 @@ import { checkPublicKey, parseClientData, randomChallenge, verifyAssertion } fro
 import { ensureFileColumns, loadFile, removeFile, storeFile } from './storage/files';
 import { schemaGate } from './storage/schema';
 import type { D1Database, D1PreparedStatement, R2Bucket } from './types';
-import { levelOf, parsePerms, sanitizePerms, type Perms } from '../src/lib/permCatalog';
+import { levelOf, parsePerms, sanitizePerms, sanitizeSinglePage, type Perms } from '../src/lib/permCatalog';
 
 export type ChatDB = D1Database;
 
@@ -40,7 +40,7 @@ const str = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max
 const uid = () => crypto.randomUUID();
 
 // زِد الإصدار عند أي تعديل على التهيئة أدناه (راجع worker/storage/schema.ts)
-const CHAT_SCHEMA = '2';
+const CHAT_SCHEMA = '3';
 const ensureTables = (db: ChatDB) => schemaGate(db, 'chat', CHAT_SCHEMA, async () => {
   await db.exec("CREATE TABLE IF NOT EXISTS chat_users (id TEXT PRIMARY KEY, name TEXT NOT NULL, role TEXT NOT NULL DEFAULT '', bio TEXT NOT NULL DEFAULT '', avatar TEXT NOT NULL DEFAULT '', color TEXT NOT NULL DEFAULT '', last_seen INTEGER NOT NULL DEFAULT 0, typing_room TEXT NOT NULL DEFAULT '', typing_at INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL)");
   await db.exec("CREATE TABLE IF NOT EXISTS chat_rooms (id TEXT PRIMARY KEY, type TEXT NOT NULL, name TEXT NOT NULL DEFAULT '', description TEXT NOT NULL DEFAULT '', avatar TEXT NOT NULL DEFAULT '', created_by TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)");
@@ -68,6 +68,8 @@ const ensureTables = (db: ChatDB) => schemaGate(db, 'chat', CHAT_SCHEMA, async (
     'fail_at INTEGER NOT NULL DEFAULT 0',
     // انتهاء حساب التجربة (0 = دائم) — يُستخدم في النسخة التجريبية فقط (worker/demo.ts)
     'expires_at INTEGER NOT NULL DEFAULT 0',
+    // «صفحة واحدة فقط»: معرّف الصفحة الوحيدة التي يفتحها الحساب بلا قائمة جانبية (فارغ = كل الصفحات حسب الصلاحيات)
+    "single_page TEXT NOT NULL DEFAULT ''",
   ]) {
     try { await db.exec(`ALTER TABLE chat_users ADD COLUMN ${col}`); } catch { /* موجود */ }
   }
@@ -244,8 +246,8 @@ const passwordError = (p: string) => (p.length < MIN_PASSWORD ? `كلمة الم
 /** رمز خطأ كلمة المرور للواجهة */
 const passwordCode = (p: string) => (p.length < MIN_PASSWORD ? 'password_short' : 'password_long');
 
-type AccountRow = { id: string; username: string; name: string; role: string; avatar: string; color: string; is_admin: number; disabled: number; last_seen: number; updated_at: number; perms: string; expires_at: number };
-const ACCOUNT_COLS = 'id, username, name, role, avatar, color, is_admin, disabled, last_seen, updated_at, perms, expires_at';
+type AccountRow = { id: string; username: string; name: string; role: string; avatar: string; color: string; is_admin: number; disabled: number; last_seen: number; updated_at: number; perms: string; expires_at: number; single_page: string };
+const ACCOUNT_COLS = 'id, username, name, role, avatar, color, is_admin, disabled, last_seen, updated_at, perms, expires_at, single_page';
 /** حساب تجربة انتهت مدته */
 const isExpired = (expiresAt: number | undefined, now = Date.now()) => !!expiresAt && expiresAt <= now;
 const expiredResponse = () => json({ error: 'انتهت مدة حساب التجربة. راجع مدير النظام لتمديدها', code: 'account_expired' }, 403);
@@ -640,7 +642,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
 
     if (path === '/admin/users' && method === 'POST') {
       if ((await accountCount()) >= MAX_ACCOUNTS) return json({ error: `وصلت إلى الحد الأقصى (${MAX_ACCOUNTS} حساب)`, code: 'max_accounts', max: MAX_ACCOUNTS }, 403);
-      const b = await readBody<{ username?: string; password?: string; name?: string; role?: string; is_admin?: boolean; perms?: unknown; avatar?: unknown; expires_at?: number }>(request);
+      const b = await readBody<{ username?: string; password?: string; name?: string; role?: string; is_admin?: boolean; perms?: unknown; avatar?: unknown; expires_at?: number; single_page?: unknown }>(request);
       // النسخة التجريبية: كل حساب غير مدير له مدة (ساعة إلى شهر). النظام الفعلي: الحسابات دائمة
       const expiresAt = demo && !b?.is_admin ? Number(b?.expires_at) : 0;
       if (demo && !b?.is_admin && !validDemoExpiry(expiresAt, now)) return json({ error: 'حدد مدة الحساب التجريبي (من ساعة إلى شهر)', code: 'invalid_expiry' }, 400);
@@ -658,8 +660,8 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
       const id = uid();
       const color = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6'][Math.floor(Math.random() * 8)];
       await db.batch([
-        db.prepare('INSERT INTO chat_users (id, name, role, color, last_seen, updated_at, username, pass_hash, is_admin, perms, avatar, expires_at) VALUES (?1, ?2, ?3, ?4, 0, ?5, ?6, ?7, ?8, ?9, ?10, ?11)')
-          .bind(id, name, str(b?.role, 60).trim(), color, now, username, await hashPassword(password), b?.is_admin ? 1 : 0, JSON.stringify(sanitizePerms(b?.perms)), avatar, expiresAt),
+        db.prepare('INSERT INTO chat_users (id, name, role, color, last_seen, updated_at, username, pass_hash, is_admin, perms, avatar, expires_at, single_page) VALUES (?1, ?2, ?3, ?4, 0, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)')
+          .bind(id, name, str(b?.role, 60).trim(), color, now, username, await hashPassword(password), b?.is_admin ? 1 : 0, JSON.stringify(sanitizePerms(b?.perms)), avatar, expiresAt, sanitizeSinglePage(b?.single_page)),
         db.prepare("INSERT OR IGNORE INTO chat_members (room_id, user_id, role, last_read, joined_at) VALUES (?, ?, 'member', 0, ?)").bind(GENERAL_ROOM, id, now),
       ]);
       await audit(db, request, authId, 'admin.create', `@${username}${b?.is_admin ? ' (مدير النظام)' : ''}${expiresAt ? ` (تجربة حتى ${new Date(expiresAt).toISOString().slice(0, 16).replace('T', ' ')} UTC)` : ''}`);
@@ -707,7 +709,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     const m = path.match(/^\/admin\/users\/([^/]+)$/);
     if (m && method === 'PATCH') {
       const id = decodeURIComponent(m[1]);
-      const b = await readBody<{ name?: string; role?: string; password?: string; is_admin?: boolean; disabled?: boolean; perms?: unknown; avatar?: unknown; expires_at?: number }>(request);
+      const b = await readBody<{ name?: string; role?: string; password?: string; is_admin?: boolean; disabled?: boolean; perms?: unknown; avatar?: unknown; expires_at?: number; single_page?: unknown }>(request);
       if (!b) return json({ error: 'بيانات غير صالحة', code: 'invalid_data' }, 400);
       const { results } = await db.prepare("SELECT id FROM chat_users WHERE id = ? AND pass_hash != ''").bind(id).all();
       if (!results.length) return json({ error: 'الحساب غير موجود', code: 'account_not_found' }, 404);
@@ -725,6 +727,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
         stmts.push(db.prepare('UPDATE chat_users SET avatar = ?, updated_at = ? WHERE id = ?').bind(avatar, now, id));
       }
       if (b.perms !== undefined) stmts.push(db.prepare('UPDATE chat_users SET perms = ?, updated_at = ? WHERE id = ?').bind(JSON.stringify(sanitizePerms(b.perms)), now, id));
+      if (b.single_page !== undefined) stmts.push(db.prepare('UPDATE chat_users SET single_page = ?, updated_at = ? WHERE id = ?').bind(sanitizeSinglePage(b.single_page), now, id));
       if (b.is_admin !== undefined) stmts.push(db.prepare('UPDATE chat_users SET is_admin = ? WHERE id = ?').bind(b.is_admin ? 1 : 0, id));
       // تمديد أو تقصير مدة حساب التجربة (النسخة التجريبية فقط)؛ التمديد يعيد تفعيل الحساب الموقوف بانتهاء مدته
       if (b.expires_at !== undefined && demo) {
@@ -748,7 +751,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
         await db.batch(stmts);
         const { results: target } = await db.prepare('SELECT username FROM chat_users WHERE id = ?').bind(id).all<{ username: string }>();
         const changes = [
-          b.name !== undefined && 'الاسم', b.role !== undefined && 'الوظيفة', b.avatar !== undefined && 'الصورة', b.perms !== undefined && 'الصلاحيات',
+          b.name !== undefined && 'الاسم', b.role !== undefined && 'الوظيفة', b.avatar !== undefined && 'الصورة', b.perms !== undefined && 'الصلاحيات', b.single_page !== undefined && 'صفحة واحدة فقط',
           b.is_admin !== undefined && (b.is_admin ? 'منح الإدارة' : 'سحب الإدارة'), b.password !== undefined && 'إعادة تعيين كلمة المرور',
           b.disabled !== undefined && (b.disabled ? 'إيقاف الحساب' : 'تفعيل الحساب'),
           b.expires_at !== undefined && demo && 'مدة التجربة',

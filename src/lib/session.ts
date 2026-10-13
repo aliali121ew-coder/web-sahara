@@ -43,6 +43,8 @@ export interface SessionProfile {
   perms?: Perms;
   /** انتهاء حساب التجربة (0 = دائم) — النسخة التجريبية فقط */
   expires_at?: number;
+  /** «صفحة واحدة فقط»: الصفحة الوحيدة التي يفتحها الحساب بلا قائمة جانبية (فارغ = كل الصفحات) */
+  single_page?: string;
 }
 
 /**

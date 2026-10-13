@@ -23,14 +23,14 @@ export const MainDashboard: React.FC = () => {
       {/* Section 4: منظومة بنزين المحطات (الأرصدة + الوارد والصادر) */}
       <div id="dash-petrol" className="scroll-mt-20 rounded-[28px]"><PetrolStationsSection /></div>
 
-      {/* Section 5: تفاصيل خزانات الشركة (مستطيلات بيانية + أسطوانات ثلاثية الأبعاد) */}
-      <div id="dash-tanks" className="scroll-mt-20 rounded-[28px]"><CompanyTanksSection /></div>
-
-      {/* Section 6: قسم مشتريات الوقود والمشتقات (5 بطاقات) */}
+      {/* Section 5: قسم مشتريات الوقود والمشتقات (5 بطاقات) */}
       <div id="dash-purchases" className="scroll-mt-20 rounded-[28px]"><FuelMetricsGrid /></div>
 
-      {/* Section 7: مؤشرات أسعار الشركات والموردين */}
+      {/* Section 6: مؤشرات أسعار الشركات والموردين */}
       <div id="dash-prices" className="scroll-mt-20 rounded-[28px]"><PriceIndexTable /></div>
+
+      {/* Section 7: تفاصيل خزانات الشركة (مستطيلات بيانية + أسطوانات ثلاثية الأبعاد) — في أسفل الصفحة */}
+      <div id="dash-tanks" className="scroll-mt-20 rounded-[28px]"><CompanyTanksSection /></div>
     </div>
   );
 };

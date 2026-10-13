@@ -5,6 +5,7 @@ import { chatApi } from '../chat/chatApi';
 import { errorText } from '../../i18n/errors';
 import { PERM_GROUPS, ALL_SECTIONS, type Perms } from '../../lib/permCatalog';
 import { PermissionsEditor } from './PermissionsEditor';
+import { SinglePagePicker } from './SinglePagePicker';
 import { DEMO_DURATIONS, DEFAULT_DEMO_DURATION, demoDurationMs, useDemoMode, type DemoDurationKey } from '../../lib/demo';
 import { AvatarPicker, CopyButton, scoreLabel, SCORE_TONE, UserAvatar, btnCls, cardCls, genPassword, inputCls, passwordScore } from './adminUi';
 
@@ -56,6 +57,7 @@ export const CreateAccountWizard: React.FC<{
   const [showPw, setShowPw] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [perms, setPerms] = useState<Perms>({});
+  const [singlePage, setSinglePage] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [touched, setTouched] = useState(false);
@@ -98,6 +100,7 @@ export const CreateAccountWizard: React.FC<{
     try {
       await chatApi.adminCreate({
         username, password, name: name.trim(), role: role.trim(), is_admin: isAdmin, perms,
+        ...(!isAdmin && singlePage ? { single_page: singlePage } : {}),
         ...(avatar ? { avatar } : {}),
         // المدة تُحسب من لحظة الإنشاء
         ...(timed ? { expires_at: Date.now() + demoDurationMs(duration) } : {})
@@ -228,6 +231,7 @@ export const CreateAccountWizard: React.FC<{
             <div key="s2" className="swipe-in-next space-y-4">
               <StepTitle title={t('wizard.permsTitle')} desc={isAdmin ? t('wizard.permsAdmin') : t('wizard.permsText')} />
               <PermissionsEditor value={perms} onChange={setPerms} disabled={isAdmin} />
+              <SinglePagePicker value={isAdmin ? '' : singlePage} onChange={setSinglePage} disabled={isAdmin} />
             </div>
           )}
 
