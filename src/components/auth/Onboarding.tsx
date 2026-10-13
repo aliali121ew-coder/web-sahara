@@ -30,10 +30,10 @@ const SLIDES: Slide[] = [
     to: '66% center',
   },
   {
-    img: '/onboarding/operations.jpg',
+    img: '/onboarding/farms.jpg',
     n: 4,
-    from: '40% center',
-    to: '60% center',
+    from: '30% center',
+    to: '75% center',
   },
 ];
 
