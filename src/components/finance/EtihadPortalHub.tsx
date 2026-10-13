@@ -91,7 +91,7 @@ export const EtihadPortalHub: React.FC<EtihadPortalHubProps> = ({
       iconBoxBg: 'bg-gradient-to-br from-amber-500 to-orange-600',
       iconShadow: 'shadow-amber-500/25',
       cardHoverGlow: 'hover:shadow-amber-500/10',
-      locked: true // قيد البرمجة
+      locked: !isSahara // الاتحاد: قيد البرمجة، الصحاري: مفعّلة
     },
     {
       id: 'reports' as const,
@@ -128,7 +128,7 @@ export const EtihadPortalHub: React.FC<EtihadPortalHubProps> = ({
     }
   ];
   // الصحاري: رصيد الشركة والوارد والخزانات والنفط الأسود والتقارير مفعّلة (بيانات منفصلة عن الاتحاد)، وباقي البطاقات مقفلة حتى تُبرمج صفحاتها
-  const SAHARA_ACTIVE: string[] = ['inbound', 'balance', 'tanks', 'black-oil', 'reports', 'petrol'];
+  const SAHARA_ACTIVE: string[] = ['inbound', 'balance', 'tanks', 'black-oil', 'reserves', 'reports', 'petrol'];
   // ترتيب الصحاري: البنزين تحت رصيد الكاز مباشرة (أول الصف الثاني)، والنسخ الاحتياطي في الآخر
   const orderedModules = isSahara
     ? [...baseModules.slice(0, 4), saharaExtraModules[0], ...baseModules.slice(4), saharaExtraModules[1]]

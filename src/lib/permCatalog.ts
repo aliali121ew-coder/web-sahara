@@ -104,6 +104,8 @@ const KEY_RULES: Rule[] = [
   { match: pre('sahara_company_balance_'), read: ['sahara.balance', 'sahara.reports', 'dashboard'], write: ['sahara.balance'] },
   { match: eq('sahara_gas_avg_price_v1'), read: ['sahara.balance', 'dashboard'], write: ['sahara.balance'] },
   { match: pre('sahara_petrol_'), read: ['sahara.petrol', 'sahara.reports', 'tanks', 'dashboard'], write: ['sahara.petrol'] },
+  // مزارع الموقع (الصحاري): بيانات معزولة عن بقية الصفحات
+  { match: eq('sahara_site_farms_v1'), read: ['sahara.reserves', 'sahara.reports'], write: ['sahara.reserves'] },
   { match: pre('sahara_black_oil_'), read: ['sahara.black-oil', 'sahara.reports'], write: ['sahara.black-oil'] },
   { match: pre('etihad_black_oil_'), read: ['etihad.black-oil', 'etihad.reports'], write: ['etihad.black-oil'] },
   { match: eq('sahara_etihad_balance_records_v2', 'sahara_etihad_print_columns'), read: ['etihad.balance', 'etihad.reports', 'etihad.archive', 'dashboard'], write: ['etihad.balance'] },
@@ -154,6 +156,7 @@ export const COLLECTION_KEYS = [
   'sahara_petrol_ledger_v1', 'sahara_petrol_published_v1',
   'sahara_black_oil_daily_ledger_v1', 'etihad_black_oil_daily_ledger_v1',
   'sahara_etihad_balance_records_v2',
+  'sahara_site_farms_v1',
   // التشغيل
   'sahara_tanks', 'sahara_fuel_metrics', 'sahara_supplier_prices', 'sahara_price_log_v1',
   'sahara_tasks', 'sahara_supply_requests', 'sahara_messages',
