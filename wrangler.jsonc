@@ -10,8 +10,9 @@
     { "pattern": "etihad-fuel.com", "custom_domain": true },
     { "pattern": "www.etihad-fuel.com", "custom_domain": true }
   ],
-  // رابط workers.dev القديم يبقى فترة انتقالية (حتى ينتقل المستخدمون وتُرسل تعديلاتهم المعلّقة)، ثم يصبح false
-  "workers_dev": true,
+  // رابط workers.dev القديم مغلق: الحماية (تحديد المعدّل وحظر الروبوتات) على مستوى النطاق فقط،
+  // فبقاؤه مفتوحًا يتجاوزها. الدخول من etihad-fuel.com وحده
+  "workers_dev": false,
   "observability": {
     "enabled": true
   },
@@ -48,6 +49,8 @@
   "env": {
     "staging": {
       "name": "etihad-company-staging",
+      // يبقى رابط workers.dev لنسخة التجربة (كان يرثه قبل إغلاقه في الإنتاج)
+      "workers_dev": true,
       // routes تُورَث من الإعداد الأعلى: بدون هذا السطر يحاول النشر ربط النطاق الحقيقي بنسخة التجربة
       "routes": [],
       "d1_databases": [
