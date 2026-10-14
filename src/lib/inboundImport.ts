@@ -173,6 +173,23 @@ const joinPdfItems = (items: PdfTextItem[]): string => {
   return out.replace(/\s*\(\s*/g, ' ( ').replace(/\s*\)\s*/g, ' ) ').replace(/\s+/g, ' ').trim();
 };
 
+/**
+ * إصلاح نص PDF بخريطة خط تالفة: بعض تصديرات كشف الوارد (ERP) تكتب أشكال الحروف المركّبة برموز لا تخص العربية
+ * (مقاطع كندية/منغولية U+1400–U+18FF) بدل حروفها: "عᘘدﷲ" = عبدالله، "عᣢ" = علي، "الᝣمᘭة" = الكمية.
+ * القيم مستخرجة من نفس الخط في "ارشيف وارد الاتحاد.pdf"؛ وما لا يُعرف يبقى كما هو ويكشفه hasBrokenGlyphs.
+ */
+const GLYPH_FIX: [RegExp, string][] = [
+  [/ᗫᖁ/g, 'ري'], // شكل "ري" يُكتب مقلوبًا (ي ثم ر)
+  [/ᗫ/g, 'ي'], [/ᖁ/g, 'ر'], [/[ᘭᘌ]/g, 'ي'],
+  [/ᣢ/g, 'لي'], [/ᣌ/g, 'ين'], [/ᣃ/g, 'سر'], [/ᣄ/g, 'شر'],
+  [/[ᘘᗖ]/g, 'ب'], [/[ᝣᜓ᛿]/g, 'ك'],
+  // نقاط الحروف تأتي قطعًا منفصلة بعرض صفر: تُحذف
+  [/[ᡧᡫᢔᢕᢝ]/g, '']
+];
+const repairGlyphs = (s: string) => GLYPH_FIX.reduce((t, [re, to]) => t.replace(re, to), s).replace(/ﷲ/g, 'الله');
+/** بقي في النص رمز من خريطة الخط التالفة لم يُصلح (اسم قد يكون ناقصًا) */
+export const hasBrokenGlyphs = (s: string) => /[᐀-᣿]/.test(s);
+
 /** البعد بين قطعة وعمود: صفر إن تداخلا، وإلا المسافة بين الحافتين */
 const gap = (a: { left: number; right: number }, b: { left: number; right: number }) =>
   Math.max(0, a.left - b.right, b.left - a.right);
@@ -183,10 +200,13 @@ const gap = (a: { left: number; right: number }, b: { left: number; right: numbe
  * الكمية في الكشف تقع بين منتصفي عنوانَي "الفوجر" و"الكمية" فكانت تُلصق برقم الفوجر.
  */
 export const parsePdfTable = (pages: PdfTextItem[][]): InboundImportRow[] => {
-  type Col = { field: Field; left: number; right: number };
+  // عمود بعنوان غير معروف ("التعامل" وقيمه "معرف") يبقى عمودًا مُهمَلًا (field: null) حتى لا تُنسب قيمه لعمود مجاور
+  type Col = { field: Field | null; left: number; right: number };
   let columns: Col[] | null = null;
   const dataLines: PdfTextItem[][] = [];
-  for (const items of pages) {
+  const linePage: number[] = [];
+  for (const [pageNo, rawItems] of pages.entries()) {
+    const items = rawItems.map(it => ({ ...it, str: repairGlyphs(it.str) }));
     // تجميع الأسطر (فرق عمودي ≤ 3 نقاط)
     const lines: PdfTextItem[][] = [];
     for (const it of [...items].sort((a, b) => b.y - a.y)) {
@@ -202,15 +222,16 @@ export const parsePdfTable = (pages: PdfTextItem[][]): InboundImportRow[] => {
         const lastLeft = last ? Math.min(...last.map(i => i.left)) : 0;
         if (last && lastLeft - it.right < 1.5) last.push(it); else phrases.push([it]);
       }
-      const headers = phrases
-        .map(ph => ({ field: matchHeader(joinPdfItems(ph)), left: Math.min(...ph.map(i => i.left)), right: Math.max(...ph.map(i => i.right)) }))
-        .filter((h): h is Col => !!h.field);
-      if (new Set(headers.map(h => h.field)).size >= 4) {
+      const headers: Col[] = phrases
+        .map(ph => ({ text: joinPdfItems(ph), left: Math.min(...ph.map(i => i.left)), right: Math.max(...ph.map(i => i.right)) }))
+        .filter(h => h.right - h.left > 1 && norm(h.text).replace(/\s/g, '').length >= 2)
+        .map(h => ({ field: matchHeader(h.text), left: h.left, right: h.right }));
+      if (new Set(headers.map(h => h.field).filter(Boolean)).size >= 4) {
         // أول ظهور لكل حقل (سطر العناوين يتكرر أعلى كل صفحة)
-        if (!columns) columns = headers.filter((h, i) => headers.findIndex(x => x.field === h.field) === i);
+        if (!columns) columns = headers.filter((h, i) => !h.field || headers.findIndex(x => x.field === h.field) === i);
         continue;
       }
-      if (columns) dataLines.push(line);
+      if (columns) { dataLines.push(line); linePage.push(pageNo); }
     }
   }
   if (!columns) throw new Error(i18n.t('common:fileImport.noHeaderRowPdf'));
@@ -225,26 +246,39 @@ export const parsePdfTable = (pages: PdfTextItem[][]): InboundImportRow[] => {
 
   // الجولة الأولى: حسب عرض العناوين. ثم يُحسب لكل عمود موضع بياناته الفعلي (الوسيط) — الأرقام القصيرة
   // المحاذاة لليمين (مثل كمية 498) أقرب لعنوان الفوجر منها لعنوان الكمية، لكنها داخل موضع أرقام الكمية
-  const seen = new Map<Field, { lefts: number[]; rights: number[] }>();
+  const seen = new Map<Col, { lefts: number[]; rights: number[] }>();
   for (const line of dataLines) for (const it of line) {
     if (!it.str.trim()) continue;
-    const f = nearest(it, cols).field;
-    const e = seen.get(f) || { lefts: [], rights: [] };
+    const c = nearest(it, cols);
+    const e = seen.get(c) || { lefts: [], rights: [] };
     e.lefts.push(it.left); e.rights.push(it.right);
-    seen.set(f, e);
+    seen.set(c, e);
   }
   const median = (a: number[]) => { const b = [...a].sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; };
   const dataCols: Col[] = cols.map(c => {
-    const e = seen.get(c.field);
+    const e = seen.get(c);
     return e && e.lefts.length >= 3 ? { field: c.field, left: median(e.lefts), right: median(e.rights) } : c;
   });
 
+  // خانة مزاحة عموديًا عن صفها (تاريخ الاستلام في كشف الاتحاد أخفض من باقي الصف بنحو 5.6 نقطة فيصير سطرًا وحده):
+  // سطر قريب (≤ 8 نقاط، والصفوف تتباعد ~16) أعمدته لا تتقاطع مع أعمدة السطر الذي فوقه يُضم إليه
+  const fieldsOf = (line: PdfTextItem[]) => new Set(line.filter(it => it.str.trim()).map(it => nearest(it, dataCols)));
+  const merged: PdfTextItem[][] = [];
+  dataLines.forEach((line, i) => {
+    const prev = merged[merged.length - 1];
+    if (prev && linePage[i] === linePage[i - 1] && Math.abs(prev[0].y - line[0].y) <= 8) {
+      const a = fieldsOf(prev);
+      if (![...fieldsOf(line)].some(f => a.has(f))) { prev.push(...line); return; }
+    }
+    merged.push([...line]);
+  });
+
   const rows: InboundImportRow[] = [];
-  for (const line of dataLines) {
+  for (const line of merged) {
     const byField = new Map<Field, PdfTextItem[]>();
     for (const it of line) {
       const f = nearest(it, dataCols).field;
-      byField.set(f, [...(byField.get(f) || []), it]);
+      if (f) byField.set(f, [...(byField.get(f) || []), it]);
     }
     const cells: Partial<Record<Field, string>> = {};
     byField.forEach((its, f) => { cells[f] = joinPdfItems(its); });
