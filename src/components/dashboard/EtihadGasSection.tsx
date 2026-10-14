@@ -246,7 +246,7 @@ export const EtihadGasSection: React.FC = () => {
                   : 'bg-slate-50 border-slate-200 text-slate-500 dark:bg-slate-800 dark:border-slate-700';
                 return (
                   <div
-                    className={`px-3 py-1.5 border-t flex items-center justify-center gap-1.5 ${tone}`}
+                    className={`px-2 py-1.5 border-t flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 text-center ${tone}`}
                     title={`${t('dashboard:price.lastInboundAvg')}: ${priceChange.lastPrice.toFixed(1)} ${t('common:units.iqd')} · ${priceChange.lastDay}`}
                   >
                     {down && <TrendingDown className="w-3.5 h-3.5 shrink-0" />}
@@ -254,7 +254,7 @@ export const EtihadGasSection: React.FC = () => {
                     <span dir="ltr" className="text-[11px] font-black font-mono tabular-nums leading-none">
                       {up ? '+' : down ? '−' : ''}{Math.abs(priceChange.pct).toFixed(2)}%
                     </span>
-                    <span className="text-[9px] font-bold opacity-70 whitespace-nowrap">{t('dashboard:price.change')}</span>
+                    <span className="text-[9px] font-bold opacity-70 leading-tight">{t('dashboard:price.change')}</span>
                   </div>
                 );
               })() : (
@@ -605,9 +605,9 @@ export const EtihadGasSection: React.FC = () => {
           <div className="sm:col-span-2 p-4 sm:p-5 rounded-[26px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-soft-card hover:shadow-soft-hover transition-all flex flex-col justify-between space-y-3 overflow-hidden">
             
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 font-bold text-xs min-w-0">
+              <div className="flex items-start gap-1.5 text-slate-700 dark:text-slate-200 font-bold text-xs min-w-0">
                 <Calendar className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
-                <span className="truncate">{t('dashboard:etihad.coverageTitle')}</span>
+                <span className="leading-snug">{t('dashboard:etihad.coverageTitle')}</span>
               </div>
               <span className="px-2.5 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 text-[10px] font-bold border border-teal-200 dark:border-teal-800/60 shadow-2xs shrink-0">
                 {t('dashboard:etihad.surplus')}

@@ -165,6 +165,14 @@ export const SHADOW_PREFIX = 'sahara_shadow:';
 
 const ruleFor = (k: string) => KEY_RULES.find(r => r.match(k));
 
+/**
+ * بصمة قواعد القراءة والكتابة: تدخل في ETag حالة الخادم، فإذا تغيّرت القواعد (مثل إضافة "dashboard" لقراءة مفتاح)
+ * تستلم الأجهزة المفتوحة النسخة الجديدة فورًا بدل رد 304 حتى يتغيّر شيء في البيانات
+ */
+export const KEY_RULES_SIGNATURE = KEY_RULES
+  .map(r => [r.read, r.write ?? [], r.create ?? [], r.markRead ? 1 : 0].map(x => (Array.isArray(x) ? x.join(',') : x)).join('/'))
+  .join(';');
+
 const anyAtLeast = (perms: Perms, isAdmin: boolean, sections: string[], min: Level) =>
   sections.some(s => s === COMMON || levelOf(perms, isAdmin, s) >= min);
 
