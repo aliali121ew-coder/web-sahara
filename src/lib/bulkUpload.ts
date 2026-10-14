@@ -89,7 +89,9 @@ export const inspectFile = async (file: File, canEdit: (perm: string) => boolean
     const { kind, problem } = detectKind(lines.map(l => l.join(' ')).join('\n'));
     const date = findReportDate(lines);
     if (!kind) return { ...base, kind: null, date, problem };
-    if (!canEdit(BULK_KINDS[kind].perm)) return { ...base, kind, date, problem: 'no-permission' };
+    // تقرير النفط الأسود يخص الشركتين: تكفي صلاحية إحداهما (يُحفظ لكل شركة حسب صلاحيتها)
+    const allowed = kind === 'black-oil' ? canEdit('sahara.black-oil') || canEdit('etihad.black-oil') : canEdit(BULK_KINDS[kind].perm);
+    if (!allowed) return { ...base, kind, date, problem: 'no-permission' };
     return { ...base, kind, date };
   } catch {
     return { ...base, kind: null, date: null, problem: 'unreadable' };
