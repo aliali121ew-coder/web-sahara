@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
 import { hasBrokenGlyphs, parseInboundFile, type InboundImportRow } from '../../lib/inboundImport';
+import { fixInboundNamesWithAi } from '../../lib/inboundAi';
 import {
   X,
   Truck,
@@ -156,9 +157,12 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
   const [importState, setImportState] = useState<
     | { status: 'idle' }
     | { status: 'reading'; fileName: string }
-    | { status: 'ready'; fileName: string; rows: InboundImportRow[] }
+    | { status: 'ready'; fileName: string; rows: InboundImportRow[]; file: File }
     | { status: 'error'; message: string }
   >({ status: 'idle' });
+  // القراءة الذكية لأسماء ملف PDF (تبدأ تلقائيًا عند رموز تالفة، أو من زرها)
+  const [aiState, setAiState] = useState<{ status: 'idle' | 'running' | 'done' | 'error'; changed?: number; message?: string }>({ status: 'idle' });
+  const aiRun = React.useRef<File | null>(null);
   const [deliveryDriver, setDeliveryDriver] = useState('');
 
   // رقم العجلة: خانة واحدة
@@ -215,6 +219,8 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
       setDeliverySupplierName('');
       setEntryMode('manual');
       setImportState({ status: 'idle' });
+      setAiState({ status: 'idle' });
+      aiRun.current = null;
       setImportFrom(todaySlash());
       setImportTo(todaySlash());
       setDeliveryDriver('');
@@ -482,9 +488,29 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
         setImportFrom(dates[0]);
         setImportTo(dates[dates.length - 1]);
       }
-      setImportState({ status: 'ready', fileName: file.name, rows });
+      setImportState({ status: 'ready', fileName: file.name, rows, file });
+      setAiState({ status: 'idle' });
+      aiRun.current = null;
+      if (file.name.toLowerCase().endsWith('.pdf') && rows.some(r => hasBrokenGlyphs(`${r.supplierName} ${r.supplierCompany} ${r.driverName} ${r.truckNumber}`))) {
+        void runAiNames(file, rows);
+      }
     } catch (err) {
       setImportState({ status: 'error', message: err instanceof Error ? err.message : t('deliveries:quick.readFailed') });
+    }
+  };
+
+  const runAiNames = async (file: File, rows: InboundImportRow[]) => {
+    aiRun.current = file;
+    setAiState({ status: 'running' });
+    try {
+      const res = await fixInboundNamesWithAi(file, rows);
+      // تغيّر الملف أو أُغلقت النافذة أثناء القراءة: تُهمل النتيجة
+      if (aiRun.current !== file) return;
+      setImportState(s => (s.status === 'ready' && s.file === file ? { ...s, rows: res.rows } : s));
+      setAiState({ status: 'done', changed: res.changed });
+    } catch (err) {
+      if (aiRun.current !== file) return;
+      setAiState({ status: 'error', message: err instanceof Error ? err.message : t('deliveries:quick.readFailed') });
     }
   };
 
@@ -524,6 +550,8 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
       }, receivingCompany);
     });
     setImportState({ status: 'idle' });
+    setAiState({ status: 'idle' });
+    aiRun.current = null;
     setSubmitted(true);
   };
 
@@ -710,9 +738,24 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                           )}
                           <span className="ms-auto font-bold text-slate-500">{t('deliveries:quick.totalQty')}: <span className="font-sans font-black text-slate-900 dark:text-white">{formatNumber(newImportRows.reduce((a, r) => a + r.receivedQuantity, 0))}</span> {t('common:units.liter')}</span>
                         </div>
-                        {/* خط PDF تالف: أسماء بحروف لم تُعرف */}
-                        {importRows.some(r => hasBrokenGlyphs(`${r.supplierName} ${r.supplierCompany} ${r.driverName} ${r.truckNumber}`)) && (
-                          <div className="px-4 py-2 border-b border-amber-100 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/40 text-xs font-bold text-amber-800 dark:text-amber-200">{t('deliveries:quick.brokenNames')}</div>
+                        {/* القراءة الذكية لأسماء PDF: حالتها وزرها، وتنبيه الأسماء التالفة إن بقيت */}
+                        {importState.fileName.toLowerCase().endsWith('.pdf') && (
+                          <div className={`px-4 py-2 border-b flex flex-wrap items-center gap-2 text-xs font-bold ${
+                            aiState.status === 'error' ? 'border-rose-100 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-200'
+                              : aiState.status === 'done' ? 'border-emerald-100 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200'
+                                : importRows.some(r => hasBrokenGlyphs(`${r.supplierName} ${r.supplierCompany} ${r.driverName} ${r.truckNumber}`)) ? 'border-amber-100 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200'
+                                  : 'border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 text-slate-600 dark:text-slate-300'}`}>
+                            {aiState.status === 'running' && <><Loader2 className="w-4 h-4 animate-spin shrink-0" /><span>{t('deliveries:quick.aiRunning')}</span></>}
+                            {aiState.status === 'done' && <><CheckCircle2 className="w-4 h-4 shrink-0" /><span>{aiState.changed ? t('deliveries:quick.aiDone', { n: aiState.changed }) : t('deliveries:quick.aiNoChange')}</span></>}
+                            {aiState.status === 'error' && <><AlertTriangle className="w-4 h-4 shrink-0" /><span>{enumText(aiState.message || '')}</span></>}
+                            {aiState.status === 'idle' && <span>{importRows.some(r => hasBrokenGlyphs(`${r.supplierName} ${r.supplierCompany} ${r.driverName} ${r.truckNumber}`)) ? t('deliveries:quick.brokenNames') : t('deliveries:quick.aiHint')}</span>}
+                            {(aiState.status === 'idle' || aiState.status === 'error') && (
+                              <button type="button" onClick={() => void runAiNames(importState.file, importState.rows)}
+                                className="ms-auto px-3 py-1 rounded-lg bg-gradient-to-r from-violet-600 to-blue-600 text-white flex items-center gap-1.5 cursor-pointer hover:opacity-90 active:scale-95 transition">
+                                <Sparkles className="w-3.5 h-3.5" />{t(aiState.status === 'error' ? 'deliveries:quick.aiRetry' : 'deliveries:quick.aiButton')}
+                              </button>
+                            )}
+                          </div>
                         )}
                         {/* معاينة الصفوف */}
                         <div className="max-h-[46vh] overflow-auto">
@@ -738,7 +781,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                                     <td className="px-3 py-2 font-sans font-bold">{r.voucherNumber || '—'}</td>
                                     <td className="px-3 py-2 font-sans font-black">{formatNumber(r.receivedQuantity)}</td>
                                     <td className="px-3 py-2 font-sans">{r.productDensity || '—'}</td>
-                                    <td className="px-3 py-2">{r.productColor || '—'}</td>
+                                    <td className="px-3 py-2">{canonicalColor(r.productColor) || '—'}</td>
                                     <td className="px-3 py-2 font-sans">{formatIQD(r.productPrice)}</td>
                                     <td className="px-3 py-2 font-sans font-bold">{formatIQD(r.productCost)}</td>
                                     <td className="px-3 py-2 font-sans">{rowDate(r)}</td>
