@@ -244,7 +244,7 @@ export const SaharaGasSection: React.FC = () => {
                   : 'bg-slate-50 border-slate-200 text-slate-500 dark:bg-slate-800 dark:border-slate-700';
                 return (
                   <div
-                    className={`px-3 py-1.5 border-t flex items-center justify-center gap-1.5 ${tone}`}
+                    className={`px-2 py-1.5 border-t flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 text-center ${tone}`}
                     title={`${t('dashboard:price.lastInboundAvg')}: ${priceChange.lastPrice.toFixed(1)} ${t('common:units.iqd')} · ${priceChange.lastDay}`}
                   >
                     {down && <TrendingDown className="w-3.5 h-3.5 shrink-0" />}
@@ -252,7 +252,7 @@ export const SaharaGasSection: React.FC = () => {
                     <span dir="ltr" className="text-[11px] font-black font-mono tabular-nums leading-none">
                       {up ? '+' : down ? '−' : ''}{Math.abs(priceChange.pct).toFixed(2)}%
                     </span>
-                    <span className="text-[9px] font-bold opacity-70 whitespace-nowrap">{t('dashboard:price.change')}</span>
+                    <span className="text-[9px] font-bold opacity-70 leading-tight">{t('dashboard:price.change')}</span>
                   </div>
                 );
               })() : (
