@@ -41,6 +41,16 @@ describe('inbound PDF table', () => {
   });
 });
 
+describe('lam-alef written reversed in the PDF text', () => {
+  it('fixes only the unambiguous cases', () => {
+    const rows = parsePdfTable([[
+      ...header(745),
+      ...row(738, { driver: [it_('عبد هللا عماد جميل', 437.9, 452.9, 738)], voucher: '1637490', qty: ['36,263', 389.0], cost: '18,131,500' })
+    ]]);
+    expect(rows[0].driverName).toBe('عبد الله عماد جميل');
+  });
+});
+
 // "ارشيف وارد الاتحاد.pdf" (2026/10): خط بخريطة تالفة (حروف مركّبة برموز U+1400–U+18FF) والتاريخ أخفض من صفه بـ 5.6 نقطة
 describe('inbound PDF with a broken font map (Etihad archive)', () => {
   const head: PdfTextItem[] = [

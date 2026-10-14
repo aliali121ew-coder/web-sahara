@@ -187,6 +187,12 @@ const GLYPH_FIX: [RegExp, string][] = [
   [/[ᡧᡫᢔᢕᢝ]/g, '']
 ];
 const repairGlyphs = (s: string) => GLYPH_FIX.reduce((t, [re, to]) => t.replace(re, to), s).replace(/ﷲ/g, 'الله');
+/**
+ * حرفا "لا" المتصلان يخرجان من بعض ملفات PDF مقلوبين "ال": "عبد هللا"، "االستالم". يُصلح هنا ما لا لبس فيه فقط
+ * ("ال" في وسط الكلمة قد تكون صحيحة كما في "خالد"، فتُترك للقراءة الذكية)
+ */
+const fixLamAlef = (s: string) => s.replace(/هللا/g, 'الله').replace(/(^|[\s(/])اال/g, '$1الا');
+
 /** بقي في النص رمز من خريطة الخط التالفة لم يُصلح (اسم قد يكون ناقصًا) */
 export const hasBrokenGlyphs = (s: string) => /[᐀-᣿]/.test(s);
 
@@ -281,7 +287,7 @@ export const parsePdfTable = (pages: PdfTextItem[][]): InboundImportRow[] => {
       if (f) byField.set(f, [...(byField.get(f) || []), it]);
     }
     const cells: Partial<Record<Field, string>> = {};
-    byField.forEach((its, f) => { cells[f] = joinPdfItems(its); });
+    byField.forEach((its, f) => { cells[f] = fixLamAlef(joinPdfItems(its)); });
     const row = buildRow(cells);
     if (row) rows.push(row);
   }
