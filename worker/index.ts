@@ -6,6 +6,7 @@
 
 import { handleWeather } from './weather';
 import { extractSaharaReport } from './extractSaharaReport';
+import { readInboundNames, type InboundNameRow } from './inboundNames';
 import { audit, handleChat, verifySession, type Session } from './chat';
 import { canCreateItems, canMarkRead, canReadKey, canWriteKey, canWriteSome, isServerForbiddenKey, keySectionLabel, levelOf } from '../src/lib/permCatalog';
 
@@ -74,6 +75,8 @@ const stateEtag = (version: string, session: Session) =>
   `"${cheapHash([version, session.id, session.admin ? 1 : 0, JSON.stringify(session.perms)].join('|'))}"`;
 const MAX_STATE_BODY = 8 * 1024 * 1024;
 const MAX_IMAGE_BODY = 6 * 1024 * 1024;
+/** ملف PDF للقراءة الذكية (base64 يزيد الحجم ~33%) */
+const MAX_PDF_BODY = 14 * 1024 * 1024;
 const forbidden = (error = 'لا تملك صلاحية لهذا القسم') => json({ error, code: 'forbidden' }, 403);
 /** طول جسم الطلب المعلن (للرفض المبكر للطلبات الضخمة) */
 const tooLarge = (request: Request, max: number) => Number(request.headers.get('content-length') || 0) > max;
@@ -407,6 +410,32 @@ export default {
       } catch (e) {
         console.error('extract-sahara-report failed', e);
         return json({ error: e instanceof Error && /[؀-ۿ]/.test(e.message) ? e.message : 'تعذّر تحليل الصورة، حاول مرة أخرى', code: 'analyze_failed' }, 502);
+      }
+    }
+
+    // القراءة الذكية لأسماء كشف الوارد (PDF) عند تلف نصه
+    if (url.pathname === '/api/inbound-names' && request.method === 'POST') {
+      if (levelOf(session.perms, session.admin, 'deliveries-sahara') < 2 && levelOf(session.perms, session.admin, 'deliveries-etihad') < 2) return forbidden();
+      if (isDemo(env)) return json({ error: 'هذه الميزة غير متاحة في النسخة التجريبية', code: 'demo_disabled' }, 403);
+      if (tooLarge(request, MAX_PDF_BODY)) return json({ error: 'حجم الملف كبير جدًا', code: 'file_too_large' }, 413);
+      if (!env.ANTHROPIC_API_KEY) return json({ error: 'لم يُضبط مفتاح الذكاء الاصطناعي على الخادم (ANTHROPIC_API_KEY)', code: 'ai_key_missing' }, 503);
+      let body: { pdf?: string; rows?: InboundNameRow[] };
+      try {
+        body = await request.json();
+      } catch {
+        return json({ error: 'بيانات غير صالحة', code: 'invalid_data' }, 400);
+      }
+      const rows = Array.isArray(body.rows) ? body.rows.slice(0, 500).map(r => ({
+        supplierName: String(r?.supplierName ?? '').slice(0, 120), supplierCompany: String(r?.supplierCompany ?? '').slice(0, 120),
+        driverName: String(r?.driverName ?? '').slice(0, 120), truckNumber: String(r?.truckNumber ?? '').slice(0, 60),
+        voucherNumber: String(r?.voucherNumber ?? '').slice(0, 60), receivedQuantity: Number(r?.receivedQuantity) || 0
+      })) : [];
+      if (!body.pdf || body.pdf.length > MAX_PDF_BODY || !rows.length) return json({ error: 'الملف غير صالح', code: 'invalid_file' }, 400);
+      try {
+        return json({ ok: true, rows: await readInboundNames(env.ANTHROPIC_API_KEY, body.pdf, rows) });
+      } catch (e) {
+        console.error('inbound-names failed', e);
+        return json({ error: e instanceof Error && /[؀-ۿ]/.test(e.message) ? e.message : 'تعذّرت القراءة الذكية، حاول مرة أخرى', code: 'analyze_failed' }, 502);
       }
     }
 
