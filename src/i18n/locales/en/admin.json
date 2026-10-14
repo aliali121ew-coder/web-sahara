@@ -61,7 +61,9 @@
       "Site supervisor",
       "Data entry",
       "Viewer",
-      "Branch manager"
+      "Branch manager",
+      "Department manager",
+      "General manager"
     ],
     "steps": {
       "identity": {
