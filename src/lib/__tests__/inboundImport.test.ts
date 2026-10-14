@@ -40,3 +40,36 @@ describe('inbound PDF table', () => {
     expect(rows[3]).toMatchObject({ voucherNumber: '1637499', receivedQuantity: 498, productCost: 249000 });
   });
 });
+
+// "ارشيف وارد الاتحاد.pdf" (2026/10): خط بخريطة تالفة (حروف مركّبة برموز U+1400–U+18FF) والتاريخ أخفض من صفه بـ 5.6 نقطة
+describe('inbound PDF with a broken font map (Etihad archive)', () => {
+  const head: PdfTextItem[] = [
+    it_('أسم المجهز', 730.8, 754.1, 547.3), it_('الᣄ', 687, 695.7, 547.3), it_(' كة المجهزة', 666.4, 691.3, 547.3), it_('ᡫ', 691.3, 691.3, 549.4),
+    it_('أسم السائق', 608.5, 630.7, 547.3), it_('رقم العجلة', 547.4, 568.8, 547.3), it_('رقم الفوجر', 485.8, 507.7, 547.3),
+    it_('الᝣمᘭة', 429.4, 441.1, 547.3), it_('كثافة المنتج', 361.7, 385.9, 547.3), it_('لون المنتج', 302, 322.6, 547.3),
+    it_('سعر المنتج', 239.8, 262, 547.3), it_('ت ᜓلفة المنتج', 177.6, 201.4, 547.3),
+    it_('تارᗫــــخ اﻻستﻼم والتفᗫᖁــــغ', 105.5, 150.8, 547.3), it_('التعامل', 59.6, 73.7, 547.3)
+  ];
+  const tail = (y: number, qty: string, density: string, price: string, cost: string, date: string) => [
+    it_(qty, 428.3, 440.9, y), it_(density, 371.5, 376.1, y), it_('اصفر', 308.2, 316.7, y), it_(price, 247.6, 254.4, y),
+    it_(cost, 175.7, 203.4, y), it_('معرف', 61.8, 71.4, y), it_(date, 117.5, 138.6, y - 5.6)
+  ];
+  const rows = parsePdfTable([[
+    ...head,
+    it_('عᣢ', 743.6, 749.5, 531.1), it_(' ', 743.1, 743.8, 531.1), it_(' كᗫᖁم', 735.5, 745.2, 531.1), it_('ᢝ', 745.2, 745.2, 529.7),
+    it_('محمد عᘘدﷲ', 608.8, 630.4, 531.1), it_('11547', 552.5, 563.9, 531.1), it_('003457', 489.8, 503.6, 531.1),
+    ...tail(531.1, '43,690', '31', '840', '36,699,600 د.ع', '2026-10-12'),
+    // بلا فوجر ولا رقم عجلة
+    it_('اسعد ᛿امل', 734.9, 751.1, 481.4), it_('ماجد ᣃحان', 609.7, 629.5, 481.4),
+    ...tail(481.4, '35,797', '26', '850', '30,427,450 د.ع', '2026-10-12'),
+    it_('محطة سبع البوسلطان', 724.8, 760.1, 464.9), it_('3,633', 429.4, 439.7, 464.9), it_('اصفر', 308.2, 316.7, 464.9),
+    it_('400', 247.6, 254.4, 464.9), it_('1,453,200 د.ع', 176.8, 202.2, 464.9), it_('معرف', 61.8, 71.4, 464.9), it_('2026-10-12', 117.5, 138.6, 459.2)
+  ]]);
+
+  it('repairs the Arabic letters and reads quantity, cost and the shifted date', () => {
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toMatchObject({ supplierName: 'علي كريم', driverName: 'محمد عبدالله', truckNumber: '11547', voucherNumber: '003457', receivedQuantity: 43690, productDensity: '31', productPrice: 840, productCost: 36699600, receiptUnloadDate: '2026/10/12' });
+    expect(rows[1]).toMatchObject({ supplierName: 'اسعد كامل', driverName: 'ماجد سرحان', voucherNumber: '', receivedQuantity: 35797, receiptUnloadDate: '2026/10/12' });
+    expect(rows[2]).toMatchObject({ supplierName: 'محطة سبع البوسلطان', receivedQuantity: 3633, productCost: 1453200 });
+  });
+});

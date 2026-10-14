@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
-import { parseInboundFile, type InboundImportRow } from '../../lib/inboundImport';
+import { hasBrokenGlyphs, parseInboundFile, type InboundImportRow } from '../../lib/inboundImport';
 import {
   X,
   Truck,
@@ -708,8 +708,12 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                           {importRows.length > newImportRows.length && (
                             <span className="px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950/50 font-bold text-amber-700 dark:text-amber-300">{t('deliveries:quick.skipCount', { count: importRows.length - newImportRows.length })}</span>
                           )}
-                          <span className="ms-auto font-bold text-slate-500">{t('deliveries:quick.totalQty')}: <span className="font-sans font-black text-slate-900 dark:text-white">{formatIQD(newImportRows.reduce((a, r) => a + r.receivedQuantity, 0))}</span> {t('common:units.liter')}</span>
+                          <span className="ms-auto font-bold text-slate-500">{t('deliveries:quick.totalQty')}: <span className="font-sans font-black text-slate-900 dark:text-white">{formatNumber(newImportRows.reduce((a, r) => a + r.receivedQuantity, 0))}</span> {t('common:units.liter')}</span>
                         </div>
+                        {/* خط PDF تالف: أسماء بحروف لم تُعرف */}
+                        {importRows.some(r => hasBrokenGlyphs(`${r.supplierName} ${r.supplierCompany} ${r.driverName} ${r.truckNumber}`)) && (
+                          <div className="px-4 py-2 border-b border-amber-100 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/40 text-xs font-bold text-amber-800 dark:text-amber-200">{t('deliveries:quick.brokenNames')}</div>
+                        )}
                         {/* معاينة الصفوف */}
                         <div className="max-h-[46vh] overflow-auto">
                           <table className="w-full text-xs text-start whitespace-nowrap">
@@ -732,7 +736,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                                     <td className="px-3 py-2">{r.driverName || '—'}</td>
                                     <td className="px-3 py-2 font-sans">{r.truckNumber || '—'}</td>
                                     <td className="px-3 py-2 font-sans font-bold">{r.voucherNumber || '—'}</td>
-                                    <td className="px-3 py-2 font-sans font-black">{formatIQD(r.receivedQuantity)}</td>
+                                    <td className="px-3 py-2 font-sans font-black">{formatNumber(r.receivedQuantity)}</td>
                                     <td className="px-3 py-2 font-sans">{r.productDensity || '—'}</td>
                                     <td className="px-3 py-2">{r.productColor || '—'}</td>
                                     <td className="px-3 py-2 font-sans">{formatIQD(r.productPrice)}</td>
