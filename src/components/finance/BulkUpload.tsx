@@ -58,7 +58,7 @@ export const BulkUploadButton: React.FC = () => {
     setRun(Object.fromEntries(runnable.map(i => [i.id, { progress: 0 }])));
     for (const it of runnable) {
       const result = await processBulkFile(it.kind!, it.file, p =>
-        setRun(prev => prev && { ...prev, [it.id]: { ...prev[it.id], progress: Math.max(prev[it.id]?.progress ?? 0, p) } }));
+        setRun(prev => prev && { ...prev, [it.id]: { ...prev[it.id], progress: Math.max(prev[it.id]?.progress ?? 0, p) } }), canEdit);
       setRun(prev => prev && { ...prev, [it.id]: { progress: 100, result } });
     }
     setRunning(false);
@@ -70,12 +70,20 @@ export const BulkUploadButton: React.FC = () => {
 
   /** سبب عدم الحفظ أو ملاحظات الحفظ لملف */
   const resultText = (r: BulkResult) => {
+    const n = r.notes || {};
+    // تقرير النفط الأسود: نتيجة كل شركة على حدة
+    const perCompany = n.companies
+      ? (['sahara', 'etihad'] as const).filter(c => n.companies?.[c]).map(c => {
+        const o = n.companies![c]!;
+        return `${t(`finance:bulk.company.${c}`)}: ${o.saved ? t('finance:bulk.company.saved') : (o.reasons || []).map(x => t(`finance:bulk.reason.${x}`)).join('، ')}`;
+      }).join(' — ')
+      : '';
     if (r.status === 'skipped') {
       if (r.reasons?.includes('readFailed')) return r.error || t('finance:bulk.reason.readFailed');
-      return (r.reasons || []).map(x => t(`finance:bulk.reason.${x}`)).join(' — ');
+      return perCompany || (r.reasons || []).map(x => t(`finance:bulk.reason.${x}`)).join(' — ');
     }
-    const n = r.notes || {};
     return [
+      perCompany,
       n.unmatched?.length ? t('finance:bulk.note.unmatched', { list: n.unmatched.join('، ') }) : '',
       n.diff ? t('finance:bulk.note.diff', { diff: n.diff.toLocaleString('en-US') }) : '',
       n.attachFailed ? t('finance:bulk.note.attachFailed') : '',
