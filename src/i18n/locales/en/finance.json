@@ -882,7 +882,7 @@
       "balance": "Gasoil balance sheet",
       "petrol": "Petrol sheet",
       "tanks": "Tanks file (black oil)",
-      "black-oil": "Black oil report",
+      "black-oil": "Black oil report (Sahara and Etihad)",
       "none": "Unknown type"
     },
     "problem": {
@@ -911,7 +911,13 @@
       "negative": "Current balance is negative",
       "noStations": "No Sahara gasoil stations in the tank system",
       "noTanks": "No tank quantities found in the file, or no Sahara black-oil tanks in the tank system",
+      "noSites": "The file has no site you are allowed to edit",
       "readFailed": "Could not read the file"
+    },
+    "company": {
+      "sahara": "Sahara",
+      "etihad": "Etihad",
+      "saved": "saved"
     },
     "note": {
       "unmatched": "Saved — unmatched sites: {{list}}",
