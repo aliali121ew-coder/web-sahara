@@ -104,8 +104,10 @@ const KEY_RULES: Rule[] = [
   { match: pre('sahara_company_balance_'), read: ['sahara.balance', 'sahara.reports', 'dashboard'], write: ['sahara.balance'] },
   { match: eq('sahara_gas_avg_price_v1'), read: ['sahara.balance', 'dashboard'], write: ['sahara.balance'] },
   { match: pre('sahara_petrol_'), read: ['sahara.petrol', 'sahara.reports', 'tanks', 'dashboard'], write: ['sahara.petrol'] },
-  { match: pre('sahara_black_oil_'), read: ['sahara.black-oil', 'sahara.reports'], write: ['sahara.black-oil'] },
-  { match: pre('etihad_black_oil_'), read: ['etihad.black-oil', 'etihad.reports'], write: ['etihad.black-oil'] },
+  // الواجهة الرئيسية تعرض "تفاصيل النفط الأسود" من هذين السجلين: يقرؤهما من يرى الرئيسية أيضًا
+  // (بدونها لا يصل اليوم الجديد إلا لمن يملك صلاحية القسم، فتبقى الرئيسية عند الآخرين على مناسيب الخزانات)
+  { match: pre('sahara_black_oil_'), read: ['sahara.black-oil', 'sahara.reports', 'dashboard'], write: ['sahara.black-oil'] },
+  { match: pre('etihad_black_oil_'), read: ['etihad.black-oil', 'etihad.reports', 'dashboard'], write: ['etihad.black-oil'] },
   { match: eq('sahara_etihad_balance_records_v2', 'sahara_etihad_print_columns'), read: ['etihad.balance', 'etihad.reports', 'etihad.archive', 'dashboard'], write: ['etihad.balance'] },
   {
     match: k => k === 'sahara_tanks' || k.startsWith('sahara_tank_') || ['central_tank_daily_snapshots_v1', 'sahara_gasoil_section_key', 'etihad_gasoil_section_key', 'etihad_extraction_tank_id'].includes(k),
