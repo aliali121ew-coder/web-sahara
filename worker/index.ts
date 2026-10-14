@@ -4,6 +4,7 @@
  * كل الطلبات محمية بجلسة حساب معتمد (اسم مستخدم + كلمة مرور)، و APP_TOKEN يُستخدم فقط لتفعيل النظام أول مرة.
  */
 
+import { handleWeather } from './weather';
 import { extractSaharaReport } from './extractSaharaReport';
 import { audit, handleChat, verifySession, type Session } from './chat';
 import { canCreateItems, canMarkRead, canReadKey, canWriteKey, canWriteSome, isServerForbiddenKey, keySectionLabel, levelOf } from '../src/lib/permCatalog';
@@ -191,6 +192,9 @@ export default {
     if (url.pathname.startsWith('/api/chat/auth/') && ['/api/chat/auth/status', '/api/chat/auth/login', '/api/chat/auth/setup', '/api/chat/auth/support', '/api/chat/auth/webauthn/login-options', '/api/chat/auth/webauthn/login', '/api/chat/auth/resume', '/api/chat/auth/resume/forget'].includes(url.pathname)) {
       return handleChat(request, url, env.DB, env.APP_TOKEN, env.FILES, isDemo(env));
     }
+
+    // طقس كربلاء لخريطة مزارع الموقع: قبل التحقق من الجلسة عمدًا (التحقق يقرأ D1)، بيانات عامة بإحداثيات ثابتة
+    if (url.pathname === '/api/weather' && request.method === 'GET') return handleWeather({ weatherApi: env.WEATHERAPI_KEY, openMeteo: env.OPEN_METEO_API_KEY }, ctx);
 
     // كل ما عدا ذلك يتطلب جلسة حساب معتمد (اسم مستخدم + كلمة مرور)
     // WebSocket لا يرسل ترويسات مخصّصة: معرّف الحساب من الرابط (?u=) ويُطابق مع كوكي الجلسة كالمعتاد

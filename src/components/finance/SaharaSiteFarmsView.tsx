@@ -1,16 +1,27 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FileSpreadsheet, FileText, Upload } from 'lucide-react';
+import { CalendarDays, FileSpreadsheet, FileText, Loader2, Sprout, Upload } from 'lucide-react';
 import { usePermissions } from '../../lib/usePermission';
 import {
   FARM_SITES, annualFor, annualYears, farmsDates, farmsOn, saveAnnual, saveFarmsDay, useSiteFarms,
   type AnnualRecord, type SiteFarmsRecord
 } from '../../lib/siteFarms';
 import { readAnnualFarmsFile, readDailyFarmsFile } from '../../lib/siteFarmsFile';
+import { siteCover } from '../../lib/siteFarmsMap';
+import { useSiteWeather } from '../../lib/weather';
+import SiteFarmsField from './SiteFarmsField';
 import './siteFarms.css';
+import './siteFarmsMap.css';
 
-const YEAR_CARDS = [2025, 2026, 2027, 2028, 2029, 2030];
+// الخريطة ثلاثية الأبعاد تُحمَّل (ومعها three) عند فتح الصفحة فقط
+const SiteFarmsMap = lazy(() => import('./SiteFarmsMap'));
+const SiteFarmsMonthlyChart = lazy(() => import('./SiteFarmsMonthlyChart'));
+
 const DAYS = 365;
+/** عدد الأيام الأعلى استهلاكًا التي تُعلَّم بنقاط حمراء في كل شهر (لكل المواقع) */
+const HIGH_DAYS_PER_MONTH = 3;
+/** مواقع يعتمد مصروفها على الآليات بدل المزارع */
+const VEHICLE_SITES = ['الطاقة'];
 const TAU = Math.PI * 2;
 const MONTH_START = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365];
 
@@ -27,27 +38,62 @@ const dateOfIndex = (year: number, i: number) => {
 };
 const sumRange = (d: YearData, idx: number[], k: 'f' | 'g') => idx.reduce((s, i) => s + (d[k][i] || 0), 0);
 
+/** عدّاد يتحرك من القيمة السابقة إلى الجديدة (0.7 ثانية) عند تغيير السنة أو الموقع */
+const lastShown = new Map<string, number>();
+const useCountUp = (value: number, id: string) => {
+  // البداية من آخر قيمة ظهرت لنفس الرقم، حتى لو أُعيد إنشاء العنصر مع حركة الظهور
+  const [shown, setShown] = useState(() => lastShown.get(id) ?? value);
+  const from = useRef(lastShown.get(id) ?? value);
+  useEffect(() => {
+    lastShown.set(id, value);
+    const start = from.current;
+    if (start === value || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      from.current = value;
+      const id = requestAnimationFrame(() => setShown(value));
+      return () => cancelAnimationFrame(id);
+    }
+    const t0 = performance.now();
+    let raf = 0;
+    const step = (t: number) => {
+      const p = Math.min((t - t0) / 700, 1);
+      const v = start + (value - start) * (1 - Math.pow(1 - p, 3));
+      from.current = v;
+      setShown(v);
+      if (p < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [value, id]);
+  return shown;
+};
+const Num: React.FC<{ v: number; id: string }> = ({ v, id }) => <>{fmt(useCountUp(v, id))}</>;
+
 // ───────────────────────── الساعة الدائرية ─────────────────────────
 interface DialProps {
   year: number;
   cur: YearData;
   prev: YearData | null;
   max: number;
-  month: number;
+  /** الفترة المختارة [من شهر، إلى شهر] (0–11) */
+  range: [number, number];
+  /** أيام الارتفاع المفاجئ (نقاط حمراء نابضة) */
+  spikes: number[];
   hover: number;
+  /** آخر يوم مُرِّر عليه: التلميح يبقى عليه أثناء اختفائه */
+  tipIndex: number;
   months: string[];
   label: string;
   onHover: (i: number) => void;
   tip: React.ReactNode;
 }
 
-const YearDial: React.FC<DialProps> = ({ year, cur, prev, max, month, hover, months, label, onHover, tip }) => {
+const YearDial: React.FC<DialProps> = ({ year, cur, prev, max, range, spikes, hover, tipIndex, months, label, onHover, tip }) => {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [width, setWidth] = useState(0);
   // قيم الرسم تُقرأ داخل حلقة الإطارات من المراجع حتى لا تُعاد إنشاء الحلقة مع كل تغيير
-  const live = useRef({ cur, prev, max, month, hover, months });
-  useEffect(() => { live.current = { cur, prev, max, month, hover, months }; });
+  const live = useRef({ year, cur, prev, max, range, spikes, hover, months });
+  useEffect(() => { live.current = { year, cur, prev, max, range, spikes, hover, months }; });
 
   useEffect(() => {
     const el = canvasRef.current;
@@ -65,9 +111,18 @@ const YearDial: React.FC<DialProps> = ({ year, cur, prev, max, month, hover, mon
     let hand = Math.max(live.current.cur.f.length - 1, 0);
     let last = performance.now();
     let raf = 0;
+    // قيم الأشعة المعروضة تتحرك نحو قيم السنة المختارة: عند فتح الصفحة تنمو من المركز،
+    // وعند تغيير السنة أو الموقع تتحول موجةً مع اتجاه الساعة (كل يوم يبدأ بعد الذي قبله بقليل)
+    const af = new Float64Array(DAYS + 1), ag = new Float64Array(DAYS + 1);
+    let aMax = live.current.max, ghostA = 0;
+    let lastPrev = live.current.prev;
+    let lastCur = live.current.cur, changedAt = last;
 
-    const draw = () => {
-      const { cur: D, prev: P, max: MAX, month: sel, hover: hv, months: names } = live.current;
+    const draw = (now: number) => {
+      const { year: yr, range: [rf, rt], spikes: sp, hover: hv, months: names } = live.current;
+      const full = rf === 0 && rt === 11;
+      const inRange = (m: number) => m >= rf && m <= rt;
+      const P = lastPrev, MAX = aMax;
       const r = canvas.getBoundingClientRect();
       const w = r.width;
       if (!w) return;
@@ -75,7 +130,7 @@ const YearDial: React.FC<DialProps> = ({ year, cur, prev, max, month, hover, mon
       if (canvas.width !== Math.round(w * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = canvas.width; }
       const css = getComputedStyle(canvas);
       const v = (n: string) => css.getPropertyValue(n).trim();
-      const grid = v('--sf-grid'), farm = v('--sf-farm'), gen = v('--sf-gen'), mut = v('--sf-mut'), fg = v('--sf-fg'), panel = v('--sf-panel');
+      const grid = v('--sf-grid'), farm = v('--sf-dial-farm'), gen = v('--sf-gen'), mut = v('--sf-mut'), fg = v('--sf-fg'), panel = v('--sf-panel');
       const cx = w / 2, R = w / 2 - w * 0.075, r0 = R * 0.38, span = R - r0;
       const ang = (i: number) => -Math.PI / 2 + ((i + 0.5) / DAYS) * TAU;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -97,33 +152,49 @@ const YearDial: React.FC<DialProps> = ({ year, cur, prev, max, month, hover, mon
         }
         ctx.globalAlpha = 0.5; ctx.strokeStyle = grid;
         ctx.beginPath(); ctx.moveTo(cx + Math.cos(a0) * (R + 2), cx + Math.sin(a0) * (R + 2)); ctx.lineTo(cx + Math.cos(a0) * (R + 10), cx + Math.sin(a0) * (R + 10)); ctx.stroke();
-        const on = sel === m;
+        const on = !full && inRange(m);
         ctx.globalAlpha = 1; ctx.fillStyle = on ? fg : mut;
         ctx.font = `${on ? '700' : '400'} ${Math.max(10, w * 0.02)}px ${css.fontFamily}`;
         ctx.fillText(names[m] ?? String(m + 1), cx + Math.cos(am) * (R + w * 0.05), cx + Math.sin(am) * (R + w * 0.05));
       }
       ctx.globalAlpha = 1;
-      if (P) {
+      if (P && ghostA > 0.01) {
         ctx.strokeStyle = mut; ctx.lineWidth = 1.2; ctx.setLineDash([1.5, 2.5]); ctx.beginPath();
         for (let i = 0; i < Math.min(P.f.length, DAYS); i++) {
           const t = Math.min(dayTotal(P, i) / MAX, 1), a = ang(i), rr = r0 + span * t;
           const x = cx + Math.cos(a) * rr, y = cx + Math.sin(a) * rr;
           if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
         }
-        ctx.globalAlpha = 0.85; ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+        ctx.globalAlpha = ghostA; ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
       }
       const lw = Math.max(1.5, ((TAU * (r0 + span * 0.55)) / DAYS) * 0.6);
       const hi = hv >= 0 ? hv : hand;
-      for (let i = 0; i < D.f.length; i++) {
+      for (let i = 0; i <= DAYS; i++) {
+        if (af[i] + ag[i] < 1) continue;
         const a = ang(i), c = Math.cos(a), s = Math.sin(a);
         const behind = (((hi - i) % DAYS) + DAYS) % DAYS;
         const trail = behind < 46 ? 1 - behind / 46 : 0;
-        const dim = sel >= 0 && dateOfIndex(year, i).month !== sel;
-        const f = ((D.f[i] || 0) / MAX) * span, g = ((D.g[i] || 0) / MAX) * span;
+        const dim = !full && !inRange(dateOfIndex(yr, i).month);
+        const f = (af[i] / MAX) * span, g = (ag[i] / MAX) * span;
         ctx.globalAlpha = dim ? 0.15 : Math.min(1, 0.5 + trail * 0.5);
         ctx.lineWidth = hv === i ? lw * 2.2 : lw * (1 + trail * 0.5);
         ctx.strokeStyle = farm; ctx.beginPath(); ctx.moveTo(cx + c * r0, cx + s * r0); ctx.lineTo(cx + c * (r0 + f), cx + s * (r0 + f)); ctx.stroke();
         ctx.strokeStyle = gen; ctx.beginPath(); ctx.moveTo(cx + c * (r0 + f), cx + s * (r0 + f)); ctx.lineTo(cx + c * (r0 + f + g), cx + s * (r0 + f + g)); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      // نقاط حمراء نابضة فوق أيام الارتفاع المفاجئ (داخل الفترة المختارة)
+      const neg = v('--sf-neg');
+      const pulse = reduce ? 0.5 : (Math.sin(now / 260) + 1) / 2;
+      for (const i of sp) {
+        if (!full && !inRange(dateOfIndex(yr, i).month)) continue;
+        const tot = af[i] + ag[i];
+        if (tot < 1) continue;
+        const a = ang(i), rr = r0 + span * Math.min(tot / MAX, 1) + 7;
+        const x = cx + Math.cos(a) * rr, y = cx + Math.sin(a) * rr;
+        ctx.globalAlpha = 0.18 + pulse * 0.22; ctx.fillStyle = neg;
+        ctx.beginPath(); ctx.arc(x, y, 6 + pulse * 3, 0, 7); ctx.fill();
+        ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(x, y, 3.2, 0, 7); ctx.fill();
+        ctx.strokeStyle = panel; ctx.lineWidth = 1.2; ctx.stroke();
       }
       ctx.globalAlpha = 1;
       const ha = -Math.PI / 2 + ((hi + 0.5) / DAYS) * TAU;
@@ -134,17 +205,29 @@ const YearDial: React.FC<DialProps> = ({ year, cur, prev, max, month, hover, mon
       }
       ctx.globalAlpha = 1; ctx.strokeStyle = fg; ctx.lineWidth = 1.6;
       ctx.beginPath(); ctx.moveTo(cx + Math.cos(ha) * (r0 - 10), cx + Math.sin(ha) * (r0 - 10)); ctx.lineTo(cx + Math.cos(ha) * (R + 14), cx + Math.sin(ha) * (R + 14)); ctx.stroke();
-      const tipR = hv >= 0 ? r0 + span * Math.min(dayTotal(D, hv) / MAX, 1) : R + 14;
+      const tipR = hv >= 0 ? r0 + span * Math.min((af[hv] + ag[hv]) / MAX, 1) : R + 14;
       ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(cx + Math.cos(ha) * tipR, cx + Math.sin(ha) * tipR, 4.5, 0, 7); ctx.fill();
       ctx.fillStyle = panel; ctx.beginPath(); ctx.arc(cx + Math.cos(ha) * tipR, cx + Math.sin(ha) * tipR, 1.8, 0, 7); ctx.fill();
       ctx.fillStyle = mut; ctx.font = `10px ${css.fontFamily}`;
-      for (const p of [0.5, 1]) ctx.fillText(short(MAX * p), cx + 22, cx - (r0 + span * p) - 7);
+      // على الشاشة الصغيرة علامة الحد الأعلى تتداخل مع اسم الشهر الأول
+      for (const p of w < 500 ? [0.5] : [0.5, 1]) ctx.fillText(short(MAX * p), cx + 22, cx - (r0 + span * p) - 7);
     };
 
     const tick = (t: number) => {
       const dt = Math.min((t - last) / 1000, 0.1);
       last = t;
-      const { hover: hv, cur: D } = live.current;
+      const { hover: hv, cur: D, prev: P, max: MAX } = live.current;
+      if (D !== lastCur) { lastCur = D; changedAt = t; }
+      const k = reduce ? 1 : 1 - Math.exp(-dt * 7);
+      const since = t - changedAt;
+      for (let i = 0; i <= DAYS; i++) {
+        if (!reduce && since < (i / DAYS) * 420) continue;
+        af[i] += ((D.f[i] || 0) - af[i]) * k;
+        ag[i] += ((D.g[i] || 0) - ag[i]) * k;
+      }
+      aMax += (MAX - aMax) * k;
+      if (P) lastPrev = P;
+      ghostA += ((P ? 0.85 : 0) - ghostA) * k;
       if (hv >= 0) {
         let df = hv - hand;
         if (df > DAYS / 2) df -= DAYS;
@@ -152,12 +235,12 @@ const YearDial: React.FC<DialProps> = ({ year, cur, prev, max, month, hover, mon
         hand = (hand + df * Math.min(1, dt * 14) + DAYS) % DAYS;
       } else if (!reduce) hand = (hand + dt * (DAYS / 14)) % DAYS;
       else hand = Math.max(D.f.length - 1, 0);
-      draw();
+      draw(t);
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [year]);
+  }, []);
 
   const pick = (ev: React.PointerEvent) => {
     const r = ev.currentTarget.getBoundingClientRect();
@@ -172,10 +255,10 @@ const YearDial: React.FC<DialProps> = ({ year, cur, prev, max, month, hover, mon
 
   // موضع التلميح بجانب رأس الشعاع
   let tipStyle: React.CSSProperties | undefined;
-  if (hover >= 0 && width) {
+  if (tipIndex >= 0 && width) {
     const R = width / 2 - width * 0.075, r0 = R * 0.38;
-    const a = -Math.PI / 2 + ((hover + 0.5) / DAYS) * TAU;
-    const rr = r0 + (R - r0) * Math.min(dayTotal(cur, hover) / max, 1);
+    const a = -Math.PI / 2 + ((tipIndex + 0.5) / DAYS) * TAU;
+    const rr = r0 + (R - r0) * Math.min(dayTotal(cur, tipIndex) / max, 1);
     const x = width / 2 + Math.cos(a) * rr, y = width / 2 + Math.sin(a) * rr;
     const tw = 232, th = 200;
     let left = x + 16;
@@ -197,7 +280,7 @@ const YearDial: React.FC<DialProps> = ({ year, cur, prev, max, month, hover, mon
         onPointerDown={e => onHover(pick(e))}
         onPointerLeave={() => onHover(-1)}
       />
-      {hover >= 0 && tipStyle && <div className="sf-tip" style={tipStyle}>{tip}</div>}
+      {tipStyle && <div className={`sf-tip${hover >= 0 ? ' on' : ''}`} style={tipStyle} aria-hidden={hover < 0}>{tip}</div>}
     </div>
   );
 };
@@ -209,23 +292,69 @@ export const SaharaSiteFarmsView: React.FC = () => {
   const canEdit = perms.canEdit('sahara.reserves');
   const records = useSiteFarms();
 
-  const months = t('finance:siteFarms.months', { returnObjects: true }) as string[];
-  const weekdays = t('finance:siteFarms.weekdays', { returnObjects: true }) as string[];
+  // قبل تحميل ملف الترجمة تعود القيمة نصًا (اسم المفتاح) لا مصفوفة: أرقام الأشهر/الأيام بدلها حتى لا تنكسر الصفحة
+  const monthsRaw = t('finance:siteFarms.months', { returnObjects: true }) as unknown;
+  const weekdaysRaw = t('finance:siteFarms.weekdays', { returnObjects: true }) as unknown;
+  const months: string[] = Array.isArray(monthsRaw) && monthsRaw.length === 12 ? monthsRaw as string[] : Array.from({ length: 12 }, (_, i) => String(i + 1));
+  const weekdays: string[] = Array.isArray(weekdaysRaw) && weekdaysRaw.length === 7 ? weekdaysRaw as string[] : Array.from({ length: 7 }, (_, i) => String(i + 1));
 
   const [site, setSite] = useState<string>('التسمين');
   const [yearPick, setYearPick] = useState<number | null>(null);
-  const [month, setMonth] = useState(-1);
+  const [range, setRange] = useState<[number, number]>([0, 11]);
+  const fullYear = range[0] === 0 && range[1] === 11;
+  const inRange = (m: number) => m >= range[0] && m <= range[1];
+  /** شهر واحد مختار (أو -1 لفترة أطول) */
+  const month = range[0] === range[1] ? range[0] : -1;
+  const setMonth = (m: number) => setRange(m < 0 ? [0, 11] : [m, m]);
   const [hover, setHover] = useState(-1);
-  const [cmp, setCmp] = useState(true);
+  const [lastHover, setLastHover] = useState(-1);
+  const onHover = (i: number) => { setHover(i); if (i >= 0) setLastHover(i); };
+  // المقارنة مع السنة السابقة دائمًا مفعّلة (أُزيل زر إيقافها)
+  const cmp = true;
   const [metric, setMetric] = useState<Metric>('all');
   const [datePick, setDatePick] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<false | 'annual' | 'daily'>(false);
   const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null);
   const annualInput = useRef<HTMLInputElement>(null);
   const dailyInput = useRef<HTMLInputElement>(null);
 
   const siteYears = useMemo(() => annualYears(records, site), [records, site]);
+  // السنوات تُبنى من الملفات المرفوعة (بلا حد أعلى)، والسنة التالية لآخرها تظهر منقّطة
+  const nextYear = siteYears.length ? siteYears[siteYears.length - 1] + 1 : new Date().getFullYear();
+  // السنوات القادمة حتى 2050 على الأقل (بطاقات منقّطة تتحول لبطاقة حقيقية عند رفع ملفها)
+  const LAST_PLANNED_YEAR = 2050;
+  const futureYears = Array.from({ length: Math.max(LAST_PLANNED_YEAR, nextYear) - nextYear + 1 }, (_, k) => nextYear + k);
+  const yearBar = useRef<HTMLDivElement>(null);
+  const yearInd = useRef<HTMLSpanElement>(null);
   const year = yearPick !== null && siteYears.includes(yearPick) ? yearPick : (siteYears[siteYears.length - 1] ?? null);
+  useEffect(() => {
+    const bar = yearBar.current;
+    if (!bar) return;
+    let first = true;
+    const center = () => {
+      const sel = bar.querySelector<HTMLElement>('[aria-pressed="true"]');
+      const b = bar.getBoundingClientRect();
+      if (!sel || !b.width) return false;
+      const ind = yearInd.current;
+      if (ind) {
+        ind.style.transition = first ? 'none' : '';
+        ind.style.left = `${sel.offsetLeft}px`;
+        ind.style.width = `${sel.offsetWidth}px`;
+        ind.style.opacity = '1';
+      }
+      const r = sel.getBoundingClientRect();
+      if (r.left < b.left || r.right > b.right) {
+        const smooth = !first && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        bar.scrollBy({ left: r.left + r.width / 2 - (b.left + b.width / 2), behavior: smooth ? 'smooth' : 'auto' });
+      }
+      return true;
+    };
+    first = !center();
+    if (!first) return;
+    const ro = new ResizeObserver(() => { if (center()) ro.disconnect(); });
+    ro.observe(bar);
+    return () => ro.disconnect();
+  }, [year, site, siteYears.length]);
   const annual: AnnualRecord | null = year !== null ? annualFor(records, site, year) : null;
   const prevAnnual = year !== null ? annualFor(records, site, year - 1) : null;
 
@@ -240,14 +369,19 @@ export const SaharaSiteFarmsView: React.FC = () => {
   }, [records, site]);
 
   const cur: YearData | null = annual ? { f: annual.f, g: annual.g } : null;
+  const yearInfo = annual ? (() => {
+    const total = annual.f.reduce((x, v) => x + v, 0) + annual.g.reduce((x, v) => x + v, 0);
+    const same = prevAnnual ? annual.f.reduce((a, _, i) => a + (i < prevAnnual.f.length ? (prevAnnual.f[i] || 0) + (prevAnnual.g[i] || 0) : 0), 0) : 0;
+    return { total, days: annual.f.length, pc: same ? ((total - same) / same) * 100 : null };
+  })() : null;
   const prev: YearData | null = prevAnnual ? { f: prevAnnual.f, g: prevAnnual.g } : null;
 
   const idx = useMemo(() => {
     if (!cur || year === null) return [] as number[];
     const out: number[] = [];
-    for (let i = 0; i < cur.f.length; i++) if (month < 0 || dateOfIndex(year, i).month === month) out.push(i);
+    for (let i = 0; i < cur.f.length; i++) { const m = dateOfIndex(year, i).month; if (m >= range[0] && m <= range[1]) out.push(i); }
     return out;
-  }, [cur, year, month]);
+  }, [cur, year, range]);
 
   const yearTotal = (r: SiteFarmsRecord | null) => (r && r.kind === 'annual' ? r.f.reduce((a, b) => a + b, 0) + r.g.reduce((a, b) => a + b, 0) : 0);
 
@@ -259,26 +393,61 @@ export const SaharaSiteFarmsView: React.FC = () => {
     const balance = rows.reduce((s, r) => s + (r.balance ?? 0), 0);
     const yrs = annualYears(records, name);
     const latest = yrs.length ? annualFor(records, name, yrs[yrs.length - 1]) : null;
-    return { name, hasData: yrs.length > 0 || rows.length > 0, farms: rows.length, balance, latest };
+    const todayUse = rows.reduce((s, r) => s + (r.consumption ?? 0), 0);
+    return { name, hasData: yrs.length > 0 || rows.length > 0, farms: rows.length, balance, latest, todayUse, lastDate: last ?? null };
   }), [records]);
 
   const datesOfSite = useMemo(() => farmsDates(records, site), [records, site]);
   const date = datePick && datesOfSite.includes(datePick) ? datePick : (datesOfSite[datesOfSite.length - 1] ?? null);
   const farmRows = useMemo(() => (date ? farmsOn(records, site, date) : []), [records, site, date]);
+  const periodLabel = year === null ? '' : fullYear ? String(year) : month >= 0 ? `${months[month]} ${year}` : `${months[range[0]]} – ${months[range[1]]} ${year}`;
+  // فترة التعليم = الفترة المختارة (السنة كاملة = كل الأشهر)؛ كل شهر يُقارن بأيامه هو
+  const topPeriod = range;
+  const isVehicleSite = VEHICLE_SITES.includes(site);
+  // أعلى 8 أيام استهلاكًا في كل شهر من الفترة (من الملف السنوي): الطاقة بمصروف الآليات، وباقي المواقع بمصروف المزارع والمولدات
+  const highDays = useMemo(() => {
+    const out = new Map<number, { rank: number; month: number }>();
+    if (!cur || year === null) return out;
+    for (let m = topPeriod[0]; m <= topPeriod[1]; m++) {
+      const days: { i: number; v: number }[] = [];
+      for (let i = 0; i < cur.f.length; i++) {
+        if (dateOfIndex(year, i).month !== m) continue;
+        const v = isVehicleSite ? (cur.g[i] || 0) : (cur.f[i] || 0) + (cur.g[i] || 0);
+        if (v > 0) days.push({ i, v });
+      }
+      days.sort((a, b) => b.v - a.v).slice(0, HIGH_DAYS_PER_MONTH).forEach((d, k) => out.set(d.i, { rank: k + 1, month: m }));
+    }
+    return out;
+  }, [cur, year, topPeriod, isVehicleSite]);
   const farmsTotalBalance = farmRows.reduce((s, r) => s + (r.balance ?? 0), 0);
+
+  // أيام التغطية لكل مزرعة (من الكشوف اليومية) للخريطة وحقل المزارع
+  const cover = useMemo(() => siteCover(records, site), [records, site]);
+  // الطقس الحقيقي للموقع على الخريطة (من الخادم كل 15 دقيقة)
+  const weather = useSiteWeather();
+  const [field, setField] = useState<{ farm: string | null } | null>(null);
+  const [pending, setPending] = useState<{ fileName: string; site: string; detected: boolean; years: { year: number; f: number[]; g: number[] }[]; existing: number[] } | null>(null);
+  const commitAnnual = (target: string, years: { year: number; f: number[]; g: number[] }[]) => {
+    for (const y of years) saveAnnual(target, y.year, y.f, y.g);
+    setSite(target);
+    setYearPick(years[years.length - 1].year);
+    setPending(null);
+    setNotice({ text: t('finance:siteFarms.annualSaved', { site: target, years: years.map(y => y.year).join('، ') }) });
+  };
+  const pendingConflicts = pending ? pending.years.filter(y => annualFor(records, pending.site, y.year)).map(y => y.year) : [];
 
   const onFile = async (kind: 'annual' | 'daily', file: File | undefined) => {
     if (!file) return;
-    setBusy(true);
+    setBusy(kind);
     setNotice(null);
     try {
       if (kind === 'annual') {
         const res = await readAnnualFarmsFile(file);
         const target = res.site ?? site;
-        for (const y of res.years) saveAnnual(target, y.year, y.f, y.g);
-        setSite(target);
-        setYearPick(res.years[res.years.length - 1].year);
-        setNotice({ text: t('finance:siteFarms.annualSaved', { site: target, years: res.years.map(y => y.year).join('، ') }) });
+        const existing = res.years.filter(y => annualFor(records, target, y.year)).map(y => y.year);
+        // الموقع غير مكتوب في الملف، أو السنة محفوظة سابقًا: لا يُحفظ شيء قبل التأكيد
+        if (!res.site || existing.length) setPending({ fileName: file.name, site: target, detected: !!res.site, years: res.years, existing });
+        else commitAnnual(target, res.years);
       } else {
         const res = await readDailyFarmsFile(file);
         if (!res.date) throw new Error(t('finance:siteFarms.noDate'));
@@ -317,54 +486,84 @@ export const SaharaSiteFarmsView: React.FC = () => {
     }
     return { per, prevPer };
   }, [cur, prev, year]);
-  const monthVal = (p: { f: number; g: number }) => (metric === 'f' ? p.f : metric === 'g' ? p.g : p.f + p.g);
-  const monthMax = Math.max(...perMonth.per.map(monthVal), 1);
-  const peakMonth = perMonth.per.map(monthVal).indexOf(monthMax);
 
   // التلميح عند التمرير على يوم
+  // التلميح يبقى على آخر يوم أثناء اختفائه (لا يختفي فجأة)
+  const tipIdx = hover >= 0 ? hover : (cur && lastHover < cur.f.length ? lastHover : -1);
   const tip = (() => {
-    if (!cur || year === null || hover < 0) return null;
-    const { month: mm, day, weekday } = dateOfIndex(year, hover);
-    const tot = dayTotal(cur, hover);
-    const fv = cur.f[hover] || 0, gv = cur.g[hover] || 0;
+    if (!cur || year === null || tipIdx < 0) return null;
+    const { month: mm, day, weekday } = dateOfIndex(year, tipIdx);
+    const tot = dayTotal(cur, tipIdx);
+    const fv = cur.f[tipIdx] || 0, gv = cur.g[tipIdx] || 0;
     const all = cur.f.map((_, i) => dayTotal(cur, i));
     const avg = all.reduce((a, b) => a + b, 0) / Math.max(all.length, 1);
     const rank = [...all].sort((a, b) => b - a).indexOf(tot) + 1;
     const vsAvg = avg ? ((tot - avg) / avg) * 100 : 0;
-    const pv = prev && hover < prev.f.length ? dayTotal(prev, hover) : 0;
+    const pv = prev && tipIdx < prev.f.length ? dayTotal(prev, tipIdx) : 0;
     const vsPrev = pv ? ((tot - pv) / pv) * 100 : null;
     return (
       <>
         <div className="d">{day} {months[mm]} {year}</div>
-        <div className="w">{weekdays[weekday]} · {t('finance:siteFarms.dayOfYear', { n: hover + 1 })}</div>
-        <div className="row"><span><i className="sw" style={{ background: 'var(--sf-farm)' }} />{t('finance:siteFarms.farmsUse')}</span><b>{fmt(fv)}</b></div>
+        <div className="w">{weekdays[weekday]} · {t('finance:siteFarms.dayOfYear', { n: tipIdx + 1 })}</div>
+        <div className="row"><span><i className="sw" style={{ background: 'var(--sf-dial-farm)' }} />{t('finance:siteFarms.farmsUse')}</span><b>{fmt(fv)}</b></div>
         <div className="row"><span><i className="sw" style={{ background: 'var(--sf-gen)' }} />{t('finance:siteFarms.genUse')}</span><b>{fmt(gv)}</b></div>
-        <div className="sp"><i style={{ width: `${tot ? (fv / tot) * 100 : 0}%`, background: 'var(--sf-farm)' }} /><i style={{ width: `${tot ? (gv / tot) * 100 : 0}%`, background: 'var(--sf-gen)' }} /></div>
+        <div className="sp"><i style={{ width: `${tot ? (fv / tot) * 100 : 0}%`, background: 'var(--sf-dial-farm)' }} /><i style={{ width: `${tot ? (gv / tot) * 100 : 0}%`, background: 'var(--sf-gen)' }} /></div>
         <div className="row"><span>{t('finance:siteFarms.dayTotal')}</span><b>{fmt(tot)} {t('finance:siteFarms.liter')}</b></div>
         <div className="row"><span>{t('finance:siteFarms.vsAvg')}</span><b>{vsAvg > 0 ? '▲' : '▼'} {Math.abs(vsAvg).toFixed(1)}%</b></div>
         {vsPrev !== null && <div className="row"><span>{t('finance:siteFarms.vsYear', { year: year - 1 })}</span><b>{vsPrev > 0 ? '▲' : '▼'} {Math.abs(vsPrev).toFixed(1)}%</b></div>}
+        {highDays.has(tipIdx) && <div className="sf-tip-spike">{t(isVehicleSite ? 'finance:siteFarms.highTipVehicles' : 'finance:siteFarms.highTip', { n: HIGH_DAYS_PER_MONTH, rank: highDays.get(tipIdx)!.rank, month: months[highDays.get(tipIdx)!.month] })}</div>}
         <span className="badge">{t('finance:siteFarms.rank', { rank, n: all.length })}</span>
       </>
     );
   })();
 
-  const centerLabel = hover >= 0 && year !== null ? dayLabel(hover) : year === null ? '' : month < 0 ? t('finance:siteFarms.yearConsumption', { year }) : `${months[month]} ${year}`;
+  // أعلى خمسة أيام مع نسبتها فوق معدل السنة
+  const avgAll = cur ? cur.f.reduce((acc, _, i) => acc + dayTotal(cur, i), 0) / Math.max(cur.f.length, 1) : 0;
+  const top5 = cur && year !== null ? sortedIdx.slice(0, 5).map(i => {
+    const o = dateOfIndex(year, i), v = dayTotal(cur, i);
+    return { i, v, f: cur.f[i] || 0, g: cur.g[i] || 0, date: `${o.day} ${months[o.month]}`, wd: weekdays[o.weekday], pct: avgAll ? ((v - avgAll) / avgAll) * 100 : 0 };
+  }) : [];
+  const centerLabel = hover >= 0 && year !== null ? dayLabel(hover) : year === null ? '' : fullYear ? t('finance:siteFarms.yearConsumption', { year }) : periodLabel;
+  const spikesInRange = [...highDays.keys()];
   const centerValue = hover >= 0 && cur ? dayTotal(cur, hover) : total;
 
   return (
     <div className="sf-root" dir={i18n.dir()}>
-      <div className="sf-top">
-        <div>
-          <h1 className="sf-title">{t('finance:siteFarms.title')}</h1>
-          <div className="sf-sub">{t('finance:siteFarms.subtitle')}</div>
+      {/* شريط الصفحة بنفس تصميم شريط صفحة الخزانات: كارت أبيض فيه الأيقونة والعنوان، وأزرار الرفع كأزرار الأقسام */}
+      <div className="p-3 sm:p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3 px-1 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-700 to-emerald-500 text-white flex items-center justify-center shadow-sm shrink-0">
+            <Sprout className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight">{t('finance:siteFarms.headerTitle', { site })}</h2>
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 mt-0.5">
+              <CalendarDays className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+              <span>{t('finance:siteFarms.reportDate')}</span>
+              <span className="font-mono font-black text-slate-800 dark:text-slate-200">{date ?? '—'}</span>
+              {date && date === datesOfSite[datesOfSite.length - 1] && (
+                <span className="px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px]">{t('finance:siteFarms.latest')}</span>
+              )}
+            </div>
+          </div>
         </div>
         {canEdit && (
-          <div className="sf-actions">
-            <button type="button" className="sf-btn" disabled={busy} onClick={() => dailyInput.current?.click()}>
-              <FileText className="w-4 h-4" />{t('finance:siteFarms.uploadDaily')}
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full sm:w-auto [&_button]:whitespace-nowrap">
+            <button type="button" disabled={!!busy} onClick={() => annualInput.current?.click()}
+              className="group px-4 py-2.5 sm:py-3 rounded-2xl flex items-center justify-center gap-2.5 font-black text-xs sm:text-sm transition-all duration-300 cursor-pointer border border-transparent bg-gradient-to-r from-emerald-700 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white shadow-md shadow-emerald-700/25 active:scale-95 disabled:opacity-60 disabled:cursor-wait">
+              <span className="w-7 h-7 rounded-xl flex items-center justify-center bg-white/20 transition-transform group-hover:scale-110">
+                {busy === 'annual' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              </span>
+              <span>{t('finance:siteFarms.uploadAnnualShort')}</span>
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-white/25">Excel</span>
             </button>
-            <button type="button" className="sf-btn" disabled={busy} onClick={() => annualInput.current?.click()}>
-              <Upload className="w-4 h-4" />{t('finance:siteFarms.uploadAnnual')}
+            <button type="button" disabled={!!busy} onClick={() => dailyInput.current?.click()}
+              className="group px-4 py-2.5 sm:py-3 rounded-2xl flex items-center justify-center gap-2.5 font-black text-xs sm:text-sm transition-all duration-300 cursor-pointer border bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/80 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/80 active:scale-95 disabled:opacity-60 disabled:cursor-wait">
+              <span className="w-7 h-7 rounded-xl flex items-center justify-center bg-white dark:bg-slate-900 shadow-xs text-emerald-700 dark:text-emerald-400 transition-transform group-hover:scale-110">
+                {busy === 'daily' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+              </span>
+              <span>{t('finance:siteFarms.uploadDailyShort')}</span>
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">PDF</span>
             </button>
             <input ref={dailyInput} type="file" accept=".pdf,.xlsx,.xls,.xlsm" hidden onChange={e => void onFile('daily', e.target.files?.[0])} />
             <input ref={annualInput} type="file" accept=".xlsx,.xls,.xlsm" hidden onChange={e => void onFile('annual', e.target.files?.[0])} />
@@ -374,90 +573,165 @@ export const SaharaSiteFarmsView: React.FC = () => {
 
       {busy && <div className="sf-note">{t('finance:siteFarms.reading')}</div>}
       {notice && <div className={`sf-note${notice.error ? ' err' : ''}`} role="status">{notice.text}</div>}
+      {field && <SiteFarmsField site={site} cover={cover} initialFarm={field.farm} onClose={() => setField(null)} />}
+      {pending && (
+        <div className="sf-confirm" role="alertdialog" aria-labelledby="sf-confirm-title">
+          <div className="sf-confirm-body">
+            <b id="sf-confirm-title">{t('finance:siteFarms.confirmTitle', { file: pending.fileName })}</b>
+            <span>{t(pending.detected ? 'finance:siteFarms.confirmDetected' : 'finance:siteFarms.confirmUnknown', { years: pending.years.map(y => y.year).join('، ') })}</span>
+            <label className="sf-confirm-site">
+              <span>{t('finance:siteFarms.confirmSite')}</span>
+              <select className="sf-select" value={pending.site} onChange={e => setPending({ ...pending, site: e.target.value })}>
+                {FARM_SITES.map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </label>
+            {pendingConflicts.length > 0 && <span className="sf-confirm-warn">{t('finance:siteFarms.confirmReplace', { years: pendingConflicts.join('، '), site: pending.site })}</span>}
+          </div>
+          <div className="sf-confirm-actions">
+            <button type="button" className="sf-confirm-ok" onClick={() => commitAnnual(pending.site, pending.years)}>{t(pendingConflicts.length ? 'finance:siteFarms.confirmReplaceBtn' : 'finance:siteFarms.confirmSave')}</button>
+            <button type="button" className="sf-confirm-cancel" onClick={() => setPending(null)}>{t('finance:siteFarms.confirmCancel')}</button>
+          </div>
+        </div>
+      )}
 
-      <div>
-        <div className="sf-sec"><span>{t('finance:siteFarms.sites')}</span></div>
+      <section className="sf-band">
+        <div className="sf-band-head">
+          <h2>{t('finance:siteFarms.sites')}</h2>
+        </div>
         <div className="sf-sites">
           {siteCards.map(s => (
-            <button key={s.name} type="button" className="sf-site" aria-pressed={s.name === site} onClick={() => { setSite(s.name); setYearPick(null); setMonth(-1); setHover(-1); setDatePick(null); }}>
-              <div className="sf-site-row">
-                <span className="sf-site-name">{s.name}</span>
-                <span className={`sf-pill${s.hasData ? ' on' : ''}`}>{s.hasData ? (s.farms ? t('finance:siteFarms.farmsCount', { n: s.farms }) : t('finance:siteFarms.annualOnly')) : t('finance:siteFarms.waiting')}</span>
-              </div>
-              <div className="sf-site-bal">{s.farms ? fmt(s.balance) : '—'}<small>{t('finance:siteFarms.balanceLiter')}</small></div>
-              <SiteSpark rec={s.latest} />
+            <button key={s.name} type="button" className="sf-site" aria-pressed={s.name === site} data-empty={s.hasData ? 0 : 1}
+              onClick={() => { setSite(s.name); setYearPick(null); setMonth(-1); setHover(-1); setLastHover(-1); setDatePick(null); }}>
+              <span className="sf-site-top">
+                <span className="sf-site-name" title={s.name}>{s.name}</span>
+                <span className="sf-chip">{s.hasData ? (s.farms ? t('finance:siteFarms.farmsCount', { n: s.farms }) : t('finance:siteFarms.annualOnly')) : t('finance:siteFarms.waiting')}</span>
+              </span>
+              {s.farms
+                ? <span className="sf-site-bal">{fmt(s.balance)}<small>{t('finance:siteFarms.balanceLiter')}</small></span>
+                : <span className="sf-site-nobal">{t('finance:siteFarms.balanceAfterReport')}</span>}
+              <SiteSpark rec={s.latest} active={s.name === site} months={months} />
+              <span className="sf-site-foot">
+                <span>{t('finance:siteFarms.todayUse')} <b>{s.farms ? fmt(s.todayUse) : '—'}</b></span>
+                {s.latest && <span>{s.latest.year} <b>{short(yearTotal(s.latest))}</b></span>}
+              </span>
             </button>
           ))}
         </div>
-      </div>
+      </section>
 
-      <div>
-        <div className="sf-sec">
-          <span>{t('finance:siteFarms.year')}</span>
-          <div className="sf-opts">
-            <button type="button" className="sf-tog" aria-pressed={cmp} disabled={!prev} onClick={() => setCmp(c => !c)}>{t('finance:siteFarms.compare')}</button>
-          </div>
+      <section className="sf-band">
+        <div className="sf-band-head">
+          <h2>{t('finance:siteFarms.year')}</h2>
         </div>
-        <div className="sf-years">
-          {YEAR_CARDS.map(y => {
-            const rec = annualFor(records, site, y);
+        {/* خط زمني للسنوات (بدل البطاقات): زر لكل سنة فيها بيانات، ومؤشر ينزلق إلى السنة المختارة، والسنوات القادمة علامات خافتة */}
+        <div className="sf-tl" ref={yearBar}>
+          <span className="sf-tl-ind" ref={yearInd} aria-hidden="true" />
+          {siteYears.map(y => {
+            const rec = annualFor(records, site, y)!;
             return (
-              <button key={y} type="button" className="sf-year" aria-pressed={y === year} disabled={!rec} onClick={() => { setYearPick(y); setMonth(-1); setHover(-1); }}>
+              <button key={y} type="button" className="sf-tl-y" aria-pressed={y === year} onClick={() => { setYearPick(y); setMonth(-1); setHover(-1); setLastHover(-1); }}>
                 <b>{y}</b>
-                <span>{rec ? `${short(yearTotal(rec))} ${t('finance:siteFarms.liter')}` : t('finance:siteFarms.noData')}</span>
-                <i><u style={{ width: `${rec ? (rec.f.length / 365) * 100 : 0}%` }} /></i>
+                <span>{short(yearTotal(rec))}</span>
               </button>
             );
           })}
+          {futureYears.map(y => (
+            <span key={y} className="sf-tl-f" title={t('finance:siteFarms.nextYear')}>{y}</span>
+          ))}
         </div>
-      </div>
+        {yearInfo && (
+          <div className="sf-tl-note" key={`${site}-${year}`}>
+            <span><b><Num v={yearInfo.total} id="yr-total" /></b> {t('finance:siteFarms.liter')}</span>
+            <span className="sf-tl-dot" aria-hidden="true" />
+            <span className="sf-tl-cov"><i><u style={{ width: `${(yearInfo.days / 365) * 100}%` }} /></i>{t('finance:siteFarms.daysCount', { n: yearInfo.days })}</span>
+            <span className="sf-tl-dot" aria-hidden="true" />
+            {yearInfo.pc === null
+              ? <span>{t('finance:siteFarms.firstYear')}</span>
+              : <span className={yearInfo.pc > 0 ? 'sf-up' : 'sf-down'}>{yearInfo.pc > 0 ? '▲' : '▼'} {Math.abs(yearInfo.pc).toFixed(1)}% {t('finance:siteFarms.vsYear', { year: year! - 1 })}</span>}
+          </div>
+        )}
+      </section>
 
       {cur && year !== null ? (
         <>
-          <div className="sf-main">
+          <div className="sf-main sf-rise">
             <div className="sf-card">
               <h2 className="sf-h2">{t('finance:siteFarms.dialTitle')} <small>{t('finance:siteFarms.dialHint')}</small></h2>
+              <div className="sf-range">
+                <label>
+                  <span>{t('finance:siteFarms.rangeFrom')}</span>
+                  <select className="sf-select" value={range[0]} onChange={e => { const v = +e.target.value; setRange([v, Math.max(v, range[1])]); setHover(-1); }}>
+                    {months.map((mn, m) => <option key={m} value={m}>{mn}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span>{t('finance:siteFarms.rangeTo')}</span>
+                  <select className="sf-select" value={range[1]} onChange={e => { const v = +e.target.value; setRange([Math.min(range[0], v), v]); setHover(-1); }}>
+                    {months.map((mn, m) => <option key={m} value={m}>{mn}</option>)}
+                  </select>
+                </label>
+                {!fullYear && <button type="button" className="sf-range-reset" onClick={() => { setRange([0, 11]); setHover(-1); }}>{t('finance:siteFarms.rangeAll')}</button>}              </div>
               <div style={{ position: 'relative' }}>
-                <YearDial year={year} cur={cur} prev={cmp ? prev : null} max={max} month={month} hover={hover} months={months}
-                  label={t('finance:siteFarms.dialLabel')} onHover={setHover} tip={tip} />
+                <YearDial year={year} cur={cur} prev={cmp ? prev : null} max={max} range={range} spikes={spikesInRange} hover={hover} months={months}
+                  label={t('finance:siteFarms.dialLabel')} onHover={onHover} tipIndex={tipIdx} tip={tip} />
                 <div className="sf-center">
                   <div className="l">{centerLabel}</div>
-                  <div className="v">{fmt(centerValue)}</div>
+                  <div className="v">{hover >= 0 ? fmt(centerValue) : <Num v={centerValue} id="center" />}</div>
                   <div className="u">{t('finance:siteFarms.liter')}</div>
                 </div>
               </div>
               <div className="sf-legend">
-                <span><i className="sf-dot" style={{ background: 'var(--sf-farm)' }} />{t('finance:siteFarms.farmsUse')}</span>
+                <span><i className="sf-dot" style={{ background: 'var(--sf-dial-farm)' }} />{t('finance:siteFarms.farmsUse')}</span>
                 <span><i className="sf-dot" style={{ background: 'var(--sf-gen)' }} />{t('finance:siteFarms.genUse')}</span>
                 {cmp && prev && <span><i className="sf-dot" style={{ border: '1.5px dashed var(--sf-mut)' }} />{t('finance:siteFarms.prevYear')}</span>}
+                <span><i className="sf-dot" style={{ background: 'var(--sf-neg)', borderRadius: '50%' }} />{t('finance:siteFarms.highLegend', { n: HIGH_DAYS_PER_MONTH })}</span>
               </div>
             </div>
 
-            <div className="sf-side">
+            <div className="sf-side sf-rise" key={`${site}-${year}`}>
               <div className="sf-hero">
-                <div className="l">{t('finance:siteFarms.totalUse')} · {month < 0 ? year : `${months[month]} ${year}`}</div>
-                <div className="v">{fmt(total)}<small>{t('finance:siteFarms.liter')}</small></div>
+                <div className="sf-hero-head">
+                  <span className="sf-hero-icon"><Sprout className="w-5 h-5" strokeWidth={2.2} /></span>
+                  <div className="l">{t('finance:siteFarms.totalUse')} · {periodLabel}</div>
+                </div>
+                <div className="v"><Num v={total} id="total" /><small>{t('finance:siteFarms.liter')}</small></div>
                 <div className="sf-split"><i style={{ width: `${total ? (f / total) * 100 : 0}%`, background: 'var(--sf-farm)' }} /><i style={{ width: `${total ? (g / total) * 100 : 0}%`, background: 'var(--sf-gen)' }} /></div>
-                <div className="sf-split-l"><span>{t('finance:siteFarms.farmsUse')} <b>{fmt(f)}</b></span><span>{t('finance:siteFarms.genUse')} <b>{fmt(g)}</b></span></div>
-                {deltaPct !== null && <div className="sf-delta">{deltaPct > 0 ? '▲' : '▼'} {Math.abs(deltaPct).toFixed(1)}% {t('finance:siteFarms.samePeriod', { year: year - 1 })}</div>}
+                <div className="sf-split-l"><span>{t('finance:siteFarms.farmsUse')} <b><Num v={f} id="f" /></b></span><span>{t('finance:siteFarms.genUse')} <b><Num v={g} id="g" /></b></span></div>
+                {deltaPct !== null && <div className={`sf-delta ${deltaPct > 0 ? 'sf-up' : 'sf-down'}`}>{deltaPct > 0 ? '▲' : '▼'} {Math.abs(deltaPct).toFixed(1)}% {t('finance:siteFarms.samePeriod', { year: year - 1 })}</div>}
               </div>
               <div className="sf-mini">
-                <div className="sf-k"><div className="l">{t('finance:siteFarms.avgDay')}</div><div className="v">{fmt(idx.length ? total / idx.length : 0)}</div><div className="s">{t('finance:siteFarms.literPerDay')}</div></div>
-                <div className="sf-k"><div className="l">{t('finance:siteFarms.peakDay')}</div><div className="v">{sortedIdx.length ? fmt(dayTotal(cur, sortedIdx[0])) : '—'}</div><div className="s">{sortedIdx.length ? dayLabel(sortedIdx[0]) : ''}</div></div>
-                <div className="sf-k"><div className="l">{t('finance:siteFarms.lowDay')}</div><div className="v">{sortedIdx.length ? fmt(dayTotal(cur, sortedIdx[sortedIdx.length - 1])) : '—'}</div><div className="s">{sortedIdx.length ? dayLabel(sortedIdx[sortedIdx.length - 1]) : ''}</div></div>
+                <div className="sf-k"><div className="l">{t('finance:siteFarms.avgDay')}</div><div className="v"><Num v={idx.length ? total / idx.length : 0} id="avg" /></div><div className="s">{t('finance:siteFarms.literPerDay')}</div></div>
+                <div className="sf-k"><div className="l">{t('finance:siteFarms.peakDay')}</div><div className="v">{sortedIdx.length ? <Num v={dayTotal(cur, sortedIdx[0])} id="peak" /> : '—'}</div><div className="s">{sortedIdx.length ? dayLabel(sortedIdx[0]) : ''}</div></div>
+                <div className="sf-k"><div className="l">{t('finance:siteFarms.lowDay')}</div><div className="v">{sortedIdx.length ? <Num v={dayTotal(cur, sortedIdx[sortedIdx.length - 1])} id="low" /> : '—'}</div><div className="s">{sortedIdx.length ? dayLabel(sortedIdx[sortedIdx.length - 1]) : ''}</div></div>
                 <div className="sf-k"><div className="l">{t('finance:siteFarms.recordedDays')}</div><div className="v">{idx.length}</div><div className="s">{t('finance:siteFarms.ofDays')}</div></div>
               </div>
               <div className="sf-card sf-top5">
-                <h2 className="sf-h2">{t('finance:siteFarms.top5')}</h2>
+                <div className="sf-top5-head">
+                  <h2 className="sf-h2">{t('finance:siteFarms.top5')}</h2>
+                  <span>{t('finance:siteFarms.top5Hint', { avg: fmt(avgAll) })}</span>
+                </div>
+                {top5.length > 0 && (
+                  <button type="button" className="sf-lead" onMouseEnter={() => onHover(top5[0].i)} onMouseLeave={() => onHover(-1)} onFocus={() => onHover(top5[0].i)} onBlur={() => onHover(-1)}>
+                    <span className="sf-lead-top">
+                      <span className="sf-lead-badge">{t('finance:siteFarms.leader')}</span>
+                      <span className="sf-delta-pill up">▲ {top5[0].pct.toFixed(0)}%</span>
+                    </span>
+                    <span className="sf-lead-val">{fmt(top5[0].v)}<small>{t('finance:siteFarms.liter')}</small></span>
+                    <span className="sf-lead-date">{top5[0].date} · {top5[0].wd}</span>
+                    <span className="sf-lead-split" aria-hidden="true">
+                      <i style={{ width: `${(top5[0].f / Math.max(top5[0].v, 1)) * 100}%` }} /><i style={{ width: `${(top5[0].g / Math.max(top5[0].v, 1)) * 100}%` }} />
+                    </span>
+                    <span className="sf-lead-legend"><span>{t('finance:siteFarms.farmsUse')} <b>{fmt(top5[0].f)}</b></span><span>{t('finance:siteFarms.genUse')} <b>{fmt(top5[0].g)}</b></span></span>
+                  </button>
+                )}
                 <ol>
-                  {sortedIdx.slice(0, 5).map((i, k) => (
-                    <li key={i} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(-1)}>
-                      <span className="sf-rk">{k + 1}</span>
-                      <div>
-                        <div>{dayLabel(i)}</div>
-                        <div className="sf-bar"><i style={{ width: `${(dayTotal(cur, i) / Math.max(dayTotal(cur, sortedIdx[0]), 1)) * 100}%` }} /></div>
-                      </div>
-                      <b>{fmt(dayTotal(cur, i))}</b>
+                  {top5.slice(1).map((d, k) => (
+                    <li key={d.i}>
+                      <button type="button" className="sf-rank-row" onMouseEnter={() => onHover(d.i)} onMouseLeave={() => onHover(-1)} onFocus={() => onHover(d.i)} onBlur={() => onHover(-1)}>
+                        <span className="sf-rank-n">{k + 2}</span>
+                        <span className="sf-rank-day"><b>{d.date}</b><small>{d.wd} · {t('finance:siteFarms.behindLead', { n: fmt(top5[0].v - d.v) })}</small></span>
+                        <span className="sf-rank-val"><b>{fmt(d.v)}</b><span className="sf-delta-pill up">▲ {d.pct.toFixed(0)}%</span></span>
+                      </button>
                     </li>
                   ))}
                 </ol>
@@ -465,50 +739,31 @@ export const SaharaSiteFarmsView: React.FC = () => {
             </div>
           </div>
 
+          {/* خريطة الموقع بعرض الصفحة كاملًا */}
+          <section className="sf-map-section">
+            {cover.farms.length > 0 ? (
+              <Suspense fallback={<div className="sf-map sf-map-loading" />}>
+                <SiteFarmsMap site={site} cover={cover} weather={weather} onOpen={farm => setField({ farm })} />
+              </Suspense>
+            ) : (
+              <div className="sf-map-none">{t(cover.date ? (isVehicleSite ? 'finance:siteFarms.map.vehicleSite' : 'finance:siteFarms.map.noFarms') : 'finance:siteFarms.map.noReport', { site })}</div>
+            )}
+          </section>
+
           <div className="sf-card">
-            <h2 className="sf-h2">
-              <span>{t('finance:siteFarms.monthlyBoard')} <small>{t('finance:siteFarms.monthlyHint')}</small></span>
-              <span className="sf-opts">
-                {(['all', 'f', 'g'] as Metric[]).map(m => (
-                  <button key={m} type="button" className="sf-tog" aria-pressed={metric === m} onClick={() => setMetric(m)}>
-                    {t(m === 'all' ? 'finance:siteFarms.metricAll' : m === 'f' ? 'finance:siteFarms.metricFarms' : 'finance:siteFarms.metricGen')}
-                  </button>
-                ))}
-              </span>
-            </h2>
-            <div className="sf-scroll">
-              <div className="sf-board">
-                {perMonth.per.map((p, m) => {
-                  const v = monthVal(p), h = (v / monthMax) * 100, tf = p.f + p.g, fp = tf ? (p.f / tf) * 100 : 0;
-                  const pp = perMonth.prevPer[m];
-                  const pc = cmp && prev && pp && p.n ? ((p.f + p.g - pp) / pp) * 100 : null;
-                  return (
-                    <button key={m} type="button" className="sf-mc" aria-pressed={month === m} data-dim={month >= 0 && month !== m ? 1 : 0}
-                      aria-label={months[m]} onClick={() => { setMonth(month === m ? -1 : m); setHover(-1); }}>
-                      {m === peakMonth && monthMax > 1 && <span className="pk">{t('finance:siteFarms.peakMonth')}</span>}
-                      <div className="v">{p.n ? short(v) : '—'}</div>
-                      <div className="bw">
-                        <div className="b" style={{ height: `${p.n ? Math.max(h, 2) : 1}%` }}>
-                          {p.n > 0 && (metric === 'f' ? <i style={{ height: '100%', background: 'var(--sf-farm)' }} />
-                            : metric === 'g' ? <i style={{ height: '100%', background: 'var(--sf-gen)' }} />
-                              : <><i style={{ height: `${fp}%`, background: 'var(--sf-farm)' }} /><i style={{ height: `${100 - fp}%`, background: 'var(--sf-gen)' }} /></>)}
-                        </div>
-                      </div>
-                      <div className="n">{months[m]}</div>
-                      <div className="dl">{pc === null ? '—' : <span className={pc > 0 ? 'sf-up' : 'sf-down'}>{pc > 0 ? '▲' : '▼'} {Math.abs(pc).toFixed(0)}%</span>}</div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <Suspense fallback={<div className="sf-mchart-plot" />}>
+              <SiteFarmsMonthlyChart months={months} per={perMonth.per} prevPer={perMonth.prevPer} hasPrev={cmp && !!prev} year={year}
+                metric={metric} onMetric={setMetric} month={month} inRange={inRange} fullYear={fullYear}
+                onPick={m => { setMonth(m); setHover(-1); }} />
+            </Suspense>
           </div>
         </>
       ) : (
-        <div className="sf-card sf-empty">
+        <div className="sf-card sf-empty sf-rise" key={`empty-${site}`}>
           <FileSpreadsheet className="w-8 h-8" />
           <b>{t('finance:siteFarms.emptyTitle', { site })}</b>
           <span>{t('finance:siteFarms.emptyBody')}</span>
-          {canEdit && <button type="button" className="sf-btn" onClick={() => annualInput.current?.click()}><Upload className="w-4 h-4" />{t('finance:siteFarms.uploadAnnual')}</button>}
+          {canEdit && <button type="button" onClick={() => annualInput.current?.click()} className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-700 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-700/25 cursor-pointer active:scale-95 transition-all"><Upload className="w-4 h-4" />{t('finance:siteFarms.uploadAnnual')}</button>}
         </div>
       )}
 
@@ -530,7 +785,7 @@ export const SaharaSiteFarmsView: React.FC = () => {
                   <th>{t('finance:siteFarms.colConsumption')}</th><th>{t('finance:siteFarms.colBalance')}</th><th>{t('finance:siteFarms.colShare')}</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody key={`${site}-${date}`} className="sf-rows">
                 {farmRows.map(r => (
                   <tr key={r.name}>
                     <td>{r.name}</td>
@@ -552,20 +807,58 @@ export const SaharaSiteFarmsView: React.FC = () => {
   );
 };
 
-/** خط مصغّر لمصروف آخر سنة محفوظة لموقع (كل 4 أيام نقطة) */
-const SiteSpark: React.FC<{ rec: AnnualRecord | null }> = ({ rec }) => {
+/** منحنى مصغّر لمصروف آخر سنة محفوظة لموقع (متوسط يومي لكل أسبوع)؛ يتبع الماوس بخط ونقطة وقيمة الأسبوع */
+const SiteSpark: React.FC<{ rec: AnnualRecord | null; active: boolean; months: string[] }> = ({ rec, active, months }) => {
+  const gid = `sf-spark-${React.useId().replace(/:/g, '')}`;
+  const [at, setAt] = useState(-1);
+  const W = 200, H = 46;
   if (!rec || !rec.f.length) {
-    return <svg viewBox="0 0 180 30" preserveAspectRatio="none" aria-hidden="true"><line x1="0" x2="180" y1="15" y2="15" stroke="var(--sf-grid)" strokeDasharray="3 4" /></svg>;
+    return <svg className="sf-spark" viewBox={`0 0 ${W} ${H}`} aria-hidden="true"><line x1="0" x2={W} y1={H - 6} y2={H - 6} stroke="var(--sf-grid)" strokeDasharray="3 5" /></svg>;
   }
   const pts: number[] = [];
-  for (let i = 0; i < rec.f.length; i += 4) {
-    let s = 0;
-    for (let j = i; j < Math.min(i + 4, rec.f.length); j++) s += (rec.f[j] || 0) + (rec.g[j] || 0);
-    pts.push(s);
+  for (let i = 0; i < rec.f.length; i += 7) {
+    let s = 0, n = 0;
+    for (let j = i; j < Math.min(i + 7, rec.f.length); j++) { s += (rec.f[j] || 0) + (rec.g[j] || 0); n++; }
+    pts.push(s / n);
   }
   const m = Math.max(...pts, 1);
-  const line = pts.map((v, i) => `${((i / Math.max(pts.length - 1, 1)) * 180).toFixed(1)},${(28 - (v / m) * 24).toFixed(1)}`).join(' ');
-  return <svg viewBox="0 0 180 30" preserveAspectRatio="none" aria-hidden="true"><polyline points={line} fill="none" stroke="var(--sf-farm)" strokeWidth="1.8" vectorEffect="non-scaling-stroke" /></svg>;
+  const xy = pts.map((v, i) => [(i / Math.max(pts.length - 1, 1)) * (W - 8) + 4, H - 6 - (v / m) * (H - 14)] as const);
+  let d = `M${xy[0][0].toFixed(1)},${xy[0][1].toFixed(1)}`;
+  for (let i = 1; i < xy.length; i++) {
+    const mx = (xy[i - 1][0] + xy[i][0]) / 2, my = (xy[i - 1][1] + xy[i][1]) / 2;
+    d += `Q${xy[i - 1][0].toFixed(1)},${xy[i - 1][1].toFixed(1)} ${mx.toFixed(1)},${my.toFixed(1)}`;
+  }
+  const last = xy[xy.length - 1];
+  d += `L${last[0].toFixed(1)},${last[1].toFixed(1)}`;
+  const color = 'var(--sf-spark-line)';
+  const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width) * W;
+    setAt(Math.max(0, Math.min(pts.length - 1, Math.round(((x - 4) / (W - 8)) * (pts.length - 1)))));
+  };
+  const p = at >= 0 ? xy[at] : last;
+  const day = at >= 0 ? dateOfIndex(rec.year, at * 7) : null;
+  return (
+    <span className="sf-spark-wrap">
+      <svg className="sf-spark" viewBox={`0 0 ${W} ${H}`} aria-hidden="true" onPointerMove={onMove} onPointerLeave={() => setAt(-1)}>
+        <defs>
+          <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor={color} stopOpacity={active ? 0.05 : 0.03} />
+            <stop offset="1" stopColor={color} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={`${d}L${last[0].toFixed(1)},${H}L${xy[0][0].toFixed(1)},${H}Z`} fill={`url(#${gid})`} />
+        <path d={d} fill="none" stroke={color} strokeOpacity={active ? 1 : 0.85} strokeWidth={active ? 0.6 : 0.5} strokeLinejoin="round" strokeLinecap="round" />
+        <g className="sf-spark-cursor" style={{ transform: `translate(${p[0]}px, ${p[1]}px)` }}>
+          {at >= 0 && <line x1="0" x2="0" y1={-p[1] + 2} y2={H - p[1]} stroke="var(--sf-mut)" strokeWidth="1" strokeDasharray="2 3" />}
+          <circle r={at >= 0 ? 2.2 : 1.5} fill="var(--sf-panel)" stroke={color} strokeWidth="0.6" />
+        </g>
+      </svg>
+      {at >= 0 && day && (
+        <span className="sf-spark-tip" style={{ left: `${(p[0] / W) * 100}%` }}>{day.day} {months[day.month]} · {short(pts[at])}</span>
+      )}
+    </span>
+  );
 };
 
 export default SaharaSiteFarmsView;

@@ -61,6 +61,18 @@ describe('صفحة مزارع الموقع: قراءة الملفات', () => {
     expect(r.years[0].g).toEqual([10, 10, 10]);
   });
 
+  it('الملف السنوي: "محطة النقل" = الطاقة، وبلا اسم موقع يُؤخذ من اسم الملف، وإلا فلا موقع', async () => {
+    const dates = Array.from({ length: 30 }, (_, i) => new Date(Date.UTC(2025, 0, i + 1)));
+    const rows = (label: string): unknown[][] => [
+      [2025], ['التاريخ', null, ...dates],
+      [label, 'مصروف المزارع', ...dates.map(() => 50)],
+      ['', 'مصروف المولدات', ...dates.map(() => 5)],
+    ];
+    expect((await readAnnualFarmsFile(toFile(rows('محطة النقل'), 'a.xlsx'))).site).toBe('الطاقة');
+    expect((await readAnnualFarmsFile(toFile(rows('التقرير السنوي'), 'المصروف السنوي البوادي.xlsx'))).site).toBe('البوادي');
+    expect((await readAnnualFarmsFile(toFile(rows('التقرير السنوي'), 'annual.xlsx'))).site).toBeNull();
+  });
+
   it('الكشف اليومي: مزارع كل موقع بأعمدة الرصيد السابق والوارد والمصروف والتراكمي', async () => {
     const rows: unknown[][] = [
       ['التاريخ', '2026/10/11'],

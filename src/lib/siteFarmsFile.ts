@@ -133,6 +133,12 @@ const dayIndex = (d: Date, year: number) => {
   return Math.floor((Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate()) - Date.UTC(year, 0, 1)) / 864e5);
 };
 
+/** اسم الموقع داخل نص (أطول اسم أولًا حتى لا يُلتقط "البياض" من "امهات البياض")؛ "النقل" اسم محطة الطاقة في الكشوف */
+const siteInText = (text: string): string | null => {
+  const hit = [...FARM_SITES].sort((a, b) => b.length - a.length).find(s => has(text, s));
+  return hit ?? (has(text, 'النقل') ? 'الطاقة' : null);
+};
+
 export const readAnnualFarmsFile = async (file: File): Promise<AnnualFileResult> => {
   const XLSX = await import('xlsx');
   const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
@@ -141,13 +147,11 @@ export const readAnnualFarmsFile = async (file: File): Promise<AnnualFileResult>
 
   for (const sheetName of wb.SheetNames) {
     const rows = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[sheetName], { header: 1, raw: true, defval: null });
-    // أطول اسم أولًا حتى لا يُلتقط "البياض" من "امهات البياض"
-    const bySpecific = [...FARM_SITES].sort((a, b) => b.length - a.length);
     if (!site) {
       for (const row of rows) {
         const cell = row.slice(0, 2).find(x => typeof x === 'string' && has(x, 'محطة'));
         if (typeof cell === 'string') {
-          const hit = bySpecific.find(s => has(cell, s));
+          const hit = siteInText(cell);
           if (hit) { site = hit; break; }
         }
       }
@@ -188,5 +192,5 @@ export const readAnnualFarmsFile = async (file: File): Promise<AnnualFileResult>
     out.push({ year: rec.year, f: rec.f.slice(0, n), g: rec.g.slice(0, n) });
   }
   if (!out.length) throw new Error(i18n.t('finance:siteFarms.noAnnual'));
-  return { site, years: out.sort((a, b) => a.year - b.year) };
+  return { site: site ?? siteInText(file.name.replace(/\.[^.]+$/, '')), years: out.sort((a, b) => a.year - b.year) };
 };
