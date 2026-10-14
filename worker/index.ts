@@ -12,7 +12,7 @@ import { canCreateItems, canMarkRead, canReadKey, canWriteKey, canWriteSome, isS
 
 import { ensureFileColumns, loadFile, removeFile, storeFile } from './storage/files';
 import { applyCollectionOps, clearCollection, ensureCollections, isCollectionKey, limitedOpsAllowed, readCollections, replaceCollection, type CollectionOps } from './storage/collections';
-import { COLLECTION_KEYS } from '../src/lib/permCatalog';
+import { COLLECTION_KEYS, KEY_RULES_SIGNATURE } from '../src/lib/permCatalog';
 import type { D1Database, D1PreparedStatement, Env, ExecutionContext, R2Bucket, ScheduledController } from './types';
 import { handleSystem } from './system/api';
 import { ensureSystemTables, getMaintenance } from './system/backup';
@@ -71,8 +71,10 @@ const cheapHash = (text: string) => {
   return (a >>> 0).toString(16).padStart(8, '0') + (b >>> 0).toString(16).padStart(8, '0');
 };
 /** بصمة المزامنة: رقم النسخة + الحساب وصلاحياته (ما يُعاد لكل حساب يختلف بصلاحياته) */
+// تدخل فيها قواعد الصلاحيات أيضًا: تغيير ما يقرؤه قسم يصل للأجهزة المفتوحة دون انتظار تغيّر البيانات
+const RULES_HASH = cheapHash(KEY_RULES_SIGNATURE);
 const stateEtag = (version: string, session: Session) =>
-  `"${cheapHash([version, session.id, session.admin ? 1 : 0, JSON.stringify(session.perms)].join('|'))}"`;
+  `"${cheapHash([version, session.id, session.admin ? 1 : 0, JSON.stringify(session.perms), RULES_HASH].join('|'))}"`;
 const MAX_STATE_BODY = 8 * 1024 * 1024;
 const MAX_IMAGE_BODY = 6 * 1024 * 1024;
 /** ملف PDF للقراءة الذكية (base64 يزيد الحجم ~33%) */

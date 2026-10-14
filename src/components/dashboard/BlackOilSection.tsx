@@ -126,7 +126,7 @@ export const BlackOilSection: React.FC = () => {
                   <Database className="w-5 h-5 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white truncate">
+                  <h3 className="font-black text-sm sm:text-base leading-snug text-slate-900 dark:text-white break-words">
                     {t('dashboard:blackOil.sahara')}
                   </h3>
                   <div className="flex items-center gap-1.5 mt-0.5">
@@ -195,14 +195,14 @@ export const BlackOilSection: React.FC = () => {
             <div className="grid grid-cols-2 gap-2 pt-0.5">
               <div className="p-2 rounded-xl bg-sky-50/60 dark:bg-sky-950/30 border border-sky-200/60 dark:border-sky-900/40">
                 <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 block leading-tight">{t('dashboard:balance.actual')}</span>
-                <span className="font-mono font-black text-[14px] leading-tight text-sky-900 dark:text-sky-200 block truncate">
+                <span className="font-mono font-black text-[14px] leading-tight text-sky-900 dark:text-sky-200 block break-words">
                   {formatNumber(saharaTotalBalance)} <span className="text-[10.5px] font-normal">{t('common:units.liter')} ({saharaFill}%)</span>
                 </span>
               </div>
 
               <div className="p-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80">
                 <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 block leading-tight">{t('dashboard:capacity.remainingOfCapacity')}</span>
-                <span className="font-mono font-black text-[14px] leading-tight text-slate-900 dark:text-slate-100 block truncate">
+                <span className="font-mono font-black text-[14px] leading-tight text-slate-900 dark:text-slate-100 block break-words">
                   {formatNumber(saharaRemainingCapacity)} <span className="text-[10.5px] font-normal text-slate-500 dark:text-slate-400">{t('common:units.liter')}</span>
                 </span>
               </div>
@@ -263,7 +263,7 @@ export const BlackOilSection: React.FC = () => {
                   <Database className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white truncate">
+                  <h3 className="font-black text-sm sm:text-base leading-snug text-slate-900 dark:text-white break-words">
                     {t('dashboard:blackOil.etihad')}
                   </h3>
                   <div className="flex items-center gap-1.5 mt-0.5">
@@ -332,14 +332,14 @@ export const BlackOilSection: React.FC = () => {
             <div className="grid grid-cols-2 gap-2 pt-0.5">
               <div className="p-2 rounded-xl bg-teal-50/60 dark:bg-teal-950/30 border border-teal-200/60 dark:border-teal-900/40">
                 <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 block leading-tight">{t('dashboard:balance.actual')}</span>
-                <span className="font-mono font-black text-[14px] leading-tight text-teal-900 dark:text-teal-200 block truncate">
+                <span className="font-mono font-black text-[14px] leading-tight text-teal-900 dark:text-teal-200 block break-words">
                   {formatNumber(etihadTotalBalance)} <span className="text-[10.5px] font-normal">{t('common:units.liter')} ({etihadFill}%)</span>
                 </span>
               </div>
 
               <div className="p-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80">
                 <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 block leading-tight">{t('dashboard:capacity.remainingOfCapacity')}</span>
-                <span className="font-mono font-black text-[14px] leading-tight text-slate-900 dark:text-slate-100 block truncate">
+                <span className="font-mono font-black text-[14px] leading-tight text-slate-900 dark:text-slate-100 block break-words">
                   {formatNumber(etihadRemainingCapacity)} <span className="text-[10.5px] font-normal text-slate-500 dark:text-slate-400">{t('common:units.liter')}</span>
                 </span>
               </div>
