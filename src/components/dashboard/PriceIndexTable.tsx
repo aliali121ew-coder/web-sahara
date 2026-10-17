@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Avatar, CompanyBadges, fmtPrice } from '../suppliers/supplierUi';
 import { SectionHeader } from './SectionHeader';
 import { latestSupplierPrices, sameSupplier } from '../../lib/archiveSuppliers';
+import { isOnDashboard, useDashboardSuppliers } from '../../lib/dashboardSuppliers';
 
 /** مربع الاتجاه لفرق التغيّر: سهم مستقيم داخل كارت صغير بدل الإشارة (+ / −) */
 const DirBox: React.FC<{ v: number }> = ({ v }) => {
@@ -44,6 +45,8 @@ export const PriceIndexTable: React.FC = () => {
   const { supplierPrices, searchQuery, saharaDeliveries, etihadDeliveries } = useFuelData();
   const { t } = useTranslation(['dashboard', 'common']);
   // من أرشيف وارد الشركتين مباشرة: أحدث المجهزين ورودًا أولًا، وكل مجهز يُقارن بسعر شحنته السابقة
+  // الموردون المعلَّمون بعلامة صح في صفحة الموردين فقط
+  const shown = useDashboardSuppliers();
   const latest = useMemo(() => latestSupplierPrices(saharaDeliveries, etihadDeliveries), [saharaDeliveries, etihadDeliveries]);
   // سجل الموردين هو المرجع: كل مورد فيه يظهر هنا، وأي تحديث عليه (سعر/اسم/كثافة/لون من صفحة الموردين
   // ويُسجَّل في سجل الأسعار والمشتريات) يظهر فورًا. الأحدث بين آخر تحديث للسجل وآخر وارد من الأرشيف هو المعروض
@@ -91,12 +94,13 @@ export const PriceIndexTable: React.FC = () => {
     // كل الموردين بلا تكرار: المورد الواحد (ولو ورد للشركتين) يظهر مرة واحدة بأحدث صف له
     const seen: typeof merged = [];
     for (const item of merged
+      .filter(item => isOnDashboard(shown, item.supplierName))
       .filter(item => item.supplierName.includes(searchQuery) || (item.product || '').includes(searchQuery))
       .sort((a, b) => b.sortKey.localeCompare(a.sortKey))) {
       if (!seen.some(x => sameSupplier(x.supplierName, item.supplierName))) seen.push(item);
     }
     return seen;
-  }, [latest, supplierPrices, searchQuery]);
+  }, [latest, supplierPrices, searchQuery, shown]);
 
   // كل العناوين في الوسط؛ خلية المجهز (الشعار والاسم) بمحاذاة البداية
   const th = 'px-3 xl:px-4 pt-3 pb-1 text-center text-[13px] font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap';
@@ -129,7 +133,7 @@ export const PriceIndexTable: React.FC = () => {
           </thead>
           <tbody>
             {rows.length === 0 && (
-              <tr><td colSpan={8} className="py-10 text-center text-sm text-slate-400">{t('dashboard:priceIndex.empty')}</td></tr>
+              <tr><td colSpan={8} className="py-10 text-center text-sm text-slate-400">{t(shown.length ? 'dashboard:priceIndex.empty' : 'dashboard:priceIndex.noneSelected')}</td></tr>
             )}
             {rows.map(s => (
               <tr key={s.id}>

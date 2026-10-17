@@ -182,7 +182,8 @@
     },
     "density": "Density",
     "color": "Color",
-    "diff": "Price difference"
+    "diff": "Price difference",
+    "noneSelected": "No supplier chosen yet. Tick the “Dashboard” column on the Suppliers page to show it here."
   },
   "sahara": {
     "sectors": {

@@ -18,6 +18,7 @@ import { SuppliersCompare } from './SuppliersCompare';
 import { PriceLogModal } from './PriceLogModal';
 import type { InboundDelivery, NavTabId, SupplierPriceRecord } from '../../types';
 import { ChangePill, fmtPrice, CompanyBadges, Avatar, type Company } from './supplierUi';
+import { isOnDashboard, setOnDashboard, useDashboardSuppliers } from '../../lib/dashboardSuppliers';
 
 type SortKey = 'name' | 'priceDesc' | 'priceAsc' | 'change' | 'updated';
 
@@ -289,6 +290,19 @@ export const SuppliersView: React.FC = () => {
   const { t } = useTranslation(['suppliers', 'common']);
   const { supplierPrices, saharaDeliveries, etihadDeliveries, saveSupplier, deleteSupplier, setActiveTab } = useFuelData();
   const editable = usePermissions().canEdit('suppliers');
+  // الموردون الظاهرون في كارت مؤشرات الأسعار في الرئيسية (علامة صح في العمود الأخير)
+  const dashboardList = useDashboardSuppliers();
+  const dashToggle = (s: SupplierPriceRecord) => {
+    const on = isOnDashboard(dashboardList, s.supplierName);
+    return (
+      <button type="button" role="checkbox" aria-checked={on} disabled={!editable}
+        onClick={e => { e.stopPropagation(); setOnDashboard(s.supplierName, !on); }}
+        title={t(on ? 'table.onDashboard' : 'table.offDashboard')} aria-label={t('table.dashboard')}
+        className={`w-6 h-6 rounded-md border-2 inline-flex items-center justify-center transition-colors ${on ? 'bg-teal-500 border-teal-500 text-white' : 'border-slate-300 dark:border-slate-600 text-transparent hover:border-teal-400'} ${editable ? 'cursor-pointer' : 'cursor-default opacity-70'}`}>
+        <Check className="w-4 h-4" strokeWidth={3} />
+      </button>
+    );
+  };
   // صفحة المورد الكاملة (تبقى مفتوحة بعد تحديث الصفحة): اسمه في الأرشيف وشركة السجل الذي فُتحت منه
   const [profileState, setProfile] = useSessionState<{ name: string; company?: Company } | string | null>('supplier_profile', null);
   const profile = typeof profileState === 'string' ? { name: profileState } : profileState;
@@ -648,6 +662,7 @@ export const SuppliersView: React.FC = () => {
                 </dl>
                 <div className="mt-3 flex items-center justify-between gap-2">
                   <span className="text-[11px] text-slate-400 tabular-nums">{t('table.updated')}: {s.lastUpdated || '—'}</span>
+                  <span className="ms-auto flex items-center gap-1.5 text-[11px] text-slate-500" onClick={e => e.stopPropagation()}>{t('table.dashboard')}{dashToggle(s)}</span>
                   {editable && (
                     <button type="button" onClick={e => { e.stopPropagation(); setEditing({ rec: s, isNew: false }); }}
                       className="h-7 px-3 rounded-md bg-teal-500 hover:bg-teal-600 text-white text-xs font-medium flex items-center gap-1.5 cursor-pointer">
@@ -674,11 +689,12 @@ export const SuppliersView: React.FC = () => {
                   <th className={th}>{t('table.change')}</th>
                   <th className={th}>{t('table.updated')}</th>
                   <th className={th}>{t('table.action')}</th>
+                  <th className={th}>{t('table.dashboard')}</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.length === 0 && (
-                  <tr><td colSpan={10} className="py-12 text-center text-sm text-slate-400">{t('empty')}</td></tr>
+                  <tr><td colSpan={11} className="py-12 text-center text-sm text-slate-400">{t('empty')}</td></tr>
                 )}
                 {pageRows.map(s => {
                   const active = s.id === selected?.id;
@@ -713,6 +729,7 @@ export const SuppliersView: React.FC = () => {
                           </button>
                         )}
                       </td>
+                      <td className={td} onClick={e => e.stopPropagation()}>{dashToggle(s)}</td>
                     </tr>
                   );
                 })}
