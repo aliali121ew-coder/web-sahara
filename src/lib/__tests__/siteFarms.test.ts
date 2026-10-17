@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as XLSX from 'xlsx';
-import { annualFor, annualYears, farmsDates, farmsOn, readSiteFarms, saveAnnual, saveFarmsDay } from '../siteFarms';
+import { annualFor, annualYears, farmsDates, farmsOn, importAnnual, importFarmsDay, lastDayUse, mergeAnnualDays, readSiteFarms, saveAnnual, saveFarmsDay } from '../siteFarms';
+import { archiveMonths, closedMonths, monthRows, monthSheets, type MonthSheetLabels } from '../siteFarmsArchive';
+import { detectKind } from '../bulkUpload';
 import { readAnnualFarmsFile, readDailyFarmsFile } from '../siteFarmsFile';
 
 const toFile = (rows: unknown[][], name: string) => {
@@ -43,6 +45,20 @@ describe('صفحة مزارع الموقع: التخزين', () => {
 });
 
 describe('صفحة مزارع الموقع: قراءة الملفات', () => {
+  it('الملف السنوي: تواريخ نصية، و"-" للأيام القادمة، وملف النقل بالآليات فقط', async () => {
+    const dates = Array.from({ length: 30 }, (_, i) => `2026-09-${String(i + 1).padStart(2, '0')}`);
+    const rows: unknown[][] = [
+      [2026], ['التاريخ', null, ...dates],
+      ['محطة النقل', 'مصروف الاليات', ...dates.map((_, i) => (i < 2 ? 500 + i : '-'))],
+      ['المجموع', null, ...dates.map(() => '-')],
+    ];
+    const r = await readAnnualFarmsFile(toFile(rows, 'n.xlsx'));
+    expect(r.site).toBe('الطاقة');
+    const start = (Date.UTC(2026, 8, 1) - Date.UTC(2026, 0, 1)) / 864e5;
+    expect(r.years[0].g.slice(start)).toEqual([500, 501]);
+    expect(r.years[0].f.every(v => v === 0)).toBe(true);
+  });
+
   it('الملف السنوي: الموقع والسنة ومصروف المزارع والمولدات (مع حذف الأيام المستقبلية)', async () => {
     const d = (m: number, day: number) => new Date(Date.UTC(2026, m - 1, day, 0, 0, 0));
     const dates = Array.from({ length: 30 }, (_, i) => d(1, i + 1));
@@ -88,5 +104,84 @@ describe('صفحة مزارع الموقع: قراءة الملفات', () => {
       { name: 'محطة التسمين', previous: 238588, inbound: 72933, consumption: 66126, balance: 245395 },
       { name: 'تسمين مزرعة 1', previous: 48108, inbound: 0, consumption: 100, balance: 48008 },
     ]);
+  });
+});
+
+describe('مزارع الموقع: تحديث الملف السنوي اليومي والمكرر', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('الدمج: الأيام الجديدة تُضاف وقيم الملف هي الأحدث، وأيام بعد نهاية الملف تبقى', () => {
+    expect(mergeAnnualDays(null, [1, 2], [0, 1])).toEqual({ f: [1, 2], g: [0, 1], added: 2, changed: 0 });
+    expect(mergeAnnualDays({ f: [1, 2], g: [0, 1] }, [1, 5, 7], [0, 1, 2])).toEqual({ f: [1, 5, 7], g: [0, 1, 2], added: 1, changed: 1 });
+    expect(mergeAnnualDays({ f: [1, 2, 3], g: [0, 0, 0] }, [1], [0])).toEqual({ f: [1, 2, 3], g: [0, 0, 0], added: 0, changed: 0 });
+  });
+
+  it('إعادة رفع الملف يحدّث السنة، والملف نفسه مرة ثانية مكرر (لا يُحفظ شيء)', () => {
+    expect(importAnnual('التسمين', [{ year: 2026, f: [10, 20], g: [1, 2] }])).toEqual([{ year: 2026, added: 2, changed: 0 }]);
+    expect(importAnnual('التسمين', [{ year: 2026, f: [10, 25, 30], g: [1, 2, 3] }])).toEqual([{ year: 2026, added: 1, changed: 1 }]);
+    expect(annualFor(readSiteFarms(), 'التسمين', 2026)?.f).toEqual([10, 25, 30]);
+    const before = localStorage.getItem('sahara_site_farms_v1');
+    expect(importAnnual('التسمين', [{ year: 2026, f: [10, 25, 30], g: [1, 2, 3] }])).toEqual([]);
+    expect(localStorage.getItem('sahara_site_farms_v1')).toBe(before);
+  });
+
+  it('مزارع كشف الرصيد: تُحفظ، والكشف نفسه مرة ثانية مكرر، وتغيّر رقم يحدّث الموقع فقط', () => {
+    const sites = {
+      'التسمين': [{ name: 'تسمين مزرعة 1', previous: 100, inbound: 0, consumption: 10, balance: 90 }],
+      'البوادي': [{ name: 'بوادي مزرعة 1', previous: 50, inbound: 0, consumption: 5, balance: 45 }],
+    };
+    expect(importFarmsDay('2026/10/12', sites)).toEqual(['التسمين', 'البوادي']);
+    expect(importFarmsDay('2026/10/12', sites)).toEqual([]);
+    expect(importFarmsDay('2026/10/12', { ...sites, 'البوادي': [{ ...sites['البوادي'][0], consumption: 6, balance: 44 }] })).toEqual(['البوادي']);
+  });
+
+  it('بطاقة الموقع: استهلاك آخر يوم من الملف السنوي، وإلا من مزارع آخر كشف (بلا خزان المحطة)', () => {
+    saveFarmsDay('البوادي', '2026/10/12', [
+      { name: 'محطة البوادي', previous: 1000, inbound: 0, consumption: 300, balance: 700 },
+      { name: 'بوادي مزرعة 1', previous: 50, inbound: 0, consumption: 20, balance: 30 },
+    ]);
+    expect(lastDayUse(readSiteFarms(), 'البوادي')).toEqual({ date: '2026/10/12', total: 20, f: 20, g: 0, source: 'daily' });
+    saveAnnual('البوادي', 2026, [5, 7, 9], [1, 1, 2]);
+    expect(lastDayUse(readSiteFarms(), 'البوادي')).toEqual({ date: '2026/01/03', total: 11, f: 9, g: 2, source: 'annual' });
+    expect(lastDayUse(readSiteFarms(), 'الطاقة')).toBeNull();
+  });
+});
+
+describe('أرشيف مزارع الموقع: الجدول والملفات الشهرية', () => {
+  beforeEach(() => localStorage.clear());
+  const L: MonthSheetLabels = {
+    summary: 'S', farms: 'F', date: 'd', site: 's', farm: 'fm', farmsUse: 'fu', genUse: 'gu', total: 't',
+    reportUse: 'ru', balance: 'b', previous: 'p', inbound: 'i', consumption: 'c',
+  };
+
+  it('أيام الشهر من الملف السنوي ومن الكشف، والملفات للأشهر المنتهية فقط', () => {
+    // 40 يومًا: كانون الثاني كاملًا و9 أيام من شباط
+    saveAnnual('التسمين', 2026, Array.from({ length: 40 }, () => 100), Array.from({ length: 40 }, () => 10));
+    saveFarmsDay('التسمين', '2026/02/09', [
+      { name: 'محطة التسمين', previous: 1, inbound: 0, consumption: 999, balance: 1 },
+      { name: 'تسمين مزرعة 1', previous: 500, inbound: 0, consumption: 60, balance: 440 },
+    ]);
+    const recs = readSiteFarms();
+    expect(archiveMonths(recs)).toEqual(['2026-02', '2026-01']);
+    const feb = monthRows(recs, 'التسمين', '2026-02');
+    expect(feb).toHaveLength(9);
+    expect(feb[8]).toEqual({ date: '2026/02/09', f: 100, g: 10, total: 110, consumption: 60, balance: 440, farms: 1 });
+    expect(feb[0].consumption).toBeNull();
+    expect(monthRows(recs, 'التسمين', '2026-01')).toHaveLength(31);
+    expect(closedMonths(recs, new Date(2026, 1, 15))).toEqual(['2026-01']);
+    expect(closedMonths(recs, new Date(2026, 2, 1))).toEqual(['2026-02', '2026-01']);
+    const sheets = monthSheets(recs, '2026-02', L);
+    expect(sheets[0].rows).toHaveLength(10);
+    expect(sheets[1].rows).toEqual([
+      ['d', 's', 'fm', 'p', 'i', 'c', 'b'],
+      ['2026/02/09', 'التسمين', 'محطة التسمين', 1, 0, 999, 1],
+      ['2026/02/09', 'التسمين', 'تسمين مزرعة 1', 500, 0, 60, 440],
+    ]);
+  });
+
+  it('الرفع المتعدد يميّز الملف السنوي عن كشف الرصيد', () => {
+    expect(detectKind('2026 التقرير السنوي مصروف المزارع محطة مشروع التسمين مصروف المولدات + الاليات').kind).toBe('site-annual');
+    expect(detectKind('المدور السابق المصروف اليومي للمزارع المصروف اليومي للمولدات موقع الخزان الرصيد التراكمي').kind).toBe('balance');
+    expect(detectKind('2026 التاريخ محطة النقل مصروف الاليات المجموع').kind).toBe('site-annual');
   });
 });

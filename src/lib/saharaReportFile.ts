@@ -10,7 +10,7 @@ import type { SaharaReportExtraction } from './saharaReportUpload';
  * ومن جدول "تفاصيل الكميات في الموقع" يأخذ اسم الموقع وعمود "الرصيد التراكمي".
  */
 
-type NumberField = Exclude<keyof SaharaReportExtraction, 'stations' | 'notes' | 'tableTotal' | 'date'>;
+type NumberField = Exclude<keyof SaharaReportExtraction, 'stations' | 'notes' | 'tableTotal' | 'date' | 'powerTank'>;
 
 const LABELS: Record<NumberField, string> = {
   generators: 'المصروف اليومي للمولدات',
@@ -73,9 +73,12 @@ export const SITE_GROUPS: Record<string, string[]> = {
   الاجداد: ['مزرعة الاجداد'],
   // محطة البياض + مفقس البياض + تربيات البياض الموقع 1–6 + إنتاج البياض 1–8 + تصفية ماء البياض
   البياض: ['مفقس البياض', 'تربيات البياض', 'انتاج البياض', 'تصفية ماء البياض'],
-  // محطة النقل (الطاقة) + خزان الطاقة
+  // محطة النقل (الطاقة) + خزان الطاقة (لصفحة مزارع الموقع فقط؛ في رصيد الصحاري خزان الطاقة رصيد منفصل)
   الطاقة: ['خزان الطاقة'],
 };
+
+/** "خزان الطاقة" في جدول المواقع: رصيده منفصل عن محطة النقل (الطاقة) ويدخل في الرصيد الكلي */
+export const isPowerTank = (name: string) => looseKey(name).replace(/[0-9٠-٩]/g, '').startsWith(looseKey('خزان الطاقة'));
 
 /** محطة النظام التي يُجمع إليها موقع من الكشف (null = ليس من مواقع المحطات المجمّعة) */
 export const siteGroupOf = (name: string, stationNames: string[]): string | null => {
@@ -145,6 +148,7 @@ const finish = (
   if (missing.length === Object.keys(LABELS).length && stations.length === 0) {
     throw new Error(i18n.t('common:fileImport.saharaNoItems'));
   }
+  const powerRows = stations.filter(s => isPowerTank(s.nameInImage));
   return {
     generators: values.generators ?? 0,
     vehicles: values.vehicles ?? 0,
@@ -157,7 +161,8 @@ const finish = (
     currentInFile: values.currentInFile,
     tableTotal,
     date: date ?? undefined,
-    stations: mergeSites(stations, stationNames),
+    stations: mergeSites(stations.filter(s => !powerRows.includes(s)), stationNames),
+    powerTank: powerRows.length ? powerRows.reduce((a, s) => a + s.balance, 0) : undefined,
     notes: [
       missing.length ? i18n.t('common:fileImport.missing', { list: fmtList(missing.map(fieldName)) }) : '',
       stations.length

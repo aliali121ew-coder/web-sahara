@@ -1,13 +1,14 @@
 import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CalendarDays, FileSpreadsheet, FileText, Loader2, Sprout, Upload } from 'lucide-react';
+import { CalendarDays, FileSpreadsheet, Sprout, Upload } from 'lucide-react';
 import { usePermissions } from '../../lib/usePermission';
 import {
-  FARM_SITES, annualFor, annualYears, farmsDates, farmsOn, saveAnnual, saveFarmsDay, useSiteFarms,
+  FARM_SITES, annualFor, annualYears, farmsDates, farmsOn, importAnnual, importFarmsDay, lastDayUse, useSiteFarms,
   type AnnualRecord, type SiteFarmsRecord
 } from '../../lib/siteFarms';
 import { readAnnualFarmsFile, readDailyFarmsFile } from '../../lib/siteFarmsFile';
 import { siteCover } from '../../lib/siteFarmsMap';
+import { saveSiteAnnualFile } from '../../lib/saharaFiles';
 import { useSiteWeather } from '../../lib/weather';
 import SiteFarmsField from './SiteFarmsField';
 import './siteFarms.css';
@@ -314,7 +315,7 @@ export const SaharaSiteFarmsView: React.FC = () => {
   const [metric, setMetric] = useState<Metric>('all');
   const [datePick, setDatePick] = useState<string | null>(null);
   const [busy, setBusy] = useState<false | 'annual' | 'daily'>(false);
-  const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null);
+  const [notice, setNotice] = useState<{ text: string; error?: boolean; warn?: boolean } | null>(null);
   const annualInput = useRef<HTMLInputElement>(null);
   const dailyInput = useRef<HTMLInputElement>(null);
 
@@ -385,16 +386,14 @@ export const SaharaSiteFarmsView: React.FC = () => {
 
   const yearTotal = (r: SiteFarmsRecord | null) => (r && r.kind === 'annual' ? r.f.reduce((a, b) => a + b, 0) + r.g.reduce((a, b) => a + b, 0) : 0);
 
-  // مواقع: ملخص كل موقع من آخر كشف يومي وأحدث سنة
+  // مواقع: استهلاك آخر يوم لكل موقع (من الملف السنوي، وإلا من آخر كشف يومي) — لا الرصيد التراكمي
   const siteCards = useMemo(() => FARM_SITES.map(name => {
     const dates = farmsDates(records, name);
     const last = dates[dates.length - 1];
     const rows = last ? farmsOn(records, name, last) : [];
-    const balance = rows.reduce((s, r) => s + (r.balance ?? 0), 0);
     const yrs = annualYears(records, name);
     const latest = yrs.length ? annualFor(records, name, yrs[yrs.length - 1]) : null;
-    const todayUse = rows.reduce((s, r) => s + (r.consumption ?? 0), 0);
-    return { name, hasData: yrs.length > 0 || rows.length > 0, farms: rows.length, balance, latest, todayUse, lastDate: last ?? null };
+    return { name, hasData: yrs.length > 0 || rows.length > 0, farms: rows.length, latest, use: lastDayUse(records, name) };
   }), [records]);
 
   const datesOfSite = useMemo(() => farmsDates(records, site), [records, site]);
@@ -426,15 +425,24 @@ export const SaharaSiteFarmsView: React.FC = () => {
   // الطقس الحقيقي للموقع على الخريطة (من الخادم كل 15 دقيقة)
   const weather = useSiteWeather();
   const [field, setField] = useState<{ farm: string | null } | null>(null);
-  const [pending, setPending] = useState<{ fileName: string; site: string; detected: boolean; years: { year: number; f: number[]; g: number[] }[]; existing: number[] } | null>(null);
-  const commitAnnual = (target: string, years: { year: number; f: number[]; g: number[] }[]) => {
-    for (const y of years) saveAnnual(target, y.year, y.f, y.g);
+  const [pending, setPending] = useState<{ file: File; fileName: string; site: string; years: { year: number; f: number[]; g: number[] }[] } | null>(null);
+  // الملف السنوي يُعاد رفعه كل يوم: يُدمج مع المحفوظ (الأيام الجديدة وقيم الملف هي الأحدث)، والملف الذي لا جديد فيه يظهر تنبيهًا
+  const commitAnnual = (target: string, file: File, years: { year: number; f: number[]; g: number[] }[]) => {
+    const fileName = file.name;
+    const done = importAnnual(target, years);
     setSite(target);
     setYearPick(years[years.length - 1].year);
     setPending(null);
-    setNotice({ text: t('finance:siteFarms.annualSaved', { site: target, years: years.map(y => y.year).join('، ') }) });
+    if (!done.length) { setNotice({ text: t('finance:siteFarms.duplicateAnnual', { file: fileName, site: target }), warn: true }); return; }
+    // الملف نفسه يُحفظ في أرشيف تقرير مزارع الموقع (آخر ملف لكل موقع)
+    void saveSiteAnnualFile(target, file).catch(() => undefined);
+    setNotice({ text: t('finance:siteFarms.annualUpdated', {
+      site: target,
+      years: done.map(y => y.year).join('، '),
+      added: done.reduce((a, y) => a + y.added, 0),
+      changed: done.reduce((a, y) => a + y.changed, 0),
+    }) });
   };
-  const pendingConflicts = pending ? pending.years.filter(y => annualFor(records, pending.site, y.year)).map(y => y.year) : [];
 
   const onFile = async (kind: 'annual' | 'daily', file: File | undefined) => {
     if (!file) return;
@@ -443,19 +451,18 @@ export const SaharaSiteFarmsView: React.FC = () => {
     try {
       if (kind === 'annual') {
         const res = await readAnnualFarmsFile(file);
-        const target = res.site ?? site;
-        const existing = res.years.filter(y => annualFor(records, target, y.year)).map(y => y.year);
-        // الموقع غير مكتوب في الملف، أو السنة محفوظة سابقًا: لا يُحفظ شيء قبل التأكيد
-        if (!res.site || existing.length) setPending({ fileName: file.name, site: target, detected: !!res.site, years: res.years, existing });
-        else commitAnnual(target, res.years);
+        // الموقع غير مكتوب في الملف: لا يُحفظ شيء قبل اختيار الموقع
+        if (!res.site) setPending({ file, fileName: file.name, site, years: res.years });
+        else commitAnnual(res.site, file, res.years);
       } else {
         const res = await readDailyFarmsFile(file);
         if (!res.date) throw new Error(t('finance:siteFarms.noDate'));
         const names = Object.keys(res.sites);
         if (!names.length) throw new Error(t('finance:siteFarms.noFarms'));
-        for (const n of names) saveFarmsDay(n, res.date, res.sites[n]);
+        const changed = importFarmsDay(res.date, res.sites);
         setDatePick(res.date);
-        setNotice({ text: t('finance:siteFarms.dailySaved', { date: res.date, sites: names.length, farms: names.reduce((a, n) => a + res.sites[n].length, 0) }) });
+        if (!changed.length) setNotice({ text: t('finance:siteFarms.duplicateDaily', { file: file.name, date: res.date }), warn: true });
+        else setNotice({ text: t('finance:siteFarms.dailySaved', { date: res.date, sites: changed.length, farms: changed.reduce((a, n) => a + res.sites[n].length, 0) }) });
       }
     } catch (e) {
       setNotice({ text: e instanceof Error ? e.message : String(e), error: true });
@@ -529,7 +536,7 @@ export const SaharaSiteFarmsView: React.FC = () => {
 
   return (
     <div className="sf-root" dir={i18n.dir()}>
-      {/* شريط الصفحة بنفس تصميم شريط صفحة الخزانات: كارت أبيض فيه الأيقونة والعنوان، وأزرار الرفع كأزرار الأقسام */}
+      {/* شريط الصفحة بنفس تصميم شريط صفحة الخزانات: كارت أبيض فيه الأيقونة والعنوان (الرفع من الرفع المتعدد) */}
       <div className="p-3 sm:p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3 px-1 min-w-0">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-700 to-emerald-500 text-white flex items-center justify-center shadow-sm shrink-0">
@@ -547,48 +554,32 @@ export const SaharaSiteFarmsView: React.FC = () => {
             </div>
           </div>
         </div>
-        {canEdit && (
-          <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full sm:w-auto [&_button]:whitespace-nowrap">
-            <button type="button" disabled={!!busy} onClick={() => annualInput.current?.click()}
-              className="group px-4 py-2.5 sm:py-3 rounded-2xl flex items-center justify-center gap-2.5 font-black text-xs sm:text-sm transition-all duration-300 cursor-pointer border border-transparent bg-gradient-to-r from-emerald-700 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white shadow-md shadow-emerald-700/25 active:scale-95 disabled:opacity-60 disabled:cursor-wait">
-              <span className="w-7 h-7 rounded-xl flex items-center justify-center bg-white/20 transition-transform group-hover:scale-110">
-                {busy === 'annual' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-              </span>
-              <span>{t('finance:siteFarms.uploadAnnualShort')}</span>
-              <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-white/25">Excel</span>
-            </button>
-            <button type="button" disabled={!!busy} onClick={() => dailyInput.current?.click()}
-              className="group px-4 py-2.5 sm:py-3 rounded-2xl flex items-center justify-center gap-2.5 font-black text-xs sm:text-sm transition-all duration-300 cursor-pointer border bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/80 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/80 active:scale-95 disabled:opacity-60 disabled:cursor-wait">
-              <span className="w-7 h-7 rounded-xl flex items-center justify-center bg-white dark:bg-slate-900 shadow-xs text-emerald-700 dark:text-emerald-400 transition-transform group-hover:scale-110">
-                {busy === 'daily' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-              </span>
-              <span>{t('finance:siteFarms.uploadDailyShort')}</span>
-              <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">PDF</span>
-            </button>
-            <input ref={dailyInput} type="file" accept=".pdf,.xlsx,.xls,.xlsm" hidden onChange={e => void onFile('daily', e.target.files?.[0])} />
-            <input ref={annualInput} type="file" accept=".xlsx,.xls,.xlsm" hidden onChange={e => void onFile('annual', e.target.files?.[0])} />
-          </div>
-        )}
       </div>
 
+      {/* مدخل الملف لزر "رفع الملف السنوي" في الصفحة الفارغة */}
+      {canEdit && (
+        <>
+          <input ref={dailyInput} type="file" accept=".pdf,.xlsx,.xls,.xlsm" hidden onChange={e => void onFile('daily', e.target.files?.[0])} />
+          <input ref={annualInput} type="file" accept=".xlsx,.xls,.xlsm" hidden onChange={e => void onFile('annual', e.target.files?.[0])} />
+        </>
+      )}
       {busy && <div className="sf-note">{t('finance:siteFarms.reading')}</div>}
-      {notice && <div className={`sf-note${notice.error ? ' err' : ''}`} role="status">{notice.text}</div>}
+      {notice && <div className={`sf-note${notice.error ? ' err' : notice.warn ? ' warn' : ''}`} role={notice.warn || notice.error ? 'alert' : 'status'}>{notice.text}</div>}
       {field && <SiteFarmsField site={site} cover={cover} initialFarm={field.farm} onClose={() => setField(null)} />}
       {pending && (
         <div className="sf-confirm" role="alertdialog" aria-labelledby="sf-confirm-title">
           <div className="sf-confirm-body">
             <b id="sf-confirm-title">{t('finance:siteFarms.confirmTitle', { file: pending.fileName })}</b>
-            <span>{t(pending.detected ? 'finance:siteFarms.confirmDetected' : 'finance:siteFarms.confirmUnknown', { years: pending.years.map(y => y.year).join('، ') })}</span>
+            <span>{t('finance:siteFarms.confirmUnknown', { years: pending.years.map(y => y.year).join('، ') })}</span>
             <label className="sf-confirm-site">
               <span>{t('finance:siteFarms.confirmSite')}</span>
               <select className="sf-select" value={pending.site} onChange={e => setPending({ ...pending, site: e.target.value })}>
                 {FARM_SITES.map(n => <option key={n} value={n}>{n}</option>)}
               </select>
             </label>
-            {pendingConflicts.length > 0 && <span className="sf-confirm-warn">{t('finance:siteFarms.confirmReplace', { years: pendingConflicts.join('، '), site: pending.site })}</span>}
           </div>
           <div className="sf-confirm-actions">
-            <button type="button" className="sf-confirm-ok" onClick={() => commitAnnual(pending.site, pending.years)}>{t(pendingConflicts.length ? 'finance:siteFarms.confirmReplaceBtn' : 'finance:siteFarms.confirmSave')}</button>
+            <button type="button" className="sf-confirm-ok" onClick={() => commitAnnual(pending.site, pending.file, pending.years)}>{t('finance:siteFarms.confirmSave')}</button>
             <button type="button" className="sf-confirm-cancel" onClick={() => setPending(null)}>{t('finance:siteFarms.confirmCancel')}</button>
           </div>
         </div>
@@ -606,12 +597,12 @@ export const SaharaSiteFarmsView: React.FC = () => {
                 <span className="sf-site-name" title={s.name}>{s.name}</span>
                 <span className="sf-chip">{s.hasData ? (s.farms ? t('finance:siteFarms.farmsCount', { n: s.farms }) : t('finance:siteFarms.annualOnly')) : t('finance:siteFarms.waiting')}</span>
               </span>
-              {s.farms
-                ? <span className="sf-site-bal">{fmt(s.balance)}<small>{t('finance:siteFarms.balanceLiter')}</small></span>
-                : <span className="sf-site-nobal">{t('finance:siteFarms.balanceAfterReport')}</span>}
+              {s.use
+                ? <span className="sf-site-bal">{fmt(s.use.total)}<small>{t('finance:siteFarms.useLiter')}</small></span>
+                : <span className="sf-site-nobal">{t('finance:siteFarms.useAfterReport')}</span>}
               <SiteSpark rec={s.latest} active={s.name === site} months={months} />
               <span className="sf-site-foot">
-                <span>{t('finance:siteFarms.todayUse')} <b>{s.farms ? fmt(s.todayUse) : '—'}</b></span>
+                <span>{t('finance:siteFarms.lastDay')} <b className="font-mono">{s.use ? s.use.date.slice(5) : '—'}</b></span>
                 {s.latest && <span>{s.latest.year} <b>{short(yearTotal(s.latest))}</b></span>}
               </span>
             </button>

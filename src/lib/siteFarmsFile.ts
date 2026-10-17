@@ -1,6 +1,7 @@
 import i18n from '../i18n';
 import { findReportDate } from './reportDate';
 import { matchStation, normalizeArabic, pdfLineText, pdfNumbersIn, readPdfPages, siteGroupOf } from './saharaReportFile';
+import { importFarmsDay } from './siteFarms';
 import { FARM_SITES, type FarmRow } from './siteFarmsTypes';
 
 /**
@@ -116,6 +117,20 @@ const readDailyExcel = async (file: File): Promise<DailyFarmsResult> => {
 export const readDailyFarmsFile = (file: File): Promise<DailyFarmsResult> =>
   /\.pdf$/i.test(file.name) ? readDailyPdf(file) : readDailyExcel(file);
 
+/**
+ * كشف رصيد الصحاري هو نفسه الكشف اليومي للمزارع: عند حفظ يوم من الكشف تُؤخذ مزارع كل موقع تلقائيًا
+ * لصفحة مزارع الموقع. date: تاريخ اليوم المحفوظ (قد يصحّحه المستخدم في النافذة)، وإلا فتاريخ الملف.
+ * sites: المواقع التي حُفظت (الفارغة مع وجود مواقع في الملف = مكرر)
+ */
+export const importFarmsFromReport = async (file: File, date?: string | null): Promise<{ date: string; sites: string[]; found: number }> => {
+  const res = await readDailyFarmsFile(file);
+  const day = date || res.date;
+  if (!day) throw new Error(i18n.t('finance:siteFarms.noDate'));
+  const found = Object.keys(res.sites).length;
+  if (!found) throw new Error(i18n.t('finance:siteFarms.noFarms'));
+  return { date: day, sites: importFarmsDay(day, res.sites), found };
+};
+
 export interface AnnualYearData {
   year: number;
   f: number[];
@@ -126,6 +141,13 @@ export interface AnnualFileResult {
   site: string | null;
   years: AnnualYearData[];
 }
+
+/** خلية تاريخ في صف التواريخ: تاريخ Excel، أو نص "2026-09-09" / "2026/09/09" */
+const asDate = (x: unknown): Date | null => {
+  if (x instanceof Date) return isNaN(x.getTime()) ? null : x;
+  const m = typeof x === 'string' ? x.trim().match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/) : null;
+  return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null;
+};
 
 const dayIndex = (d: Date, year: number) => {
   // +12 ساعة: يتفادى انزياح المنطقة الزمنية لخلايا التاريخ
@@ -165,7 +187,7 @@ export const readAnnualFarmsFile = async (file: File): Promise<AnnualFileResult>
         continue;
       }
       if (year === null) continue;
-      const dateCells = row.map((x, col) => ({ col, d: x as unknown })).filter((x): x is { col: number; d: Date } => x.d instanceof Date && !isNaN(x.d.getTime()));
+      const dateCells = row.map((x, col) => ({ col, d: asDate(x) })).filter((x): x is { col: number; d: Date } => x.d !== null);
       if (dateCells.length >= 28) { dates = dateCells.filter(x => x.d.getFullYear() === year || new Date(x.d.getTime() + 12 * 3600e3).getUTCFullYear() === year); continue; }
       if (!dates.length) continue;
       const label = `${row[0] ?? ''} ${row[1] ?? ''}`;

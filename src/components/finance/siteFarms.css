@@ -27,6 +27,8 @@
 .sf-btn:hover { border-color: var(--sf-fg); }
 .sf-btn:disabled { opacity: .5; cursor: wait; }
 .sf-note { font-size: 13px; padding: 10px 14px; border-radius: 12px; background: var(--sf-panel2); }
+.sf-note.warn { background: color-mix(in srgb, #f59e0b 18%, transparent); color: #b45309; font-weight: 700; }
+.dark .sf-note.warn { color: #fbbf24; }
 .sf-note.err { background: color-mix(in srgb, var(--sf-neg) 16%, transparent); color: var(--sf-neg); }
 
 .sf-sec { font-size: 12px; font-weight: 600; color: var(--sf-mut); margin: 0 0 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }

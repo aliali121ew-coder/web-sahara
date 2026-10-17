@@ -168,3 +168,8 @@ export const useSaharaFiles = (enabled = true) => {
     });
   return { files, busy, error, clearError: () => setError(null), upload, remove, replace };
 };
+
+/** الملف السنوي المرفوع لموقع (مزارع الموقع): ملف واحد لكل موقع، والرفع الجديد يستبدله */
+export const SITE_ANNUAL_PREFIX = 'sfa-';
+export const siteAnnualRecord = (site: string) => `${SITE_ANNUAL_PREFIX}${site}`;
+export const saveSiteAnnualFile = (site: string, file: File) => attachDayReport(siteAnnualRecord(site), file);

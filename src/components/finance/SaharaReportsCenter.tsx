@@ -7,6 +7,7 @@ import { SaharaBalanceArchive } from './SaharaBalanceArchive';
 import { SaharaPetrolArchive } from './SaharaPetrolArchive';
 import { EtihadTanksReport } from './EtihadTanksReport';
 import { BlackOilDailyLedger } from './BlackOilDailyLedger';
+import { SaharaSiteFarmsArchive } from './SaharaSiteFarmsArchive';
 
 type ReportCategoryKey = 'balance' | 'inbound' | 'tanks' | 'black-oil' | 'reserves' | 'petrol';
 
@@ -71,6 +72,8 @@ export const SaharaReportsCenter: React.FC = () => {
           <SaharaPetrolArchive />
         ) : activeCategory.key === 'inbound' ? (
           <InboundDeliveries variant="archive" scope="sahara" />
+        ) : activeCategory.key === 'reserves' ? (
+          <SaharaSiteFarmsArchive />
         ) : (
           <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl shadow-soft-card min-h-[360px] flex flex-col items-center justify-center gap-3 p-8 text-center">
             <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center">

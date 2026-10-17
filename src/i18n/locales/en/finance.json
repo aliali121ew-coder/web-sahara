@@ -74,6 +74,8 @@
     "stationBalances": "Station balances",
     "stationBalancesHint": "Balance and fill level of tank capacity",
     "noStations": "No stations in the tank system",
+    "powerTank": "Power tank",
+    "powerTankHint": "Separate from the Power station; counted in the total balance",
     "back": "Back",
     "form": {
       "date": "Date",
@@ -317,7 +319,6 @@
     "uploadDaily": "Upload daily Sahara report",
     "uploadAnnual": "Upload site annual file",
     "reading": "Reading the file…",
-    "annualSaved": "Saved {{site}} consumption for: {{years}}",
     "dailySaved": "Saved report {{date}}: {{sites}} sites and {{farms}} farms",
     "noTable": "The \"Quantity details by site\" table was not found in the file",
     "noDate": "The report date was not found in the file",
@@ -328,7 +329,6 @@
     "farmsCount": "{{n}} farms",
     "annualOnly": "Annual use",
     "waiting": "Waiting for file",
-    "balanceLiter": "L balance",
     "liter": "L",
     "literPerDay": "L per day",
     "noData": "No data",
@@ -392,7 +392,6 @@
       "Friday",
       "Saturday"
     ],
-    "todayUse": "Today's use",
     "daysCount": "{{n}} days",
     "firstYear": "First recorded year",
     "top5Hint": "Compared with the yearly average of {{avg}} L a day",
@@ -405,13 +404,9 @@
     "uploadDailyShort": "Sahara report",
     "confirmTitle": "Confirm saving “{{file}}”",
     "confirmUnknown": "The file doesn't name its site. Choose the site to save these years to: {{years}}",
-    "confirmDetected": "The file contains the years: {{years}}",
     "confirmSite": "Site",
-    "confirmReplace": "This replaces the saved {{years}} consumption for {{site}}",
     "confirmSave": "Save",
-    "confirmReplaceBtn": "Replace and save",
     "confirmCancel": "Cancel",
-    "balanceAfterReport": "Balance appears after uploading the daily Sahara report",
     "rangeFrom": "From",
     "rangeTo": "To",
     "rangeAll": "Whole year",
@@ -485,6 +480,37 @@
       "dustWarn": "Dust in the air",
       "dustStorm": "Dust storm",
       "updated": "Reading at {{time}}"
+    },
+    "annualUpdated": "{{site}} consumption updated ({{years}}): {{added}} new days, {{changed}} days changed",
+    "duplicateAnnual": "Warning: “{{file}}” was already uploaded — no new days or changed values for {{site}}",
+    "duplicateDaily": "Warning: “{{file}}” was already uploaded — the {{date}} report is saved with the same figures",
+    "useLiter": "L consumed",
+    "useAfterReport": "Consumption appears after uploading the annual file or the Sahara report",
+    "lastDay": "Last day",
+    "archive": {
+      "hint": "From each site’s annual file and the Sahara balance report farms",
+      "table": "Table",
+      "files": "Files",
+      "month": "Month",
+      "colDate": "Date",
+      "colSite": "Site",
+      "colReportUse": "Farms use (report)",
+      "monthTotal": "Month total",
+      "empty": "No data for {{site}} in this month",
+      "noFiles": "Each month is exported to the archive as a file once it ends",
+      "download": "Download month file",
+      "fileName": "site-farms",
+      "sheetSummary": "Daily consumption",
+      "sheetFarms": "Farms",
+      "annualTitle": "Sites' annual files",
+      "annualHint": "The latest annual file uploaded for each site; each new upload replaces it",
+      "uploadedAt": "Uploaded {{date}}",
+      "coversTo": "Data up to {{date}}",
+      "noAnnualFile": "No annual file uploaded yet",
+      "downloadFile": "Download file",
+      "monthlyTitle": "Monthly reports",
+      "monthlyHint": "An Excel file for each finished month, built from the saved data",
+      "filesLoadFailed": "Could not load the files"
     }
   },
   "hub": {
@@ -883,7 +909,8 @@
       "petrol": "Petrol sheet",
       "tanks": "Tanks file (black oil)",
       "black-oil": "Black oil report (Sahara and Etihad)",
-      "none": "Unknown type"
+      "none": "Unknown type",
+      "site-annual": "Site annual file (site farms)"
     },
     "problem": {
       "unknown": "File type not recognised — upload it from its tab",
@@ -912,7 +939,9 @@
       "noStations": "No Sahara gasoil stations in the tank system",
       "noTanks": "No tank quantities found in the file, or no Sahara black-oil tanks in the tank system",
       "noSites": "The file has no site you are allowed to edit",
-      "readFailed": "Could not read the file"
+      "readFailed": "Could not read the file",
+      "noSite": "The site name is not in the file — upload it from the site farms page",
+      "duplicate": "Warning: file already uploaded — nothing new in it"
     },
     "company": {
       "sahara": "Sahara",
@@ -924,7 +953,9 @@
       "diff": "Saved — differs from the sheet balance by {{diff}}",
       "attachFailed": "Saved — the file could not be attached to the archive, attach it manually",
       "tanksMissing": "Tanks updated — not read: {{list}}",
-      "tanksOver": "Quantity above tank capacity (set to full): {{list}}"
+      "tanksOver": "Quantity above tank capacity (set to full): {{list}}",
+      "farmsFailed": "Saved — could not read the site farms from the report",
+      "annual": "{{site}} {{year}}: {{added}} new days, {{changed}} changed"
     }
   }
 }
