@@ -362,6 +362,12 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
     localStorage.setItem('sahara_suppliers_list', JSON.stringify(suppliers));
   }, [suppliers]);
 
+  // تغيّر الفهرس (تصحيح اسم أو إضافة) والمعاينة مفتوحة: يُعاد التطبيق على الصفوف
+  // (قبل الخروج المبكر: خطاف بعده يغيّر عدد الخطافات عند فتح النافذة فتظهر صفحة بيضاء)
+  useEffect(() => {
+    setImportState(s => (s.status === 'ready' ? { ...s, ...withIndex(s.rows, s.fixes) } : s));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nameIndex]);
 
   if (!isOpen) return null;
 
@@ -534,12 +540,6 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
       setAiState({ status: 'error', message: err instanceof Error ? err.message : t('deliveries:quick.readFailed') });
     }
   };
-
-  // تغيّر الفهرس (تصحيح اسم أو إضافة) والمعاينة مفتوحة: يُعاد التطبيق على الصفوف
-  useEffect(() => {
-    setImportState(s => (s.status === 'ready' ? { ...s, ...withIndex(s.rows, s.fixes) } : s));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nameIndex]);
 
   const importRows = importState.status === 'ready' ? importState.rows : [];
   const importFixes = importState.status === 'ready' ? importState.fixes : [];
