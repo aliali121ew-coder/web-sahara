@@ -33,6 +33,9 @@ const API_SECURITY_HEADERS = {
 };
 
 
+/** بصمة البناء (vite.config.ts): نفس قيمة الصفحة المنشورة معه */
+declare const __BUILD_ID__: string;
+
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), {
     status,
@@ -189,6 +192,9 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
+
+    // نسخة البرنامج المنشورة: بلا جلسة ولا قاعدة بيانات (الصفحات المفتوحة تسأل عنها لتعرض زر التحديث)
+    if (url.pathname === '/api/version') return json({ build: __BUILD_ID__ });
 
     if (!env.APP_TOKEN) return json({ error: 'لم يُضبط رمز تفعيل النظام على الخادم (APP_TOKEN)', code: 'app_token_missing' }, 503);
 
