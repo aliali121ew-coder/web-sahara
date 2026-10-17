@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
 import { hasBrokenGlyphs, parseInboundFile, pickUnrecordedDays, voucherKey, type InboundImportRow } from '../../lib/inboundImport';
 import { fixInboundNamesWithAi } from '../../lib/inboundAi';
+import { applyNameIndex, isKnownName, readNameIndex, useNameIndex, type NameFix, type NameKind } from '../../lib/nameIndex';
+import { NameIndexModal } from '../deliveries/NameIndexModal';
 import {
   X,
   Truck,
@@ -26,6 +28,7 @@ import {
   Upload,
   Loader2,
   AlertTriangle,
+  BookOpenCheck,
 } from 'lucide-react';
 import { useFuelStore } from '../../context/FuelDataContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -157,12 +160,20 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
   const [importState, setImportState] = useState<
     | { status: 'idle' }
     | { status: 'reading'; fileName: string }
-    | { status: 'ready'; fileName: string; rows: InboundImportRow[]; file: File; recordedDays: number }
+    | { status: 'ready'; fileName: string; rows: InboundImportRow[]; file: File; recordedDays: number; fixes: NameFix[][] }
     | { status: 'error'; message: string }
   >({ status: 'idle' });
   // القراءة الذكية لأسماء ملف PDF (تبدأ تلقائيًا عند رموز تالفة، أو من زرها)
   const [aiState, setAiState] = useState<{ status: 'idle' | 'running' | 'done' | 'error'; changed?: number; message?: string }>({ status: 'idle' });
   const aiRun = React.useRef<File | null>(null);
+  // فهرس المجهزين والشركات: يصحح الأسماء المقروءة من الملف، ونافذته للإدارة أو لتصحيح اسم واحد
+  const [nameIndex] = useNameIndex();
+  const [indexModal, setIndexModal] = useState<{ correct: { kind: NameKind; raw: string } | null } | null>(null);
+  /** تطبيق الفهرس على صفوف (قد تكون مصححة سابقًا) مع جمع التصحيحات لكل صف */
+  const withIndex = (rows: InboundImportRow[], prev?: NameFix[][]) => {
+    const res = applyNameIndex(rows, readNameIndex());
+    return { rows: res.rows, fixes: res.fixes.map((f, i) => [...(prev?.[i] ?? []), ...f]) };
+  };
   const [deliveryDriver, setDeliveryDriver] = useState('');
 
   // رقم العجلة: خانة واحدة
@@ -496,7 +507,8 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
         setImportFrom(dates[0]);
         setImportTo(dates[dates.length - 1]);
       }
-      setImportState({ status: 'ready', fileName: file.name, rows, file, recordedDays: picked.recordedDays });
+      const indexed = withIndex(rows);
+      setImportState({ status: 'ready', fileName: file.name, rows: indexed.rows, fixes: indexed.fixes, file, recordedDays: picked.recordedDays });
       setAiState({ status: 'idle' });
       aiRun.current = null;
       if (file.name.toLowerCase().endsWith('.pdf') && rows.some(r => hasBrokenGlyphs(`${r.supplierName} ${r.supplierCompany} ${r.driverName} ${r.truckNumber}`))) {
@@ -514,7 +526,8 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
       const res = await fixInboundNamesWithAi(file, rows);
       // تغيّر الملف أو أُغلقت النافذة أثناء القراءة: تُهمل النتيجة
       if (aiRun.current !== file) return;
-      setImportState(s => (s.status === 'ready' && s.file === file ? { ...s, rows: res.rows } : s));
+      // الفهرس بعد القراءة الذكية: الاسم الذي صححه الذكاء يُوحَّد مع الاسم الصحيح في الفهرس
+      setImportState(s => (s.status === 'ready' && s.file === file ? { ...s, ...withIndex(res.rows, s.fixes) } : s));
       setAiState({ status: 'done', changed: res.changed });
     } catch (err) {
       if (aiRun.current !== file) return;
@@ -522,7 +535,36 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
     }
   };
 
+  // تغيّر الفهرس (تصحيح اسم أو إضافة) والمعاينة مفتوحة: يُعاد التطبيق على الصفوف
+  useEffect(() => {
+    setImportState(s => (s.status === 'ready' ? { ...s, ...withIndex(s.rows, s.fixes) } : s));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nameIndex]);
+
   const importRows = importState.status === 'ready' ? importState.rows : [];
+  const importFixes = importState.status === 'ready' ? importState.fixes : [];
+  const fixedCount = importFixes.reduce((a, f) => a + f.length, 0);
+  const unknownNames = (kind: NameKind) => {
+    const entries = nameIndex[kind];
+    if (!entries.length) return [];
+    const field = kind === 'supplier' ? 'supplierName' : 'supplierCompany';
+    return [...new Set(importRows.map(r => r[field].trim()).filter(n => n && n !== '_' && !isKnownName(n, entries)))];
+  };
+  const unknownCount = unknownNames('supplier').length + unknownNames('company').length;
+  /** خانة الاسم في المعاينة: المصحَّح بالأخضر (والأصل في التلميح)، وغير الموجود في الفهرس بالأصفر يُنقر لتصحيحه */
+  const nameCell = (i: number, kind: NameKind, value: string) => {
+    const field = kind === 'supplier' ? 'supplierName' : 'supplierCompany';
+    const fix = importFixes[i]?.find(f => f.field === field);
+    if (!value) return '—';
+    if (fix) return <span className="text-emerald-700 dark:text-emerald-300" title={t('deliveries:nameIndex.wasRead', { name: fix.from })}>{value} <CheckCircle2 className="inline w-3 h-3 -mt-0.5" /></span>;
+    if (nameIndex[kind].length && value !== '_' && !isKnownName(value, nameIndex[kind])) {
+      return (
+        <button type="button" onClick={() => setIndexModal({ correct: { kind, raw: value } })} title={t('deliveries:nameIndex.clickToCorrect')}
+          className="font-bold text-amber-700 dark:text-amber-300 underline decoration-dotted underline-offset-4 cursor-pointer hover:text-amber-900">{value}</button>
+      );
+    }
+    return value;
+  };
   const isDuplicateRow = (r: InboundImportRow) => !!r.voucherNumber && existingVouchers.has(voucherKey(r.voucherNumber));
   const rowDate = (r: InboundImportRow) => r.receiptUnloadDate || importFrom;
   const isOutOfRange = (r: InboundImportRow) => rowDate(r) < importFrom || rowDate(r) > importTo;
@@ -768,6 +810,19 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                             )}
                           </div>
                         )}
+                        {/* فهرس الأسماء: عدد ما صُحّح، وما ليس في الفهرس، وزر الإدارة */}
+                        <div className={`px-4 py-2 border-b flex flex-wrap items-center gap-2 text-xs font-bold ${unknownCount ? 'border-amber-100 dark:border-amber-900/50 bg-amber-50/70 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200' : 'border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 text-slate-600 dark:text-slate-300'}`}>
+                          <BookOpenCheck className="w-4 h-4 shrink-0" />
+                          <span>
+                            {!nameIndex.supplier.length && !nameIndex.company.length
+                              ? t('deliveries:nameIndex.emptyHint')
+                              : [fixedCount ? t('deliveries:nameIndex.fixed', { n: fixedCount }) : t('deliveries:nameIndex.noFixes'), unknownCount ? t('deliveries:nameIndex.unknown', { n: unknownCount }) : ''].filter(Boolean).join(' — ')}
+                          </span>
+                          <button type="button" onClick={() => setIndexModal({ correct: null })}
+                            className="ms-auto px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5 cursor-pointer active:scale-95 transition">
+                            <BookOpenCheck className="w-3.5 h-3.5" />{t('deliveries:nameIndex.open')}
+                          </button>
+                        </div>
                         {/* معاينة الصفوف */}
                         <div className="max-h-[46vh] overflow-auto">
                           <table className="w-full text-xs text-start whitespace-nowrap">
@@ -785,8 +840,8 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                                 return (
                                   <tr key={i} className={dup || outside ? 'opacity-50' : 'odd:bg-white even:bg-slate-50/60 dark:odd:bg-slate-800 dark:even:bg-slate-800/60'}>
                                     <td className="px-3 py-2 font-sans text-slate-400">{i + 1}</td>
-                                    <td className="px-3 py-2 font-bold">{r.supplierName || '—'}</td>
-                                    <td className="px-3 py-2 font-bold">{r.supplierCompany || '—'}</td>
+                                    <td className="px-3 py-2 font-bold">{nameCell(i, 'supplier', r.supplierName)}</td>
+                                    <td className="px-3 py-2 font-bold">{nameCell(i, 'company', r.supplierCompany)}</td>
                                     <td className="px-3 py-2">{r.driverName || '—'}</td>
                                     <td className="px-3 py-2 font-sans">{r.truckNumber || '—'}</td>
                                     <td className="px-3 py-2 font-sans font-bold">{r.voucherNumber || '—'}</td>
@@ -1362,6 +1417,16 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
             </div>
           </div>
         </div>
+      )}
+      {indexModal && (
+        <NameIndexModal
+          correct={indexModal.correct}
+          archiveNames={{
+            supplier: deliveries.map(d => d.supplierName || '').filter(n => isRealName(n) && n.trim() !== '_' && !FAKE_SUPPLIERS.has(n.trim())),
+            company: deliveries.map(d => d.supplierCompany || '').filter(n => isRealName(n) && n.trim() !== '_' && !FAKE_SUPPLIERS.has(n.trim())),
+          }}
+          onClose={() => setIndexModal(null)}
+        />
       )}
     </div>
   );

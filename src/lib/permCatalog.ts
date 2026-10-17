@@ -129,7 +129,7 @@ const KEY_RULES: Rule[] = [
   { match: eq('sahara_messages'), read: [COMMON], write: [] },
   // القوائم المرجعية المشتركة (الشركات، الموردون، الألوان، المحطات): يعدّلها من يدخل الواردات أو الأسعار أو الطلبات
   {
-    match: eq('sahara_suppliers_list', 'sahara_companies_list', 'sahara_colors_list', 'sahara_stations_list'),
+    match: eq('sahara_suppliers_list', 'sahara_companies_list', 'sahara_colors_list', 'sahara_stations_list', 'sahara_name_index_v1'),
     read: [COMMON], write: ['deliveries-sahara', 'deliveries-etihad', 'prices', 'suppliers', 'tasks'],
   },
   // تفضيلات العرض (التبويب المفتوح، رفض عرض البصمة): بلا أثر على البيانات، يكتبها أي حساب مفعّل
