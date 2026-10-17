@@ -71,7 +71,10 @@
     "receiver": "Receiving company",
     "product": "Product",
     "density": "Density",
-    "color": "Color"
+    "color": "Color",
+    "dashboard": "Dashboard",
+    "onDashboard": "Shown in the dashboard price index — click to hide",
+    "offDashboard": "Not on the dashboard — click to show it in the price index"
   },
   "modal": {
     "addTitle": "Add supplier",
