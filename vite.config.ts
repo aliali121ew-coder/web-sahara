@@ -5,6 +5,11 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 
 const port = Number(process.env.PORT) || 3000;
 
+// بصمة البناء: نفس القيمة في الصفحة والـ Worker لكل بناء، فتعرف الصفحة المفتوحة أن نسخة أحدث نُشرت
+// (تقارن بصمتها بما يرده /api/version) وتعرض زر التحديث
+// (الإعداد يُحمَّل مرتين في البناء الواحد: للصفحة وللـ Worker، فتُحفظ القيمة في متغير البيئة لتبقى واحدة)
+const BUILD_ID = (process.env.SAHARA_BUILD_ID ??= Date.now().toString(36));
+
 // بيئات Cloudflare (wrangler.jsonc → env): إضافة Cloudflare تختارها من CLOUDFLARE_ENV وقت البناء،
 // فـ "vite build --mode demo" يبني النسخة التجريبية بقاعدتها وحاوياتها (wrangler deploy --env وحده لا يغيّرها)
 const CLOUDFLARE_ENVS = ['staging', 'demo'];
@@ -13,6 +18,7 @@ const CLOUDFLARE_ENVS = ['staging', 'demo'];
 export default defineConfig(({ mode }) => {
   if (CLOUDFLARE_ENVS.includes(mode)) process.env.CLOUDFLARE_ENV ??= mode;
   return {
+    define: { __BUILD_ID__: JSON.stringify(BUILD_ID) },
     plugins: [
       react(),
       // مجلد حالة منفصل لكل منفذ حتى لا يتعارض خادمان يعملان معًا على نفس قاعدة البيانات المحلية (SQLITE_BUSY)
