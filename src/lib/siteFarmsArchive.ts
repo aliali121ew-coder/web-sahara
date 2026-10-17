@@ -65,25 +65,42 @@ export const closedMonths = (records: SiteFarmsRecord[], today = new Date()) => 
   return archiveMonths(records).filter(ym => ym < current);
 };
 
-export interface MonthSheetLabels {
-  summary: string; farms: string;
-  date: string; site: string; farm: string;
-  farmsUse: string; genUse: string; total: string; reportUse: string; balance: string;
-  previous: string; inbound: string; consumption: string;
+export interface SiteMonth {
+  site: string;
+  rows: ArchiveDay[];
+  /** مجاميع الملف السنوي (null = لا أيام من الملف السنوي) */
+  f: number | null;
+  g: number | null;
+  total: number | null;
+  /** مجموع مصروف المزارع من الكشوف اليومية */
+  report: number | null;
+  /** رصيد المزارع في آخر كشف من الشهر */
+  lastBalance: number | null;
+  /** المعدل اليومي للإجمالي (على أيام الملف السنوي) */
+  avg: number | null;
+  /** أعلى يوم إجمالي */
+  peak: ArchiveDay | null;
+  hasReport: boolean;
 }
 
-type Cell = string | number | null;
-
-/** أوراق ملف الشهر: ملخص يومي لكل موقع، وتفاصيل المزارع من الكشوف اليومية */
-export const monthSheets = (records: SiteFarmsRecord[], ym: string, L: MonthSheetLabels): { name: string; rows: Cell[][] }[] => {
-  const summary: Cell[][] = [[L.date, L.site, L.farmsUse, L.genUse, L.total, L.reportUse, L.balance]];
-  const farms: Cell[][] = [[L.date, L.site, L.farm, L.previous, L.inbound, L.consumption, L.balance]];
-  for (const site of FARM_SITES) {
-    for (const r of monthRows(records, site, ym)) {
-      summary.push([r.date, site, r.f, r.g, r.total, r.consumption, r.balance]);
-      if (!r.farms) continue;
-      for (const row of farmsOn(records, site, r.date)) farms.push([r.date, site, row.name, row.previous, row.inbound, row.consumption, row.balance]);
-    }
-  }
-  return [{ name: L.summary, rows: summary }, { name: L.farms, rows: farms }];
+const sumOf = (rows: ArchiveDay[], k: 'f' | 'g' | 'total' | 'consumption') => {
+  const v = rows.filter(r => r[k] !== null);
+  return v.length ? v.reduce((s, r) => s + (r[k] ?? 0), 0) : null;
 };
+
+/** تقرير الشهر لكل موقع فيه بيانات (العرض داخل البرنامج و PDF و Excel من نفس الأرقام)؛ only = موقع واحد */
+export const monthReport = (records: SiteFarmsRecord[], ym: string, only?: string | null): SiteMonth[] =>
+  FARM_SITES.filter(site => !only || site === only).map(site => {
+    const rows = monthRows(records, site, ym);
+    const annualDays = rows.filter(r => r.total !== null);
+    const total = sumOf(rows, 'total');
+    return {
+      site, rows,
+      f: sumOf(rows, 'f'), g: sumOf(rows, 'g'), total,
+      report: sumOf(rows, 'consumption'),
+      lastBalance: [...rows].reverse().find(r => r.balance !== null)?.balance ?? null,
+      avg: total !== null && annualDays.length ? Math.round(total / annualDays.length) : null,
+      peak: annualDays.reduce<ArchiveDay | null>((a, r) => (!a || (r.total ?? 0) > (a.total ?? 0) ? r : a), null),
+      hasReport: rows.some(r => r.consumption !== null || r.balance !== null),
+    };
+  }).filter(s => s.rows.length > 0);

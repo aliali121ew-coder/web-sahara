@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as XLSX from 'xlsx';
 import { annualFor, annualYears, farmsDates, farmsOn, importAnnual, importFarmsDay, lastDayUse, mergeAnnualDays, readSiteFarms, saveAnnual, saveFarmsDay } from '../siteFarms';
-import { archiveMonths, closedMonths, monthRows, monthSheets, type MonthSheetLabels } from '../siteFarmsArchive';
+import { archiveMonths, closedMonths, monthReport, monthRows } from '../siteFarmsArchive';
+import { buildMonthWorkbook, type MonthExportLabels } from '../siteFarmsExport';
+import ExcelJS from 'exceljs';
 import { detectKind } from '../bulkUpload';
 import { readAnnualFarmsFile, readDailyFarmsFile } from '../siteFarmsFile';
 
@@ -149,12 +151,14 @@ describe('مزارع الموقع: تحديث الملف السنوي اليوم
 
 describe('أرشيف مزارع الموقع: الجدول والملفات الشهرية', () => {
   beforeEach(() => localStorage.clear());
-  const L: MonthSheetLabels = {
-    summary: 'S', farms: 'F', date: 'd', site: 's', farm: 'fm', farmsUse: 'fu', genUse: 'gu', total: 't',
-    reportUse: 'ru', balance: 'b', previous: 'p', inbound: 'i', consumption: 'c',
+  const L: MonthExportLabels = {
+    title: 'T', company: 'C', month: 'M', exportedAt: 'E', summarySheet: 'S', farmsSheet: 'F',
+    site: 's', days: 'n', farmsUse: 'fu', genUse: 'gu', total: 't', avg: 'a', peak: 'pk', reportUse: 'ru', balance: 'b',
+    date: 'd', weekday: 'w', farm: 'fm', previous: 'p', inbound: 'i', consumption: 'c',
+    totalRow: 'TOT', avgRow: 'AVG', peakNote: 'PN', weekdays: ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa'],
   };
 
-  it('أيام الشهر من الملف السنوي ومن الكشف، والملفات للأشهر المنتهية فقط', () => {
+  it('أيام الشهر من الملف السنوي ومن الكشف، وملخص الشهر وملف Excel المنسّق', async () => {
     // 40 يومًا: كانون الثاني كاملًا و9 أيام من شباط
     saveAnnual('التسمين', 2026, Array.from({ length: 40 }, () => 100), Array.from({ length: 40 }, () => 10));
     saveFarmsDay('التسمين', '2026/02/09', [
@@ -170,13 +174,27 @@ describe('أرشيف مزارع الموقع: الجدول والملفات ال
     expect(monthRows(recs, 'التسمين', '2026-01')).toHaveLength(31);
     expect(closedMonths(recs, new Date(2026, 1, 15))).toEqual(['2026-01']);
     expect(closedMonths(recs, new Date(2026, 2, 1))).toEqual(['2026-02', '2026-01']);
-    const sheets = monthSheets(recs, '2026-02', L);
-    expect(sheets[0].rows).toHaveLength(10);
-    expect(sheets[1].rows).toEqual([
-      ['d', 's', 'fm', 'p', 'i', 'c', 'b'],
-      ['2026/02/09', 'التسمين', 'محطة التسمين', 1, 0, 999, 1],
-      ['2026/02/09', 'التسمين', 'تسمين مزرعة 1', 500, 0, 60, 440],
-    ]);
+    // ملخص الشهر: مجاميع الملف السنوي، ومصروف المزارع من الكشف (بلا خزان المحطة)
+    const [tas] = monthReport(recs, '2026-02');
+    expect(tas).toMatchObject({ site: 'التسمين', f: 900, g: 90, total: 990, report: 60, lastBalance: 440, avg: 110, hasReport: true });
+    expect(monthReport(recs, '2026-02', 'البوادي')).toEqual([]);
+
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(await buildMonthWorkbook(recs, '2026-02', L));
+    expect(wb.worksheets.map(w => w.name)).toEqual(['S', 'التسمين', 'F']);
+    const sum = wb.getWorksheet('S')!;
+    expect(sum.getCell('A1').value).toBe('T — M');
+    expect(sum.getRow(5).values).toEqual([undefined, 'التسمين', 9, 900, 90, 990, 110, '02/01  (110)', 60, 440]);
+    expect(sum.getCell('A6').value).toBe('TOT');
+    const site = wb.getWorksheet('التسمين')!;
+    expect(site.getRow(13).values).toEqual([undefined, '2026/02/09', 'mo', 100, 10, 110, 60, 440]);
+    expect(site.getCell('A14').value).toBe('TOT');
+    expect(site.getCell('E14').value).toBe(990);
+    expect(site.getCell('E15').value).toBe(110);
+    expect(site.getCell('E14').numFmt).toBe('#,##0');
+    const farms = wb.getWorksheet('F')!;
+    expect(farms.getCell('A4').value).toBe('التسمين');
+    expect(farms.getRow(7).values).toEqual([undefined, '2026/02/09', 'تسمين مزرعة 1', 500, 0, 60, 440]);
   });
 
   it('الرفع المتعدد يميّز الملف السنوي عن كشف الرصيد', () => {
