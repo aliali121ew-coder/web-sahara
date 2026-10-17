@@ -8,11 +8,15 @@ import {
   Calendar,
   Database,
   ShieldCheck,
-  Boxes
+  Boxes,
+  TrendingUp,
+  TrendingDown
 } from 'lucide-react';
 import { formatNumber } from '../../lib/utils';
 import { useTranslation } from 'react-i18next';
-import { useBlackOilLedger, BLACK_OIL_SECTION_KEYS } from '../../lib/blackOilLedger';
+import { useBlackOilLedger, BLACK_OIL_SECTION_KEYS, BlackOilRecord } from '../../lib/blackOilLedger';
+import { computeInboundPriceStats } from '../../lib/inboundPrice';
+import { InboundDelivery } from '../../types';
 import { useCentralTanks, tankLiters } from '../../lib/centralTanks';
 import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
 import { getBusinessDate } from '../../lib/utils';
@@ -36,6 +40,54 @@ const ChangeBadge: React.FC<{ cur: number; prev: number | null | undefined; upIs
     <span dir="ltr" title={title} className={`inline-flex items-center px-1 py-px rounded-md text-[9px] font-black font-mono leading-none whitespace-nowrap ${color}`}>
       {up ? '▲' : down ? '▼' : '•'}{Math.abs(pct) >= 1000 ? '999+' : Math.abs(pct).toFixed(Math.abs(pct) < 10 ? 1 : 0)}%
     </span>
+  );
+};
+
+/** كارت متوسط السعر (نفس كارت الكاز): متوسط سعر اللتر الموزون من وارد السجل اليومي، وشريط نسبة التغير بعد آخر وارد */
+const PriceCard: React.FC<{ records: BlackOilRecord[]; bg: string; text: string }> = ({ records, bg, text }) => {
+  const { t } = useTranslation(['dashboard', 'common']);
+  const { avgPrice, change } = React.useMemo(() => computeInboundPriceStats(
+    records
+      .filter(r => (r.inbound || 0) > 0 && (r.price || 0) > 0)
+      .map(r => ({ id: r.id, date: r.date, receivedQuantity: r.inbound, productPrice: r.price!, productCost: r.inbound * r.price! }) as InboundDelivery)
+  ), [records]);
+  const up = !!change && change.pct >= 0.005;
+  const down = !!change && change.pct <= -0.005;
+  const tone = up
+    ? 'bg-rose-50 border-rose-200/80 text-rose-600 dark:bg-rose-950/40 dark:border-rose-900/60 dark:text-rose-400'
+    : down
+    ? 'bg-emerald-50 border-emerald-200/80 text-emerald-600 dark:bg-emerald-950/40 dark:border-emerald-900/60 dark:text-emerald-400'
+    : 'bg-slate-50 border-slate-200 text-slate-500 dark:bg-slate-800 dark:border-slate-700';
+  return (
+    <div className={`min-w-[118px] rounded-2xl overflow-hidden bg-gradient-to-br from-white ${bg} dark:from-slate-800/90 dark:to-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 shrink-0 shadow-xs`}>
+      <div className="px-3 pt-2.5 pb-2 text-center">
+        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-400 block">{t('dashboard:price.average')}</span>
+        <div className="mt-0.5 flex items-baseline justify-center gap-1">
+          <span className={`text-lg sm:text-2xl font-black font-mono tracking-tight leading-none tabular-nums ${text}`}>
+            {avgPrice > 0 ? avgPrice.toFixed(1) : '—'}
+          </span>
+          <span className="text-[10px] font-bold text-slate-400">{t('common:units.iqd')}</span>
+        </div>
+      </div>
+      {change ? (
+        <div
+          className={`px-2 py-1.5 border-t flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 text-center ${tone}`}
+          title={`${t('dashboard:price.lastInboundAvg')}: ${change.lastPrice.toFixed(1)} ${t('common:units.iqd')} · ${change.lastDay}`}
+        >
+          {down && <TrendingDown className="w-3.5 h-3.5 shrink-0" />}
+          {up && <TrendingUp className="w-3.5 h-3.5 shrink-0" />}
+          <span dir="ltr" className="text-[11px] font-black font-mono tabular-nums leading-none">
+            {up ? '+' : down ? '−' : ''}{Math.abs(change.pct).toFixed(2)}%
+          </span>
+          <span className="text-[9px] font-bold opacity-70 leading-tight">{t('dashboard:price.change')}</span>
+        </div>
+      ) : (
+        <div className="px-3 py-1.5 border-t border-slate-200/80 dark:border-slate-700/60 flex items-center justify-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          <span className="text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400">{t('dashboard:price.approved')}</span>
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -152,18 +204,21 @@ export const BlackOilSection: React.FC = () => {
             </div>
 
             {/* Actual Balance Big Display */}
-            <div className="pt-0.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
-                {t('dashboard:balance.actualCurrent')}
-              </span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl sm:text-4xl lg:text-[36px] font-black font-mono text-slate-900 dark:text-white tracking-tight leading-none">
-                  {formatNumber(saharaTotalBalance)}
+            <div className="pt-0.5 flex items-end justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                  {t('dashboard:balance.actualCurrent')}
                 </span>
-                <span className="text-sm font-black text-sky-600 dark:text-sky-400">
-                  {t('common:units.liter')}
-                </span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl sm:text-4xl lg:text-[36px] font-black font-mono text-slate-900 dark:text-white tracking-tight leading-none">
+                    {formatNumber(saharaTotalBalance)}
+                  </span>
+                  <span className="text-sm font-black text-sky-600 dark:text-sky-400">
+                    {t('common:units.liter')}
+                  </span>
+                </div>
               </div>
+              <PriceCard records={saharaLedger.records} bg="to-sky-50/40" text="text-sky-700 dark:text-sky-300" />
             </div>
           </div>
 
@@ -289,18 +344,21 @@ export const BlackOilSection: React.FC = () => {
             </div>
 
             {/* Actual Balance Big Display */}
-            <div className="pt-0.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
-                {t('dashboard:balance.actualCurrent')}
-              </span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl sm:text-4xl lg:text-[36px] font-black font-mono text-slate-900 dark:text-white tracking-tight leading-none">
-                  {formatNumber(etihadTotalBalance)}
+            <div className="pt-0.5 flex items-end justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                  {t('dashboard:balance.actualCurrent')}
                 </span>
-                <span className="text-sm font-black text-teal-600 dark:text-teal-400">
-                  {t('common:units.liter')}
-                </span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl sm:text-4xl lg:text-[36px] font-black font-mono text-slate-900 dark:text-white tracking-tight leading-none">
+                    {formatNumber(etihadTotalBalance)}
+                  </span>
+                  <span className="text-sm font-black text-teal-600 dark:text-teal-400">
+                    {t('common:units.liter')}
+                  </span>
+                </div>
               </div>
+              <PriceCard records={etihadLedger.records} bg="to-teal-50/40" text="text-teal-700 dark:text-teal-300" />
             </div>
           </div>
 
