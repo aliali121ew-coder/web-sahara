@@ -183,6 +183,7 @@
   "quick": {
     "skippedFiles": "Some files were skipped because they aren’t PDF, JPG or PNG",
     "noRows": "No shipments were found under the header row in the file",
+    "allDaysRecorded": "Every day in the file is already recorded; there are no new days to import",
     "brokenNames": "Some names in this PDF are stored with damaged letters and could not be fully read. Use smart reading, or check them after importing.",
     "aiHint": "PDF text can drop letters from names (such as R). Smart reading reads the names as they appear in the file.",
     "aiButton": "Smart name reading",
@@ -234,6 +235,8 @@
     "newCount_other": "{{count}} new",
     "skipCount_one": "{{count}} skipped (already recorded or outside the period)",
     "skipCount_other": "{{count}} skipped (already recorded or outside the period)",
+    "recordedDaysSkipped_one": "{{count}} day already recorded, skipped",
+    "recordedDaysSkipped_other": "{{count}} days already recorded, skipped",
     "ready_one": "{{count}} ready to send",
     "ready_other": "{{count}} ready to send",
     "attached_one": "{{count}} file attached successfully",

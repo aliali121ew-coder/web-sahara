@@ -311,3 +311,26 @@ export const parseInboundFile = async (file: File): Promise<InboundImportRow[]> 
   if (/\.(xlsx|xls|csv)$/.test(name)) return parseExcel(file);
   throw new Error(i18n.t('common:fileImport.excelPdfOnly'));
 };
+
+/** مفتاح الفوجر كما يحفظه addDelivery: الأرقام فقط، وإلا النص كما هو */
+export const voucherKey = (v: unknown) => {
+  const t = String(v ?? '').trim();
+  return t.replace(/\D/g, '') || t;
+};
+
+/**
+ * ملف الأرشيف (كل الأيام في كل رفع): يبقى من الملف ما يخص الأيام غير المسجّلة فقط.
+ * الفوجر المكرر داخل الملف يُؤخذ آخر صف له لأنه الأحدث إضافة.
+ * الصف بلا تاريخ يبقى (يأخذ تاريخ الفترة كما كان).
+ */
+export const pickUnrecordedDays = (rows: InboundImportRow[], recordedDays: Set<string>) => {
+  const lastByVoucher = new Map<string, number>();
+  rows.forEach((r, i) => { if (r.voucherNumber) lastByVoucher.set(voucherKey(r.voucherNumber), i); });
+  const latest = rows.filter((r, i) => !r.voucherNumber || lastByVoucher.get(voucherKey(r.voucherNumber)) === i);
+  const skipped = new Set<string>();
+  const kept = latest.filter(r => {
+    if (r.receiptUnloadDate && recordedDays.has(r.receiptUnloadDate)) { skipped.add(r.receiptUnloadDate); return false; }
+    return true;
+  });
+  return { rows: kept, recordedDays: skipped.size, olderCopies: rows.length - latest.length };
+};

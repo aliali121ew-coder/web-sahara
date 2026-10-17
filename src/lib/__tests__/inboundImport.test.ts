@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parsePdfTable, type PdfTextItem } from '../inboundImport';
+import { parsePdfTable, pickUnrecordedDays, voucherKey, type InboundImportRow, type PdfTextItem } from '../inboundImport';
 
 // هندسة نصوص "ارشيف وارد الصحاري.pdf" الحقيقية (الحافتان الأفقيتان كما يستخرجها pdf.js)
 const it_ = (str: string, left: number, right: number, y: number): PdfTextItem => ({ str, left, right, y });
@@ -81,5 +81,30 @@ describe('inbound PDF with a broken font map (Etihad archive)', () => {
     expect(rows[0]).toMatchObject({ supplierName: 'علي كريم', driverName: 'محمد عبدالله', truckNumber: '11547', voucherNumber: '003457', receivedQuantity: 43690, productDensity: '31', productPrice: 840, productCost: 36699600, receiptUnloadDate: '2026/10/12' });
     expect(rows[1]).toMatchObject({ supplierName: 'اسعد كامل', driverName: 'ماجد سرحان', voucherNumber: '', receivedQuantity: 35797, receiptUnloadDate: '2026/10/12' });
     expect(rows[2]).toMatchObject({ supplierName: 'محطة سبع البوسلطان', receivedQuantity: 3633, productCost: 1453200 });
+  });
+});
+
+describe('pickUnrecordedDays (ملف الأرشيف)', () => {
+  const r = (voucherNumber: string, receiptUnloadDate: string, receivedQuantity = 1000): InboundImportRow => ({
+    supplierName: 'س', supplierCompany: 'ش', driverName: 'د', truckNumber: '1', voucherNumber, receivedQuantity,
+    productDensity: '', productColor: '', productPrice: 0, productCost: 0, receiptUnloadDate
+  });
+
+  it('يبقي الأيام غير المسجّلة فقط ويعدّ الأيام المتجاوزة', () => {
+    const rows = [r('1', '2026/10/14'), r('2', '2026/10/15'), r('3', '2026/10/15'), r('4', '2026/10/16'), r('5', '')];
+    const res = pickUnrecordedDays(rows, new Set(['2026/10/14', '2026/10/15']));
+    expect(res.rows.map(x => x.voucherNumber)).toEqual(['4', '5']);
+    expect(res.recordedDays).toBe(2);
+  });
+
+  it('الفوجر المكرر في الملف: آخر صف هو المعتمد', () => {
+    const res = pickUnrecordedDays([r('7', '2026/10/16', 100), r('8', '2026/10/16'), r('VCH-7', '2026/10/16', 900)], new Set());
+    expect(res.rows.map(x => x.receivedQuantity)).toEqual([1000, 900]);
+    expect(res.olderCopies).toBe(1);
+  });
+
+  it('مفتاح الفوجر يطابق ما يحفظه التطبيق (الأرقام فقط)', () => {
+    expect(voucherKey(' VCH-0034 ')).toBe('0034');
+    expect(voucherKey('ABC')).toBe('ABC');
   });
 });
