@@ -37,7 +37,7 @@ const ChangeCell: React.FC<{ pct: number }> = ({ pct }) => {
 };
 
 /**
- * مؤشرات الأسعار في الرئيسية: نفس أعمدة جدول «كل الموردين» (بلا الشركة المستلمة وآخر تحديث والإجراء)،
+ * مؤشرات الأسعار في الرئيسية (كل الموردين بلا تكرار): نفس أعمدة جدول «كل الموردين» (بلا الشركة المستلمة وآخر تحديث والإجراء)،
  * ومصدرها سجلات الأسعار نفسها؛ للعرض فقط (الصفوف لا تنقل لأي صفحة).
  */
 export const PriceIndexTable: React.FC = () => {
@@ -88,10 +88,14 @@ export const PriceIndexTable: React.FC = () => {
         diff: rec.priceIqd - prev, pct: rec.changePercent ?? 0, sortKey: `${day(rec.lastUpdated)}|9`, recency: '',
       } as (typeof merged)[number]);
     }
-    return merged
+    // كل الموردين بلا تكرار: المورد الواحد (ولو ورد للشركتين) يظهر مرة واحدة بأحدث صف له
+    const seen: typeof merged = [];
+    for (const item of merged
       .filter(item => item.supplierName.includes(searchQuery) || (item.product || '').includes(searchQuery))
-      .sort((a, b) => b.sortKey.localeCompare(a.sortKey))
-      .slice(0, 7);
+      .sort((a, b) => b.sortKey.localeCompare(a.sortKey))) {
+      if (!seen.some(x => sameSupplier(x.supplierName, item.supplierName))) seen.push(item);
+    }
+    return seen;
   }, [latest, supplierPrices, searchQuery]);
 
   // كل العناوين في الوسط؛ خلية المجهز (الشعار والاسم) بمحاذاة البداية
@@ -114,19 +118,18 @@ export const PriceIndexTable: React.FC = () => {
           <thead>
             <tr>
               <th className={th}>{t('dashboard:priceIndex.supplier')}</th>
-              <th className={th}>{t('dashboard:priceIndex.lastInbound')}</th>
-              <th className={th}>{t('dashboard:priceIndex.product')}</th>
-              <th className={th}>{t('dashboard:priceIndex.density')}</th>
-              <th className={th}>{t('dashboard:priceIndex.color')}</th>
               <th className={th}>{t('dashboard:priceIndex.current')}</th>
+              <th className={th}>{t('dashboard:priceIndex.density')}</th>
               <th className={th}>{t('dashboard:priceIndex.previous')}</th>
               <th className={th}>{t('dashboard:priceIndex.diff')}</th>
               <th className={th}>{t('dashboard:priceIndex.change')}</th>
+              <th className={th}>{t('dashboard:priceIndex.color')}</th>
+              <th className={th}>{t('dashboard:priceIndex.product')}</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 && (
-              <tr><td colSpan={9} className="py-10 text-center text-sm text-slate-400">{t('dashboard:priceIndex.empty')}</td></tr>
+              <tr><td colSpan={8} className="py-10 text-center text-sm text-slate-400">{t('dashboard:priceIndex.empty')}</td></tr>
             )}
             {rows.map(s => (
               <tr key={s.id}>
@@ -137,11 +140,8 @@ export const PriceIndexTable: React.FC = () => {
                     <CompanyBadges companies={[s.company]} />
                   </div>
                 </td>
-                <td className={`${td} ${plain} tabular-nums`} dir="ltr">{s.date || '—'}</td>
-                <td className={`${td} ${plain}`}><span className="block truncate max-w-[160px] mx-auto">{s.product || '—'}</span></td>
-                <td className={`${td} ${plain} tabular-nums`}>{s.density || '—'}</td>
-                <td className={`${td} ${plain}`}><span className="block truncate max-w-[120px] mx-auto">{s.color || '—'}</span></td>
                 <td className={`${td} font-extrabold text-slate-900 dark:text-white tabular-nums`}>{fmtPrice(s.price)} <span className={iqd}>{t('common:units.iqd')}</span></td>
+                <td className={`${td} ${plain} tabular-nums`}>{s.density || '—'}</td>
                 <td className={`${td} tabular-nums font-normal text-slate-700 dark:text-slate-300`}>
                   {s.previousPrice === null ? '—' : <>{fmtPrice(s.previousPrice)} <span className={iqd}>{t('common:units.iqd')}</span></>}
                 </td>
@@ -154,6 +154,8 @@ export const PriceIndexTable: React.FC = () => {
                   ) : '—'}
                 </td>
                 <td className={td}><ChangeCell pct={s.pct} /></td>
+                <td className={`${td} ${plain}`}><span className="block truncate max-w-[120px] mx-auto">{s.color || '—'}</span></td>
+                <td className={`${td} ${plain}`}><span className="block truncate max-w-[160px] mx-auto">{s.product || '—'}</span></td>
               </tr>
             ))}
           </tbody>
