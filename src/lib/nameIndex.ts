@@ -188,6 +188,8 @@ export const useNameIndex = (): [NameIndex, (update: (prev: NameIndex) => NameIn
   useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === NAME_INDEX_KEY) refresh(); };
     const onCloud = (e: Event) => { if (((e as CustomEvent<string[]>).detail ?? []).includes(NAME_INDEX_KEY)) refresh(); };
+    // الصفحة المخفية (تبقى محمّلة) لا تستلم الأحداث: تُعاد القراءة عند ظهورها فلا يبقى اختيار قديم حتى الرفرش
+    refresh();
     window.addEventListener(SYNC_EVENT, refresh);
     window.addEventListener('storage', onStorage);
     window.addEventListener(CLOUD_APPLIED_EVENT, onCloud);
