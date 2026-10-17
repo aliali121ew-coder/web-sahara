@@ -36,6 +36,8 @@ export const useDashboardSuppliers = () => {
   useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === DASHBOARD_SUPPLIERS_KEY) refresh(); };
     const onCloud = (e: Event) => { if (((e as CustomEvent<string[]>).detail ?? []).includes(DASHBOARD_SUPPLIERS_KEY)) refresh(); };
+    // الصفحة المخفية (تبقى محمّلة) لا تستلم الأحداث: تُعاد القراءة عند ظهورها فلا يبقى اختيار قديم حتى الرفرش
+    refresh();
     window.addEventListener(SYNC_EVENT, refresh);
     window.addEventListener('storage', onStorage);
     window.addEventListener(CLOUD_APPLIED_EVENT, onCloud);
