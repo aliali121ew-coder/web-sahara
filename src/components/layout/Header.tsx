@@ -21,6 +21,7 @@ import { useFuelStore } from '../../context/FuelDataContext';
 import { useLanguage, ACTIVE_LANGUAGES } from '../../context/LanguageContext';
 import { useTranslation } from 'react-i18next';
 import { BiometricSettings } from '../auth/BiometricSettings';
+import { AppUpdateButton } from './AppUpdate';
 import { enumText } from '../../i18n/enums';
 import { fmtNumber } from '../../i18n/format';
 
@@ -108,6 +109,9 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Center/Left Info & Actions */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           
+          {/* زر التحديث: يظهر فقط بعد نشر نسخة جديدة */}
+          <AppUpdateButton />
+
           {/* 🌐 Multi-Language Switcher (EN/AR & Other Languages) */}
           <div className="relative" ref={langRef}>
             <button

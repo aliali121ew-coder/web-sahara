@@ -321,5 +321,12 @@
   "comingSoon": {
     "badge": "Under development",
     "body": "This service is being built and will be available soon."
+  },
+  "appUpdate": {
+    "available": "A new version is available, click to update",
+    "button": "Update",
+    "mobileTitle": "New update available",
+    "mobileBody": "The app will update in {{count}} seconds",
+    "now": "Update now"
   }
 }

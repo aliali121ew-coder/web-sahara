@@ -59,8 +59,8 @@ const PriceCard: React.FC<{ records: BlackOilRecord[]; bg: string; text: string 
     ? 'bg-emerald-50 border-emerald-200/80 text-emerald-600 dark:bg-emerald-950/40 dark:border-emerald-900/60 dark:text-emerald-400'
     : 'bg-slate-50 border-slate-200 text-slate-500 dark:bg-slate-800 dark:border-slate-700';
   return (
-    <div className={`min-w-[118px] rounded-2xl overflow-hidden bg-gradient-to-br from-white ${bg} dark:from-slate-800/90 dark:to-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 shrink-0 shadow-xs`}>
-      <div className="px-3 pt-2.5 pb-2 text-center">
+    <div className={`min-w-[104px] sm:min-w-[118px] rounded-2xl overflow-hidden bg-gradient-to-br from-white ${bg} dark:from-slate-800/90 dark:to-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 shrink-0 shadow-xs`}>
+      <div className="px-2 sm:px-3 pt-2.5 pb-2 text-center">
         <span className="text-[10px] font-bold text-slate-400 dark:text-slate-400 block">{t('dashboard:price.average')}</span>
         <div className="mt-0.5 flex items-baseline justify-center gap-1">
           <span className={`text-lg sm:text-2xl font-black font-mono tracking-tight leading-none tabular-nums ${text}`}>
@@ -209,8 +209,8 @@ export const BlackOilSection: React.FC = () => {
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
                   {t('dashboard:balance.actualCurrent')}
                 </span>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl sm:text-4xl lg:text-[36px] font-black font-mono text-slate-900 dark:text-white tracking-tight leading-none">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <span className="text-[clamp(22px,7vw,30px)] sm:text-4xl lg:text-[36px] font-black font-mono text-slate-900 dark:text-white tracking-tight leading-none">
                     {formatNumber(saharaTotalBalance)}
                   </span>
                   <span className="text-sm font-black text-sky-600 dark:text-sky-400">
@@ -349,8 +349,8 @@ export const BlackOilSection: React.FC = () => {
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
                   {t('dashboard:balance.actualCurrent')}
                 </span>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl sm:text-4xl lg:text-[36px] font-black font-mono text-slate-900 dark:text-white tracking-tight leading-none">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <span className="text-[clamp(22px,7vw,30px)] sm:text-4xl lg:text-[36px] font-black font-mono text-slate-900 dark:text-white tracking-tight leading-none">
                     {formatNumber(etihadTotalBalance)}
                   </span>
                   <span className="text-sm font-black text-teal-600 dark:text-teal-400">
