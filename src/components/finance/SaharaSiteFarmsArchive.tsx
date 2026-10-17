@@ -5,7 +5,7 @@ import { FARM_SITES, useSiteFarms, type AnnualRecord } from '../../lib/siteFarms
 import { archiveMonths, monthReport, monthRows } from '../../lib/siteFarmsArchive';
 import { buildMonthWorkbook } from '../../lib/siteFarmsExport';
 import { SiteFarmsMonthReport } from './SiteFarmsMonthReport';
-import { SITE_ANNUAL_PREFIX, fetchSaharaFileBlob, siteAnnualRecord, useSaharaFiles } from '../../lib/saharaFiles';
+import { SITE_ANNUAL_PREFIX, fetchSaharaFileBlob, siteAnnualRecord, siteMonthRecord, useSaharaFiles } from '../../lib/saharaFiles';
 
 const fmt = (n: number | null) => (n === null ? '—' : Math.round(n).toLocaleString('en-US'));
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -44,6 +44,8 @@ export const SaharaSiteFarmsArchive: React.FC = () => {
     for (const f of stored) if (f.record_id.startsWith(SITE_ANNUAL_PREFIX)) map.set(f.record_id, f); // الأحدث آخرًا
     return map;
   }, [stored]);
+  // PDF الشهر المؤرشف تلقائيًا بعد انتهائه (كل المواقع)
+  const monthPdf = (ym: string | null) => (ym ? stored.find(f => f.record_id === siteMonthRecord(ym)) ?? null : null);
 
   // قسم الملفات: الموقع (null = كل المواقع) ← السنة والشهر ← الملفات
   const [fSite, setFSite] = useState<string | null>(null);
@@ -332,6 +334,29 @@ export const SaharaSiteFarmsArchive: React.FC = () => {
                   </div>
                 </div>
               )}
+              {(() => {
+                const pdf = monthPdf(curYm);
+                if (!pdf) return null;
+                return (
+                  <div className="relative overflow-hidden rounded-2xl border border-rose-100 dark:border-rose-900/60 bg-gradient-to-br from-white to-rose-50/70 dark:from-slate-900 dark:to-rose-950/30 p-4 flex flex-col gap-3 shadow-sm">
+                    <div className="absolute inset-y-0 start-0 w-1 bg-gradient-to-b from-rose-600 to-rose-400" />
+                    <div className="flex items-start gap-3">
+                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-rose-700 to-rose-500 text-white flex items-center justify-center shadow-sm shrink-0"><FileText className="w-5 h-5" /></div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-black text-slate-900 dark:text-white">{L2('archivedPdf')}</div>
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400">{L2('allSites')} — {monthLabel(curYm!)}</div>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 shrink-0">{fmtSize(pdf.size)}</span>
+                    </div>
+                    <div className="text-[11px] font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1"><CalendarCheck className="w-3.5 h-3.5 text-rose-600" />{L2('archivedAt', { date: fmtDate(pdf.created_at) })}</div>
+                    <button type="button" disabled={busy === pdf.id} onClick={() => void downloadStored(pdf.id, pdf.name)}
+                      className="mt-auto h-9 rounded-xl flex items-center justify-center gap-2 text-xs font-black text-white bg-gradient-to-r from-rose-700 to-rose-500 hover:from-rose-700 hover:to-rose-600 shadow-sm cursor-pointer disabled:opacity-60 disabled:cursor-wait">
+                      {busy === pdf.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                      {L2('downloadFile')}
+                    </button>
+                  </div>
+                );
+              })()}
               {(fSite ? [fSite] : FARM_SITES).map(annualCard)}
             </div>
           </section>

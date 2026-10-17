@@ -173,3 +173,10 @@ export const useSaharaFiles = (enabled = true) => {
 export const SITE_ANNUAL_PREFIX = 'sfa-';
 export const siteAnnualRecord = (site: string) => `${SITE_ANNUAL_PREFIX}${site}`;
 export const saveSiteAnnualFile = (site: string, file: File) => attachDayReport(siteAnnualRecord(site), file);
+
+/** PDF تقرير شهر مزارع المواقع (كل المواقع) المؤرشف تلقائيًا بعد انتهاء الشهر — ملف واحد لكل شهر */
+export const SITE_MONTH_PREFIX = 'sfm-';
+export const siteMonthRecord = (ym: string) => `${SITE_MONTH_PREFIX}${ym}`;
+export const siteMonthPdfName = (ym: string) => `${i18n.t('finance:siteFarms.archive.fileName')}-${ym}.pdf`;
+export const listSaharaFiles = () => listFiles();
+export const notifySaharaFilesChanged = () => window.dispatchEvent(new Event(CHANGE_EVENT));

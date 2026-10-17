@@ -4,6 +4,7 @@ import { annualFor, annualYears, farmsDates, farmsOn, importAnnual, importFarmsD
 import { archiveMonths, closedMonths, monthReport, monthRows } from '../siteFarmsArchive';
 import { buildMonthWorkbook, type MonthExportLabels } from '../siteFarmsExport';
 import ExcelJS from 'exceljs';
+import { monthReady } from '../../components/finance/SiteFarmsAutoArchive';
 import { detectKind } from '../bulkUpload';
 import { readAnnualFarmsFile, readDailyFarmsFile } from '../siteFarmsFile';
 
@@ -195,6 +196,16 @@ describe('أرشيف مزارع الموقع: الجدول والملفات ال
     const farms = wb.getWorksheet('F')!;
     expect(farms.getCell('A4').value).toBe('التسمين');
     expect(farms.getRow(7).values).toEqual([undefined, '2026/02/09', 'تسمين مزرعة 1', 500, 0, 60, 440]);
+  });
+
+  it('أرشفة PDF الشهر: بعد أن تغطي الملفات السنوية آخر يوم، أو بعد 7 أيام من انتهائه', () => {
+    saveAnnual('التسمين', 2026, Array.from({ length: 31 }, () => 1), Array.from({ length: 31 }, () => 1)); // كانون الثاني كاملًا
+    saveAnnual('البوادي', 2026, Array.from({ length: 30 }, () => 1), Array.from({ length: 30 }, () => 1)); // ينقص يوم 31
+    const recs = readSiteFarms();
+    expect(monthReady(recs, '2026-01', new Date(2026, 1, 3))).toBe(false);
+    expect(monthReady(recs, '2026-01', new Date(2026, 1, 8))).toBe(true);
+    saveAnnual('البوادي', 2026, Array.from({ length: 32 }, () => 1), Array.from({ length: 32 }, () => 1));
+    expect(monthReady(readSiteFarms(), '2026-01', new Date(2026, 1, 2))).toBe(true);
   });
 
   it('الرفع المتعدد يميّز الملف السنوي عن كشف الرصيد', () => {

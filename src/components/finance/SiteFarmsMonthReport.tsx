@@ -24,12 +24,9 @@ interface Props {
   onClose: () => void;
 }
 
-/**
- * تقرير شهر مزارع المواقع: يُعرض داخل البرنامج كصفحات A4، ويُصدَّر PDF بالطباعة (نفس الصفحات)،
- * وزر Excel يصدّر الملف المنسّق. الصفحة الأولى ملخص المواقع، ثم صفحة لكل موقع.
- */
-export const SiteFarmsMonthReport: React.FC<Props> = ({ records, ym, site, monthLabel, fileBase, excelBusy, autoPdf, onExcel, onClose }) => {
-  const { t, i18n } = useTranslation(['finance', 'common']);
+/** صفحات تقرير الشهر (A4 بالعرض): ملخص المواقع ثم صفحة لكل موقع — للعرض والطباعة والأرشفة التلقائية */
+export const useMonthReportPages = (records: SiteFarmsRecord[], ym: string, site: string | null, monthLabel: string): React.ReactNode[] => {
+  const { t } = useTranslation(['finance', 'common']);
   const L = (k: string, o?: Record<string, unknown>) => t(`finance:siteFarms.archive.${k}`, o);
   const sites = useMemo(() => monthReport(records, ym, site), [records, ym, site]);
   const weekdays = t('finance:siteFarms.weekdays', { returnObjects: true }) as unknown;
@@ -39,27 +36,6 @@ export const SiteFarmsMonthReport: React.FC<Props> = ({ records, ym, site, month
     const s = (k: 'f' | 'g' | 'total' | 'report' | 'lastBalance') => sites.reduce((a, x) => a + (x[k] ?? 0), 0);
     return { f: s('f'), g: s('g'), total: s('total'), report: s('report'), balance: s('lastBalance'), days: sites.reduce((a, x) => a + x.rows.length, 0) };
   }, [sites]);
-
-  // اسم ملف PDF عند "حفظ كـ PDF" = عنوان الصفحة أثناء الطباعة
-  const exportPdf = () => {
-    const prev = document.title;
-    document.title = `${fileBase}${site ? `-${site}` : ''}-${ym}`;
-    window.print();
-    document.title = prev;
-  };
-
-  useEffect(() => {
-    if (!autoPdf) return;
-    const timer = window.setTimeout(exportPdf, 300); // بعد رسم الصفحات
-    return () => window.clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoPdf]);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
 
   const th = 'bg-[#0f5e4b] text-white px-2 py-1.5 text-[9.5px] font-black text-center border border-[#0f5e4b] whitespace-nowrap';
   const td = 'px-2 py-1 text-center font-mono border border-slate-200';
@@ -191,7 +167,43 @@ export const SiteFarmsMonthReport: React.FC<Props> = ({ records, ym, site, month
   );
   // كل المواقع: ملخص ثم صفحة لكل موقع؛ موقع واحد: صفحته فقط. التواقيع في آخر صفحة
   const body = site ? sites.map(sitePage) : [summaryPage, ...sites.map(sitePage)];
-  const pages = body.map((p, i) => (i === body.length - 1 ? <div className="flex flex-col gap-3 min-h-[185mm]">{p}{signatures}</div> : p));
+  return body.map((p, i) => (i === body.length - 1 ? <div className="flex flex-col gap-3 min-h-[185mm]">{p}{signatures}</div> : p));
+};
+
+/** صفحة A4 بالعرض كما تظهر في العرض والأرشفة */
+export const REPORT_PAGE_CLASS = 'bg-white text-slate-900 p-6 shrink-0 font-cairo text-start';
+export const REPORT_PAGE_STYLE: React.CSSProperties = { width: '297mm', minHeight: '210mm' };
+
+/**
+ * تقرير شهر مزارع المواقع: يُعرض داخل البرنامج كصفحات A4، ويُصدَّر PDF بالطباعة (نفس الصفحات)،
+ * وزر Excel يصدّر الملف المنسّق. الصفحة الأولى ملخص المواقع، ثم صفحة لكل موقع.
+ */
+export const SiteFarmsMonthReport: React.FC<Props> = ({ records, ym, site, monthLabel, fileBase, excelBusy, autoPdf, onExcel, onClose }) => {
+  const { t, i18n } = useTranslation(['finance', 'common']);
+  const L = (k: string) => t(`finance:siteFarms.archive.${k}`);
+  const pages = useMonthReportPages(records, ym, site, monthLabel);
+
+  // اسم ملف PDF عند "حفظ كـ PDF" = عنوان الصفحة أثناء الطباعة
+  const exportPdf = () => {
+    const prev = document.title;
+    document.title = `${fileBase}${site ? `-${site}` : ''}-${ym}`;
+    window.print();
+    document.title = prev;
+  };
+
+  useEffect(() => {
+    if (!autoPdf) return;
+    const timer = window.setTimeout(exportPdf, 300); // بعد رسم الصفحات
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPdf]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
 
   return (
     <>
@@ -228,7 +240,7 @@ export const SiteFarmsMonthReport: React.FC<Props> = ({ records, ym, site, month
             <div className="flex-1 overflow-auto p-3 sm:p-6 bg-slate-700/50 dark:bg-slate-950/90">
               <div className="flex flex-col items-center gap-5">
                 {pages.map((p, i) => (
-                  <div key={i} className="bg-white text-slate-900 rounded-lg shadow-2xl border border-slate-400 p-6 shrink-0 font-cairo text-start" style={{ width: '297mm', minHeight: '210mm' }} dir={i18n.dir()}>
+                  <div key={i} className={`${REPORT_PAGE_CLASS} rounded-lg shadow-2xl border border-slate-400`} style={REPORT_PAGE_STYLE} dir={i18n.dir()}>
                     {p}
                   </div>
                 ))}

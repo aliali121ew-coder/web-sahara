@@ -528,7 +528,9 @@
       "current": "Current",
       "noMonths": "No recorded months for this site",
       "monthReport": "Month report",
-      "annualFileOf": "Annual file — {{site}}"
+      "annualFileOf": "Annual file — {{site}}",
+      "archivedPdf": "Archived month PDF",
+      "archivedAt": "Archived automatically {{date}}"
     }
   },
   "hub": {

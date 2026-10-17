@@ -105,13 +105,13 @@ const ensureFilesTables = async (db: D1Database) => {
   filesTableReady = true;
 };
 
-// القسم المسؤول عن مرفقات السجل من بادئة رقمه (sah- رصيد الصحاري، pet- البنزين، rec- رصيد الاتحاد، bo- النفط الأسود للشركتين، sfa- الملف السنوي لموقع)
+// القسم المسؤول عن مرفقات السجل من بادئة رقمه (sah- رصيد الصحاري، pet- البنزين، rec- رصيد الاتحاد، bo- النفط الأسود للشركتين، sfa- الملف السنوي لموقع، sfm- PDF شهر مزارع المواقع)
 const FILE_SECTIONS = ['sahara.balance', 'sahara.petrol', 'sahara.black-oil', 'etihad.balance', 'etihad.black-oil', 'sahara.reports', 'etihad.reports', 'etihad.archive', 'sahara.reserves'];
 const fileSectionsFor = (recordId: string): string[] =>
   recordId.startsWith('pet-') ? ['sahara.petrol']
   : recordId.startsWith('rec-') ? ['etihad.balance']
   : recordId.startsWith('bo-') ? ['sahara.black-oil', 'etihad.black-oil']
-  : recordId.startsWith('sfa-') ? ['sahara.reserves']
+  : recordId.startsWith('sfa-') || recordId.startsWith('sfm-') ? ['sahara.reserves']
   : ['sahara.balance'];
 const fileLevel = (session: Session, sections: string[]) =>
   Math.max(0, ...sections.map(s => levelOf(session.perms, session.admin, s)));

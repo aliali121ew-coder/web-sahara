@@ -20,6 +20,9 @@ import { NoAccess } from './components/auth/NoAccess';
 import { useCanOpenTab, usePermissions, TAB_SECTION } from './lib/usePermission';
 import type { NavTabId } from './types';
 
+// أرشفة PDF شهر مزارع المواقع (تُحمَّل في الخلفية فلا تثقل التحميل الأول)
+const SiteFarmsAutoArchive = React.lazy(() => import('./components/finance/SiteFarmsAutoArchive'));
+
 // كل صفحة في ملف مستقل يُحمَّل عند أول زيارة، ويُجلب مسبقاً وقت الخمول بعد ظهور الصفحة الأولى
 const MainDashboard = lazyPage(() => import('./components/dashboard/MainDashboard'), 'MainDashboard');
 const TanksOverview = lazyPage(() => import('./components/tanks/TanksOverview'), 'TanksOverview');
@@ -252,6 +255,9 @@ const AppContent: React.FC = () => {
       </div>
 
 
+
+      {/* أرشفة PDF شهر مزارع المواقع تلقائيًا بعد انتهائه (في الخلفية، لمن يملك تعديل الاحتياطي) */}
+      <Suspense fallback={null}><SiteFarmsAutoArchive /></Suspense>
 
       {/* Quick Action Modal */}
       <QuickActionModal

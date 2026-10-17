@@ -540,7 +540,9 @@
       "current": "جارٍ",
       "noMonths": "لا توجد أشهر مسجّلة لهذا الموقع",
       "monthReport": "تقرير الشهر",
-      "annualFileOf": "الملف السنوي — {{site}}"
+      "annualFileOf": "الملف السنوي — {{site}}",
+      "archivedPdf": "PDF الشهر المؤرشف",
+      "archivedAt": "أُرشف تلقائيًا {{date}}"
     }
   },
   "hub": {
