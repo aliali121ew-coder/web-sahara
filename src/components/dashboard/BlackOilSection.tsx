@@ -204,7 +204,7 @@ export const BlackOilSection: React.FC = () => {
             </div>
 
             {/* Actual Balance Big Display */}
-            <div className="pt-0.5 flex items-end justify-between gap-3 flex-wrap">
+            <div className="pt-0.5 flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
                   {t('dashboard:balance.actualCurrent')}
@@ -344,7 +344,7 @@ export const BlackOilSection: React.FC = () => {
             </div>
 
             {/* Actual Balance Big Display */}
-            <div className="pt-0.5 flex items-end justify-between gap-3 flex-wrap">
+            <div className="pt-0.5 flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
                   {t('dashboard:balance.actualCurrent')}
