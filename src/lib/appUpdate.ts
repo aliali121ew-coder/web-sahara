@@ -1,11 +1,14 @@
 import { useSyncExternalStore } from 'react';
+import { REALTIME_OPEN_EVENT } from './cloudSync';
 
 /**
- * كشف نشر نسخة جديدة: الصفحة تحمل بصمة بنائها (__BUILD_ID__)، وتسأل الخادم /api/version
- * عند الفتح وكل دقيقتين وعند العودة للتطبيق؛ إن اختلفت البصمة فهناك تحديث، وتحديث الصفحة يجلبه
+ * كشف نشر نسخة جديدة: الصفحة تحمل بصمة بنائها (__BUILD_ID__)، وتسأل الخادم /api/version (بلا D1)
+ * عند الفتح، وعند عودة اتصال التحديث اللحظي (رفع نسخة جديدة يعيد تشغيل قناته فيعود اتصال كل الأجهزة خلال ثوانٍ)،
+ * وعند العودة للتطبيق، واحتياطًا كل 30 دقيقة؛ إن اختلفت البصمة فهناك تحديث، وتحديث الصفحة يجلبه
  * (عامل الخدمة يجلب الصفحة الرئيسية من الشبكة أولًا، وملفات البناء الجديدة بأسماء جديدة).
  */
-const CHECK_EVERY_MS = 2 * 60 * 1000;
+/** فحص احتياطي نادر إن لم يعد الاتصال اللحظي لسبب ما */
+const CHECK_EVERY_MS = 30 * 60 * 1000;
 
 let available = false;
 const listeners = new Set<() => void>();
@@ -36,8 +39,8 @@ const start = () => {
   check();
   window.setInterval(check, CHECK_EVERY_MS);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
-  window.addEventListener('focus', check);
   window.addEventListener('online', check);
+  window.addEventListener(REALTIME_OPEN_EVENT, check);
 };
 
 const subscribe = (l: () => void) => {

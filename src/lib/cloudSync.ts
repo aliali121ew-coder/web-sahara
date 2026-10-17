@@ -249,6 +249,8 @@ const installInterceptors = () => {
 const localSyncKeys = () => Object.keys(localStorage).filter(shouldSync);
 
 /** حدث يُطلق بعد تطبيق تعديلات أجهزة أخرى أثناء فتح الصفحة؛ detail = المفاتيح التي تغيّرت */
+/** فُتح اتصال التحديث اللحظي (أول مرة أو بعد انقطاع) */
+export const REALTIME_OPEN_EVENT = 'sahara:realtime-open';
 export const CLOUD_APPLIED_EVENT = 'cloud-state-applied';
 
 /**
@@ -572,6 +574,8 @@ export async function initCloudSync(): Promise<InitResult> {
       lastSeen = Date.now();
       // ما فات أثناء الانقطاع
       void pull();
+      // عودة الاتصال: رفع نسخة جديدة يعيد تشغيل قناة التحديث فيعود اتصال كل الأجهزة، فتُفحص النسخة الآن (appUpdate)
+      window.dispatchEvent(new Event(REALTIME_OPEN_EVENT));
       // نبضة تُبقي الاتصال حيًا عبر الشبكات (يرد عليها الخادم تلقائيًا دون تكلفة تشغيل).
       // اتصال "مفتوح" لا يرد (شبكة الهاتف أسقطته بصمت) لا يصله أي إشعار: يُغلق ويُعاد فورًا مع جلب ما فات
       clearInterval(pingTimer);
