@@ -448,7 +448,21 @@
       "openSite": "Open {{site}} site",
       "noData": "No report",
       "dayView": "Day view",
-      "nightView": "Night view"
+      "nightView": "Night view",
+      "tanker": "Tanker",
+      "sim": "Simulation",
+      "simHint": "No GPS data for tankers: movement is simulated on the road to show the route, not the actual position",
+      "stDepart": "Leaving {{site}}",
+      "stMoving": "Heading to {{site}}",
+      "stArrived": "Arrived at {{site}}",
+      "stPaused": "Stopped (simulation paused)",
+      "progress": "Progress",
+      "approvedAt": "Approved {{time}}",
+      "play": "Play simulation",
+      "pause": "Pause simulation",
+      "speed": "Simulation speed",
+      "follow": "Follow",
+      "showRoute": "Full route"
     },
     "field": {
       "title": "{{site}} farm field",

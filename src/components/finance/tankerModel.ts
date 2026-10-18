@@ -4,16 +4,18 @@ import * as THREE from 'three';
  * صهريج وقود ثلاثي الأبعاد لخريطة مركز المراقبة: قاطرة حمراء (زجاج أمامي وجانبي، شبكة، مصد كروم، أضواء، مرايا، عوادم)
  * ومقطورة خزان بيضاوي بنهايتين مقبّبتين، وأحزمة كروم، وخط برتقالي، وممشى علوي بفتحات تعبئة ودرابزين، وخراطيم، وسلم خلفي،
  * ولوحة مواد خطرة، وست محاور عجلات بجنوط. المقدمة باتجاه +x.
+ * userData.wheels = مجموعات العجلات (تدور حول z مع سرعة المركبة). polished = خزان ستانلس لامع (يحتاج بيئة انعكاس).
  */
-export const createTanker = (): THREE.Group => {
+export interface TankerOptions { cab?: number; polished?: boolean }
+export const createTanker = (opts: TankerOptions = {}): THREE.Group => {
   const g = new THREE.Group();
   const M = (color: number, o: THREE.MeshStandardMaterialParameters = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.45, metalness: 0.25, ...o });
   const chrome = M(0xe8eef5, { roughness: 0.22, metalness: 0.55 });
-  const paint = M(0xc81e1e, { roughness: 0.32, metalness: 0.35 });
+  const paint = M(opts.cab ?? 0xc81e1e, { roughness: 0.32, metalness: 0.35 });
   const dark = M(0x1f2937, { roughness: 0.8, metalness: 0.1 });
   const tire = M(0x0d0f12, { roughness: 0.95, metalness: 0 });
   const glass = M(0x0f2742, { roughness: 0.08, metalness: 0.4, emissive: 0x0b2a4a, emissiveIntensity: 0.35 });
-  const tankMat = M(0xdfe5ec, { roughness: 0.28, metalness: 0.45 });
+  const tankMat = opts.polished ? M(0xd6dce4, { roughness: 0.14, metalness: 0.95 }) : M(0xdfe5ec, { roughness: 0.28, metalness: 0.45 });
   const orange = M(0xf59e0b, { roughness: 0.4, emissive: 0x7c2d12, emissiveIntensity: 0.15 });
   const lamp = (c: number) => M(c, { emissive: c, emissiveIntensity: 1.3, roughness: 0.2 });
   const add = (geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0) => {
@@ -63,9 +65,19 @@ export const createTanker = (): THREE.Group => {
   [0.5, -0.5].forEach(z => { add(new THREE.BoxGeometry(0.04, 0.32, 0.26), dark, 0.62, 0.36, z); add(new THREE.BoxGeometry(0.04, 0.32, 0.26), dark, -3.25, 0.36, z); });
   // العجلات: إطار وجنط ومحور (أمامي، اثنان للقاطرة، ثلاثة للمقطورة)
   const tireGeo = new THREE.CylinderGeometry(0.31, 0.31, 0.24, 24), rimGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.25, 16), hubGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.26, 8);
+  const lugGeo = new THREE.BoxGeometry(0.035, 0.035, 0.02);
+  const wheels: THREE.Group[] = [];
   [2.75, 1.42, 0.98, -2.15, -2.7, -3.15].forEach(x => [0.47, -0.47].forEach(z => {
-    add(tireGeo, tire, x, 0.31, z, Math.PI / 2); add(rimGeo, chrome, x, 0.31, z, Math.PI / 2); add(hubGeo, dark, x, 0.31, z * 1.02, Math.PI / 2);
+    const w = new THREE.Group(); w.position.set(x, 0.31, z); g.add(w); wheels.push(w);
+    const part = (geo: THREE.BufferGeometry, mat: THREE.Material, zz = 0) => { const m = new THREE.Mesh(geo, mat); m.rotation.x = Math.PI / 2; m.position.z = zz; w.add(m); };
+    part(tireGeo, tire); part(rimGeo, chrome); part(hubGeo, dark, z * 0.02);
+    // صواميل الجنط على الوجه الخارجي (تُظهر دوران العجلة)
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2;
+      const lug = new THREE.Mesh(lugGeo, dark); lug.position.set(Math.cos(a) * 0.11, Math.sin(a) * 0.11, Math.sign(z) * 0.13); w.add(lug);
+    }
   }));
+  g.userData.wheels = wheels;
   g.scale.setScalar(0.56);
   return g;
 };

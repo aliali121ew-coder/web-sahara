@@ -17,7 +17,7 @@ import { weatherKind, type SiteWeather } from '../../lib/weather';
  * شاحنة جارية. خريطة الموقع: from/to = 'outside' أو 'station' (bearing = اتجاه الموقع الآخر على المخطط).
  * خريطة مركز التوزيع: from/to = اسما الموقعين (الشاحنة تسير على الشوارع بينهما). text = سطر بطاقة الشاحنة
  */
-export interface MapTrip { id: string; qty: number; text: string; from: string; to: string; dir: 'in' | 'out'; bearing?: number }
+export interface MapTrip { id: string; qty: number; text: string; from: string; to: string; dir: 'in' | 'out'; bearing?: number; /** وقت الموافقة (انطلاق الصهريج) */ since?: string }
 /** موقع في خريطة مركز التوزيع: مزارعه ومكانه في المخطط */
 export interface WorldSite { site: string; cover: SiteCover; pos: Pt }
 /** مقياس لوح الموقع في خريطة مركز التوزيع */
