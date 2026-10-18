@@ -215,8 +215,9 @@ export const syncSaharaPetrolTanks = (totalLiters: number, stationBalances?: Rec
 /**
  * ملء خزانات قسم بالكميات (لتر) بترتيب خزانات القسم الظاهرة؛ null = يُترك الخزان كما هو.
  * الكمية الأكبر من السعة تُقصّ إلى الامتلاء. يُرجع الخزانات التي تغيرت والتي تجاوزت سعتها.
+ * unit = 'percent': القيم نسب امتلاء (0–100) بدل اللترات.
  */
-export const setSectionTankLiters = (sectionKey: string, liters: (number | null)[], fallback: TankUnitRow[] = []) => {
+export const setSectionTankLiters = (sectionKey: string, liters: (number | null)[], fallback: TankUnitRow[] = [], unit: 'liters' | 'percent' = 'liters') => {
   const tanks = readCentralTanks(fallback);
   const section = tanks.filter(t => t.sectionKey === sectionKey && !t.hidden);
   const target = new Map<string, number>();
@@ -224,9 +225,10 @@ export const setSectionTankLiters = (sectionKey: string, liters: (number | null)
   section.forEach((t, i) => {
     const v = liters[i];
     if (v === null || v === undefined || !t.capacityLiters) return;
-    if (v > t.capacityLiters) over.push(t.name);
+    const ratio = unit === 'percent' ? v / 100 : v / t.capacityLiters;
+    if (ratio > 1) over.push(t.name);
     const max = t.maxLevelMeters || 1;
-    target.set(t.id, Math.min(max, Math.max(0, (v / t.capacityLiters) * max)));
+    target.set(t.id, Math.min(max, Math.max(0, ratio * max)));
   });
   let changed = false;
   const next = tanks.map(t => {
@@ -236,5 +238,5 @@ export const setSectionTankLiters = (sectionKey: string, liters: (number | null)
     return { ...t, levelMeters: level };
   });
   if (changed) writeCentralTanks(next);
-  return { filled: target.size, sectionSize: section.length, over };
+  return { filled: target.size, sectionSize: section.length, over, unfilled: section.filter(t => !target.has(t.id)).map(t => t.name) };
 };
