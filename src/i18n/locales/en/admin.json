@@ -202,7 +202,13 @@
       "sahara.petrol": "Gasoline",
       "sahara.reports": "Reports",
       "suppliers": "Suppliers",
-      "sahara.bulk-upload": "Bulk upload"
+      "sahara.bulk-upload": "Bulk upload",
+      "sahara.site.taqa": "Taqa site",
+      "sahara.site.tasmeen": "Tasmeen site",
+      "sahara.site.bayadh": "Bayadh site",
+      "sahara.site.bawadi": "Bawadi site",
+      "sahara.site.ummahat": "Ummahat Al-Bayadh site",
+      "sahara.site.ajdad": "Ajdad site"
     }
   },
   "support": {

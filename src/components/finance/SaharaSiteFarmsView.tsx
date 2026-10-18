@@ -1,9 +1,9 @@
 import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CalendarDays, FileSearch, FileSpreadsheet, Loader2, Sprout, Upload } from 'lucide-react';
+import { ArrowDownToLine, ArrowRight, CalendarDays, FileSearch, FileSpreadsheet, Flame, History, Loader2, Radar, Sprout, Upload, Wallet } from 'lucide-react';
 import { usePermissions } from '../../lib/usePermission';
 import {
-  FARM_SITES, annualFor, annualYears, farmsDates, farmsOn, importAnnual, importFarmsDay, lastDayUse, useSiteFarms,
+  FARM_SITES, annualFor, annualYears, farmsDates, farmsOn, importAnnual, importFarmsDay, useSiteFarms,
   type AnnualRecord, type SiteFarmsRecord
 } from '../../lib/siteFarms';
 import { readAnnualFarmsFile, readDailyFarmsFile } from '../../lib/siteFarmsFile';
@@ -12,7 +12,11 @@ import { saveSiteAnnualFile } from '../../lib/saharaFiles';
 import { useSiteWeather } from '../../lib/weather';
 import SiteFarmsField from './SiteFarmsField';
 import { FarmUsageModal, SiteFarmsUsageView, WeekBars } from './SiteFarmsUsage';
-import { weekUsage } from '../../lib/siteFarmsUsage';
+import { siteDayTotals, weekUsage } from '../../lib/siteFarmsUsage';
+import { DISTRIBUTION_SITE } from '../../lib/siteAccess';
+import { useSiteRequests } from '../../lib/siteRequests';
+import { SiteNetworkMap } from './SiteNetworkMap';
+import { SiteRequests } from './SiteRequests';
 import { backfillFarmsFromArchive, type BackfillProgress } from '../../lib/siteFarmsBackfill';
 import { isStaleChunkError, reloadForNewBuild } from '../../lib/staleBuild';
 import './siteFarms.css';
@@ -291,7 +295,7 @@ const YearDial: React.FC<DialProps> = ({ year, cur, prev, max, range, spikes, ho
 };
 
 // ───────────────────────── الصفحة ─────────────────────────
-export const SaharaSiteFarmsView: React.FC = () => {
+export const SaharaSiteFarmsView: React.FC<{ site: string; onBack: () => void }> = ({ site, onBack }) => {
   const { t, i18n } = useTranslation(['finance', 'common']);
   const perms = usePermissions();
   const canEdit = perms.canEdit('sahara.reserves');
@@ -325,7 +329,9 @@ export const SaharaSiteFarmsView: React.FC = () => {
   const months: string[] = Array.isArray(monthsRaw) && monthsRaw.length === 12 ? monthsRaw as string[] : Array.from({ length: 12 }, (_, i) => String(i + 1));
   const weekdays: string[] = Array.isArray(weekdaysRaw) && weekdaysRaw.length === 7 ? weekdaysRaw as string[] : Array.from({ length: 7 }, (_, i) => String(i + 1));
 
-  const [site, setSite] = useState<string>('التسمين');
+  // الطاقة مركز التوزيع: صفحتها حتى مركز المراقبة، وخريطتها المواقع لا المزارع
+  const isTaqa = site === DISTRIBUTION_SITE;
+  const requests = useSiteRequests();
   const [yearPick, setYearPick] = useState<number | null>(null);
   const [range, setRange] = useState<[number, number]>([0, 11]);
   const fullYear = range[0] === 0 && range[1] === 11;
@@ -412,17 +418,10 @@ export const SaharaSiteFarmsView: React.FC = () => {
 
   const yearTotal = (r: SiteFarmsRecord | null) => (r && r.kind === 'annual' ? r.f.reduce((a, b) => a + b, 0) + r.g.reduce((a, b) => a + b, 0) : 0);
 
-  // مواقع: استهلاك آخر يوم لكل موقع (من الملف السنوي، وإلا من آخر كشف يومي) — لا الرصيد التراكمي
-  const siteCards = useMemo(() => FARM_SITES.map(name => {
-    const dates = farmsDates(records, name);
-    const last = dates[dates.length - 1];
-    const rows = last ? farmsOn(records, name, last) : [];
-    const yrs = annualYears(records, name);
-    const latest = yrs.length ? annualFor(records, name, yrs[yrs.length - 1]) : null;
-    return { name, hasData: yrs.length > 0 || rows.length > 0, farms: rows.length, latest, use: lastDayUse(records, name) };
-  }), [records]);
 
   const datesOfSite = useMemo(() => farmsDates(records, site), [records, site]);
+  // كروت الموقع: مجاميع آخر كشف (خزان المحطة + كل المزارع)
+  const dayTot = useMemo(() => siteDayTotals(records, site), [records, site]);
   const date = datePick && datesOfSite.includes(datePick) ? datePick : (datesOfSite[datesOfSite.length - 1] ?? null);
   const farmRows = useMemo(() => (date ? farmsOn(records, site, date) : []), [records, site, date]);
   // عمود الرسم الأسبوعي: مصروف كل مزرعة في أسبوع الكشف المختار (السبت–الجمعة) للمقارنة بين الأيام
@@ -462,8 +461,7 @@ export const SaharaSiteFarmsView: React.FC = () => {
   const commitAnnual = (target: string, file: File, years: { year: number; f: number[]; g: number[] }[]) => {
     const fileName = file.name;
     const done = importAnnual(target, years);
-    setSite(target);
-    setYearPick(years[years.length - 1].year);
+    if (target === site) setYearPick(years[years.length - 1].year);
     setPending(null);
     if (!done.length) { setNotice({ text: t('finance:siteFarms.duplicateAnnual', { file: fileName, site: target }), warn: true }); return; }
     // الملف نفسه يُحفظ في أرشيف تقرير مزارع الموقع (آخر ملف لكل موقع)
@@ -571,6 +569,10 @@ export const SaharaSiteFarmsView: React.FC = () => {
       {/* شريط الصفحة بنفس تصميم شريط صفحة الخزانات: كارت أبيض فيه الأيقونة والعنوان (الرفع من الرفع المتعدد) */}
       <div className="p-3 sm:p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3 px-1 min-w-0">
+          <button type="button" onClick={onBack} title={t('finance:siteHub.back')} aria-label={t('finance:siteHub.back')}
+            className="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center shrink-0 cursor-pointer">
+            <ArrowRight className="w-4 h-4 ltr:rotate-180" />
+          </button>
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-700 to-emerald-500 text-white flex items-center justify-center shadow-sm shrink-0">
             <Sprout className="w-5 h-5" />
           </div>
@@ -631,278 +633,230 @@ export const SaharaSiteFarmsView: React.FC = () => {
         </div>
       )}
 
-      <section className="sf-band">
-        <div className="sf-band-head">
-          <h2>{t('finance:siteFarms.sites')}</h2>
-        </div>
-        <div className="sf-sites">
-          {siteCards.map(s => (
-            <button key={s.name} type="button" className="sf-site" aria-pressed={s.name === site} data-empty={s.hasData ? 0 : 1}
-              onClick={() => { setSite(s.name); setYearPick(null); setMonth(-1); setHover(-1); setLastHover(-1); setDatePick(null); }}>
-              <span className="sf-site-top">
-                <span className="sf-site-name" title={s.name}>{s.name}</span>
-                <span className="sf-chip">{s.hasData ? (s.farms ? t('finance:siteFarms.farmsCount', { n: s.farms }) : t('finance:siteFarms.annualOnly')) : t('finance:siteFarms.waiting')}</span>
-              </span>
-              {s.use
-                ? <span className="sf-site-bal">{fmt(s.use.total)}<small>{t('finance:siteFarms.useLiter')}</small></span>
-                : <span className="sf-site-nobal">{t('finance:siteFarms.useAfterReport')}</span>}
-              <SiteSpark rec={s.latest} active={s.name === site} months={months} />
-              <span className="sf-site-foot">
-                <span>{t('finance:siteFarms.lastDay')} <b className="font-mono">{s.use ? s.use.date.slice(5) : '—'}</b></span>
-                {s.latest && <span>{s.latest.year} <b>{short(yearTotal(s.latest))}</b></span>}
-              </span>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="sf-band">
-        <div className="sf-band-head">
-          <h2>{t('finance:siteFarms.year')}</h2>
-        </div>
-        {/* خط زمني للسنوات (بدل البطاقات): زر لكل سنة فيها بيانات، ومؤشر ينزلق إلى السنة المختارة، والسنوات القادمة علامات خافتة */}
-        <div className="sf-tl" ref={yearBar}>
-          <span className="sf-tl-ind" ref={yearInd} aria-hidden="true" />
-          {siteYears.map(y => {
-            const rec = annualFor(records, site, y)!;
-            return (
-              <button key={y} type="button" className="sf-tl-y" aria-pressed={y === year} onClick={() => { setYearPick(y); setMonth(-1); setHover(-1); setLastHover(-1); }}>
-                <b>{y}</b>
-                <span>{short(yearTotal(rec))}</span>
-              </button>
-            );
-          })}
-          {futureYears.map(y => (
-            <span key={y} className="sf-tl-f" title={t('finance:siteFarms.nextYear')}>{y}</span>
-          ))}
-        </div>
-        {yearInfo && (
-          <div className="sf-tl-note" key={`${site}-${year}`}>
-            <span><b><Num v={yearInfo.total} id="yr-total" /></b> {t('finance:siteFarms.liter')}</span>
-            <span className="sf-tl-dot" aria-hidden="true" />
-            <span className="sf-tl-cov"><i><u style={{ width: `${(yearInfo.days / 365) * 100}%` }} /></i>{t('finance:siteFarms.daysCount', { n: yearInfo.days })}</span>
-            <span className="sf-tl-dot" aria-hidden="true" />
-            {yearInfo.pc === null
-              ? <span>{t('finance:siteFarms.firstYear')}</span>
-              : <span className={yearInfo.pc > 0 ? 'sf-up' : 'sf-down'}>{yearInfo.pc > 0 ? '▲' : '▼'} {Math.abs(yearInfo.pc).toFixed(1)}% {t('finance:siteFarms.vsYear', { year: year! - 1 })}</span>}
+      {/* كروت الموقع: آخر كشف يومي (خزان المحطة + المزارع) */}
+      <div className="sf-kpis">
+        {([
+          ['previous', History, dayTot.previous, 'prev'],
+          ['inbound', ArrowDownToLine, dayTot.inbound, 'in'],
+          ['consumption', Flame, dayTot.consumption, 'use'],
+          ['balance', Wallet, dayTot.balance, 'bal'],
+        ] as const).map(([k, Icon, v, tone]) => (
+          <div key={k} className={`sf-kpi ${tone}`}>
+            <span className="sf-kpi-ico"><Icon className="w-5 h-5" /></span>
+            <span className="sf-kpi-l">{t(`finance:siteHub.kpi.${k}`)}</span>
+            <b className="sf-kpi-v">{dayTot.date ? fmt(v) : '—'}<small>{t('finance:siteFarms.liter')}</small></b>
+            <span className="sf-kpi-d">{dayTot.date ? t('finance:siteHub.kpi.day', { date: dayTot.date }) : t('finance:siteHub.noReport')}</span>
           </div>
-        )}
+        ))}
+      </div>
+
+      {/* مركز المراقبة: خريطة الموقع (الطاقة: خريطة المواقع وشاحنات التوزيع) */}
+      <section className="sf-monitor">
+        <h2 className="sf-h2"><span className="sf-monitor-t"><Radar className="w-4 h-4" />{t('finance:siteHub.monitor')}</span></h2>
+        {isTaqa ? (
+          <SiteNetworkMap records={records} requests={requests} focus={site} />
+        ) : (
+            <section className="sf-map-section">
+              {cover.farms.length > 0 ? (
+                <Suspense fallback={<div className="sf-map sf-map-loading" />}>
+                  <SiteFarmsMap site={site} cover={cover} weather={weather} onOpen={farm => setField({ farm })} />
+                </Suspense>
+              ) : (
+                <div className="sf-map-none">{t(cover.date ? (isVehicleSite ? 'finance:siteFarms.map.vehicleSite' : 'finance:siteFarms.map.noFarms') : 'finance:siteFarms.map.noReport', { site })}</div>
+              )}
+            </section>
+          )}
       </section>
 
-      {cur && year !== null ? (
+      <SiteRequests site={site} records={records} showMap={!isTaqa} />
+
+      {!isTaqa && (
         <>
-          <div className="sf-main sf-rise">
-            <div className="sf-card">
-              <h2 className="sf-h2">{t('finance:siteFarms.dialTitle')} <small>{t('finance:siteFarms.dialHint')}</small></h2>
-              <div className="sf-range">
-                <label>
-                  <span>{t('finance:siteFarms.rangeFrom')}</span>
-                  <select className="sf-select" value={range[0]} onChange={e => { const v = +e.target.value; setRange([v, Math.max(v, range[1])]); setHover(-1); }}>
-                    {months.map((mn, m) => <option key={m} value={m}>{mn}</option>)}
-                  </select>
-                </label>
-                <label>
-                  <span>{t('finance:siteFarms.rangeTo')}</span>
-                  <select className="sf-select" value={range[1]} onChange={e => { const v = +e.target.value; setRange([Math.min(range[0], v), v]); setHover(-1); }}>
-                    {months.map((mn, m) => <option key={m} value={m}>{mn}</option>)}
-                  </select>
-                </label>
-                {!fullYear && <button type="button" className="sf-range-reset" onClick={() => { setRange([0, 11]); setHover(-1); }}>{t('finance:siteFarms.rangeAll')}</button>}              </div>
-              <div style={{ position: 'relative' }}>
-                <YearDial year={year} cur={cur} prev={cmp ? prev : null} max={max} range={range} spikes={spikesInRange} hover={hover} months={months}
-                  label={t('finance:siteFarms.dialLabel')} onHover={onHover} tipIndex={tipIdx} tip={tip} />
-                <div className="sf-center">
-                  <div className="l">{centerLabel}</div>
-                  <div className="v">{hover >= 0 ? fmt(centerValue) : <Num v={centerValue} id="center" />}</div>
-                  <div className="u">{t('finance:siteFarms.liter')}</div>
-                </div>
+          {farmModal && <FarmUsageModal records={records} site={site} farm={farmModal} onClose={() => setFarmModal(null)} />}
+          <div className="sf-card">
+            <h2 className="sf-h2">
+              <span>{farmView === 'daily' ? t('finance:siteFarms.farmsTable', { site }) : t('finance:siteFarms.usage.title', { site })}</span>
+              <span className="sf-switch" data-on={farmView === 'usage' ? 1 : 0} role="tablist">
+                <i aria-hidden="true" />
+                <button type="button" role="tab" aria-selected={farmView === 'daily'} onClick={() => setFarmView('daily')}>{t('finance:siteFarms.usage.byDaily')}</button>
+                <button type="button" role="tab" aria-selected={farmView === 'usage'} onClick={() => setFarmView('usage')}>{t('finance:siteFarms.usage.tab')}</button>
+              </span>
+              {farmView === 'daily' && datesOfSite.length > 0 && (
+                <select className="sf-select" value={date ?? ''} onChange={e => setDatePick(e.target.value)} aria-label={t('finance:siteFarms.reportDate')}>
+                  {[...datesOfSite].reverse().map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              )}
+            </h2>
+            {farmView === 'usage' ? (
+              <SiteFarmsUsageView records={records} site={site} onOpenFarm={setFarmModal} />
+            ) : farmRows.length ? (
+              <div className="sf-table-wrap">
+                <table className="sf-table">
+                  <thead>
+                    <tr>
+                      <th>{t('finance:siteFarms.colFarm')}</th><th>{t('finance:siteFarms.colPrevious')}</th><th>{t('finance:siteFarms.colInbound')}</th>
+                      <th>{t('finance:siteFarms.colConsumption')}</th><th>{t('finance:siteFarms.colBalance')}</th><th>{t('finance:siteFarms.colWeek')}</th>
+                    </tr>
+                  </thead>
+                  <tbody key={`${site}-${date}`} className="sf-rows">
+                    {farmRows.map(r => (
+                      <tr key={r.name}>
+                        <td><button type="button" className="sf-farm-link" onClick={() => setFarmModal(r.name)} title={t('finance:siteFarms.usage.openFarm')}>{r.name}</button></td>
+                        <td>{r.previous === null ? '—' : fmt(r.previous)}</td>
+                        <td>{r.inbound === null ? '—' : fmt(r.inbound)}</td>
+                        <td>{r.consumption === null ? '—' : fmt(r.consumption)}</td>
+                        <td className="bal">{r.balance === null ? '—' : fmt(r.balance)}</td>
+                        <td>{week && <WeekBars values={week.byFarm.get(r.name) ?? Array(7).fill(null)} dates={week.dates} active={week.dates.indexOf(date!)} dayNames={weekNames} />}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              <div className="sf-legend">
-                <span><i className="sf-dot" style={{ background: 'var(--sf-dial-farm)' }} />{t('finance:siteFarms.farmsUse')}</span>
-                <span><i className="sf-dot" style={{ background: 'var(--sf-gen)' }} />{t('finance:siteFarms.genUse')}</span>
-                {cmp && prev && <span><i className="sf-dot" style={{ border: '1.5px dashed var(--sf-mut)' }} />{t('finance:siteFarms.prevYear')}</span>}
-                <span><i className="sf-dot" style={{ background: 'var(--sf-neg)', borderRadius: '50%' }} />{t('finance:siteFarms.highLegend', { n: HIGH_DAYS_PER_MONTH })}</span>
-              </div>
-            </div>
-
-            <div className="sf-side sf-rise" key={`${site}-${year}`}>
-              <div className="sf-hero">
-                <div className="sf-hero-head">
-                  <span className="sf-hero-icon"><Sprout className="w-5 h-5" strokeWidth={2.2} /></span>
-                  <div className="l">{t('finance:siteFarms.totalUse')} · {periodLabel}</div>
-                </div>
-                <div className="v"><Num v={total} id="total" /><small>{t('finance:siteFarms.liter')}</small></div>
-                <div className="sf-split"><i style={{ width: `${total ? (f / total) * 100 : 0}%`, background: 'var(--sf-farm)' }} /><i style={{ width: `${total ? (g / total) * 100 : 0}%`, background: 'var(--sf-gen)' }} /></div>
-                <div className="sf-split-l"><span>{t('finance:siteFarms.farmsUse')} <b><Num v={f} id="f" /></b></span><span>{t('finance:siteFarms.genUse')} <b><Num v={g} id="g" /></b></span></div>
-                {deltaPct !== null && <div className={`sf-delta ${deltaPct > 0 ? 'sf-up' : 'sf-down'}`}>{deltaPct > 0 ? '▲' : '▼'} {Math.abs(deltaPct).toFixed(1)}% {t('finance:siteFarms.samePeriod', { year: year - 1 })}</div>}
-              </div>
-              <div className="sf-mini">
-                <div className="sf-k"><div className="l">{t('finance:siteFarms.avgDay')}</div><div className="v"><Num v={idx.length ? total / idx.length : 0} id="avg" /></div><div className="s">{t('finance:siteFarms.literPerDay')}</div></div>
-                <div className="sf-k"><div className="l">{t('finance:siteFarms.peakDay')}</div><div className="v">{sortedIdx.length ? <Num v={dayTotal(cur, sortedIdx[0])} id="peak" /> : '—'}</div><div className="s">{sortedIdx.length ? dayLabel(sortedIdx[0]) : ''}</div></div>
-                <div className="sf-k"><div className="l">{t('finance:siteFarms.lowDay')}</div><div className="v">{sortedIdx.length ? <Num v={dayTotal(cur, sortedIdx[sortedIdx.length - 1])} id="low" /> : '—'}</div><div className="s">{sortedIdx.length ? dayLabel(sortedIdx[sortedIdx.length - 1]) : ''}</div></div>
-                <div className="sf-k"><div className="l">{t('finance:siteFarms.recordedDays')}</div><div className="v">{idx.length}</div><div className="s">{t('finance:siteFarms.ofDays')}</div></div>
-              </div>
-              <div className="sf-card sf-top5">
-                <div className="sf-top5-head">
-                  <h2 className="sf-h2">{t('finance:siteFarms.top5')}</h2>
-                  <span>{t('finance:siteFarms.top5Hint', { avg: fmt(avgAll) })}</span>
-                </div>
-                {top5.length > 0 && (
-                  <button type="button" className="sf-lead" onMouseEnter={() => onHover(top5[0].i)} onMouseLeave={() => onHover(-1)} onFocus={() => onHover(top5[0].i)} onBlur={() => onHover(-1)}>
-                    <span className="sf-lead-top">
-                      <span className="sf-lead-badge">{t('finance:siteFarms.leader')}</span>
-                      <span className="sf-delta-pill up">▲ {top5[0].pct.toFixed(0)}%</span>
-                    </span>
-                    <span className="sf-lead-val">{fmt(top5[0].v)}<small>{t('finance:siteFarms.liter')}</small></span>
-                    <span className="sf-lead-date">{top5[0].date} · {top5[0].wd}</span>
-                    <span className="sf-lead-split" aria-hidden="true">
-                      <i style={{ width: `${(top5[0].f / Math.max(top5[0].v, 1)) * 100}%` }} /><i style={{ width: `${(top5[0].g / Math.max(top5[0].v, 1)) * 100}%` }} />
-                    </span>
-                    <span className="sf-lead-legend"><span>{t('finance:siteFarms.farmsUse')} <b>{fmt(top5[0].f)}</b></span><span>{t('finance:siteFarms.genUse')} <b>{fmt(top5[0].g)}</b></span></span>
-                  </button>
-                )}
-                <ol>
-                  {top5.slice(1).map((d, k) => (
-                    <li key={d.i}>
-                      <button type="button" className="sf-rank-row" onMouseEnter={() => onHover(d.i)} onMouseLeave={() => onHover(-1)} onFocus={() => onHover(d.i)} onBlur={() => onHover(-1)}>
-                        <span className="sf-rank-n">{k + 2}</span>
-                        <span className="sf-rank-day"><b>{d.date}</b><small>{d.wd} · {t('finance:siteFarms.behindLead', { n: fmt(top5[0].v - d.v) })}</small></span>
-                        <span className="sf-rank-val"><b>{fmt(d.v)}</b><span className="sf-delta-pill up">▲ {d.pct.toFixed(0)}%</span></span>
-                      </button>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            </div>
-          </div>
-
-          {/* خريطة الموقع بعرض الصفحة كاملًا */}
-          <section className="sf-map-section">
-            {cover.farms.length > 0 ? (
-              <Suspense fallback={<div className="sf-map sf-map-loading" />}>
-                <SiteFarmsMap site={site} cover={cover} weather={weather} onOpen={farm => setField({ farm })} />
-              </Suspense>
             ) : (
-              <div className="sf-map-none">{t(cover.date ? (isVehicleSite ? 'finance:siteFarms.map.vehicleSite' : 'finance:siteFarms.map.noFarms') : 'finance:siteFarms.map.noReport', { site })}</div>
+              <div className="sf-empty"><span>{t('finance:siteFarms.noDaily')}</span></div>
+            )}
+          </div>
+          <section className="sf-band">
+            <div className="sf-band-head">
+              <h2>{t('finance:siteFarms.year')}</h2>
+            </div>
+            {/* خط زمني للسنوات (بدل البطاقات): زر لكل سنة فيها بيانات، ومؤشر ينزلق إلى السنة المختارة، والسنوات القادمة علامات خافتة */}
+            <div className="sf-tl" ref={yearBar}>
+              <span className="sf-tl-ind" ref={yearInd} aria-hidden="true" />
+              {siteYears.map(y => {
+                const rec = annualFor(records, site, y)!;
+                return (
+                  <button key={y} type="button" className="sf-tl-y" aria-pressed={y === year} onClick={() => { setYearPick(y); setMonth(-1); setHover(-1); setLastHover(-1); }}>
+                    <b>{y}</b>
+                    <span>{short(yearTotal(rec))}</span>
+                  </button>
+                );
+              })}
+              {futureYears.map(y => (
+                <span key={y} className="sf-tl-f" title={t('finance:siteFarms.nextYear')}>{y}</span>
+              ))}
+            </div>
+            {yearInfo && (
+              <div className="sf-tl-note" key={`${site}-${year}`}>
+                <span><b><Num v={yearInfo.total} id="yr-total" /></b> {t('finance:siteFarms.liter')}</span>
+                <span className="sf-tl-dot" aria-hidden="true" />
+                <span className="sf-tl-cov"><i><u style={{ width: `${(yearInfo.days / 365) * 100}%` }} /></i>{t('finance:siteFarms.daysCount', { n: yearInfo.days })}</span>
+                <span className="sf-tl-dot" aria-hidden="true" />
+                {yearInfo.pc === null
+                  ? <span>{t('finance:siteFarms.firstYear')}</span>
+                  : <span className={yearInfo.pc > 0 ? 'sf-up' : 'sf-down'}>{yearInfo.pc > 0 ? '▲' : '▼'} {Math.abs(yearInfo.pc).toFixed(1)}% {t('finance:siteFarms.vsYear', { year: year! - 1 })}</span>}
+              </div>
             )}
           </section>
 
-          <div className="sf-card">
-            <Suspense fallback={<div className="sf-mchart-plot" />}>
-              <SiteFarmsMonthlyChart months={months} per={perMonth.per} prevPer={perMonth.prevPer} hasPrev={cmp && !!prev} year={year}
-                metric={metric} onMetric={setMetric} month={month} inRange={inRange} fullYear={fullYear}
-                onPick={m => { setMonth(m); setHover(-1); }} />
-            </Suspense>
-          </div>
-        </>
-      ) : (
-        <div className="sf-card sf-empty sf-rise" key={`empty-${site}`}>
-          <FileSpreadsheet className="w-8 h-8" />
-          <b>{t('finance:siteFarms.emptyTitle', { site })}</b>
-          <span>{t('finance:siteFarms.emptyBody')}</span>
-          {canEdit && <button type="button" onClick={() => annualInput.current?.click()} className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-700 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-700/25 cursor-pointer active:scale-95 transition-all"><Upload className="w-4 h-4" />{t('finance:siteFarms.uploadAnnual')}</button>}
-        </div>
-      )}
+          {cur && year !== null ? (
+            <>
+              <div className="sf-main sf-rise">
+                <div className="sf-card">
+                  <h2 className="sf-h2">{t('finance:siteFarms.dialTitle')} <small>{t('finance:siteFarms.dialHint')}</small></h2>
+                  <div className="sf-range">
+                    <label>
+                      <span>{t('finance:siteFarms.rangeFrom')}</span>
+                      <select className="sf-select" value={range[0]} onChange={e => { const v = +e.target.value; setRange([v, Math.max(v, range[1])]); setHover(-1); }}>
+                        {months.map((mn, m) => <option key={m} value={m}>{mn}</option>)}
+                      </select>
+                    </label>
+                    <label>
+                      <span>{t('finance:siteFarms.rangeTo')}</span>
+                      <select className="sf-select" value={range[1]} onChange={e => { const v = +e.target.value; setRange([Math.min(range[0], v), v]); setHover(-1); }}>
+                        {months.map((mn, m) => <option key={m} value={m}>{mn}</option>)}
+                      </select>
+                    </label>
+                    {!fullYear && <button type="button" className="sf-range-reset" onClick={() => { setRange([0, 11]); setHover(-1); }}>{t('finance:siteFarms.rangeAll')}</button>}              </div>
+                  <div style={{ position: 'relative' }}>
+                    <YearDial year={year} cur={cur} prev={cmp ? prev : null} max={max} range={range} spikes={spikesInRange} hover={hover} months={months}
+                      label={t('finance:siteFarms.dialLabel')} onHover={onHover} tipIndex={tipIdx} tip={tip} />
+                    <div className="sf-center">
+                      <div className="l">{centerLabel}</div>
+                      <div className="v">{hover >= 0 ? fmt(centerValue) : <Num v={centerValue} id="center" />}</div>
+                      <div className="u">{t('finance:siteFarms.liter')}</div>
+                    </div>
+                  </div>
+                  <div className="sf-legend">
+                    <span><i className="sf-dot" style={{ background: 'var(--sf-dial-farm)' }} />{t('finance:siteFarms.farmsUse')}</span>
+                    <span><i className="sf-dot" style={{ background: 'var(--sf-gen)' }} />{t('finance:siteFarms.genUse')}</span>
+                    {cmp && prev && <span><i className="sf-dot" style={{ border: '1.5px dashed var(--sf-mut)' }} />{t('finance:siteFarms.prevYear')}</span>}
+                    <span><i className="sf-dot" style={{ background: 'var(--sf-neg)', borderRadius: '50%' }} />{t('finance:siteFarms.highLegend', { n: HIGH_DAYS_PER_MONTH })}</span>
+                  </div>
+                </div>
 
-      {farmModal && <FarmUsageModal records={records} site={site} farm={farmModal} onClose={() => setFarmModal(null)} />}
-      <div className="sf-card">
-        <h2 className="sf-h2">
-          <span>{farmView === 'daily' ? t('finance:siteFarms.farmsTable', { site }) : t('finance:siteFarms.usage.title', { site })}</span>
-          <span className="sf-switch" data-on={farmView === 'usage' ? 1 : 0} role="tablist">
-            <i aria-hidden="true" />
-            <button type="button" role="tab" aria-selected={farmView === 'daily'} onClick={() => setFarmView('daily')}>{t('finance:siteFarms.usage.byDaily')}</button>
-            <button type="button" role="tab" aria-selected={farmView === 'usage'} onClick={() => setFarmView('usage')}>{t('finance:siteFarms.usage.tab')}</button>
-          </span>
-          {farmView === 'daily' && datesOfSite.length > 0 && (
-            <select className="sf-select" value={date ?? ''} onChange={e => setDatePick(e.target.value)} aria-label={t('finance:siteFarms.reportDate')}>
-              {[...datesOfSite].reverse().map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
+                <div className="sf-side sf-rise" key={`${site}-${year}`}>
+                  <div className="sf-hero">
+                    <div className="sf-hero-head">
+                      <span className="sf-hero-icon"><Sprout className="w-5 h-5" strokeWidth={2.2} /></span>
+                      <div className="l">{t('finance:siteFarms.totalUse')} · {periodLabel}</div>
+                    </div>
+                    <div className="v"><Num v={total} id="total" /><small>{t('finance:siteFarms.liter')}</small></div>
+                    <div className="sf-split"><i style={{ width: `${total ? (f / total) * 100 : 0}%`, background: 'var(--sf-farm)' }} /><i style={{ width: `${total ? (g / total) * 100 : 0}%`, background: 'var(--sf-gen)' }} /></div>
+                    <div className="sf-split-l"><span>{t('finance:siteFarms.farmsUse')} <b><Num v={f} id="f" /></b></span><span>{t('finance:siteFarms.genUse')} <b><Num v={g} id="g" /></b></span></div>
+                    {deltaPct !== null && <div className={`sf-delta ${deltaPct > 0 ? 'sf-up' : 'sf-down'}`}>{deltaPct > 0 ? '▲' : '▼'} {Math.abs(deltaPct).toFixed(1)}% {t('finance:siteFarms.samePeriod', { year: year - 1 })}</div>}
+                  </div>
+                  <div className="sf-mini">
+                    <div className="sf-k"><div className="l">{t('finance:siteFarms.avgDay')}</div><div className="v"><Num v={idx.length ? total / idx.length : 0} id="avg" /></div><div className="s">{t('finance:siteFarms.literPerDay')}</div></div>
+                    <div className="sf-k"><div className="l">{t('finance:siteFarms.peakDay')}</div><div className="v">{sortedIdx.length ? <Num v={dayTotal(cur, sortedIdx[0])} id="peak" /> : '—'}</div><div className="s">{sortedIdx.length ? dayLabel(sortedIdx[0]) : ''}</div></div>
+                    <div className="sf-k"><div className="l">{t('finance:siteFarms.lowDay')}</div><div className="v">{sortedIdx.length ? <Num v={dayTotal(cur, sortedIdx[sortedIdx.length - 1])} id="low" /> : '—'}</div><div className="s">{sortedIdx.length ? dayLabel(sortedIdx[sortedIdx.length - 1]) : ''}</div></div>
+                    <div className="sf-k"><div className="l">{t('finance:siteFarms.recordedDays')}</div><div className="v">{idx.length}</div><div className="s">{t('finance:siteFarms.ofDays')}</div></div>
+                  </div>
+                  <div className="sf-card sf-top5">
+                    <div className="sf-top5-head">
+                      <h2 className="sf-h2">{t('finance:siteFarms.top5')}</h2>
+                      <span>{t('finance:siteFarms.top5Hint', { avg: fmt(avgAll) })}</span>
+                    </div>
+                    {top5.length > 0 && (
+                      <button type="button" className="sf-lead" onMouseEnter={() => onHover(top5[0].i)} onMouseLeave={() => onHover(-1)} onFocus={() => onHover(top5[0].i)} onBlur={() => onHover(-1)}>
+                        <span className="sf-lead-top">
+                          <span className="sf-lead-badge">{t('finance:siteFarms.leader')}</span>
+                          <span className="sf-delta-pill up">▲ {top5[0].pct.toFixed(0)}%</span>
+                        </span>
+                        <span className="sf-lead-val">{fmt(top5[0].v)}<small>{t('finance:siteFarms.liter')}</small></span>
+                        <span className="sf-lead-date">{top5[0].date} · {top5[0].wd}</span>
+                        <span className="sf-lead-split" aria-hidden="true">
+                          <i style={{ width: `${(top5[0].f / Math.max(top5[0].v, 1)) * 100}%` }} /><i style={{ width: `${(top5[0].g / Math.max(top5[0].v, 1)) * 100}%` }} />
+                        </span>
+                        <span className="sf-lead-legend"><span>{t('finance:siteFarms.farmsUse')} <b>{fmt(top5[0].f)}</b></span><span>{t('finance:siteFarms.genUse')} <b>{fmt(top5[0].g)}</b></span></span>
+                      </button>
+                    )}
+                    <ol>
+                      {top5.slice(1).map((d, k) => (
+                        <li key={d.i}>
+                          <button type="button" className="sf-rank-row" onMouseEnter={() => onHover(d.i)} onMouseLeave={() => onHover(-1)} onFocus={() => onHover(d.i)} onBlur={() => onHover(-1)}>
+                            <span className="sf-rank-n">{k + 2}</span>
+                            <span className="sf-rank-day"><b>{d.date}</b><small>{d.wd} · {t('finance:siteFarms.behindLead', { n: fmt(top5[0].v - d.v) })}</small></span>
+                            <span className="sf-rank-val"><b>{fmt(d.v)}</b><span className="sf-delta-pill up">▲ {d.pct.toFixed(0)}%</span></span>
+                          </button>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                </div>
+              </div>
+
+
+              <div className="sf-card">
+                <Suspense fallback={<div className="sf-mchart-plot" />}>
+                  <SiteFarmsMonthlyChart months={months} per={perMonth.per} prevPer={perMonth.prevPer} hasPrev={cmp && !!prev} year={year}
+                    metric={metric} onMetric={setMetric} month={month} inRange={inRange} fullYear={fullYear}
+                    onPick={m => { setMonth(m); setHover(-1); }} />
+                </Suspense>
+              </div>
+            </>
+          ) : (
+            <div className="sf-card sf-empty sf-rise" key={`empty-${site}`}>
+              <FileSpreadsheet className="w-8 h-8" />
+              <b>{t('finance:siteFarms.emptyTitle', { site })}</b>
+              <span>{t('finance:siteFarms.emptyBody')}</span>
+              {canEdit && <button type="button" onClick={() => annualInput.current?.click()} className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-700 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-700/25 cursor-pointer active:scale-95 transition-all"><Upload className="w-4 h-4" />{t('finance:siteFarms.uploadAnnual')}</button>}
+            </div>
           )}
-        </h2>
-        {farmView === 'usage' ? (
-          <SiteFarmsUsageView records={records} site={site} onOpenFarm={setFarmModal} />
-        ) : farmRows.length ? (
-          <div className="sf-table-wrap">
-            <table className="sf-table">
-              <thead>
-                <tr>
-                  <th>{t('finance:siteFarms.colFarm')}</th><th>{t('finance:siteFarms.colPrevious')}</th><th>{t('finance:siteFarms.colInbound')}</th>
-                  <th>{t('finance:siteFarms.colConsumption')}</th><th>{t('finance:siteFarms.colBalance')}</th><th>{t('finance:siteFarms.colWeek')}</th>
-                </tr>
-              </thead>
-              <tbody key={`${site}-${date}`} className="sf-rows">
-                {farmRows.map(r => (
-                  <tr key={r.name}>
-                    <td><button type="button" className="sf-farm-link" onClick={() => setFarmModal(r.name)} title={t('finance:siteFarms.usage.openFarm')}>{r.name}</button></td>
-                    <td>{r.previous === null ? '—' : fmt(r.previous)}</td>
-                    <td>{r.inbound === null ? '—' : fmt(r.inbound)}</td>
-                    <td>{r.consumption === null ? '—' : fmt(r.consumption)}</td>
-                    <td className="bal">{r.balance === null ? '—' : fmt(r.balance)}</td>
-                    <td>{week && <WeekBars values={week.byFarm.get(r.name) ?? Array(7).fill(null)} dates={week.dates} active={week.dates.indexOf(date!)} dayNames={weekNames} />}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="sf-empty"><span>{t('finance:siteFarms.noDaily')}</span></div>
-        )}
-      </div>
-    </div>
-  );
-};
 
-/** منحنى مصغّر لمصروف آخر سنة محفوظة لموقع (متوسط يومي لكل أسبوع)؛ يتبع الماوس بخط ونقطة وقيمة الأسبوع */
-const SiteSpark: React.FC<{ rec: AnnualRecord | null; active: boolean; months: string[] }> = ({ rec, active, months }) => {
-  const gid = `sf-spark-${React.useId().replace(/:/g, '')}`;
-  const [at, setAt] = useState(-1);
-  const W = 200, H = 46;
-  if (!rec || !rec.f.length) {
-    return <svg className="sf-spark" viewBox={`0 0 ${W} ${H}`} aria-hidden="true"><line x1="0" x2={W} y1={H - 6} y2={H - 6} stroke="var(--sf-grid)" strokeDasharray="3 5" /></svg>;
-  }
-  const pts: number[] = [];
-  for (let i = 0; i < rec.f.length; i += 7) {
-    let s = 0, n = 0;
-    for (let j = i; j < Math.min(i + 7, rec.f.length); j++) { s += (rec.f[j] || 0) + (rec.g[j] || 0); n++; }
-    pts.push(s / n);
-  }
-  const m = Math.max(...pts, 1);
-  const xy = pts.map((v, i) => [(i / Math.max(pts.length - 1, 1)) * (W - 8) + 4, H - 6 - (v / m) * (H - 14)] as const);
-  let d = `M${xy[0][0].toFixed(1)},${xy[0][1].toFixed(1)}`;
-  for (let i = 1; i < xy.length; i++) {
-    const mx = (xy[i - 1][0] + xy[i][0]) / 2, my = (xy[i - 1][1] + xy[i][1]) / 2;
-    d += `Q${xy[i - 1][0].toFixed(1)},${xy[i - 1][1].toFixed(1)} ${mx.toFixed(1)},${my.toFixed(1)}`;
-  }
-  const last = xy[xy.length - 1];
-  d += `L${last[0].toFixed(1)},${last[1].toFixed(1)}`;
-  const color = 'var(--sf-spark-line)';
-  const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
-    const r = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - r.left) / r.width) * W;
-    setAt(Math.max(0, Math.min(pts.length - 1, Math.round(((x - 4) / (W - 8)) * (pts.length - 1)))));
-  };
-  const p = at >= 0 ? xy[at] : last;
-  const day = at >= 0 ? dateOfIndex(rec.year, at * 7) : null;
-  return (
-    <span className="sf-spark-wrap">
-      <svg className="sf-spark" viewBox={`0 0 ${W} ${H}`} aria-hidden="true" onPointerMove={onMove} onPointerLeave={() => setAt(-1)}>
-        <defs>
-          <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor={color} stopOpacity={active ? 0.05 : 0.03} />
-            <stop offset="1" stopColor={color} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path d={`${d}L${last[0].toFixed(1)},${H}L${xy[0][0].toFixed(1)},${H}Z`} fill={`url(#${gid})`} />
-        <path d={d} fill="none" stroke={color} strokeOpacity={active ? 1 : 0.85} strokeWidth={active ? 0.6 : 0.5} strokeLinejoin="round" strokeLinecap="round" />
-        <g className="sf-spark-cursor" style={{ transform: `translate(${p[0]}px, ${p[1]}px)` }}>
-          {at >= 0 && <line x1="0" x2="0" y1={-p[1] + 2} y2={H - p[1]} stroke="var(--sf-mut)" strokeWidth="1" strokeDasharray="2 3" />}
-          <circle r={at >= 0 ? 2.2 : 1.5} fill="var(--sf-panel)" stroke={color} strokeWidth="0.6" />
-        </g>
-      </svg>
-      {at >= 0 && day && (
-        <span className="sf-spark-tip" style={{ left: `${(p[0] / W) * 100}%` }}>{day.day} {months[day.month]} · {short(pts[at])}</span>
+        </>
       )}
-    </span>
+    </div>
   );
 };
 

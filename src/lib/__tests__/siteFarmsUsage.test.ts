@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { readSiteFarms, saveFarmsDay } from '../siteFarms';
-import { farmDaysBetween, farmSeries, farmSummary, groupFarmDays, usageMonth, usageMonths, weekStart, weekUsage } from '../siteFarmsUsage';
+import { farmDaysBetween, farmSeries, farmSummary, groupFarmDays, siteDayTotals, usageMonth, usageMonths, weekStart, weekUsage } from '../siteFarmsUsage';
 
 describe('استهلاك المزارع من الكشوف اليومية', () => {
   beforeEach(() => {
@@ -86,5 +86,20 @@ describe('عمود الرسم الأسبوعي في جدول الكشف اليو
     expect(w.dates).toEqual(['2026/10/10', '2026/10/11', '2026/10/12', '2026/10/13', '2026/10/14', '2026/10/15', '2026/10/16']);
     expect(w.byFarm.get('تسمين مزرعة 1')).toEqual([300, null, null, null, 1000, null, null]);
     expect(w.byFarm.get('تسمين مزرعة 2')).toEqual([null, null, null, null, 500, null, null]);
+  });
+});
+describe('مجاميع يوم الموقع (المحطة + المزارع) لكروت الموقع', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    saveFarmsDay('التسمين', '2026/10/13', [{ name: 'تسمين مزرعة 1', previous: 50, inbound: 0, consumption: 5, balance: 45 }]);
+    saveFarmsDay('التسمين', '2026/10/14', [
+      { name: 'محطة التسمين', previous: 1000, inbound: 300, consumption: 200, balance: 1100 },
+      { name: 'تسمين مزرعة 1', previous: 45, inbound: 0, consumption: 10, balance: 35 },
+    ]);
+  });
+  it('آخر كشف افتراضيًا، أو اليوم المحدد', () => {
+    expect(siteDayTotals(readSiteFarms(), 'التسمين')).toEqual({ date: '2026/10/14', previous: 1045, inbound: 300, consumption: 210, balance: 1135, farms: 1 });
+    expect(siteDayTotals(readSiteFarms(), 'التسمين', '2026/10/13').balance).toBe(45);
+    expect(siteDayTotals(readSiteFarms(), 'البوادي')).toEqual({ date: null, previous: 0, inbound: 0, consumption: 0, balance: 0, farms: 0 });
   });
 });

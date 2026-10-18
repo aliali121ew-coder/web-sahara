@@ -1012,5 +1012,57 @@
       "farmsFailed": "Saved — could not read the site farms from the report",
       "annual": "{{site}} {{year}}: {{added}} new days, {{changed}} changed"
     }
+  },
+  "siteHub": {
+    "title": "Site farms",
+    "hint": "Choose the site; each account enters its own sites only",
+    "locked": "You have no permission for this site",
+    "distribution": "Distribution center",
+    "farmsCount": "{{n}} farms",
+    "noReport": "No report yet",
+    "balance": "Cumulative balance",
+    "consumption": "Consumption",
+    "waiting": "{{n}} waiting",
+    "moving": "{{n}} on the way",
+    "back": "Back to sites",
+    "monitor": "Monitoring center",
+    "kpi": {
+      "previous": "Previous balance",
+      "inbound": "Inbound",
+      "consumption": "Consumption",
+      "balance": "Cumulative balance",
+      "day": "Report {{date}}"
+    },
+    "networkTitle": "Sites and distribution center map",
+    "legendRoad": "Distribution roads",
+    "legendWaiting": "Requests waiting ({{n}})",
+    "legendTransit": "Trucks on the way ({{n}})",
+    "req": {
+      "title": "Site requests",
+      "pendingIn": "{{n}} waiting for you",
+      "new": "New request",
+      "source": "Request from site",
+      "qty": "Quantity (liters)",
+      "note": "Note",
+      "send": "Send request",
+      "incoming": "Requested from you",
+      "outgoing": "Your requests",
+      "noIncoming": "No requests from other sites",
+      "noOutgoing": "This site has not requested anything yet",
+      "fromSite": "Request from {{site}}",
+      "toSite": "To {{site}}",
+      "approve": "Approve",
+      "reject": "Reject",
+      "cancel": "Cancel",
+      "received": "Confirm receipt",
+      "status": {
+        "pending": "Waiting approval",
+        "approved": "On the way",
+        "rejected": "Rejected",
+        "delivered": "Received",
+        "cancelled": "Cancelled"
+      }
+    },
+    "stationOnly": "Station tank only"
   }
 }

@@ -47,9 +47,19 @@ export const PERM_GROUPS: SectionGroup[] = [
       { id: 'sahara.reports', label: 'التقارير' },
       // زر "رفع متعدد" في صفحة الصحاري (يعرض الزر فقط؛ حفظ كل ملف يتطلب صلاحية تعديل قسمه)
       { id: 'sahara.bulk-upload', label: 'الرفع المتعدد' },
+      // حساب كل موقع من مواقع المزارع: يدخل موقعه فقط (الاحتياطي يفتح كل المواقع)
+      { id: 'sahara.site.taqa', label: 'موقع الطاقة' },
+      { id: 'sahara.site.tasmeen', label: 'موقع التسمين' },
+      { id: 'sahara.site.bayadh', label: 'موقع البياض' },
+      { id: 'sahara.site.bawadi', label: 'موقع البوادي' },
+      { id: 'sahara.site.ummahat', label: 'موقع امهات البياض' },
+      { id: 'sahara.site.ajdad', label: 'موقع الاجداد' },
     ],
   },
 ];
+
+/** صلاحيات حسابات المواقع الستة (انظر src/lib/siteAccess.ts) */
+const SITE_SECTIONS = ['sahara.site.taqa', 'sahara.site.tasmeen', 'sahara.site.bayadh', 'sahara.site.bawadi', 'sahara.site.ummahat', 'sahara.site.ajdad'];
 
 export const ALL_SECTIONS = PERM_GROUPS.flatMap(g => g.sections.map(s => s.id));
 
@@ -105,7 +115,9 @@ const KEY_RULES: Rule[] = [
   { match: eq('sahara_gas_avg_price_v1'), read: ['sahara.balance', 'dashboard'], write: ['sahara.balance'] },
   { match: pre('sahara_petrol_'), read: ['sahara.petrol', 'sahara.reports', 'tanks', 'dashboard'], write: ['sahara.petrol'] },
   // مزارع الموقع (الصحاري): بيانات معزولة عن بقية الصفحات
-  { match: eq('sahara_site_farms_v1'), read: ['sahara.reserves', 'sahara.reports'], write: ['sahara.reserves'] },
+  { match: eq('sahara_site_farms_v1'), read: ['sahara.reserves', 'sahara.reports', ...SITE_SECTIONS], write: ['sahara.reserves'] },
+  // الطلبات بين المواقع: كل حساب موقع يطلب ويوافق ويستلم (الواجهة تحصر كل حساب في موقعه)
+  { match: eq('sahara_site_requests_v1'), read: ['sahara.reserves', 'sahara.reports', ...SITE_SECTIONS], write: ['sahara.reserves', ...SITE_SECTIONS] },
   // الواجهة الرئيسية تعرض "تفاصيل النفط الأسود" من هذين السجلين: يقرؤهما من يرى الرئيسية أيضًا
   // (بدونها لا يصل اليوم الجديد إلا لمن يملك صلاحية القسم، فتبقى الرئيسية عند الآخرين على مناسيب الخزانات)
   { match: pre('sahara_black_oil_'), read: ['sahara.black-oil', 'sahara.reports', 'dashboard'], write: ['sahara.black-oil'] },

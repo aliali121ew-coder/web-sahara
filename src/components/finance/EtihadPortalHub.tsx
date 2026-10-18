@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { usePermissions } from '../../lib/usePermission';
+import { canViewAnySite } from '../../lib/siteAccess';
 import {
   Wallet,
   Truck,
@@ -138,7 +139,9 @@ export const EtihadPortalHub: React.FC<EtihadPortalHubProps> = ({
   const moduleAllowed = (id: string) =>
     id === 'inbound' ? perms.canView(isSahara ? 'deliveries-sahara' : 'deliveries-etihad')
       : id === 'backup' ? perms.isAdmin
-        : perms.canView(`${company}.${id}`);
+        // مزارع المواقع: الاحتياطي (كل المواقع) أو حساب موقع واحد
+        : isSahara && id === 'reserves' ? canViewAnySite(perms.canView)
+          : perms.canView(`${company}.${id}`);
   const portalModules = orderedModules.filter(m => moduleAllowed(m.id)).map(m => ({
     ...m,
     locked: (isSahara && !SAHARA_ACTIVE.includes(m.id)) || ('locked' in m && !!m.locked)

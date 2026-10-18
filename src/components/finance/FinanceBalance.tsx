@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { notifySyncedStorage } from '../../lib/useSyncedStorage';
 import { usePermissions } from '../../lib/usePermission';
+import { canViewAnySite } from '../../lib/siteAccess';
 import { useSessionState } from '../../lib/useSessionState';
 import { Wallet } from 'lucide-react';
 import { useFuelData } from '../../context/FuelDataContext';
@@ -26,7 +27,7 @@ import { SaharaReportsCenter } from './SaharaReportsCenter';
 import { SaharaTanksView } from './SaharaTanksView';
 import { SaharaPetrolView } from './SaharaPetrolView';
 import { SaharaBlackOilView } from './SaharaBlackOilView';
-import { SaharaSiteFarmsView } from './SaharaSiteFarmsView';
+import { SiteFarmsHub } from './SiteFarmsHub';
 import { getBusinessDate } from '../../lib/utils';
 import { CLOUD_APPLIED_EVENT } from '../../lib/cloudSync';
 import { readEtihadLatestBalance, syncEtihadExtractionTank, useCentralTanks, resolveGasoilSectionKey } from '../../lib/centralTanks';
@@ -63,7 +64,7 @@ export const FinanceBalance: React.FC = () => {
   const perms = usePermissions();
   useEffect(() => {
     if (activeSubtab && !perms.canView(`etihad.${activeSubtab}`)) setActiveSubtabState(null);
-    if (saharaSubtab && !perms.canView(`sahara.${saharaSubtab}`)) setSaharaSubtab(null);
+    if (saharaSubtab && !(saharaSubtab === 'reserves' ? canViewAnySite(perms.canView) : perms.canView(`sahara.${saharaSubtab}`))) setSaharaSubtab(null);
   }, [activeSubtab, saharaSubtab]); // eslint-disable-line react-hooks/exhaustive-deps
   const saharaTitles: Record<SaharaSubtab, string> = {
     balance: t('finance:hub.saharaBalance'),
@@ -646,7 +647,7 @@ export const FinanceBalance: React.FC = () => {
             {saharaSubtab === 'balance' ? <SaharaBalanceView />
               : saharaSubtab === 'tanks' ? <SaharaTanksView onBack={handleBackToSaharaHub} />
               : saharaSubtab === 'black-oil' ? <SaharaBlackOilView />
-              : saharaSubtab === 'reserves' ? <SaharaSiteFarmsView />
+              : saharaSubtab === 'reserves' ? <SiteFarmsHub />
               : saharaSubtab === 'petrol' ? <SaharaPetrolView />
               : <SaharaReportsCenter />}
           </div>

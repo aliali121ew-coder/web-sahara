@@ -204,7 +204,13 @@
       "sahara.petrol": "البنزين",
       "sahara.reports": "التقارير",
       "suppliers": "الموردين",
-      "sahara.bulk-upload": "الرفع المتعدد"
+      "sahara.bulk-upload": "الرفع المتعدد",
+      "sahara.site.taqa": "موقع الطاقة",
+      "sahara.site.tasmeen": "موقع التسمين",
+      "sahara.site.bayadh": "موقع البياض",
+      "sahara.site.bawadi": "موقع البوادي",
+      "sahara.site.ummahat": "موقع امهات البياض",
+      "sahara.site.ajdad": "موقع الاجداد"
     },
     "ofSections_zero": "من دون أقسام",
     "ofSections_one": "من قسم واحد",

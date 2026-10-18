@@ -128,3 +128,14 @@ export const weekUsage = (records: SiteFarmsRecord[], site: string, date: string
   });
   return { dates, byFarm };
 };
+
+export interface SiteDayTotals { date: string | null; previous: number; inbound: number; consumption: number; balance: number; farms: number }
+
+/** مجاميع يوم لموقع من الكشف (خزان المحطة + كل المزارع): السابق والوارد والاستهلاك والتراكمي؛ اليوم = آخر كشف إن لم يُحدَّد */
+export const siteDayTotals = (records: SiteFarmsRecord[], site: string, date?: string | null): SiteDayTotals => {
+  const dates = farmsDates(records, site);
+  const day = date && dates.includes(date) ? date : (dates[dates.length - 1] ?? null);
+  const rows = day ? farmsOn(records, site, day) : [];
+  const sum = (k: 'previous' | 'inbound' | 'consumption' | 'balance') => rows.reduce((s, r) => s + (r[k] ?? 0), 0);
+  return { date: day, previous: sum('previous'), inbound: sum('inbound'), consumption: sum('consumption'), balance: sum('balance'), farms: rows.filter(r => !isTankRow(r.name)).length };
+};
