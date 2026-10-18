@@ -435,7 +435,9 @@
       "okRange": "51,000 L or more",
       "zoomIn": "Zoom in",
       "zoomOut": "Zoom out",
-      "reset": "Reset view"
+      "reset": "Reset view",
+      "tripIn": "Coming from",
+      "tripOut": "Going to"
     },
     "field": {
       "title": "{{site}} farm field",
@@ -1033,9 +1035,6 @@
     "legendWaiting": "Requests waiting ({{n}})",
     "legendTransit": "Trucks on the way ({{n}})",
     "req": {
-      "title": "Site requests",
-      "pendingIn": "{{n}} waiting for you",
-      "new": "New request",
       "source": "Request from site",
       "qty": "Quantity (liters)",
       "note": "Note",
@@ -1056,7 +1055,9 @@
         "rejected": "Rejected",
         "delivered": "Received",
         "cancelled": "Cancelled"
-      }
+      },
+      "fuel": "Fuel request",
+      "fuelTitle": "Fuel request — {{site}}"
     },
     "annual": "Annual expenditure",
     "annualHint": "The full page for all sites",

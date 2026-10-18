@@ -15,6 +15,10 @@ interface Props {
   site: string;
   cover: SiteCover;
   onOpen: (farmName: string | null) => void;
+  /** شاحنات الوقود الجارية لهذا الموقع: in = قادمة إلى خزان المحطة، out = خارجة منه إلى موقع آخر */
+  trips?: { id: string; dir: 'in' | 'out'; other: string; qty: number }[];
+  /** زر «طلب وقود» ولوحته (تحت «فتح حقل المزارع») */
+  fuelPanel?: React.ReactNode;
   /** الطقس الحقيقي للموقع (null حتى يصل أو إن تعذّر) */
   weather: SiteWeather | null;
 }
@@ -35,7 +39,7 @@ const pinSvg = (id: string, top: string, bottom: string, edge: string) =>
   `<circle cx="20" cy="18" r="7.5" fill="#fffbeb" stroke="${edge}" stroke-width="1"/></svg>`;
 const PIN_SVG = { crit: pinSvg('sf-pin-crit', '#ff4d5e', '#c8102e', '#9f1239'), warn: pinSvg('sf-pin-warn', '#fde047', '#eab308', '#a16207') };
 
-const SiteFarmsMap: React.FC<Props> = ({ site, cover, onOpen, weather }) => {
+const SiteFarmsMap: React.FC<Props> = ({ site, cover, onOpen, weather, trips = [], fuelPanel }) => {
   const { t } = useTranslation(['finance']);
   const hostRef = useRef<HTMLDivElement>(null);
   const labelsRef = useRef<HTMLDivElement>(null);
@@ -49,6 +53,10 @@ const SiteFarmsMap: React.FC<Props> = ({ site, cover, onOpen, weather }) => {
   useEffect(() => { weatherRef.current = weather; });
 
   const geo = useMemo(() => siteGeometry(cover.farms.length, site), [cover.farms.length, site]);
+  // تتغير الشاحنات بتغيّر الطلبات فقط (لا بكل رسم)
+  const tripsKey = trips.map(x => `${x.id}:${x.dir}:${x.qty}:${x.other}`).join('|');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const tripList = useMemo(() => trips, [tripsKey]);
   const counts = useMemo(() => {
     const c = { crit: 0, warn: 0, ok: 0, idle: 0 };
     cover.farms.forEach(f => { c[f.status]++; });
@@ -56,7 +64,7 @@ const SiteFarmsMap: React.FC<Props> = ({ site, cover, onOpen, weather }) => {
   }, [cover.farms]);
   const words = useMemo(() => ({
     farm: t('finance:siteFarms.map.farm'), day: t('finance:siteFarms.map.day'), liter: t('finance:siteFarms.liter'),
-    tank: t('finance:siteFarms.map.tank'), status: { crit: t('finance:siteFarms.map.crit'), warn: t('finance:siteFarms.map.warn'), ok: t('finance:siteFarms.map.ok'), idle: t('finance:siteFarms.map.idle') },
+    tank: t('finance:siteFarms.map.tank'), tripIn: t('finance:siteFarms.map.tripIn'), tripOut: t('finance:siteFarms.map.tripOut'), status: { crit: t('finance:siteFarms.map.crit'), warn: t('finance:siteFarms.map.warn'), ok: t('finance:siteFarms.map.ok'), idle: t('finance:siteFarms.map.idle') },
     empty: t('finance:siteFarms.map.empty'), noUse: t('finance:siteFarms.map.noUse'), noGl: t('finance:siteFarms.map.noGl'),
   }), [t]);
 
@@ -186,6 +194,43 @@ const SiteFarmsMap: React.FC<Props> = ({ site, cover, onOpen, weather }) => {
       return { curve, s, o: rnd() };
     });
 
+    // شاحنات الوقود: من خارج الموقع إلى خزان المحطة (قادمة) أو منه إلى الخارج (خارجة)، على طريق متقطع
+    const truckModel = () => {
+      const g = new THREE.Group();
+      const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 1.5, 18), new THREE.MeshPhongMaterial({ color: 0xe2e8f0, shininess: 60, emissive: 0x1e293b, emissiveIntensity: 0.3 }));
+      tank.rotation.z = Math.PI / 2; tank.position.set(-0.25, 0.55, 0); g.add(tank);
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.37, 0.37, 0.12, 18), new THREE.MeshBasicMaterial({ color: 0xf59e0b }));
+      band.rotation.z = Math.PI / 2; band.position.set(-0.25, 0.55, 0); g.add(band);
+      const cab = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.62, 0.7), new THREE.MeshPhongMaterial({ color: 0xfbbf24, emissive: 0x7c2d12, emissiveIntensity: 0.25 }));
+      cab.position.set(0.82, 0.5, 0); g.add(cab);
+      const glass = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.26, 0.6), new THREE.MeshBasicMaterial({ color: 0x7dd3fc }));
+      glass.position.set(1.1, 0.62, 0); g.add(glass);
+      const base = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.12, 0.72), new THREE.MeshBasicMaterial({ color: 0x334155 }));
+      base.position.set(0.05, 0.2, 0); g.add(base);
+      [[-0.75, 0.37], [-0.75, -0.37], [0.8, 0.37], [0.8, -0.37]].forEach(([x, z]) => {
+        const w = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.1, 14), new THREE.MeshBasicMaterial({ color: 0x0f172a }));
+        w.rotation.x = Math.PI / 2; w.position.set(x, 0.17, z); g.add(w);
+      });
+      const light = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfff7d1 }));
+      light.position.set(1.12, 0.38, 0.22); g.add(light);
+      g.scale.setScalar(1.25);
+      return g;
+    };
+    const ctr = (() => { const c = outline.reduce((a, p) => [a[0] + p[0], a[1] + p[1]], [0, 0]); return [c[0] / outline.length, c[1] / outline.length] as Pt; })();
+    const trucks = tripList.map((trip, i) => {
+      // مدخل الموقع: على امتداد الخط من مركز الخريطة إلى الخزان، خارج اللوح (لكل شاحنة زاوية مختلفة قليلًا)
+      const ang = Math.atan2(ST[1] - ctr[1], ST[0] - ctr[0]) + (i - (tripList.length - 1) / 2) * 0.28;
+      const dist = Math.hypot(ST[0] - ctr[0], ST[1] - ctr[1]);
+      const out = (k: number): Pt => [ctr[0] + Math.cos(ang) * dist * k, ctr[1] + Math.sin(ang) * dist * k];
+      const pts = [at(out(2.1), 0.3), at(out(1.55), 0.3), at(out(1.18), DEPTH + 0.3), at(ST, DEPTH + 0.3)];
+      if (trip.dir === 'out') pts.reverse();
+      const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal');
+      const road = new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(80)), new THREE.LineDashedMaterial({ color: trip.dir === 'in' ? 0x38bdf8 : 0xf59e0b, dashSize: 0.5, gapSize: 0.35, transparent: true, opacity: 0.9 }));
+      road.computeLineDistances(); world.add(road);
+      const truck = truckModel(); world.add(truck);
+      return { curve, truck, o: i * 0.37, trip };
+    });
+
     // أسماء المناطق (عناصر HTML تتبع المشهد؛ النصوص من الكشف تُكتب نصًا لا HTML)
     labelsEl.textContent = '';
     const el = (tag: string, cls: string, text?: string) => { const e = document.createElement(tag); e.className = cls; if (text !== undefined) e.textContent = text; return e; };
@@ -220,6 +265,14 @@ const SiteFarmsMap: React.FC<Props> = ({ site, cover, onOpen, weather }) => {
       labelsEl.appendChild(node);
       labels.push({ node, pos: at(ST, DEPTH + 1.6) });
     }
+    // بطاقة كل شاحنة: الكمية والموقع الآخر (تتبع الشاحنة)
+    trucks.forEach(k => {
+      const node = el('div', `sf-map-truck ${k.trip.dir}`);
+      node.dir = 'rtl';
+      node.append(el('b', '', `${fmt(k.trip.qty)} ${words.liter}`), el('small', '', `${k.trip.dir === 'in' ? words.tripIn : words.tripOut} ${k.trip.other}`));
+      labelsEl.appendChild(node);
+      labels.push({ node, pos: k.truck.position });
+    });
 
     // الكاميرا: تحريك بالسحب، تكبير بالعجلة أو بإصبعين أو بالأزرار، تدوير بالزر الأيمن أو مع Shift
     const pitch = 0.72, HOME_YAW = -0.18;
@@ -247,7 +300,7 @@ const SiteFarmsMap: React.FC<Props> = ({ site, cover, onOpen, weather }) => {
       hover = m;
     };
     const onDown = (e: PointerEvent) => {
-      if ((e.target as HTMLElement).closest('button')) return;
+      if ((e.target as HTMLElement).closest('button, .sf-map-panel')) return;
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pointers.size === 2) {
         const [a, b] = [...pointers.values()];
@@ -265,6 +318,7 @@ const SiteFarmsMap: React.FC<Props> = ({ site, cover, onOpen, weather }) => {
       if (!pointers.size) drag = null;
     };
     const onMove = (e: PointerEvent) => {
+      if (!drag && !pinch && (e.target as HTMLElement).closest('.sf-map-panel')) { tip.classList.remove('on'); return; }
       const r = host.getBoundingClientRect();
       if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pinch && pointers.size === 2) {
@@ -305,13 +359,13 @@ const SiteFarmsMap: React.FC<Props> = ({ site, cover, onOpen, weather }) => {
     };
     const onLeave = () => { tip.classList.remove('on'); setHover(null); };
     const onClick = (e: MouseEvent) => {
-      if (moved || (e.target as HTMLElement).closest('button')) return;
+      if (moved || (e.target as HTMLElement).closest('button, .sf-map-panel')) return;
       onOpenRef.current(hover ? (hover.userData.f as FarmCover).name : null);
     };
     // التكبير بفتح/ضم الإصبعين فقط: لوحة اللمس ترسله عجلةً مع ctrlKey (ومثله Ctrl + عجلة الماوس).
     // تمرير الإصبعين (عجلة بلا ctrlKey) لا يكبّر ويترك الصفحة تتحرك كالمعتاد
     const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey) return;
+      if (!e.ctrlKey || (e.target as HTMLElement).closest('.sf-map-panel')) return;
       e.preventDefault();
       targetZoom = clampZoom(targetZoom * Math.exp(-e.deltaY * 0.01));
     };
@@ -424,6 +478,13 @@ const SiteFarmsMap: React.FC<Props> = ({ site, cover, onOpen, weather }) => {
       const sp = reduce ? 0 : (s * 0.6) % 1;
       stRing.scale.setScalar(1 + sp * 1.6); (stRing.material as THREE.MeshBasicMaterial).opacity = reduce ? 0.6 : 0.9 * (1 - sp);
       arcs.forEach(a => { const u = reduce ? a.o : (s * 0.3 + a.o) % 1; a.curve.getPoint(u, v3); a.s.position.copy(v3); (a.s.material as THREE.MeshBasicMaterial).opacity = Math.sin(u * Math.PI); });
+      trucks.forEach(k => {
+        // رحلة كل 12 ثانية تقريبًا، وتقف لحظة عند نهايتها قبل أن تعيد
+        const u = reduce ? 0.6 : Math.min(1, ((s * 0.075 + k.o) % 1.15));
+        k.curve.getPoint(u, k.truck.position);
+        k.curve.getTangent(Math.min(u, 0.999), v3);
+        k.truck.rotation.y = Math.atan2(-v3.z, v3.x);
+      });
       const r = host.getBoundingClientRect();
       labels.forEach(l => { v3.copy(l.pos).project(cam); l.node.style.left = `${((v3.x + 1) / 2) * r.width}px`; l.node.style.top = `${((1 - v3.y) / 2) * r.height}px`; l.node.style.opacity = v3.z < 1 ? '1' : '0'; });
       renderer.render(scene, cam);
@@ -455,11 +516,11 @@ const SiteFarmsMap: React.FC<Props> = ({ site, cover, onOpen, weather }) => {
       renderer.domElement.remove();
       labelsEl.textContent = '';
     };
-  }, [geo, cover, words]);
+  }, [geo, cover, words, tripList]);
 
   return (
     <div className="sf-map" ref={hostRef} tabIndex={0} role="button" aria-label={t('finance:siteFarms.map.aria', { site })}
-      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(null); } }}>
+      onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onOpen(null); } }}>
       <div className="sf-map-hud">
         <div className="sf-map-scan" />
         <i className="sf-map-corner tl" /><i className="sf-map-corner tr" /><i className="sf-map-corner bl" /><i className="sf-map-corner br" />
@@ -513,7 +574,10 @@ const SiteFarmsMap: React.FC<Props> = ({ site, cover, onOpen, weather }) => {
             <span><i style={{ background: '#facc15' }} />{t('finance:siteFarms.map.warnRange')}</span>
             <span><i style={{ background: '#10b981' }} />{t('finance:siteFarms.map.okRange')}</span>
             <span><i style={{ background: '#fbbf24', height: 2, width: 14 }} />{t('finance:siteFarms.map.fuelLine')}</span>          </div>
-          <button type="button" className="sf-map-open" onClick={() => onOpen(null)}>{t('finance:siteFarms.map.open')}</button>
+          <div className="sf-map-btns">
+            <button type="button" className="sf-map-open" onClick={() => onOpen(null)}>{t('finance:siteFarms.map.open')}</button>
+            {fuelPanel}
+          </div>
         </div>
         <div className="sf-map-zoom">
           <button type="button" onClick={() => ctrlRef.current?.zoomIn()} aria-label={t('finance:siteFarms.map.zoomIn')} title={t('finance:siteFarms.map.zoomIn')}><Plus className="w-4 h-4" /></button>

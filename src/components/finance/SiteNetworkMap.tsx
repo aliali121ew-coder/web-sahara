@@ -46,7 +46,9 @@ export const SiteNetworkMap: React.FC<{
   focus?: string;
   height?: number;
   onPick?: (site: string) => void;
-}> = ({ records, requests, focus, height = 380, onPick }) => {
+  /** زر «طلب وقود» ولوحته على الخريطة */
+  overlay?: React.ReactNode;
+}> = ({ records, requests, focus, height = 380, onPick, overlay }) => {
   const { t } = useTranslation(['finance']);
   const pos = useMemo(positions, []);
   const totals = useMemo(() => Object.fromEntries(HUB_SITES.map(s => [s, siteDayTotals(records, s)])), [records]);
@@ -100,6 +102,7 @@ export const SiteNetworkMap: React.FC<{
           );
         })}
       </svg>
+      {overlay && <div className="sf-net-fuel">{overlay}</div>}
       <div className="sf-net-legend">
         <span><i className="road" />{t('finance:siteHub.legendRoad')}</span>
         <span><i className="wait" />{t('finance:siteHub.legendWaiting', { n: waiting.length })}</span>

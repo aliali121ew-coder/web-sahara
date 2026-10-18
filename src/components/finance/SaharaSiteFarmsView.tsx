@@ -16,7 +16,7 @@ import { siteDayTotals, weekUsage } from '../../lib/siteFarmsUsage';
 import { DISTRIBUTION_SITE } from '../../lib/siteAccess';
 import { useSiteRequests } from '../../lib/siteRequests';
 import { SiteNetworkMap } from './SiteNetworkMap';
-import { SiteRequests } from './SiteRequests';
+import { FuelRequestPanel } from './FuelRequestPanel';
 import { backfillFarmsFromArchive, type BackfillProgress } from '../../lib/siteFarmsBackfill';
 import { isStaleChunkError, reloadForNewBuild } from '../../lib/staleBuild';
 import './siteFarms.css';
@@ -339,6 +339,10 @@ export const SaharaSiteFarmsView: React.FC<{ site?: string; mode?: 'site' | 'ann
   // الطاقة مركز التوزيع: صفحتها حتى مركز المراقبة، وخريطتها المواقع لا المزارع
   const isTaqa = !annualMode && site === DISTRIBUTION_SITE;
   const requests = useSiteRequests();
+  // شاحنات الموقع على خريطته: القادمة إلى خزان المحطة والخارجة منه (طلبات موافَق عليها لم تُستلم)
+  const trips = useMemo(() => requests
+    .filter(r => r.status === 'approved' && (r.site === site || r.source === site))
+    .map(r => (r.site === site ? { id: r.id, dir: 'in' as const, other: r.source, qty: r.qty } : { id: r.id, dir: 'out' as const, other: r.site, qty: r.qty })), [requests, site]);
   const [yearPick, setYearPick] = useState<number | null>(null);
   const [range, setRange] = useState<[number, number]>([0, 11]);
   const fullYear = range[0] === 0 && range[1] === 11;
@@ -587,10 +591,14 @@ export const SaharaSiteFarmsView: React.FC<{ site?: string; mode?: 'site' | 'ann
     <section className="sf-map-section">
           {cover.farms.length > 0 ? (
             <Suspense fallback={<div className="sf-map sf-map-loading" />}>
-              <SiteFarmsMap site={site} cover={cover} weather={weather} onOpen={farm => setField({ farm })} />
+              <SiteFarmsMap site={site} cover={cover} weather={weather} onOpen={farm => setField({ farm })}
+                trips={annualMode ? [] : trips} fuelPanel={annualMode ? undefined : <FuelRequestPanel site={site} />} />
             </Suspense>
           ) : (
-            <div className="sf-map-none">{t(cover.date ? (isVehicleSite ? 'finance:siteFarms.map.vehicleSite' : 'finance:siteFarms.map.noFarms') : 'finance:siteFarms.map.noReport', { site })}</div>
+            <div className="sf-map-none">
+              {t(cover.date ? (isVehicleSite ? 'finance:siteFarms.map.vehicleSite' : 'finance:siteFarms.map.noFarms') : 'finance:siteFarms.map.noReport', { site })}
+              {!annualMode && <div className="sf-map-none-fuel"><FuelRequestPanel site={site} /></div>}
+            </div>
           )}
         </section>
   );
@@ -912,11 +920,10 @@ export const SaharaSiteFarmsView: React.FC<{ site?: string; mode?: 'site' | 'ann
       <section className="sf-monitor">
         <h2 className="sf-h2"><span className="sf-monitor-t"><Radar className="w-4 h-4" />{t('finance:siteHub.monitor')}</span></h2>
         {isTaqa ? (
-          <SiteNetworkMap records={records} requests={requests} focus={site} />
+          <SiteNetworkMap records={records} requests={requests} focus={site} overlay={<FuelRequestPanel site={site} />} />
         ) : mapSection}
       </section>
 
-      <SiteRequests site={site} records={records} showMap={!isTaqa} />
 
       {!isTaqa && farmsCard}
       </>}
