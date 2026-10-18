@@ -1018,12 +1018,7 @@
     "hint": "Choose the site; each account enters its own sites only",
     "locked": "You have no permission for this site",
     "distribution": "Distribution center",
-    "farmsCount": "{{n}} farms",
     "noReport": "No report yet",
-    "balance": "Cumulative balance",
-    "consumption": "Consumption",
-    "waiting": "{{n}} waiting",
-    "moving": "{{n}} on the way",
     "back": "Back to sites",
     "monitor": "Monitoring center",
     "kpi": {
@@ -1063,6 +1058,9 @@
         "cancelled": "Cancelled"
       }
     },
-    "stationOnly": "Station tank only"
+    "annual": "Annual expenditure",
+    "annualHint": "The full page for all sites",
+    "annualLocked": "Annual expenditure needs the Reserves permission",
+    "site": "Farms site"
   }
 }
