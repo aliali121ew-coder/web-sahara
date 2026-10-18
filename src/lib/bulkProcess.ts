@@ -105,15 +105,18 @@ export const processBulkFile = async (kind: BulkKind, file: File, progress: (p: 
     }
 
     if (kind === 'tanks') {
-      // ملف الخزانات: كميات 9 خزانات نفط أسود فقط → خزانات قسم النفط الأسود للصحاري بالترتيب
-      const liters = await readTanksReportFile(file);
+      // ملف الخزانات: نسب قسم النفط الأسود في الأعلى (الشكل الحالي) أو كميات 9 خزانات نفط أسود (القديم)
+      // → خزانات قسم النفط الأسود للصحاري بالترتيب
+      const reading = await readTanksReportFile(file);
       progress(45);
-      if (liters.every(v => v === null)) return { status: 'skipped', reasons: ['noTanks'] };
-      const res = setSectionTankLiters(BLACK_OIL_SECTION_KEYS.sahara, liters, OFFICIAL_TABLE_TANK_UNITS);
+      if (reading.values.every(v => v === null)) return { status: 'skipped', reasons: ['noTanks'] };
+      const res = setSectionTankLiters(BLACK_OIL_SECTION_KEYS.sahara, reading.values, OFFICIAL_TABLE_TANK_UNITS, reading.unit);
       progress(80);
       if (!res.filled) return { status: 'skipped', reasons: ['noTanks'] };
-      // خزانات الملف التي لم تُقرأ أو لا يقابلها خزان في القسم
-      const missing = TANKS_FILE_SLOTS.filter((_, i) => liters[i] === null || i >= res.sectionSize).map(slotLabel);
+      // النسب: خزانات القسم التي لم تقابلها نسبة؛ القديم: خزانات الملف التي لم تُقرأ أو لا يقابلها خزان في القسم
+      const missing = reading.unit === 'percent'
+        ? res.unfilled
+        : TANKS_FILE_SLOTS.filter((_, i) => reading.values[i] === null || i >= res.sectionSize).map(slotLabel);
       return { status: 'saved', notes: { tanksMissing: missing, tanksOver: res.over } };
     }
 

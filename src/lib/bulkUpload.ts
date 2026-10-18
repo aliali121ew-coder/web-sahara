@@ -79,6 +79,8 @@ export const detectKind = (allText: string): { kind: BulkKind | null; problem?: 
   // ملف الخزانات: تُقرأ منه كميات خزانات النفط الأسود فقط
   // ("الرئيسي" في PDF تأتي مقسومة "الخزان الرئيس" + "ي" فلا يُعتمد عليها)
   if (has(t, 'مستوى الخزانات الرئيسية') && has(t, 'نسبة امتلاء')) return { kind: 'tanks' };
+  // الشكل الحالي: "مخطط خزانات الوقود" بنسب قسم النفط الأسود
+  if (has(t, 'مخطط خزانات الوقود') || (has(t, 'خزانات النفط الاسود') && allText.includes('%'))) return { kind: 'tanks' };
   return { kind: null, problem: 'unknown' };
 };
 
