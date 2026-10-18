@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { readSiteFarms, saveFarmsDay } from '../siteFarms';
-import { farmDaysBetween, farmSeries, farmSummary, groupFarmDays, siteDayTotals, usageMonth, usageMonths, weekStart, weekUsage } from '../siteFarmsUsage';
+import { networkCover, farmDaysBetween, farmSeries, farmSummary, groupFarmDays, siteDayTotals, usageMonth, usageMonths, weekStart, weekUsage } from '../siteFarmsUsage';
 
 describe('استهلاك المزارع من الكشوف اليومية', () => {
   beforeEach(() => {
@@ -101,5 +101,23 @@ describe('مجاميع يوم الموقع (المحطة + المزارع) لك�
     expect(siteDayTotals(readSiteFarms(), 'التسمين')).toEqual({ date: '2026/10/14', previous: 1045, inbound: 300, consumption: 210, balance: 1135, farms: 1 });
     expect(siteDayTotals(readSiteFarms(), 'التسمين', '2026/10/13').balance).toBe(45);
     expect(siteDayTotals(readSiteFarms(), 'البوادي')).toEqual({ date: null, previous: 0, inbound: 0, consumption: 0, balance: 0, farms: 0 });
+  });
+});
+describe('خريطة مركز التوزيع: المواقع مناطق', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    saveFarmsDay('الطاقة', '2026/10/16', [{ name: 'محطة النقل', previous: 1000000, inbound: 0, consumption: 40000, balance: 960000 }]);
+    saveFarmsDay('التسمين', '2026/10/15', [{ name: 'محطة التسمين', previous: 120000, inbound: 0, consumption: 20000, balance: 100000 }]);
+    saveFarmsDay('التسمين', '2026/10/16', [{ name: 'محطة التسمين', previous: 100000, inbound: 0, consumption: 40000, balance: 60000 }]);
+    saveFarmsDay('البياض', '2026/10/16', [{ name: 'محطة البياض', previous: 500000, inbound: 0, consumption: 10000, balance: 490000 }]);
+  });
+  it('رصيد الموقع ومعدله وحالته بأيام التغطية، والمركز خزان', () => {
+    const c = networkCover(readSiteFarms(), 'الطاقة', ['الطاقة', 'التسمين', 'البياض', 'البوادي']);
+    expect(c.station).toMatchObject({ name: 'الطاقة', balance: 960000 });
+    expect(c.farms.map(f => [f.name, f.balance, Math.round(f.rate), f.status])).toEqual([
+      ['التسمين', 60000, 30000, 'crit'],
+      ['البياض', 490000, 10000, 'ok'],
+      ['البوادي', 0, 0, 'idle'],
+    ]);
   });
 });

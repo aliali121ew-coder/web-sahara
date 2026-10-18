@@ -12,10 +12,10 @@ import { saveSiteAnnualFile } from '../../lib/saharaFiles';
 import { useSiteWeather } from '../../lib/weather';
 import SiteFarmsField from './SiteFarmsField';
 import { FarmUsageModal, SiteFarmsUsageView, WeekBars } from './SiteFarmsUsage';
-import { siteDayTotals, weekUsage } from '../../lib/siteFarmsUsage';
-import { DISTRIBUTION_SITE } from '../../lib/siteAccess';
+import { networkCover, siteDayTotals, weekUsage } from '../../lib/siteFarmsUsage';
+import { DISTRIBUTION_SITE, HUB_SITES } from '../../lib/siteAccess';
+import type { MapTrip } from './SiteFarmsMap';
 import { useSiteRequests } from '../../lib/siteRequests';
-import { SiteNetworkMap } from './SiteNetworkMap';
 import { FuelRequestPanel } from './FuelRequestPanel';
 import { backfillFarmsFromArchive, type BackfillProgress } from '../../lib/siteFarmsBackfill';
 import { isStaleChunkError, reloadForNewBuild } from '../../lib/staleBuild';
@@ -299,7 +299,7 @@ const YearDial: React.FC<DialProps> = ({ year, cur, prev, max, range, spikes, ho
  * mode='site': صفحة موقع (الكروت الأربعة، مركز المراقبة، الطلبات، جدول المزارع).
  * mode='annual': «المصروف السنوي» — الصفحة القديمة كما كانت (شريط المواقع، السنوات، الساعة، الخريطة، اللوحة الشهرية، جدول المزارع).
  */
-export const SaharaSiteFarmsView: React.FC<{ site?: string; mode?: 'site' | 'annual'; onBack: () => void }> = ({ site: siteProp, mode = 'site', onBack }) => {
+export const SaharaSiteFarmsView: React.FC<{ site?: string; mode?: 'site' | 'annual'; onBack: () => void; onOpenSite?: (site: string) => void }> = ({ site: siteProp, mode = 'site', onBack, onOpenSite }) => {
   const annualMode = mode === 'annual';
   const [annualSite, setSite] = useState<string>(siteProp ?? 'التسمين');
   const site = annualMode ? annualSite : (siteProp ?? 'التسمين');
@@ -339,10 +339,18 @@ export const SaharaSiteFarmsView: React.FC<{ site?: string; mode?: 'site' | 'ann
   // الطاقة مركز التوزيع: صفحتها حتى مركز المراقبة، وخريطتها المواقع لا المزارع
   const isTaqa = !annualMode && site === DISTRIBUTION_SITE;
   const requests = useSiteRequests();
-  // شاحنات الموقع على خريطته: القادمة إلى خزان المحطة والخارجة منه (طلبات موافَق عليها لم تُستلم)
-  const trips = useMemo(() => requests
-    .filter(r => r.status === 'approved' && (r.site === site || r.source === site))
-    .map(r => (r.site === site ? { id: r.id, dir: 'in' as const, other: r.source, qty: r.qty } : { id: r.id, dir: 'out' as const, other: r.site, qty: r.qty })), [requests, site]);
+  // شاحنات الموقع على خريطته (طلبات موافَق عليها لم تُستلم):
+  // موقع عادي: القادمة من خارجه إلى خزان المحطة والخارجة منه؛ الطاقة: كل الشاحنات بين المواقع على خريطة المواقع
+  const trips = useMemo<MapTrip[]>(() => requests
+    .filter(r => r.status === 'approved' && (isTaqa || r.site === site || r.source === site))
+    .map(r => isTaqa
+      ? { id: r.id, qty: r.qty, dir: r.site === site ? 'in' : 'out', from: r.source === site ? 'station' : r.source, to: r.site === site ? 'station' : r.site, text: t('finance:siteFarms.map.tripFromTo', { from: r.source, to: r.site }) }
+      : r.site === site
+        ? { id: r.id, qty: r.qty, dir: 'in', from: 'outside', to: 'station', text: `${t('finance:siteFarms.map.tripIn')} ${r.source}` }
+        : { id: r.id, qty: r.qty, dir: 'out', from: 'station', to: 'outside', text: `${t('finance:siteFarms.map.tripOut')} ${r.site}` }),
+  [requests, site, isTaqa, t]);
+  // خريطة مركز التوزيع: المواقع مناطق، ورصيد الطاقة الخزان في المركز
+  const network = useMemo(() => (isTaqa ? networkCover(records, site, HUB_SITES) : null), [isTaqa, records, site]);
   const [yearPick, setYearPick] = useState<number | null>(null);
   const [range, setRange] = useState<[number, number]>([0, 11]);
   const fullYear = range[0] === 0 && range[1] === 11;
@@ -920,7 +928,10 @@ export const SaharaSiteFarmsView: React.FC<{ site?: string; mode?: 'site' | 'ann
       <section className="sf-monitor">
         <h2 className="sf-h2"><span className="sf-monitor-t"><Radar className="w-4 h-4" />{t('finance:siteHub.monitor')}</span></h2>
         {isTaqa ? (
-          <SiteNetworkMap records={records} requests={requests} focus={site} overlay={<FuelRequestPanel site={site} />} />
+          <Suspense fallback={<div className="sf-map sf-map-loading" />}>
+            <SiteFarmsMap site={site} cover={network!} weather={weather} mode="sites" trips={trips}
+              onOpen={name => { if (name) onOpenSite?.(name); }} fuelPanel={<FuelRequestPanel site={site} />} />
+          </Suspense>
         ) : mapSection}
       </section>
 

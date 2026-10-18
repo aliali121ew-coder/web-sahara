@@ -1,4 +1,5 @@
 import { farmsDates, farmsOn, isTankRow, type FarmRow, type SiteFarmsRecord } from './siteFarms';
+import type { FarmCover, SiteCover } from './siteFarmsMap';
 
 /**
  * استهلاك المزارع من الكشوف اليومية المحفوظة (كل يوم يُسجَّل عند حفظ كشف رصيد الصحاري):
@@ -138,4 +139,30 @@ export const siteDayTotals = (records: SiteFarmsRecord[], site: string, date?: s
   const rows = day ? farmsOn(records, site, day) : [];
   const sum = (k: 'previous' | 'inbound' | 'consumption' | 'balance') => rows.reduce((s, r) => s + (r[k] ?? 0), 0);
   return { date: day, previous: sum('previous'), inbound: sum('inbound'), consumption: sum('consumption'), balance: sum('balance'), farms: rows.filter(r => !isTankRow(r.name)).length };
+};
+
+/** حالة الموقع على خريطة مركز التوزيع حسب أيام التغطية (الرصيد ÷ معدل الاستهلاك) */
+export const SITE_DAYS_CRIT = 3;
+export const SITE_DAYS_WARN = 7;
+
+/**
+ * بيانات خريطة مركز التوزيع (الطاقة): كل منطقة موقع (لا مزرعة) برصيد آخر كشف (المحطة + المزارع)،
+ * ومعدل استهلاكه اليومي من آخر 14 كشفًا، وحالته بأيام التغطية؛ وخزان المركز رصيد الطاقة.
+ */
+export const networkCover = (records: SiteFarmsRecord[], center: string, sites: readonly string[]): SiteCover => {
+  const c = siteDayTotals(records, center);
+  const farms: FarmCover[] = sites.filter(s => s !== center).map(s => {
+    const tot = siteDayTotals(records, s);
+    const recent = farmsDates(records, s).slice(-14);
+    const rate = recent.length ? recent.reduce((a, d) => a + siteDayTotals(records, s, d).consumption, 0) / recent.length : 0;
+    const days = rate > 0 ? tot.balance / rate : Infinity;
+    const status: FarmCover['status'] = !tot.date ? 'idle' : days < SITE_DAYS_CRIT ? 'crit' : days < SITE_DAYS_WARN ? 'warn' : 'ok';
+    return { name: s, label: s, previous: tot.previous, inbound: tot.inbound, consumption: tot.consumption, balance: tot.balance, rate, days, status, need: 0 };
+  });
+  return {
+    date: c.date,
+    reports: 0,
+    farms,
+    station: c.date ? { name: center, previous: c.previous, inbound: c.inbound, consumption: c.consumption, balance: c.balance } : null,
+  };
 };

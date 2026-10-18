@@ -42,7 +42,7 @@ export const SiteFarmsHub: React.FC = () => {
   }, [open, allowed, canAnnual, setOpen]);
 
   if (current === ANNUAL) return <SaharaSiteFarmsView mode="annual" onBack={() => setOpen(null)} />;
-  if (current) return <SaharaSiteFarmsView key={current} site={current} onBack={() => setOpen(null)} />;
+  if (current) return <SaharaSiteFarmsView key={current} site={current} onBack={() => setOpen(null)} onOpenSite={s => { if (can(s)) setOpen(s); }} />;
 
   const cards = [...HUB_SITES, ANNUAL];
   return (

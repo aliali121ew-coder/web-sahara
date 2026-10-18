@@ -129,3 +129,9 @@
 @media (max-width: 640px) { .sf-map-wx-main small, .sf-map-wx-row { display: none; } }
 .sf-map-dust { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(120% 90% at 50% 40%, rgba(214, 170, 98, .35), rgba(150, 108, 52, .75)); mix-blend-mode: screen; transition: opacity 2s ease; }
 
+
+/* خريطة مركز التوزيع: بطاقة لكل موقع (الاسم والرصيد وأيام التغطية) ونقطة بلون حالته */
+.sf-map-site .sf-map-pin-tag { border-color: var(--st, #10b981); }
+.sf-map-site .sf-map-pin-tag b { font-size: 13px; }
+.sf-map-site.crit { --st: #ff2d55; } .sf-map-site.warn { --st: #facc15; } .sf-map-site.ok { --st: #10b981; } .sf-map-site.idle { --st: #64748b; }
+.sf-map-site-dot { display: block; width: 14px; height: 14px; margin-top: 5px; border-radius: 50%; background: var(--st); box-shadow: 0 0 0 4px color-mix(in srgb, var(--st) 30%, transparent), 0 0 14px var(--st); }

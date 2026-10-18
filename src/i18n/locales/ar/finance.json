@@ -449,7 +449,13 @@
       "zoomOut": "تصغير",
       "reset": "إرجاع العرض",
       "tripIn": "قادمة من",
-      "tripOut": "خارجة إلى"
+      "tripOut": "خارجة إلى",
+      "center": "مركز التوزيع",
+      "daysShort": "يوم",
+      "siteCrit": "أقل من 3 أيام",
+      "siteWarn": "أقل من 7 أيام",
+      "siteOk": "7 أيام فأكثر",
+      "tripFromTo": "من {{from}} إلى {{to}}"
     },
     "field": {
       "title": "حقل مزارع {{site}}",
@@ -1094,10 +1100,6 @@
       "balance": "الرصيد التراكمي",
       "day": "كشف {{date}}"
     },
-    "networkTitle": "خريطة المواقع ومركز التوزيع",
-    "legendRoad": "طرق التوزيع",
-    "legendWaiting": "طلبات تنتظر الموافقة ({{n}})",
-    "legendTransit": "شاحنات في الطريق ({{n}})",
     "req": {
       "source": "اطلب من موقع",
       "qty": "الكمية (لتر)",

@@ -358,28 +358,10 @@
 .sf-kpi-d { font-size: 11px; color: var(--sf-mut); font-variant-numeric: tabular-nums; }
 .sf-kpi.bal { background: linear-gradient(135deg, color-mix(in srgb, var(--sf-gen) 8%, var(--sf-panel)), var(--sf-panel)); }
 
-/* ───── مركز المراقبة وخريطة المواقع ───── */
+/* ───── مركز المراقبة ───── */
 .sf-monitor { display: flex; flex-direction: column; gap: 10px; }
 .sf-monitor > .sf-h2 { margin: 0; }
 .sf-monitor-t { display: inline-flex; align-items: center; gap: 8px; }
-.sf-net { position: relative; border-radius: 22px; border: 1px solid var(--sf-line); background: radial-gradient(circle at 50% 50%, var(--sf-panel), var(--sf-panel2)); overflow: hidden; }
-.sf-net svg { width: 100%; height: calc(100% - 34px); display: block; }
-.sf-net-road { fill: none; stroke: var(--sf-grid); stroke-width: 3; stroke-linecap: round; }
-.sf-net-wait { fill: none; stroke: #f59e0b; stroke-width: 2; stroke-dasharray: 6 6; opacity: .8; }
-.sf-net-trip { fill: none; stroke: var(--sf-gen); stroke-width: 2.5; stroke-dasharray: 2 7; stroke-linecap: round; animation: sf-net-flow 1s linear infinite; }
-@keyframes sf-net-flow { to { stroke-dashoffset: -9; } }
-.sf-net-node circle.site { fill: var(--sf-panel); stroke: var(--sf-farm); stroke-width: 2.5; }
-.sf-net-node circle.hub { fill: color-mix(in srgb, #f59e0b 16%, var(--sf-panel)); stroke: #d97706; stroke-width: 3; }
-.sf-net-node.on circle { stroke-width: 4; filter: drop-shadow(0 0 8px var(--sf-glow)); }
-.sf-net-node.click { cursor: pointer; }
-.sf-net-node .ico { font-size: 18px; }
-.sf-net-node .nm { font-size: 13px; font-weight: 800; fill: var(--sf-fg); }
-.sf-net-node .bal { font-size: 11px; fill: var(--sf-mut); font-variant-numeric: tabular-nums; }
-.sf-net-legend { height: 34px; display: flex; gap: 16px; align-items: center; justify-content: center; flex-wrap: wrap; font-size: 11.5px; color: var(--sf-mut); border-top: 1px solid var(--sf-line); }
-.sf-net-legend i { display: inline-block; width: 22px; height: 0; border-top: 3px solid var(--sf-grid); margin-inline-end: 6px; vertical-align: middle; }
-.sf-net-legend i.wait { border-top: 2px dashed #f59e0b; }
-.sf-net-legend i.trip { border-top: 3px dotted var(--sf-gen); }
-@media (prefers-reduced-motion: reduce) { .sf-net-trip { animation: none; } }
 
 
 /* ───── صفحة المواقع: كروت ثلاثية الأبعاد تطفو في الوسط ───── */
@@ -465,10 +447,11 @@
 .sf-map-truck.out { border-color: rgba(245, 158, 11, .7); }
 .sf-map-truck b { font-size: 11.5px; color: #fde68a; font-variant-numeric: tabular-nums; }
 .sf-map-truck small { color: #93c5fd; }
-/* الطاقة (خريطة المواقع) والموقع بلا خريطة مزارع */
-.sf-net-fuel { position: absolute; inset-inline-start: 14px; bottom: 46px; z-index: 5; display: flex; flex-direction: column; }
-.sf-net .sf-map-panel { inset-inline-end: auto; inset-inline-start: 0; max-height: 250px; }
+/* الموقع بلا خريطة مزارع */
 @media (max-width: 640px) { .sf-map .sf-map-panel { max-height: 220px; } }
 .sf-map-none { position: relative; }
 .sf-map-none-fuel { margin-top: 12px; display: flex; justify-content: center; }
 .sf-map-none .sf-map-panel { position: absolute; top: 100%; bottom: auto; margin-top: 8px; }
+/* أيقونة الصهريج */
+.sf-tanker-ico { width: 26px; height: 17px; flex-shrink: 0; }
+.sf-tanker-ico.sm { width: 20px; height: 13px; }
