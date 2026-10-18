@@ -2,6 +2,7 @@ import { farmsDates, importFarmsDay, readSiteFarms, FARM_SITES } from './siteFar
 import { readDailyFarmsFile, type DailyFarmsResult } from './siteFarmsFile';
 import { readSaharaRecords } from './saharaLedger';
 import { fetchSaharaFileBlob, listSaharaFiles, type SaharaFile } from './saharaFiles';
+import { isStaleChunkError } from './staleBuild';
 
 /**
  * تحليل ملفات أرشيف كشف رصيد شركة الصحاري: كل ملف كشف مرفق بيوم في الأرشيف تُقرأ منه مزارع كل موقع
@@ -9,7 +10,8 @@ import { fetchSaharaFileBlob, listSaharaFiles, type SaharaFile } from './saharaF
  * التاريخ = تاريخ يوم الأرشيف، وإلا تاريخ الكشف داخل الملف. الملف الذي حُلّل مرة لا يُقرأ ثانيةً في هذا المتصفح.
  */
 
-const DONE_KEY = 'sahara_site_farms_backfill_done_v1';
+// v2: النسخة الأولى كانت تسجّل الملف محلَّلًا عند فشل تحميل جزء من البرنامج بعد نشر جديد، فيُعاد كل شيء مرة
+const DONE_KEY = 'sahara_site_farms_backfill_done_v2';
 const readDone = (): Set<string> => {
   try { return new Set(JSON.parse(localStorage.getItem(DONE_KEY) || '[]') as string[]); } catch { return new Set(); }
 };
@@ -61,18 +63,22 @@ export const backfillFarmsFromArchive = async (onProgress?: (p: BackfillProgress
     let file: File | null = null;
     try {
       file = await deps.fetchFile(f);
-    } catch {
-      // تعذّر التنزيل (الشبكة أو الخادم): يُعاد في المرة القادمة
+    } catch (e) {
+      // انقطاع الشبكة: يُعاد في المرة القادمة؛ الملف غير موجود على الخادم (404 وغيرها): لا يُعاد
+      if (!(e instanceof TypeError)) done.add(f.id);
     }
     if (file) {
       try {
         const res = await deps.read(file);
         const day = dates.get(f.record_id) || res.date;
         if (day && Object.keys(res.sites).length && importFarmsDay(day, res.sites).length) prog.days++;
-      } catch {
+        done.add(f.id);
+      } catch (e) {
+        // جزء من البرنامج غير موجود (الصفحة من نسخة قبل النشر): يتوقف التحليل وتُعاد الصفحة، ولا يُسجَّل الملف
+        if (isStaleChunkError(e)) { saveDone(done); throw e; }
         // ليس كشفًا يوميًا أو لا جدول مزارع فيه: لا يُعاد
+        done.add(f.id);
       }
-      done.add(f.id);
     }
     saveDone(done);
     prog.done++;

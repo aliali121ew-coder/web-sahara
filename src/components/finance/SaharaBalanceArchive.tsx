@@ -9,6 +9,7 @@ import { formatNumber, getBusinessDate } from '../../lib/utils';
 import { useTranslation, Trans } from 'react-i18next';
 import { useSaharaLedger } from '../../lib/saharaLedger';
 import { usePermissions } from '../../lib/usePermission';
+import { importFarmsFromReport } from '../../lib/siteFarmsFile';
 
 /**
  * تقرير كشف رصيد شركة الصحاري: كل الأيام المسجلة مع فلتر الفترة، ترقيم الصفحات، ومعاينة الطباعة الرسمية.
@@ -21,7 +22,14 @@ export const SaharaBalanceArchive: React.FC = () => {
   const { files, busy, error: filesError, clearError, upload, remove, replace } = useSaharaFiles();
   // وضع إدارة المرفقات (زر "تعديل" بجانب الطباعة): يُظهر تغيير وحذف الملفات
   // صلاحية العرض فقط: لا رفع ولا تغيير ولا حذف للمرفقات أو الأيام
-  const editable = usePermissions().canEdit('sahara.balance');
+  const perms = usePermissions();
+  const editable = perms.canEdit('sahara.balance');
+  // كشف يُرفق بيوم (أو يُغيَّر): تُحفظ مزارع كل موقع منه لذلك اليوم في صفحة مزارع الموقع، كما عند تسجيل يوم جديد
+  const canFarms = perms.canEdit('sahara.reserves');
+  const farmsFrom = (list: File[], date: string) => {
+    if (!canFarms) return;
+    for (const f of list) if (/\.(pdf|xlsx|xls|xlsm)$/i.test(f.name)) void importFarmsFromReport(f, date).catch(() => undefined);
+  };
   const [manageFilesOn, setManageFiles] = useState(false);
   const manageFiles = editable && manageFilesOn;
   const filesByRecord = useMemo(() => {
@@ -79,7 +87,11 @@ export const SaharaBalanceArchive: React.FC = () => {
                 onChange={e => {
                   const next = e.target.files?.[0];
                   e.target.value = '';
-                  if (next) replace(f, next);
+                  if (next) {
+                    replace(f, next);
+                    const day = computed.find(x => x.id === f.record_id)?.date;
+                    if (day) farmsFrom([next], day);
+                  }
                 }}
               />
             </label>
@@ -474,7 +486,7 @@ export const SaharaBalanceArchive: React.FC = () => {
                             onChange={e => {
                               const list = Array.from(e.target.files || []);
                               e.target.value = '';
-                              if (list.length) upload(r.id, list);
+                              if (list.length) { upload(r.id, list); farmsFrom(list, r.date); }
                             }}
                           />
                         </label>

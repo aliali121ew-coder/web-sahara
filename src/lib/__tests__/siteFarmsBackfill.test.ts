@@ -42,3 +42,26 @@ describe('تحليل ملفات أرشيف كشف رصيد الصحاري لمز
     expect((await pendingArchiveFiles(d)).map(f => f.id)).toEqual(['offline']);
   });
 });
+
+describe('أخطاء التحليل', () => {
+  beforeEach(() => localStorage.clear());
+  const base = (over: Partial<BackfillDeps>): BackfillDeps => ({
+    list: async () => [file('a', 'sah-1'), file('b', 'sah-2')],
+    fetchFile: async f => new File(['x'], f.id),
+    read: () => Promise.reject(new Error('not a report')),
+    recordDates: () => new Map([['sah-1', '2026/10/12'], ['sah-2', '2026/10/13']]),
+    ...over,
+  });
+
+  it('جزء برنامج مفقود بعد النشر: يتوقف التحليل ولا يُسجَّل الملف محلَّلًا', async () => {
+    const d = base({ read: () => Promise.reject(new TypeError('Failed to fetch dynamically imported module: /assets/x.js')) });
+    await expect(backfillFarmsFromArchive(undefined, d)).rejects.toThrow(/dynamically imported/);
+    expect((await pendingArchiveFiles(d)).map(f => f.id)).toEqual(['a', 'b']);
+  });
+
+  it('ملف بلا محتوى على الخادم (404) يُتخطى نهائيًا', async () => {
+    const d = base({ fetchFile: async f => { if (f.id === 'a') throw new Error('404'); return new File(['x'], f.id); } });
+    await backfillFarmsFromArchive(undefined, d);
+    expect(await pendingArchiveFiles(d)).toEqual([]);
+  });
+});

@@ -14,6 +14,7 @@ import SiteFarmsField from './SiteFarmsField';
 import { FarmUsageModal, SiteFarmsUsageView, WeekBars } from './SiteFarmsUsage';
 import { weekUsage } from '../../lib/siteFarmsUsage';
 import { backfillFarmsFromArchive, type BackfillProgress } from '../../lib/siteFarmsBackfill';
+import { isStaleChunkError, reloadForNewBuild } from '../../lib/staleBuild';
 import './siteFarms.css';
 import './siteFarmsMap.css';
 
@@ -294,26 +295,28 @@ export const SaharaSiteFarmsView: React.FC = () => {
   const { t, i18n } = useTranslation(['finance', 'common']);
   const perms = usePermissions();
   const canEdit = perms.canEdit('sahara.reserves');
-  // تحليل ملفات أرشيف كشف رصيد الصحاري: مزارع كل موقع للأيام القديمة (تلقائيًا عند فتح الصفحة، أو من الزر)
+  // كل ملفات أرشيف كشف رصيد الصحاري تُحلَّل تلقائيًا عند فتح الصفحة: مزارع كل موقع للأيام التي لم تُحفظ بعد
+  // (الكشف الجديد يحفظ مزارعه عند رفعه)؛ الشريط يظهر فقط حين توجد ملفات جديدة
   const [archiveRun, setArchiveRun] = useState<(BackfillProgress & { running: boolean }) | null>(null);
   const archiveBusy = useRef(false);
-  const runArchive = React.useCallback(async (manual: boolean) => {
-    if (archiveBusy.current) return;
-    archiveBusy.current = true;
-    try {
-      const res = await backfillFarmsFromArchive(p => { if (manual || p.total) setArchiveRun({ ...p, running: true }); });
-      setArchiveRun(manual || res.total ? { ...res, running: false } : null);
-    } catch {
-      if (manual) setArchiveRun({ done: 0, total: 0, days: 0, running: false });
-    } finally {
-      archiveBusy.current = false;
-    }
-  }, []);
   useEffect(() => {
     if (!canEdit) return;
-    const timer = window.setTimeout(() => void runArchive(false), 2500);
+    const timer = window.setTimeout(async () => {
+      if (archiveBusy.current) return;
+      archiveBusy.current = true;
+      try {
+        const res = await backfillFarmsFromArchive(p => { if (p.total) setArchiveRun({ ...p, running: true }); });
+        setArchiveRun(res.total ? { ...res, running: false } : null);
+      } catch (e) {
+        setArchiveRun(null);
+        // الصفحة من نسخة قبل آخر نشر: تُعاد مرة لتأخذ النسخة الجديدة ثم يكمل التحليل
+        if (isStaleChunkError(e)) reloadForNewBuild();
+      } finally {
+        archiveBusy.current = false;
+      }
+    }, 2500);
     return () => window.clearTimeout(timer);
-  }, [canEdit, runArchive]);
+  }, [canEdit]);
   const records = useSiteFarms();
 
   // قبل تحميل ملف الترجمة تعود القيمة نصًا (اسم المفتاح) لا مصفوفة: أرقام الأشهر/الأيام بدلها حتى لا تنكسر الصفحة
@@ -601,7 +604,7 @@ export const SaharaSiteFarmsView: React.FC = () => {
               ? t('finance:siteFarms.archiveScan.running', { done: archiveRun.done, total: archiveRun.total })
               : archiveRun.total
                 ? t('finance:siteFarms.archiveScan.done', { files: archiveRun.total, days: archiveRun.days })
-                : t('finance:siteFarms.archiveScan.nothing')}
+                : null}
           </span>
           {archiveRun.running && <i className="sf-archive-bar"><u style={{ width: `${archiveRun.total ? (archiveRun.done / archiveRun.total) * 100 : 0}%` }} /></i>}
           {!archiveRun.running && <button type="button" className="sf-archive-x" onClick={() => setArchiveRun(null)} aria-label={t('common:actions.close')}>×</button>}
@@ -810,11 +813,6 @@ export const SaharaSiteFarmsView: React.FC = () => {
             <button type="button" role="tab" aria-selected={farmView === 'daily'} onClick={() => setFarmView('daily')}>{t('finance:siteFarms.usage.byDaily')}</button>
             <button type="button" role="tab" aria-selected={farmView === 'usage'} onClick={() => setFarmView('usage')}>{t('finance:siteFarms.usage.tab')}</button>
           </span>
-          {canEdit && (
-            <button type="button" className="sf-archive-btn" disabled={!!archiveRun?.running} onClick={() => void runArchive(true)} title={t('finance:siteFarms.archiveScan.hint')}>
-              <FileSearch className="w-3.5 h-3.5" />{t('finance:siteFarms.archiveScan.button')}
-            </button>
-          )}
           {farmView === 'daily' && datesOfSite.length > 0 && (
             <select className="sf-select" value={date ?? ''} onChange={e => setDatePick(e.target.value)} aria-label={t('finance:siteFarms.reportDate')}>
               {[...datesOfSite].reverse().map(d => <option key={d} value={d}>{d}</option>)}
