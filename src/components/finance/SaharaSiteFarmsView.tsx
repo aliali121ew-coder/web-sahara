@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CalendarDays, FileSpreadsheet, Sprout, Upload } from 'lucide-react';
+import { CalendarDays, FileSearch, FileSpreadsheet, Loader2, Sprout, Upload } from 'lucide-react';
 import { usePermissions } from '../../lib/usePermission';
 import {
   FARM_SITES, annualFor, annualYears, farmsDates, farmsOn, importAnnual, importFarmsDay, lastDayUse, useSiteFarms,
@@ -13,6 +13,7 @@ import { useSiteWeather } from '../../lib/weather';
 import SiteFarmsField from './SiteFarmsField';
 import { FarmUsageModal, SiteFarmsUsageView, WeekBars } from './SiteFarmsUsage';
 import { weekUsage } from '../../lib/siteFarmsUsage';
+import { backfillFarmsFromArchive, type BackfillProgress } from '../../lib/siteFarmsBackfill';
 import './siteFarms.css';
 import './siteFarmsMap.css';
 
@@ -293,6 +294,26 @@ export const SaharaSiteFarmsView: React.FC = () => {
   const { t, i18n } = useTranslation(['finance', 'common']);
   const perms = usePermissions();
   const canEdit = perms.canEdit('sahara.reserves');
+  // تحليل ملفات أرشيف كشف رصيد الصحاري: مزارع كل موقع للأيام القديمة (تلقائيًا عند فتح الصفحة، أو من الزر)
+  const [archiveRun, setArchiveRun] = useState<(BackfillProgress & { running: boolean }) | null>(null);
+  const archiveBusy = useRef(false);
+  const runArchive = React.useCallback(async (manual: boolean) => {
+    if (archiveBusy.current) return;
+    archiveBusy.current = true;
+    try {
+      const res = await backfillFarmsFromArchive(p => { if (manual || p.total) setArchiveRun({ ...p, running: true }); });
+      setArchiveRun(manual || res.total ? { ...res, running: false } : null);
+    } catch {
+      if (manual) setArchiveRun({ done: 0, total: 0, days: 0, running: false });
+    } finally {
+      archiveBusy.current = false;
+    }
+  }, []);
+  useEffect(() => {
+    if (!canEdit) return;
+    const timer = window.setTimeout(() => void runArchive(false), 2500);
+    return () => window.clearTimeout(timer);
+  }, [canEdit, runArchive]);
   const records = useSiteFarms();
 
   // قبل تحميل ملف الترجمة تعود القيمة نصًا (اسم المفتاح) لا مصفوفة: أرقام الأشهر/الأيام بدلها حتى لا تنكسر الصفحة
@@ -572,6 +593,20 @@ export const SaharaSiteFarmsView: React.FC = () => {
         </>
       )}
       {busy && <div className="sf-note">{t('finance:siteFarms.reading')}</div>}
+      {archiveRun && (
+        <div className="sf-note sf-archive-note" role="status">
+          {archiveRun.running ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSearch className="w-4 h-4" />}
+          <span>
+            {archiveRun.running
+              ? t('finance:siteFarms.archiveScan.running', { done: archiveRun.done, total: archiveRun.total })
+              : archiveRun.total
+                ? t('finance:siteFarms.archiveScan.done', { files: archiveRun.total, days: archiveRun.days })
+                : t('finance:siteFarms.archiveScan.nothing')}
+          </span>
+          {archiveRun.running && <i className="sf-archive-bar"><u style={{ width: `${archiveRun.total ? (archiveRun.done / archiveRun.total) * 100 : 0}%` }} /></i>}
+          {!archiveRun.running && <button type="button" className="sf-archive-x" onClick={() => setArchiveRun(null)} aria-label={t('common:actions.close')}>×</button>}
+        </div>
+      )}
       {notice && <div className={`sf-note${notice.error ? ' err' : notice.warn ? ' warn' : ''}`} role={notice.warn || notice.error ? 'alert' : 'status'}>{notice.text}</div>}
       {field && <SiteFarmsField site={site} cover={cover} initialFarm={field.farm} onClose={() => setField(null)} />}
       {pending && (
@@ -775,6 +810,11 @@ export const SaharaSiteFarmsView: React.FC = () => {
             <button type="button" role="tab" aria-selected={farmView === 'daily'} onClick={() => setFarmView('daily')}>{t('finance:siteFarms.usage.byDaily')}</button>
             <button type="button" role="tab" aria-selected={farmView === 'usage'} onClick={() => setFarmView('usage')}>{t('finance:siteFarms.usage.tab')}</button>
           </span>
+          {canEdit && (
+            <button type="button" className="sf-archive-btn" disabled={!!archiveRun?.running} onClick={() => void runArchive(true)} title={t('finance:siteFarms.archiveScan.hint')}>
+              <FileSearch className="w-3.5 h-3.5" />{t('finance:siteFarms.archiveScan.button')}
+            </button>
+          )}
           {farmView === 'daily' && datesOfSite.length > 0 && (
             <select className="sf-select" value={date ?? ''} onChange={e => setDatePick(e.target.value)} aria-label={t('finance:siteFarms.reportDate')}>
               {[...datesOfSite].reverse().map(d => <option key={d} value={d}>{d}</option>)}

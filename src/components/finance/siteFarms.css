@@ -334,3 +334,12 @@
 .sf-wk { position: relative; display: inline-block; line-height: 0; vertical-align: middle; }
 .sf-wk svg { display: block; overflow: visible; }
 .sf-wk-tip { position: absolute; bottom: calc(100% + 6px); transform: translateX(-50%); white-space: nowrap; font-size: 11px; line-height: 1.4; padding: 3px 8px; border-radius: 8px; background: var(--sf-fg); color: var(--sf-panel); pointer-events: none; z-index: 5; }
+
+/* تحليل ملفات أرشيف كشف الرصيد */
+.sf-archive-note { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sf-archive-bar { flex: 1 1 160px; height: 6px; border-radius: 4px; background: var(--sf-line); overflow: hidden; }
+.sf-archive-bar u { display: block; height: 100%; background: var(--sf-farm); transition: width .3s; }
+.sf-archive-x { margin-inline-start: auto; border: 0; background: none; font-size: 18px; line-height: 1; color: var(--sf-mut); padding: 0 4px; }
+.sf-archive-btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--sf-line); background: var(--sf-panel); border-radius: 10px; padding: 6px 10px; font-size: 12px; font-weight: 700; color: var(--sf-fg); }
+.sf-archive-btn:hover { border-color: var(--sf-farm); color: var(--sf-farm); }
+.sf-archive-btn:disabled { opacity: .5; cursor: wait; }

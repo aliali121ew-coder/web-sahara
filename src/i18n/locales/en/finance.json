@@ -562,7 +562,14 @@
       "noDays": "No recorded days in this period",
       "periodTotal": "Period total ({{n}} days)"
     },
-    "colWeek": "Week consumption (Sat–Fri)"
+    "colWeek": "Week consumption (Sat–Fri)",
+    "archiveScan": {
+      "button": "Analyze archive files",
+      "hint": "Read the Sahara balance report files uploaded to the archive and add each site's farms for their days",
+      "running": "Analyzing balance archive files… {{done}} of {{total}}",
+      "done": "Archive files analyzed: {{files}} files, farms added for {{days}} days",
+      "nothing": "No new archive files: every day with an uploaded report is analyzed"
+    }
   },
   "hub": {
     "saharaBalance": "Sahara Company balance",
