@@ -1,0 +1,42 @@
+/* خريطة محطات مركز التوزيع (الطاقة): صورة المحطات وفوقها الحالة والصهاريج */
+.sf-map.sf-tq { height: auto; max-height: none; cursor: default; touch-action: auto; user-select: none; background: #2a1d10; container-type: inline-size; }
+.sf-map.sf-tq.night { background: #0b0d14; }
+.sf-tq-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; pointer-events: none; }
+/* تظليل أعلى الخريطة وأسفلها لقراءة العنوان والمفتاح */
+.sf-tq::before, .sf-tq::after { content: ''; position: absolute; inset-inline: 0; z-index: 1; pointer-events: none; }
+.sf-tq::before { top: 0; height: 9%; background: linear-gradient(180deg, rgba(4, 11, 23, .6), transparent); }
+.sf-tq::after { bottom: 0; height: 14%; background: linear-gradient(0deg, rgba(4, 11, 23, .78), transparent); }
+.sf-tq-svg { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; overflow: visible; }
+
+.sf-tq-pad { fill: transparent; stroke: var(--st); stroke-width: .3; stroke-dasharray: 1.1 .7; opacity: .7; cursor: pointer; transition: fill .2s, opacity .2s, stroke-width .2s; }
+.sf-tq-pad:hover { fill: color-mix(in srgb, var(--st) 16%, transparent); opacity: 1; stroke-width: .5; }
+.sf-tq-pad.self { cursor: default; stroke: #fbbf24; }
+.sf-tq-pad.crit { animation: sfTqPulse 1.3s ease-in-out infinite; }
+@keyframes sfTqPulse { 50% { opacity: .25; stroke-width: .7; } }
+
+.sf-tq-route { fill: none; stroke: #fbbf24; stroke-width: .38; stroke-linecap: round; stroke-dasharray: 1.2 1; animation: sfTqDash 1.1s linear infinite; }
+.sf-tq-route-glow { fill: none; stroke: rgba(251, 191, 36, .55); stroke-width: 1.3; }
+@keyframes sfTqDash { to { stroke-dashoffset: -2.2; } }
+.sf-tq-truck .tank { fill: #e2e8f0; stroke: #64748b; stroke-width: .08; }
+.sf-tq-truck .cab { fill: #dc2626; stroke: #7f1d1d; stroke-width: .08; }
+.sf-tq-truck .beam { fill: rgba(254, 240, 138, .35); }
+.sf-tq-tag rect { fill: rgba(8, 20, 38, .86); stroke: #fbbf24; stroke-width: .12; }
+.sf-tq-tag text { font-family: inherit; direction: rtl; }
+.sf-tq-tag .q { font-size: 1.35px; font-weight: 800; fill: #fde68a; }
+.sf-tq-tag .s { font-size: 1px; fill: #cbd5e1; }
+
+.sf-tq-card { position: absolute; z-index: 3; transform: translateX(-50%); display: flex; align-items: center; gap: .65em; padding: .45em .95em; border-radius: 1em; border: 1px solid var(--st); background: rgba(8, 20, 38, .84); color: #e0f2fe; font-size: clamp(7.5px, 1.05cqw, 12px); line-height: 1.25; white-space: nowrap; text-align: start; backdrop-filter: blur(6px); box-shadow: 0 8px 22px -10px rgba(0, 0, 0, .8), 0 0 14px -4px var(--st); cursor: pointer; font-variant-numeric: tabular-nums; transition: transform .18s, box-shadow .18s; }
+.sf-tq-card:hover:not(:disabled) { transform: translateX(-50%) translateY(-3px); box-shadow: 0 12px 26px -10px rgba(0, 0, 0, .85), 0 0 22px -2px var(--st); }
+.sf-tq-card:disabled { cursor: default; }
+.sf-tq-card.self { border-color: #fbbf24; --st: #fbbf24; }
+.sf-tq-card i { width: .85em; height: .85em; flex: none; border-radius: 50%; background: var(--st); box-shadow: 0 0 0 3px color-mix(in srgb, var(--st) 30%, transparent), 0 0 10px var(--st); }
+.sf-tq-card.crit i { animation: sfTqDot 1.1s ease-in-out infinite; }
+@keyframes sfTqDot { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--st) 10%, transparent), 0 0 14px var(--st); } }
+.sf-tq-card b { display: block; font-size: 1.08em; font-weight: 800; }
+.sf-tq-card small { display: block; color: #9cc3e0; font-size: .95em; }
+
+.sf-tq-dn { display: flex; gap: 2px; padding: 3px; border-radius: 12px; background: rgba(8, 28, 52, .72); border: 1px solid rgba(56, 189, 248, .25); pointer-events: auto; align-self: flex-start; }
+.sf-tq-dn button { display: grid; place-items: center; width: 30px; height: 28px; border: 0; border-radius: 9px; background: transparent; color: #7fa6c6; cursor: pointer; }
+.sf-tq-dn button.on { background: rgba(56, 189, 248, .22); color: #fde68a; }
+
+@media (max-width: 640px) { .sf-tq .sf-map-legend { display: none; } }

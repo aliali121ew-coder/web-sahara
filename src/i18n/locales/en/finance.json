@@ -443,7 +443,12 @@
       "siteCrit": "Under 3 days",
       "siteWarn": "Under 7 days",
       "siteOk": "7 days or more",
-      "tripFromTo": "From {{from}} to {{to}}"
+      "tripFromTo": "From {{from}} to {{to}}",
+      "stationsAria": "Sites stations map, click a station to open its site",
+      "openSite": "Open {{site}} site",
+      "noData": "No report",
+      "dayView": "Day view",
+      "nightView": "Night view"
     },
     "field": {
       "title": "{{site}} farm field",

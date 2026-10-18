@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as THREE from 'three';
 import { createTanker } from './tankerModel';
-import { ArrowUp, Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudSun, Maximize2, Minus, Moon, Plus, Snowflake, Sun, Wind } from 'lucide-react';
+import { Maximize2, Minus, Plus } from 'lucide-react';
+import { MapWeather } from './MapWeather';
 import { siteGeometry, type FarmCover, type Pt, type SiteCover, type SiteGeometry } from '../../lib/siteFarmsMap';
-import { dustLevel, weatherKind, windSector, type SiteWeather, type WeatherKind } from '../../lib/weather';
+import { weatherKind, type SiteWeather } from '../../lib/weather';
 
 /**
  * خريطة الموقع ثلاثية الأبعاد (WebGL) في مركز المراقبة:
@@ -35,10 +36,6 @@ interface Props {
   /** الطقس الحقيقي للموقع (null حتى يصل أو إن تعذّر) */
   weather: SiteWeather | null;
 }
-
-const WX_ICON: Record<WeatherKind, React.FC<{ className?: string }>> = {
-  clear: Sun, partly: CloudSun, cloudy: Cloud, fog: CloudFog, drizzle: CloudDrizzle, rain: CloudRain, snow: Snowflake, showers: CloudRain, storm: CloudLightning,
-};
 
 const TINT: Record<string, [number, number]> = { crit: [0xff2d55, 0.55], warn: [0xfacc15, 0.32], ok: [0x10b981, 0.26], idle: [0x020617, 0.35] };
 const UI = { crit: '#ff2d55', warn: '#facc15', ok: '#34d399', idle: '#94a3b8' };
@@ -613,35 +610,7 @@ const SiteFarmsMap: React.FC<Props> = ({ site, cover, onOpen, weather, trips = [
           <div>
             <b>{t('finance:siteFarms.map.title', { site })}</b>          </div>
           <div className="sf-map-side">
-            {weather && (() => {
-              const kind = weatherKind(weather.code);
-              const Icon = !weather.isDay && (kind === 'clear' || kind === 'partly') ? Moon : WX_ICON[kind];
-              const dl = dustLevel(weather.dust);
-              return (
-                <div className={`sf-map-wx${dl !== 'none' ? ' dust' : ''}`} dir="rtl" title={`${t('finance:siteFarms.wx.updated', { time: weather.time.slice(11, 16) })} · ${weather.source ?? 'Open-Meteo'}`}>
-                  <div className="sf-map-wx-main">
-                    <Icon className="w-7 h-7" />
-                    <b>{Math.round(weather.temp)}°</b>
-                    <div>
-                      <span>{t(`finance:siteFarms.wx.kind.${kind}`)}</span>
-                      <small>{t('finance:siteFarms.wx.feels', { n: Math.round(weather.feels) })}</small>
-                    </div>
-                  </div>
-                  <div className="sf-map-wx-row">
-                    <Wind className="w-3.5 h-3.5" />
-                    <span>{t('finance:siteFarms.wx.wind', { n: Math.round(weather.wind) })}</span>
-                    <ArrowUp className="w-3.5 h-3.5 sf-map-wx-arrow" style={{ transform: `rotate(${weather.windDir + 180}deg)` }} aria-hidden="true" />
-                    <span>{t(`finance:siteFarms.wx.dir.${windSector(weather.windDir)}`)}</span>
-                  </div>
-                  <div className="sf-map-wx-row">
-                    <span>{t('finance:siteFarms.wx.humidity', { n: Math.round(weather.humidity) })}</span>
-                    {weather.dust !== null && <span>· {t('finance:siteFarms.wx.dust', { n: Math.round(weather.dust) })}</span>}
-                  </div>
-                  {dl !== 'none' && <div className="sf-map-wx-alert">{t(dl === 'storm' ? 'finance:siteFarms.wx.dustStorm' : 'finance:siteFarms.wx.dustWarn')}</div>}
-                  <small className="sf-map-wx-time">{t('finance:siteFarms.wx.updated', { time: weather.time.slice(11, 16) })} · {weather.source ?? 'Open-Meteo'}</small>
-                </div>
-              );
-            })()}
+            {weather && <MapWeather weather={weather} />}
             <div className="sf-map-stats">
             {(['crit', 'warn', 'ok'] as const).map(k => (
               <div key={k}><b style={{ color: UI[k] }}>{counts[k]}</b><span>{words.status[k]}</span></div>

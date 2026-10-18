@@ -13,8 +13,8 @@ import { useSiteWeather } from '../../lib/weather';
 import SiteFarmsField from './SiteFarmsField';
 import { FarmUsageModal, SiteFarmsUsageView, WeekBars } from './SiteFarmsUsage';
 import { networkCover, siteDayTotals, weekUsage } from '../../lib/siteFarmsUsage';
-import { DISTRIBUTION_SITE, HUB_SITES, SITE_LAYOUT, bearingTo } from '../../lib/siteAccess';
-import type { MapTrip, WorldSite } from './SiteFarmsMap';
+import { DISTRIBUTION_SITE, HUB_SITES, bearingTo } from '../../lib/siteAccess';
+import type { MapTrip } from './SiteFarmsMap';
 import { useSiteRequests } from '../../lib/siteRequests';
 import { FuelRequestPanel } from './FuelRequestPanel';
 import { backfillFarmsFromArchive, type BackfillProgress } from '../../lib/siteFarmsBackfill';
@@ -24,6 +24,7 @@ import './siteFarmsMap.css';
 
 // الخريطة ثلاثية الأبعاد تُحمَّل (ومعها three) عند فتح الصفحة فقط
 const SiteFarmsMap = lazy(() => import('./SiteFarmsMap'));
+const TaqaStationsMap = lazy(() => import('./TaqaStationsMap'));
 const SiteFarmsMonthlyChart = lazy(() => import('./SiteFarmsMonthlyChart'));
 
 const DAYS = 365;
@@ -353,8 +354,6 @@ export const SaharaSiteFarmsView: React.FC<{ site?: string; mode?: 'site' | 'ann
   [requests, site, isTaqa, t]);
   // خريطة مركز التوزيع: المواقع مناطق، ورصيد الطاقة الخزان في المركز
   const network = useMemo(() => (isTaqa ? networkCover(records, site, HUB_SITES) : null), [isTaqa, records, site]);
-  // ألواح المواقع الستة بمزارعها ومكان كل موقع في المخطط
-  const worldSites = useMemo<WorldSite[] | undefined>(() => (isTaqa ? HUB_SITES.map(s => ({ site: s, cover: siteCover(records, s), pos: SITE_LAYOUT[s] })) : undefined), [isTaqa, records]);
   const [yearPick, setYearPick] = useState<number | null>(null);
   const [range, setRange] = useState<[number, number]>([0, 11]);
   const fullYear = range[0] === 0 && range[1] === 11;
@@ -933,8 +932,8 @@ export const SaharaSiteFarmsView: React.FC<{ site?: string; mode?: 'site' | 'ann
         <h2 className="sf-h2"><span className="sf-monitor-t"><Radar className="w-4 h-4" />{t('finance:siteHub.monitor')}</span></h2>
         {isTaqa ? (
           <Suspense fallback={<div className="sf-map sf-map-loading" />}>
-            <SiteFarmsMap site={site} cover={network!} weather={weather} world={worldSites} trips={trips}
-              onOpen={name => { if (name) onOpenSite?.(name); }} fuelPanel={<FuelRequestPanel site={site} />} />
+            <TaqaStationsMap site={site} cover={network!} weather={weather} trips={trips}
+              onOpen={name => onOpenSite?.(name)} fuelPanel={<FuelRequestPanel site={site} />} />
           </Suspense>
         ) : mapSection}
       </section>

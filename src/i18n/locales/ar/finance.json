@@ -455,7 +455,12 @@
       "siteCrit": "أقل من 3 أيام",
       "siteWarn": "أقل من 7 أيام",
       "siteOk": "7 أيام فأكثر",
-      "tripFromTo": "من {{from}} إلى {{to}}"
+      "tripFromTo": "من {{from}} إلى {{to}}",
+      "stationsAria": "خريطة محطات المواقع، اضغط على محطة لفتح موقعها",
+      "openSite": "فتح موقع {{site}}",
+      "noData": "لا يوجد كشف",
+      "dayView": "عرض النهار",
+      "nightView": "عرض الليل"
     },
     "field": {
       "title": "حقل مزارع {{site}}",
