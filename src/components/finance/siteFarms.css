@@ -421,15 +421,14 @@
 /* ───── صفحة المواقع: كروت ثلاثية الأبعاد تطفو في الوسط ───── */
 .sf-float-page .sf-hub-head { text-align: center; }
 .sf-float-stage { display: flex; flex-wrap: wrap; justify-content: center; align-content: center; gap: 44px 34px; padding: 36px 10px 48px; min-height: 62vh; perspective: 1200px; }
-.sf-float { border: 0; background: none; padding: 0; animation: sf-float 5.5s ease-in-out infinite; animation-delay: var(--d, 0s); }
-@keyframes sf-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+.sf-float { border: 0; background: none; padding: 0; }
 .sf-float-card { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; width: 214px; height: 214px; padding: 0 18px 24px; border-radius: 38px; text-align: center;
   background: linear-gradient(155deg, #ffffff 0%, #f8fafc 55%, #eef2f7 100%); border: 1px solid rgba(226, 232, 240, .9);
   box-shadow: 0 34px 44px -26px rgba(15, 23, 42, .38), inset 0 2px 0 rgba(255, 255, 255, .95);
-  transform-style: preserve-3d; transition: transform .4s cubic-bezier(.2, .7, .2, 1), box-shadow .4s; }
+  transform-style: preserve-3d; transition: box-shadow .3s; }
 .dark .sf-float-card { background: linear-gradient(155deg, #1b2740 0%, #131c30 60%, #0f172a 100%); border-color: #1e293b; box-shadow: 0 34px 44px -24px rgba(0, 0, 0, .7), inset 0 1px 0 rgba(255, 255, 255, .06); }
-.sf-float:not(:disabled):hover .sf-float-card, .sf-float:not(:disabled):focus-visible .sf-float-card { transform: rotateX(9deg) rotateY(-12deg) translateY(-6px) scale(1.04); box-shadow: 0 44px 60px -24px color-mix(in srgb, var(--c1) 55%, transparent), inset 0 2px 0 rgba(255, 255, 255, .95); }
-[dir="ltr"] .sf-float:not(:disabled):hover .sf-float-card { transform: rotateX(9deg) rotateY(12deg) translateY(-6px) scale(1.04); }
+/* ثابتة بلا حركة: ظل ملوّن فقط عند المؤشر */
+.sf-float:not(:disabled):hover .sf-float-card, .sf-float:not(:disabled):focus-visible .sf-float-card { box-shadow: 0 44px 60px -24px color-mix(in srgb, var(--c1) 55%, transparent), inset 0 2px 0 rgba(255, 255, 255, .95); }
 /* القوس الملوّن حول الدائرة (النصف المتجه للكارت) */
 .sf-float-arc { position: absolute; top: -22px; inset-inline-start: -22px; width: 142px; height: 142px; border-radius: 50%;
   background: conic-gradient(from 140deg, var(--c2) 0, var(--c1) 48%, transparent 48%);
@@ -452,4 +451,3 @@
 .sf-float:disabled .sf-float-card { filter: grayscale(.7); opacity: .55; }
 .sf-float-lock { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--sf-mut); border-radius: 38px; background: color-mix(in srgb, var(--sf-panel) 35%, transparent); }
 @media (max-width: 520px) { .sf-float-stage { gap: 36px 18px; } .sf-float-card { width: 158px; height: 168px; border-radius: 30px; padding-bottom: 18px; } .sf-float-badge { width: 76px; height: 76px; } .sf-float-arc { width: 108px; height: 108px; -webkit-mask: radial-gradient(circle, transparent 39px, #000 40px); mask: radial-gradient(circle, transparent 39px, #000 40px); } .sf-float-name { font-size: 15px; } }
-@media (prefers-reduced-motion: reduce) { .sf-float { animation: none; } }

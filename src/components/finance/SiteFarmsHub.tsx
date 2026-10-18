@@ -52,7 +52,7 @@ export const SiteFarmsHub: React.FC = () => {
         <p>{H('hint')}</p>
       </div>
       <div className="sf-float-stage">
-        {cards.map((k, i) => {
+        {cards.map(k => {
           const c = CARD[k];
           const ok = can(k);
           const Badge = c.badge, Icon = c.icon;
@@ -62,7 +62,7 @@ export const SiteFarmsHub: React.FC = () => {
           return (
             <button key={k} type="button" className="sf-float" disabled={!ok} aria-disabled={!ok} onClick={() => ok && setOpen(k)}
               title={ok ? undefined : H(k === ANNUAL ? 'annualLocked' : 'locked')}
-              style={{ '--c1': c.c1, '--c2': c.c2, '--d': `${i * -0.7}s` } as React.CSSProperties}>
+              style={{ '--c1': c.c1, '--c2': c.c2 } as React.CSSProperties}>
               <span className="sf-float-card">
                 {/* الدائرة في الزاوية (أيقونة مكان الرقم) مع قوس ملوّن */}
                 <span className="sf-float-arc" aria-hidden="true" />
