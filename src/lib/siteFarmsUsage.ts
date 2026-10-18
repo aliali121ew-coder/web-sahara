@@ -111,3 +111,20 @@ export const groupFarmDays = (days: FarmDay[], by: 'week' | 'month'): FarmGroup[
 /** أيام المزرعة بين تاريخين (شاملين)، الأحدث أولًا */
 export const farmDaysBetween = (days: FarmDay[], from: string, to: string) =>
   days.filter(d => d.date >= from && d.date <= to).reverse();
+
+/** أيام أسبوع تاريخ (السبت–الجمعة) ومصروف كل مزرعة فيها (null = لا كشف أو لا رقم) — لعمود الرسم الأسبوعي */
+export const weekUsage = (records: SiteFarmsRecord[], site: string, date: string) => {
+  const start = toDate(weekStart(date));
+  const dates = Array.from({ length: 7 }, (_, i) => { const t = new Date(start); t.setUTCDate(t.getUTCDate() + i); return fromDate(t); });
+  const recorded = new Set(farmsDates(records, site));
+  const byFarm = new Map<string, (number | null)[]>();
+  dates.forEach((d, i) => {
+    if (!recorded.has(d)) return;
+    for (const r of farmsOn(records, site, d)) {
+      const list = byFarm.get(r.name) ?? Array<number | null>(7).fill(null);
+      list[i] = r.consumption;
+      byFarm.set(r.name, list);
+    }
+  });
+  return { dates, byFarm };
+};

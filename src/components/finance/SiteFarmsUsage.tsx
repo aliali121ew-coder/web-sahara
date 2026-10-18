@@ -38,6 +38,39 @@ const DayBars: React.FC<{ data: { label: string; full: string; v: number }[]; he
 };
 
 /**
+ * رسم أسبوعي صغير لمزرعة في جدول الكشف اليومي: سبعة أعمدة (السبت–الجمعة) لمصروف كل يوم،
+ * يوم الكشف المختار أغمق، واليوم بلا كشف خط خافت؛ المرور على عمود يعرض اليوم والمصروف.
+ */
+export const WeekBars: React.FC<{ values: (number | null)[]; dates: string[]; active: number; dayNames: string[] }> = ({ values, dates, active, dayNames }) => {
+  const { i18n } = useTranslation();
+  const [at, setAt] = useState(-1);
+  const W = 112, H = 30, gap = 3, bw = (W - gap * 6) / 7;
+  // بالعربية السبت يمينًا (ترتيب القراءة)
+  const pos = (i: number) => (i18n.dir() === 'rtl' ? 6 - i : i) * (bw + gap);
+  const max = Math.max(...values.map(v => v ?? 0), 1);
+  const show = at >= 0 ? at : -1;
+  return (
+    <span className="sf-wk" onPointerLeave={() => setAt(-1)}>
+      <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} aria-hidden="true">
+        {values.map((v, i) => {
+          const x = pos(i);
+          if (v === null) return <rect key={i} x={x} y={H - 2} width={bw} height={2} rx={1} fill="var(--sf-line)" onPointerEnter={() => setAt(i)} />;
+          const h = Math.max(2, (v / max) * (H - 2));
+          return <rect key={i} x={x} y={H - h} width={bw} height={h} rx={2} fill="var(--sf-farm)" fillOpacity={i === active ? 1 : i === at ? 0.8 : 0.4} onPointerEnter={() => setAt(i)} />;
+        })}
+        {/* منطقة مرور لكل يوم بكامل الارتفاع */}
+        {values.map((_, i) => <rect key={`h${i}`} x={pos(i)} y={0} width={bw} height={H} fill="transparent" onPointerEnter={() => setAt(i)} />)}
+      </svg>
+      {show >= 0 && (
+        <span className="sf-wk-tip" style={{ left: `${((pos(show) + bw / 2) / W) * 100}%` }}>
+          {dayNames[show]} {dates[show].slice(5)} · <b>{values[show] === null ? '—' : fmt(values[show])}</b>
+        </span>
+      )}
+    </span>
+  );
+};
+
+/**
  * «استهلاك المزارع»: لشهر يُختار — رسم بياني لمصروف المزارع اليومي، وجدول مصروف كل مزرعة لكل يوم.
  * الضغط على مزرعة يفتح نافذتها.
  */

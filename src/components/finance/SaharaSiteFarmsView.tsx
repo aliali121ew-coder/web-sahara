@@ -11,7 +11,8 @@ import { siteCover } from '../../lib/siteFarmsMap';
 import { saveSiteAnnualFile } from '../../lib/saharaFiles';
 import { useSiteWeather } from '../../lib/weather';
 import SiteFarmsField from './SiteFarmsField';
-import { FarmUsageModal, SiteFarmsUsageView } from './SiteFarmsUsage';
+import { FarmUsageModal, SiteFarmsUsageView, WeekBars } from './SiteFarmsUsage';
+import { weekUsage } from '../../lib/siteFarmsUsage';
 import './siteFarms.css';
 import './siteFarmsMap.css';
 
@@ -400,6 +401,10 @@ export const SaharaSiteFarmsView: React.FC = () => {
   const datesOfSite = useMemo(() => farmsDates(records, site), [records, site]);
   const date = datePick && datesOfSite.includes(datePick) ? datePick : (datesOfSite[datesOfSite.length - 1] ?? null);
   const farmRows = useMemo(() => (date ? farmsOn(records, site, date) : []), [records, site, date]);
+  // عمود الرسم الأسبوعي: مصروف كل مزرعة في أسبوع الكشف المختار (السبت–الجمعة) للمقارنة بين الأيام
+  const week = useMemo(() => (date ? weekUsage(records, site, date) : null), [records, site, date]);
+  // أسماء أيام الأسبوع بترتيبه (السبت أولًا)
+  const weekNames = [6, 0, 1, 2, 3, 4, 5].map(i => weekdays[i]);
   const periodLabel = year === null ? '' : fullYear ? String(year) : month >= 0 ? `${months[month]} ${year}` : `${months[range[0]]} – ${months[range[1]]} ${year}`;
   // فترة التعليم = الفترة المختارة (السنة كاملة = كل الأشهر)؛ كل شهر يُقارن بأيامه هو
   const topPeriod = range;
@@ -784,7 +789,7 @@ export const SaharaSiteFarmsView: React.FC = () => {
               <thead>
                 <tr>
                   <th>{t('finance:siteFarms.colFarm')}</th><th>{t('finance:siteFarms.colPrevious')}</th><th>{t('finance:siteFarms.colInbound')}</th>
-                  <th>{t('finance:siteFarms.colConsumption')}</th><th>{t('finance:siteFarms.colBalance')}</th>
+                  <th>{t('finance:siteFarms.colConsumption')}</th><th>{t('finance:siteFarms.colBalance')}</th><th>{t('finance:siteFarms.colWeek')}</th>
                 </tr>
               </thead>
               <tbody key={`${site}-${date}`} className="sf-rows">
@@ -795,6 +800,7 @@ export const SaharaSiteFarmsView: React.FC = () => {
                     <td>{r.inbound === null ? '—' : fmt(r.inbound)}</td>
                     <td>{r.consumption === null ? '—' : fmt(r.consumption)}</td>
                     <td className="bal">{r.balance === null ? '—' : fmt(r.balance)}</td>
+                    <td>{week && <WeekBars values={week.byFarm.get(r.name) ?? Array(7).fill(null)} dates={week.dates} active={week.dates.indexOf(date!)} dayNames={weekNames} />}</td>
                   </tr>
                 ))}
               </tbody>

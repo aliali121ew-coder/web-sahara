@@ -561,7 +561,8 @@
       "change": "Change",
       "noDays": "No recorded days in this period",
       "periodTotal": "Period total ({{n}} days)"
-    }
+    },
+    "colWeek": "Week consumption (Sat–Fri)"
   },
   "hub": {
     "saharaBalance": "Sahara Company balance",

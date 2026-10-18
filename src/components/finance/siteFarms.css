@@ -329,3 +329,8 @@
 .sf-fmodal-range input { font-family: inherit; }
 .sf-fmodal-table tfoot td { font-weight: 800; border-top: 2px solid var(--sf-line); background: var(--sf-panel2); }
 .sf-fmodal-none { text-align: center; color: var(--sf-mut); padding: 18px; }
+
+/* عمود الرسم الأسبوعي في جدول الكشف اليومي */
+.sf-wk { position: relative; display: inline-block; line-height: 0; vertical-align: middle; }
+.sf-wk svg { display: block; overflow: visible; }
+.sf-wk-tip { position: absolute; bottom: calc(100% + 6px); transform: translateX(-50%); white-space: nowrap; font-size: 11px; line-height: 1.4; padding: 3px 8px; border-radius: 8px; background: var(--sf-fg); color: var(--sf-panel); pointer-events: none; z-index: 5; }
