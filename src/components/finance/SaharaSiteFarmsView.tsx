@@ -13,8 +13,8 @@ import { useSiteWeather } from '../../lib/weather';
 import SiteFarmsField from './SiteFarmsField';
 import { FarmUsageModal, SiteFarmsUsageView, WeekBars } from './SiteFarmsUsage';
 import { networkCover, siteDayTotals, weekUsage } from '../../lib/siteFarmsUsage';
-import { DISTRIBUTION_SITE, HUB_SITES } from '../../lib/siteAccess';
-import type { MapTrip } from './SiteFarmsMap';
+import { DISTRIBUTION_SITE, HUB_SITES, SITE_LAYOUT, bearingTo } from '../../lib/siteAccess';
+import type { MapTrip, WorldSite } from './SiteFarmsMap';
 import { useSiteRequests } from '../../lib/siteRequests';
 import { FuelRequestPanel } from './FuelRequestPanel';
 import { backfillFarmsFromArchive, type BackfillProgress } from '../../lib/siteFarmsBackfill';
@@ -344,13 +344,17 @@ export const SaharaSiteFarmsView: React.FC<{ site?: string; mode?: 'site' | 'ann
   const trips = useMemo<MapTrip[]>(() => requests
     .filter(r => r.status === 'approved' && (isTaqa || r.site === site || r.source === site))
     .map(r => isTaqa
-      ? { id: r.id, qty: r.qty, dir: r.site === site ? 'in' : 'out', from: r.source === site ? 'station' : r.source, to: r.site === site ? 'station' : r.site, text: t('finance:siteFarms.map.tripFromTo', { from: r.source, to: r.site }) }
+      // الطاقة: الصهريج يسير على الشوارع بين لوحي الموقعين
+      ? { id: r.id, qty: r.qty, dir: r.site === site ? 'in' : 'out', from: r.source, to: r.site, text: t('finance:siteFarms.map.tripFromTo', { from: r.source, to: r.site }) }
+      // موقع: من خارجه إلى خزانه أو العكس، باتجاه الموقع الآخر على المخطط
       : r.site === site
-        ? { id: r.id, qty: r.qty, dir: 'in', from: 'outside', to: 'station', text: `${t('finance:siteFarms.map.tripIn')} ${r.source}` }
-        : { id: r.id, qty: r.qty, dir: 'out', from: 'station', to: 'outside', text: `${t('finance:siteFarms.map.tripOut')} ${r.site}` }),
+        ? { id: r.id, qty: r.qty, dir: 'in', from: 'outside', to: 'station', text: `${t('finance:siteFarms.map.tripIn')} ${r.source}`, bearing: bearingTo(site, r.source) }
+        : { id: r.id, qty: r.qty, dir: 'out', from: 'station', to: 'outside', text: `${t('finance:siteFarms.map.tripOut')} ${r.site}`, bearing: bearingTo(site, r.site) }),
   [requests, site, isTaqa, t]);
   // خريطة مركز التوزيع: المواقع مناطق، ورصيد الطاقة الخزان في المركز
   const network = useMemo(() => (isTaqa ? networkCover(records, site, HUB_SITES) : null), [isTaqa, records, site]);
+  // ألواح المواقع الستة بمزارعها ومكان كل موقع في المخطط
+  const worldSites = useMemo<WorldSite[] | undefined>(() => (isTaqa ? HUB_SITES.map(s => ({ site: s, cover: siteCover(records, s), pos: SITE_LAYOUT[s] })) : undefined), [isTaqa, records]);
   const [yearPick, setYearPick] = useState<number | null>(null);
   const [range, setRange] = useState<[number, number]>([0, 11]);
   const fullYear = range[0] === 0 && range[1] === 11;
@@ -929,7 +933,7 @@ export const SaharaSiteFarmsView: React.FC<{ site?: string; mode?: 'site' | 'ann
         <h2 className="sf-h2"><span className="sf-monitor-t"><Radar className="w-4 h-4" />{t('finance:siteHub.monitor')}</span></h2>
         {isTaqa ? (
           <Suspense fallback={<div className="sf-map sf-map-loading" />}>
-            <SiteFarmsMap site={site} cover={network!} weather={weather} mode="sites" trips={trips}
+            <SiteFarmsMap site={site} cover={network!} weather={weather} world={worldSites} trips={trips}
               onOpen={name => { if (name) onOpenSite?.(name); }} fuelPanel={<FuelRequestPanel site={site} />} />
           </Suspense>
         ) : mapSection}

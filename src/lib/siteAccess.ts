@@ -28,3 +28,21 @@ export const canViewSite = (canView: Can, site: string) => canView('sahara.reser
 export const canEditSite = (canEdit: Can, site: string) => canEdit('sahara.reserves') || canEdit(sitePerm(site));
 /** هل يرى الحساب صفحة مزارع المواقع أصلًا */
 export const canViewAnySite = (canView: Can) => canView('sahara.reserves') || SITE_PERMS.some(p => canView(p));
+
+/**
+ * مخطط مواقع الصحاري (إحداثيات خريطة تخطيطية، x يمين و y أمام): شارع رئيسي من الطاقة إلى الأمام،
+ * أمامها التسمين ويقابله البياض، أمام البياض البوادي وأمام التسمين أمهات البياض، وأمام البوادي الأجداد.
+ */
+export const SITE_LAYOUT: Record<string, [number, number]> = {
+  الطاقة: [14, -27],
+  التسمين: [14, -9],
+  البياض: [-14, -9],
+  'امهات البياض': [14, 9],
+  البوادي: [-14, 9],
+  الاجداد: [-14, 27],
+};
+/** اتجاه (زاوية) الطريق من موقع إلى آخر على المخطط */
+export const bearingTo = (from: string, to: string): number | undefined => {
+  const a = SITE_LAYOUT[from], b = SITE_LAYOUT[to];
+  return a && b ? Math.atan2(b[1] - a[1], b[0] - a[0]) : undefined;
+};
