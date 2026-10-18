@@ -551,8 +551,17 @@
       "farmTotal": "Total consumption",
       "lastBalance": "Last balance",
       "farmChart": "Farm daily consumption",
-      "farmDays": "Farm days",
-      "date": "Date"
+      "date": "Date",
+      "farmTable": "Farm consumption",
+      "mode": {
+        "week": "Weekly",
+        "month": "Monthly",
+        "period": "Period"
+      },
+      "week": "Week (Sat–Fri)",
+      "change": "Change",
+      "noDays": "No recorded days in this period",
+      "periodTotal": "Period total ({{n}} days)"
     }
   },
   "hub": {

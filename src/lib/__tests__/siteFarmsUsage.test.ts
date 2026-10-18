@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { readSiteFarms, saveFarmsDay } from '../siteFarms';
-import { farmSeries, farmSummary, usageMonth, usageMonths } from '../siteFarmsUsage';
+import { farmDaysBetween, farmSeries, farmSummary, groupFarmDays, usageMonth, usageMonths, weekStart } from '../siteFarmsUsage';
 
 describe('استهلاك المزارع من الكشوف اليومية', () => {
   beforeEach(() => {
@@ -37,5 +37,36 @@ describe('استهلاك المزارع من الكشوف اليومية', () =>
     expect(days.map(d => [d.date, d.consumption])).toEqual([['2026/09/30', 100], ['2026/10/13', 200], ['2026/10/14', 150]]);
     expect(farmSummary(days)).toMatchObject({ total: 450, avg: 150, lastBalance: 1150, days: 3 });
     expect(farmSummary(days).peak?.date).toBe('2026/10/13');
+  });
+});
+
+describe('أيام المزرعة: أسبوعي وشهري وفترة', () => {
+  const day = (date: string, consumption: number, balance: number) => ({ date, name: 'م', previous: null, inbound: null, consumption, balance });
+  // 2026/10/09 جمعة، 10/10 سبت (بداية أسبوع)، 10/16 جمعة، 10/17 سبت
+  const days = [day('2026/09/30', 50, 900), day('2026/10/09', 100, 800), day('2026/10/10', 200, 600), day('2026/10/16', 100, 500), day('2026/10/17', 600, 400)];
+
+  it('بداية الأسبوع السبت', () => {
+    expect(weekStart('2026/10/16')).toBe('2026/10/10');
+    expect(weekStart('2026/10/17')).toBe('2026/10/17');
+    expect(weekStart('2026/10/09')).toBe('2026/10/03');
+  });
+
+  it('الأسبوعي: الأحدث أولًا مع المعدل والتغيّر وآخر رصيد', () => {
+    const w = groupFarmDays(days, 'week');
+    expect(w.map(g => [g.from, g.to, g.days, g.total, g.avg, g.change, g.lastBalance])).toEqual([
+      ['2026/10/17', '2026/10/23', 1, 600, 600, 100, 400],
+      ['2026/10/10', '2026/10/16', 2, 300, 150, 200, 500],
+      ['2026/10/03', '2026/10/09', 1, 100, 100, 100, 800],
+      ['2026/09/26', '2026/10/02', 1, 50, 50, null, 900],
+    ]);
+  });
+
+  it('الشهري والفترة', () => {
+    const m = groupFarmDays(days, 'month');
+    expect(m.map(g => [g.key, g.from, g.to, g.total, g.change])).toEqual([
+      ['2026-10', '2026/10/01', '2026/10/31', 1000, 1900],
+      ['2026-09', '2026/09/01', '2026/09/30', 50, null],
+    ]);
+    expect(farmDaysBetween(days, '2026/10/09', '2026/10/16').map(d => d.date)).toEqual(['2026/10/16', '2026/10/10', '2026/10/09']);
   });
 });

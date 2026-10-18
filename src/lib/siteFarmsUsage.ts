@@ -57,3 +57,57 @@ export const farmSummary = (days: FarmDay[]) => {
   const last = [...days].reverse().find(d => d.balance !== null) ?? null;
   return { total, avg: used.length ? Math.round(total / used.length) : 0, peak, lastBalance: last?.balance ?? null, days: used.length };
 };
+
+export interface FarmGroup {
+  /** مفتاح الفترة: بداية الأسبوع YYYY/MM/DD أو الشهر YYYY-MM */
+  key: string;
+  from: string;
+  to: string;
+  days: number;
+  total: number;
+  avg: number;
+  /** التغيّر عن الفترة السابقة (%)، null لأول فترة أو إن كانت السابقة صفرًا */
+  change: number | null;
+  lastBalance: number | null;
+}
+
+const pad = (n: number) => String(n).padStart(2, '0');
+const toDate = (d: string) => { const [y, m, dd] = d.split('/').map(Number); return new Date(Date.UTC(y, m - 1, dd)); };
+const fromDate = (t: Date) => `${t.getUTCFullYear()}/${pad(t.getUTCMonth() + 1)}/${pad(t.getUTCDate())}`;
+/** بداية الأسبوع (السبت) لتاريخ */
+export const weekStart = (d: string) => {
+  const t = toDate(d);
+  t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 1) % 7));
+  return fromDate(t);
+};
+
+/** استهلاك المزرعة مجمّعًا أسبوعيًا (السبت–الجمعة) أو شهريًا، الأحدث أولًا */
+export const groupFarmDays = (days: FarmDay[], by: 'week' | 'month'): FarmGroup[] => {
+  const groups = new Map<string, FarmDay[]>();
+  for (const d of days) {
+    const key = by === 'week' ? weekStart(d.date) : d.date.slice(0, 7).replace('/', '-');
+    const list = groups.get(key);
+    if (list) list.push(d); else groups.set(key, [d]);
+  }
+  const asc = [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([key, list]) => {
+    const s = farmSummary(list);
+    let from: string, to: string;
+    if (by === 'week') {
+      const end = toDate(key); end.setUTCDate(end.getUTCDate() + 6);
+      from = key; to = fromDate(end);
+    } else {
+      const [y, m] = key.split('-').map(Number);
+      from = `${y}/${pad(m)}/01`; to = `${y}/${pad(m)}/${pad(new Date(Date.UTC(y, m, 0)).getUTCDate())}`;
+    }
+    return { key, from, to, days: s.days, total: s.total, avg: s.avg, lastBalance: s.lastBalance, change: null as number | null };
+  });
+  asc.forEach((g, i) => {
+    const prev = asc[i - 1];
+    if (prev && prev.total > 0) g.change = Math.round(((g.total - prev.total) / prev.total) * 1000) / 10;
+  });
+  return asc.reverse();
+};
+
+/** أيام المزرعة بين تاريخين (شاملين)، الأحدث أولًا */
+export const farmDaysBetween = (days: FarmDay[], from: string, to: string) =>
+  days.filter(d => d.date >= from && d.date <= to).reverse();

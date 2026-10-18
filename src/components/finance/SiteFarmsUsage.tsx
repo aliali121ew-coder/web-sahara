@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Sprout, X } from 'lucide-react';
 import type { SiteFarmsRecord } from '../../lib/siteFarms';
-import { farmSeries, farmSummary, usageMonth, usageMonths } from '../../lib/siteFarmsUsage';
+import { farmDaysBetween, farmSeries, farmSummary, groupFarmDays, usageMonth, usageMonths } from '../../lib/siteFarmsUsage';
 
 const fmt = (n: number | null | undefined) => (n === null || n === undefined ? '—' : Math.round(n).toLocaleString('en-US'));
 const compact = (v: number) => (v >= 1e6 ? `${Math.round(v / 1e5) / 10}M` : v >= 1e3 ? `${Math.round(v / 1e3)}k` : String(v));
@@ -116,6 +116,17 @@ export const FarmUsageModal: React.FC<{ records: SiteFarmsRecord[]; site: string
   const U = (k: string, o?: Record<string, unknown>) => t(`finance:siteFarms.usage.${k}`, o);
   const days = useMemo(() => farmSeries(records, site, farm), [records, site, farm]);
   const sum = useMemo(() => farmSummary(days), [days]);
+  // جدول المزرعة: أسبوعي (السبت–الجمعة) أو شهري أو فترة من/إلى
+  const [mode, setMode] = useState<'week' | 'month' | 'period'>('week');
+  const groups = useMemo(() => (mode === 'period' ? [] : groupFarmDays(days, mode)), [days, mode]);
+  const first = days[0]?.date.replace(/\//g, '-') ?? '';
+  const last = days[days.length - 1]?.date.replace(/\//g, '-') ?? '';
+  const [from, setFrom] = useState(() => days[0]?.date ?? '');
+  const [to, setTo] = useState(() => days[days.length - 1]?.date ?? '');
+  const periodDays = useMemo(() => farmDaysBetween(days, from, to), [days, from, to]);
+  const periodSum = useMemo(() => farmSummary([...periodDays].reverse()), [periodDays]);
+  const monthNames = t('finance:siteFarms.months', { returnObjects: true }) as unknown;
+  const monthLabel = (v: string) => (Array.isArray(monthNames) ? `${monthNames[Number(v.slice(5)) - 1]} ${v.slice(0, 4)}` : v);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
@@ -145,25 +156,72 @@ export const FarmUsageModal: React.FC<{ records: SiteFarmsRecord[]; site: string
             <DayBars height={220} unit={t('finance:siteFarms.liter')} data={days.map(d => ({ label: d.date.slice(5), full: d.date, v: d.consumption ?? 0 }))} />
           </section>
           <section className="sf-usage-sec">
-            <h3>{U('farmDays')}</h3>
+            <h3>
+              {U('farmTable')}
+              <span className="sf-seg sf-fmodal-seg">
+                {(['week', 'month', 'period'] as const).map(m => (
+                  <button key={m} type="button" aria-pressed={mode === m} onClick={() => setMode(m)}>{U(`mode.${m}`)}</button>
+                ))}
+              </span>
+            </h3>
+            {mode === 'period' && (
+              <div className="sf-range sf-fmodal-range">
+                <label><span>{t('finance:siteFarms.rangeFrom')}</span>
+                  <input type="date" className="sf-select" value={from.replace(/\//g, '-')} min={first} max={last} onChange={e => setFrom(e.target.value.replace(/-/g, '/'))} /></label>
+                <label><span>{t('finance:siteFarms.rangeTo')}</span>
+                  <input type="date" className="sf-select" value={to.replace(/\//g, '-')} min={first} max={last} onChange={e => setTo(e.target.value.replace(/-/g, '/'))} /></label>
+              </div>
+            )}
             <div className="sf-table-wrap sf-fmodal-table">
-              <table className="sf-table">
-                <thead>
-                  <tr>
-                    <th>{U('date')}</th><th>{t('finance:siteFarms.colPrevious')}</th><th>{t('finance:siteFarms.colInbound')}</th>
-                    <th>{t('finance:siteFarms.colConsumption')}</th><th>{t('finance:siteFarms.colBalance')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...days].reverse().map(d => (
-                    <tr key={d.date} className={d === sum.peak ? 'sf-peak-row' : undefined}>
-                      <td className="font-mono">{d.date}</td>
-                      <td>{fmt(d.previous)}</td><td>{fmt(d.inbound)}</td>
-                      <td><b>{fmt(d.consumption)}</b></td><td className="bal">{fmt(d.balance)}</td>
+              {mode === 'period' ? (
+                <table className="sf-table">
+                  <thead>
+                    <tr>
+                      <th>{U('date')}</th><th>{t('finance:siteFarms.colPrevious')}</th><th>{t('finance:siteFarms.colInbound')}</th>
+                      <th>{t('finance:siteFarms.colConsumption')}</th><th>{t('finance:siteFarms.colBalance')}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {periodDays.map(d => (
+                      <tr key={d.date}>
+                        <td className="font-mono">{d.date}</td>
+                        <td>{fmt(d.previous)}</td><td>{fmt(d.inbound)}</td>
+                        <td><b>{fmt(d.consumption)}</b></td><td className="bal">{fmt(d.balance)}</td>
+                      </tr>
+                    ))}
+                    {!periodDays.length && <tr><td colSpan={5} className="sf-fmodal-none">{U('noDays')}</td></tr>}
+                  </tbody>
+                  {periodDays.length > 0 && (
+                    <tfoot>
+                      <tr>
+                        <td colSpan={3}>{U('periodTotal', { n: periodSum.days })} · {U('avgDay')} {fmt(periodSum.avg)}</td>
+                        <td><b>{fmt(periodSum.total)}</b></td><td className="bal">{fmt(periodSum.lastBalance)}</td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              ) : (
+                <table className="sf-table">
+                  <thead>
+                    <tr>
+                      <th>{U(mode === 'week' ? 'week' : 'month')}</th><th>{U('days')}</th><th>{U('farmTotal')}</th>
+                      <th>{U('avgDay')}</th><th>{U('change')}</th><th>{U('lastBalance')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {groups.map(g => (
+                      <tr key={g.key}>
+                        <td className="font-mono">{mode === 'week' ? `${g.from.slice(5)} – ${g.to.slice(5)}` : monthLabel(g.key)}</td>
+                        <td>{g.days}</td>
+                        <td><b>{fmt(g.total)}</b></td>
+                        <td>{fmt(g.avg)}</td>
+                        <td>{g.change === null ? '—' : <span className={`sf-delta-pill ${g.change > 0 ? 'up' : 'down'}`}>{g.change > 0 ? '▲' : '▼'} {Math.abs(g.change)}%</span>}</td>
+                        <td className="bal">{fmt(g.lastBalance)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </section>
         </div>
