@@ -31,13 +31,21 @@ export function useSessionState<T>(key: string, initial: T) {
 
   // تغييرها من مكان آخر (setSessionValue) يصل للمكوّن حتى لو كان مفتوحًا ومحفوظًا في الخلفية
   useEffect(() => {
+    // الصفحة المخفية (تبقى محمّلة في الخلفية) لا تستلم الحدث: تُعاد القراءة عند ظهورها،
+    // وإلا فتح «عرض التفاصيل» صفحة الشركة على تبويبها القديم بدل تبويب الوارد
+    try {
+      const saved = sessionStorage.getItem(storageKey);
+      if (saved !== null) setValue(prev => (JSON.stringify(prev) === saved ? prev : (JSON.parse(saved) as T)));
+    } catch {
+      /* تجاهل */
+    }
     const on = (e: Event) => {
       const { key: k, value: v } = (e as CustomEvent<{ key: string; value: T }>).detail;
       if (k === key) setValue(v);
     };
     window.addEventListener(EVENT, on);
     return () => window.removeEventListener(EVENT, on);
-  }, [key]);
+  }, [key, storageKey]);
 
   return [value, set] as const;
 }
