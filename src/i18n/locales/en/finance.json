@@ -531,6 +531,28 @@
       "annualFileOf": "Annual file — {{site}}",
       "archivedPdf": "Archived month PDF",
       "archivedAt": "Archived automatically {{date}}"
+    },
+    "usage": {
+      "title": "{{site}} site farms consumption",
+      "tab": "Farms consumption",
+      "byDaily": "By daily report",
+      "month": "Month",
+      "monthTotal": "Month total",
+      "avgDay": "Daily average",
+      "peakDay": "Peak day",
+      "days": "Days",
+      "chartTitle": "Daily farms consumption",
+      "tableTitle": "Daily consumption per farm",
+      "tableHint": "From the archived daily reports — click a farm to see its days",
+      "total": "Total",
+      "dayTotal": "Day total",
+      "openFarm": "Show the farm's days and chart",
+      "daysRecorded": "{{n}} recorded days",
+      "farmTotal": "Total consumption",
+      "lastBalance": "Last balance",
+      "farmChart": "Farm daily consumption",
+      "farmDays": "Farm days",
+      "date": "Date"
     }
   },
   "hub": {

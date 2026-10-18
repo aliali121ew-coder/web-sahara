@@ -11,6 +11,7 @@ import { siteCover } from '../../lib/siteFarmsMap';
 import { saveSiteAnnualFile } from '../../lib/saharaFiles';
 import { useSiteWeather } from '../../lib/weather';
 import SiteFarmsField from './SiteFarmsField';
+import { FarmUsageModal, SiteFarmsUsageView } from './SiteFarmsUsage';
 import './siteFarms.css';
 import './siteFarmsMap.css';
 
@@ -425,6 +426,9 @@ export const SaharaSiteFarmsView: React.FC = () => {
   // الطقس الحقيقي للموقع على الخريطة (من الخادم كل 15 دقيقة)
   const weather = useSiteWeather();
   const [field, setField] = useState<{ farm: string | null } | null>(null);
+  // جدول المزارع: حسب الكشف اليومي أو استهلاك المزارع (زر منزلق)، ونافذة المزرعة عند الضغط عليها
+  const [farmView, setFarmView] = useState<'daily' | 'usage'>('daily');
+  const [farmModal, setFarmModal] = useState<string | null>(null);
   const [pending, setPending] = useState<{ file: File; fileName: string; site: string; years: { year: number; f: number[]; g: number[] }[] } | null>(null);
   // الملف السنوي يُعاد رفعه كل يوم: يُدمج مع المحفوظ (الأيام الجديدة وقيم الملف هي الأحدث)، والملف الذي لا جديد فيه يظهر تنبيهًا
   const commitAnnual = (target: string, file: File, years: { year: number; f: number[]; g: number[] }[]) => {
@@ -758,16 +762,24 @@ export const SaharaSiteFarmsView: React.FC = () => {
         </div>
       )}
 
+      {farmModal && <FarmUsageModal records={records} site={site} farm={farmModal} onClose={() => setFarmModal(null)} />}
       <div className="sf-card">
         <h2 className="sf-h2">
-          <span>{t('finance:siteFarms.farmsTable', { site })}</span>
-          {datesOfSite.length > 0 && (
+          <span>{farmView === 'daily' ? t('finance:siteFarms.farmsTable', { site }) : t('finance:siteFarms.usage.title', { site })}</span>
+          <span className="sf-switch" data-on={farmView === 'usage' ? 1 : 0} role="tablist">
+            <i aria-hidden="true" />
+            <button type="button" role="tab" aria-selected={farmView === 'daily'} onClick={() => setFarmView('daily')}>{t('finance:siteFarms.usage.byDaily')}</button>
+            <button type="button" role="tab" aria-selected={farmView === 'usage'} onClick={() => setFarmView('usage')}>{t('finance:siteFarms.usage.tab')}</button>
+          </span>
+          {farmView === 'daily' && datesOfSite.length > 0 && (
             <select className="sf-select" value={date ?? ''} onChange={e => setDatePick(e.target.value)} aria-label={t('finance:siteFarms.reportDate')}>
               {[...datesOfSite].reverse().map(d => <option key={d} value={d}>{d}</option>)}
             </select>
           )}
         </h2>
-        {farmRows.length ? (
+        {farmView === 'usage' ? (
+          <SiteFarmsUsageView records={records} site={site} onOpenFarm={setFarmModal} />
+        ) : farmRows.length ? (
           <div className="sf-table-wrap">
             <table className="sf-table">
               <thead>
@@ -779,7 +791,7 @@ export const SaharaSiteFarmsView: React.FC = () => {
               <tbody key={`${site}-${date}`} className="sf-rows">
                 {farmRows.map(r => (
                   <tr key={r.name}>
-                    <td>{r.name}</td>
+                    <td><button type="button" className="sf-farm-link" onClick={() => setFarmModal(r.name)} title={t('finance:siteFarms.usage.openFarm')}>{r.name}</button></td>
                     <td>{r.previous === null ? '—' : fmt(r.previous)}</td>
                     <td>{r.inbound === null ? '—' : fmt(r.inbound)}</td>
                     <td>{r.consumption === null ? '—' : fmt(r.consumption)}</td>
