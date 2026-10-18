@@ -419,7 +419,6 @@ export const SaharaSiteFarmsView: React.FC = () => {
     }
     return out;
   }, [cur, year, topPeriod, isVehicleSite]);
-  const farmsTotalBalance = farmRows.reduce((s, r) => s + (r.balance ?? 0), 0);
 
   // أيام التغطية لكل مزرعة (من الكشوف اليومية) للخريطة وحقل المزارع
   const cover = useMemo(() => siteCover(records, site), [records, site]);
@@ -785,7 +784,7 @@ export const SaharaSiteFarmsView: React.FC = () => {
               <thead>
                 <tr>
                   <th>{t('finance:siteFarms.colFarm')}</th><th>{t('finance:siteFarms.colPrevious')}</th><th>{t('finance:siteFarms.colInbound')}</th>
-                  <th>{t('finance:siteFarms.colConsumption')}</th><th>{t('finance:siteFarms.colBalance')}</th><th>{t('finance:siteFarms.colShare')}</th>
+                  <th>{t('finance:siteFarms.colConsumption')}</th><th>{t('finance:siteFarms.colBalance')}</th>
                 </tr>
               </thead>
               <tbody key={`${site}-${date}`} className="sf-rows">
@@ -796,7 +795,6 @@ export const SaharaSiteFarmsView: React.FC = () => {
                     <td>{r.inbound === null ? '—' : fmt(r.inbound)}</td>
                     <td>{r.consumption === null ? '—' : fmt(r.consumption)}</td>
                     <td className="bal">{r.balance === null ? '—' : fmt(r.balance)}</td>
-                    <td><div className="sf-meter"><i style={{ width: `${farmsTotalBalance ? Math.min(((r.balance ?? 0) / farmsTotalBalance) * 100 * 4, 100) : 0}%` }} /></div></td>
                   </tr>
                 ))}
               </tbody>

@@ -367,7 +367,6 @@
     "colInbound": "Inbound",
     "colConsumption": "Daily consumption",
     "colBalance": "Cumulative balance",
-    "colShare": "Share of site balance",
     "noDaily": "No daily report uploaded for this site yet. Upload the Sahara daily report to see each farm's balance.",
     "months": [
       "January",
