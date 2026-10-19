@@ -138,7 +138,7 @@
     "form": {
       "editTitle": "Edit gasoline day record",
       "newTitle": "Record a new day for the gasoline balance",
-      "formula": "Previous balance + inbound (external + internal) − daily consumption = current balance",
+      "formula": "Previous balance + inbound − daily consumption = current balance",
       "externalL": "External inbound (L)",
       "internalL": "Internal inbound (L)",
       "balanceOnly": "Balance only",

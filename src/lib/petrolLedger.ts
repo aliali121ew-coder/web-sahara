@@ -77,7 +77,8 @@ export const computePetrol = (records: PetrolLedgerRecord[]): ComputedPetrolReco
     const previous = r.previousOverride ?? prevCurrent;
     const totalConsumption = sum(r.consumption);
     const inboundCost = (r.inboundQty || 0) * (r.inboundPrice || 0);
-    const current = previous + (r.inboundQty || 0) + (r.inboundInternal || 0) - totalConsumption;
+    // الوارد الداخلي لا يدخل في الرصيد (أُزيلت خانته؛ القيم القديمة المحفوظة تُتجاهل)
+    const current = previous + (r.inboundQty || 0) - totalConsumption;
     prevCurrent = current;
     return { ...r, previous, inboundCost, totalConsumption, current };
   });
