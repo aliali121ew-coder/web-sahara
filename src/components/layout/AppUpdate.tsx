@@ -14,7 +14,7 @@ const typing = () => {
 
 /**
  * تحديث البرنامج بعد نشر نسخة جديدة:
- * - الحاسبة: زر «تحديث» في الشريط العلوي، بضغطه تُحدَّث الصفحة فورًا
+ * - الحاسبة: زر «تحديث» في الشريط العلوي يعدّ 10 ثوانٍ ثم يُحدِّث تلقائيًا، وبضغطه تُحدَّث الصفحة فورًا
  * - الهاتف: نافذة «سيتم تحديث البرنامج خلال 10 ثوانٍ» ثم تحديث تلقائي
  *   (العد يتوقف والتطبيق في الخلفية أو أثناء الكتابة في حقل، ويكمل بعدها)
  */
@@ -32,7 +32,7 @@ export const AppUpdateButton: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!available || !mobile) return;
+    if (!available) return;
     const id = window.setInterval(() => {
       if (document.visibilityState !== 'visible' || typing()) return;
       setLeft(s => {
@@ -45,7 +45,7 @@ export const AppUpdateButton: React.FC = () => {
       });
     }, 1000);
     return () => window.clearInterval(id);
-  }, [available, mobile]);
+  }, [available]);
 
   if (!available) return null;
 
@@ -53,13 +53,16 @@ export const AppUpdateButton: React.FC = () => {
     <>
       <button
         onClick={applyAppUpdate}
-        title={t('appUpdate.available')}
-        aria-label={t('appUpdate.available')}
+        title={`${t('appUpdate.available')} — ${t('appUpdate.mobileBody', { count: left })}`}
+        aria-label={`${t('appUpdate.available')} — ${t('appUpdate.mobileBody', { count: left })}`}
         className="relative inline-flex items-center justify-center gap-1.5 h-9 px-2.5 sm:px-3 rounded-xl text-white bg-gradient-to-tr from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 shadow-md shadow-emerald-500/25 transition-all active:scale-95 whitespace-nowrap"
       >
         <span className="absolute -top-1 -end-1 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900 animate-pulse" />
         <RefreshCw className="w-4 h-4 shrink-0" />
         <span className="hidden sm:inline text-[12.5px] font-black">{t('appUpdate.button')}</span>
+        {!mobile && (
+          <span className="min-w-[22px] h-[22px] px-1 rounded-full bg-white/25 text-[11.5px] font-black font-mono tabular-nums leading-[22px] text-center">{left}</span>
+        )}
       </button>
 
       {mobile && (
