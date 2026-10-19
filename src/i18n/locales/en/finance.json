@@ -473,7 +473,9 @@
       "tagUnloaded": "Unloaded",
       "follow": "Follow",
       "showRoute": "Full route",
-      "touchHint": "Two fingers to zoom and pan",
+      "touchHint": "Two fingers to zoom, pan and rotate",
+      "rotateRight": "Rotate right",
+      "rotateLeft": "Rotate left",
       "tagQueued": "Waiting turn",
       "stQueued": "At {{site}}, waiting to unload ({{t}})"
     },

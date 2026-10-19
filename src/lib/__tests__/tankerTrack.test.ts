@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { DAY_ROADS, NIGHT_ROADS, STATION_ENTRIES } from '../stationRoads';
+import { DAY_ROADS, STATION_ENTRIES } from '../stationRoads';
+import { Y_SCALE } from '../stationsLayout';
 import { TRACK, buildRoute, buildTrack, distAtTime, planTrip, poseAt, timeTrack, tripAt } from '../tankerTrack';
 
 const SITES = Object.keys(STATION_ENTRIES);
-const DAY_H = 1152 / 1500, NIGHT_H = 1211 / 1600;
+const DAY_H = Y_SCALE;
 const at = (p: [number, number], h: number) => ({ x: p[0], y: p[1] * h });
 
 describe('tanker routes on the stations map roads', () => {
-  for (const [name, net, h] of [['day', DAY_ROADS, DAY_H], ['night', NIGHT_ROADS, NIGHT_H]] as const) {
+  for (const [name, net, h] of [['scene', DAY_ROADS, DAY_H]] as const) {
     it(`${name}: every pair of stations is connected, from the source tank to the destination tank`, () => {
       for (const a of SITES) for (const b of SITES) {
         if (a === b) continue;
@@ -38,7 +39,7 @@ describe('tanker routes on the stations map roads', () => {
   });
 
   it('pose stays on the track and heading follows the road', () => {
-    const t = buildTrack(buildRoute(NIGHT_ROADS, 'البوادي', 'امهات البياض', NIGHT_H)!);
+    const t = buildTrack(buildRoute(DAY_ROADS, 'البوادي', 'امهات البياض', DAY_H)!);
     for (let d = 0; d <= t.length; d += t.length / 40) {
       const p = poseAt(t, d);
       let best = Infinity;

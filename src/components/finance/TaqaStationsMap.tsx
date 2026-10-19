@@ -1,63 +1,34 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Crosshair, Maximize2, Minus, Moon, Play, Plus, Radio, Route, Sun } from 'lucide-react';
+import { Crosshair, Maximize2, Minus, Moon, Play, Plus, Radio, RotateCcw, RotateCw, Route, Sun } from 'lucide-react';
 import type { SiteCover } from '../../lib/siteFarmsMap';
 import type { SiteWeather } from '../../lib/weather';
-import { DAY_ROADS, NIGHT_ROADS, type RoadNet } from '../../lib/stationRoads';
+import { DAY_ROADS } from '../../lib/stationRoads';
+import { STATIONS, Y_SCALE, parkPose } from '../../lib/stationsLayout';
 import { DEFAULT_ETA_MIN, TRACK, buildRoute, buildTrack, distAtTime, planTrip, poseAt, queuedPlan, timeTrack, tripAt, type Track, type TripPhase, type TripPlan } from '../../lib/tankerTrack';
 import { MapWeather } from './MapWeather';
 import type { MapTrip } from './SiteFarmsMap';
-import type { FillPose, TankerLayer, TruckPose } from './tankerLayer';
+import type { StationsScene, TruckState } from './stationsScene';
 import './siteFarmsMap.css';
 import './taqaStationsMap.css';
 
 /**
- * خريطة مركز التوزيع (الطاقة): صورة المحطات الست (نهار/ليل) بإحداثيات موحدة لكل الطبقات —
- * الصورة وساحات المحطات وبطاقاتها والصهاريج تتحرك معًا عند التكبير والسحب.
- * لكل طلب موافَق عليه قافلة بعدد صهاريجه: كل صهريج يخرج من عند خزان محطة الانطلاق، ويسير على خط وسط الأسفلت
- * (المسار الأيمن) بسرعة أعلى في المستقيم وأقل في المنعطفات، ويدخل ساحة الوجهة ويقف عند الخزان ويفرغ.
- * الموقع تقديري بالوقت الحقيقي من وقت الموافقة ومدة الوصول (لا توجد بيانات GPS)، و«عرض الرحلة» يعيدها كاملة بسرعة القيادة.
+ * خريطة مركز التوزيع (الطاقة): مشهد ثلاثي الأبعاد بتخطيط المحطات الست والشوارع كما في الصورة المرجعية.
+ * لكل طلب موافَق عليه قافلة بعدد صهاريجه: كل صهريج يخرج من نقطة التفريغ في محطة الانطلاق، ويسير على الشوارع
+ * (المسار الأيمن) بسرعة أعلى في المستقيم وأقل في المنعطفات، ويدخل ساحة الوجهة ويقف عند نقطة التفريغ ويفرغ،
+ * والصهاريج التالية تنتظر دورها. الموقع تقديري بالوقت الحقيقي من وقت الموافقة ومدة الوصول (لا توجد بيانات GPS)،
+ * و«عرض الرحلة» يعيدها كاملة بسرعة القيادة. الكاميرا: سحب وتكبير وتدوير وتتبّع.
  */
-
-type P = [number, number];
-interface Art {
-  src: string; w: number; h: number; roads: RoadNet;
-  /** pad = وسط ساحة المحطة ونصفا قطرها (منطقة الضغط)، card = مكان بطاقة الحالة */
-  sites: Record<string, { pad: P; rx: number; ry: number; card: P }>;
-}
-
-const DAY: Art = {
-  src: '/site-map/stations-day.webp', w: 1500, h: 1152, roads: DAY_ROADS,
-  sites: {
-    الاجداد: { pad: [20, 12], rx: 12, ry: 4.5, card: [13, 20] },
-    'امهات البياض': { pad: [69, 18], rx: 14, ry: 5, card: [71, 27] },
-    البوادي: { pad: [18, 36], rx: 13, ry: 5.5, card: [13, 45] },
-    التسمين: { pad: [85, 45], rx: 13, ry: 5.5, card: [80, 55] },
-    البياض: { pad: [36, 62], rx: 14, ry: 6, card: [23, 72] },
-    الطاقة: { pad: [79, 81], rx: 13, ry: 6, card: [56, 86] },
-  },
-};
-const NIGHT: Art = {
-  src: '/site-map/stations-night.webp', w: 1600, h: 1211, roads: NIGHT_ROADS,
-  sites: {
-    الاجداد: { pad: [19, 11], rx: 12, ry: 4.5, card: [13, 20] },
-    'امهات البياض': { pad: [68, 18], rx: 14, ry: 5, card: [70, 27] },
-    البوادي: { pad: [18, 36], rx: 13, ry: 5, card: [13, 46] },
-    التسمين: { pad: [83, 45], rx: 13, ry: 5, card: [79, 55] },
-    البياض: { pad: [36, 62], rx: 14, ry: 6, card: [22, 72] },
-    الطاقة: { pad: [79, 82], rx: 13, ry: 6, card: [55, 87] },
-  },
-};
 
 const fmt = (n: number) => Math.round(n).toLocaleString('en-US');
 const STATUS_COLOR = { crit: '#ff2d55', warn: '#facc15', ok: '#10b981', idle: '#94a3b8' } as const;
 type Status = keyof typeof STATUS_COLOR;
 
-const Z_MIN = 1, Z_MAX = 4;
-/** طول الصهريج (نسبة من عرض الخريطة عند تكبير 1)، وإزاحة المسار الأيمن، والمسافة بين صهاريج القافلة في طابور التفريغ */
-const TRUCK_LEN = 5.4, LANE = 0.42, QUEUE_GAP = 6.2;
+/** إزاحة المسار الأيمن عن خط وسط الشارع، والمسافة بين صهاريج القافلة في طابور التفريغ (وحدات أرض) */
+const LANE = 0.75, QUEUE_GAP = 9.6;
 /** عرض الرحلة: فاصل الانطلاق بين صهاريج القافلة ومدة التفريغ (ثوانٍ) */
 const REPLAY_GAP = 2.5, REPLAY_UNLOAD = 6;
+const SITES = Object.keys(STATIONS);
 
 interface Rig {
   id: string; trip: MapTrip; k: number; n: number; qty: number;
@@ -86,9 +57,6 @@ const TaqaStationsMap: React.FC<Props> = ({ site, cover, trips, weather, onOpen,
   const [pick, setPick] = useState<'day' | 'night' | null>(null);
   const hour = new Date().getHours();
   const night = pick ? pick === 'night' : weather ? !weather.isDay : hour < 6 || hour >= 18;
-  const art = night ? NIGHT : DAY;
-  const hRatio = art.h / art.w;
-  const H = 100 * hRatio;
 
   const info = useMemo(() => {
     const m = new Map<string, { status: Status; balance: number; days: number | null }>();
@@ -102,49 +70,16 @@ const TaqaStationsMap: React.FC<Props> = ({ site, cover, trips, weather, onOpen,
     return c;
   }, [cover]);
 
-  // ---- العرض (تكبير/سحب) في ref: يُطبَّق مباشرة على الطبقة دون إعادة رسم React ----
   const viewportRef = useRef<HTMLDivElement>(null);
-  const stageRef = useRef<HTMLDivElement>(null);
   const glRef = useRef<HTMLDivElement>(null);
   const tagsRef = useRef<HTMLDivElement>(null);
-  const view = useRef({ z: 1, x: 0, y: 0 });
-  const target = useRef<{ z: number; x: number; y: number } | null>(null);
-  const size = useRef({ w: 1, h: 1 });
+  const cardRefs = useRef(new Map<string, HTMLButtonElement>());
+  const sceneRef = useRef<StationsScene | null>(null);
+  const [glFailed, setGlFailed] = useState(false);
   const follow = useRef<string | null>(null);
   const [following, setFollowing] = useState<string | null>(null);
   const [touchHint, setTouchHint] = useState(true);
-
-  const clampView = (v: { z: number; x: number; y: number }) => {
-    const { w, h } = size.current;
-    const z = Math.min(Z_MAX, Math.max(Z_MIN, v.z));
-    return { z, x: Math.min(0, Math.max(w - w * z, v.x)), y: Math.min(0, Math.max(h - h * z, v.y)) };
-  };
-  const applyView = useCallback(() => {
-    const s = stageRef.current; if (!s) return;
-    const v = view.current;
-    s.style.transform = `translate3d(${v.x}px, ${v.y}px, 0) scale(${v.z})`;
-    s.style.setProperty('--iz', String(1 / v.z));
-    viewportRef.current?.classList.toggle('zoomed', v.z > 1.01);
-  }, []);
-  const zoomAt = useCallback((px: number, py: number, f: number) => {
-    const v = view.current;
-    const z = Math.min(Z_MAX, Math.max(Z_MIN, v.z * f));
-    view.current = clampView({ z, x: px - (px - v.x) * (z / v.z), y: py - (py - v.y) * (z / v.z) });
-    target.current = null;
-    applyView();
-  }, [applyView]);
-  /** يركّز العرض على مستطيل بوحدات الخريطة (انتقال ناعم) */
-  const fitBox = useCallback((x0: number, y0: number, x1: number, y1: number, pad = 6) => {
-    const { w, h } = size.current;
-    const ppu = w / 100;
-    const bw = (x1 - x0 + pad * 2) * ppu, bh = (y1 - y0 + pad * 2) * ppu;
-    const z = Math.min(Z_MAX, Math.max(Z_MIN, Math.min(w / bw, h / bh)));
-    const cx = ((x0 + x1) / 2) * ppu, cy = ((y0 + y1) / 2) * ppu;
-    target.current = clampView({ z, x: w / 2 - cx * z, y: h / 2 - cy * z });
-  }, []);
   const stopFollowing = () => { follow.current = null; setFollowing(null); };
-  const resetView = () => { stopFollowing(); target.current = { z: 1, x: 0, y: 0 }; };
-  const zoomBtn = (f: number) => { const { w, h } = size.current; stopFollowing(); zoomAt(w / 2, h / 2, f); };
 
   // ---- القوافل: صهريج لكل وحدة من عدد صهاريج الطلب، بمسار وجدول زمني ----
   const rigs = useRef(new Map<string, Rig>());
@@ -154,16 +89,17 @@ const TaqaStationsMap: React.FC<Props> = ({ site, cover, trips, weather, onOpen,
   const [panel, setPanel] = useState<Info | null>(null);
   const [replay, setReplay] = useState<number | null>(null);
   const replayRef = useRef<number | null>(null);
-  const layerRef = useRef<TankerLayer | null>(null);
   const nightRef = useRef(night); nightRef.current = night;
   const [rigsVer, setRigsVer] = useState(0);
+  /** جهة نقطة التفريغ لكل محطة (خرطوم الصهريج نحوها) */
+  const fillSide = useMemo(() => new Map(SITES.map(s => [s, parkPose(s)?.side ?? 1] as const)), []);
 
   const tripKey = trips.map(x => `${x.id}:${x.from}:${x.to}:${x.qty}:${x.tankers ?? 1}:${x.etaMin ?? ''}:${x.since ?? ''}`).join('|');
   useEffect(() => {
     const next = new Map<string, Rig>();
     const fromCount = new Map<string, number>();
     trips.forEach(trip => {
-      const route = buildRoute(art.roads, trip.from, trip.to, hRatio);
+      const route = buildRoute(DAY_ROADS, trip.from, trip.to, Y_SCALE);
       if (!route) return;
       const track = buildTrack(route);
       const tc = timeTrack(track);
@@ -182,28 +118,14 @@ const TaqaStationsMap: React.FC<Props> = ({ site, cover, trips, weather, onOpen,
       }
     });
     rigs.current = next;
-    layerRef.current?.sync([...next.keys()]);
+    sceneRef.current?.sync([...next.keys()]);
     setSelected(s => (s && next.has(s) ? s : next.keys().next().value ?? null));
     setRigsVer(v => v + 1);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tripKey, art]);
+  }, [tripKey]);
   useEffect(() => { selectedRef.current = selected; }, [selected]);
   useEffect(() => { replayRef.current = replay; }, [replay]);
-  useEffect(() => { layerRef.current?.setNight(night); }, [night]);
-
-  // نقاط التفريغ: عند نقطة وقوف كل محطة، باتجاه آخر مقطع قبلها، وجهة الخرطوم نحو الساحة الأمامية (أسفل الصورة) لتظهر بوضوح
-  const fillPts = useRef<{ site: string; x: number; y: number; heading: number; side: 1 | -1 }[]>([]);
-  const fillSide = useRef(new Map<string, 1 | -1>());
-  useMemo(() => {
-    const list = Object.entries(art.roads.yards).map(([name, y]) => {
-      const before = y.pre ?? Object.values(y.from)[0]?.slice(-1)[0] ?? y.park;
-      const heading = Math.atan2((y.park[1] - before[1]) * hRatio, y.park[0] - before[0]);
-      const side: 1 | -1 = Math.cos(heading) > 0 ? 1 : -1;
-      return { site: name, x: y.park[0], y: y.park[1] * hRatio, heading, side };
-    });
-    fillPts.current = list;
-    fillSide.current = new Map(list.map(f => [f.site, f.side]));
-  }, [art, hRatio]);
+  useEffect(() => { sceneRef.current?.setNight(night); }, [night]);
 
   /** جدول الصهريج: الحقيقي (الموافقة + مدة الوصول) أو عرض الرحلة (بزمن القيادة الفعلي على المسار) */
   const planOf = (r: Rig, replayAt: number | null): TripPlan => replayAt != null
@@ -211,36 +133,38 @@ const TaqaStationsMap: React.FC<Props> = ({ site, cover, trips, weather, onOpen,
     : planTrip(r.approved, r.eta, r.qty, r.k);
   const nowOf = (replayAt: number | null) => (replayAt != null ? performance.now() : Date.now());
 
-  // طبقة WebGL مرة واحدة + حلقة الرسم + التحكم بالمؤشر واللمس والعجلة
+  // المشهد مرة واحدة + حلقة الرسم + التحكم بالمؤشر واللمس والعجلة
   useEffect(() => {
     const vp = viewportRef.current, gl = glRef.current, tags = tagsRef.current;
     if (!vp || !gl || !tags) return;
-    let layer: TankerLayer | null = null;
+    let scene: StationsScene | null = null;
     let disposed = false;
-    import('./tankerLayer').then(({ TankerLayer: L }) => {
+    const size = { w: 1, h: 1 };
+    import('./stationsScene').then(({ StationsScene: S }) => {
       if (disposed) return;
       try {
-        layer = new L(gl);
-        layer.resize(size.current.w, size.current.h);
-        layer.setNight(nightRef.current);
-        layer.sync([...rigs.current.keys()]);
-        layerRef.current = layer;
-      } catch { layer = null; }
-    }).catch(() => { /* بلا WebGL تبقى علامات الصهاريج */ });
+        scene = new S(gl);
+        scene.resize(size.w, size.h);
+        scene.cam = { ...scene.home };
+        scene.setNight(nightRef.current);
+        scene.sync([...rigs.current.keys()]);
+        sceneRef.current = scene;
+      } catch { scene = null; setGlFailed(true); }
+    }).catch(() => setGlFailed(true));
 
     const measure = () => {
       const r = vp.getBoundingClientRect();
-      const prevW = size.current.w;
-      size.current = { w: r.width, h: r.height };
-      if (prevW > 1 && prevW !== r.width) { const k = r.width / prevW; view.current = clampView({ z: view.current.z, x: view.current.x * k, y: view.current.y * k }); }
-      else view.current = clampView(view.current);
-      applyView();
-      layer?.resize(r.width, r.height);
+      size.w = r.width; size.h = r.height;
+      if (scene) {
+        const wasHome = !scene.isZoomed();
+        scene.resize(r.width, r.height);
+        if (wasHome) scene.cam = { ...scene.home };
+      }
     };
     measure();
     const ro = new ResizeObserver(measure); ro.observe(vp);
 
-    // علامة الصهريج (HTML): للصهريج المحدد دائمًا، وللبقية عند التكبير
+    // علامة الصهريج (HTML): للصهريج المحدد دائمًا، وللبقية عند الاقتراب
     const tagEls = new Map<string, HTMLButtonElement>();
     const tagFor = (id: string) => {
       let el = tagEls.get(id);
@@ -256,17 +180,15 @@ const TaqaStationsMap: React.FC<Props> = ({ site, cover, trips, weather, onOpen,
     const liter = t('finance:siteFarms.liter');
 
     let raf = 0, last = 0, visible = document.visibilityState !== 'hidden', onScreen = true;
-    const poses = new Map<string, TruckPose>();
+    const states = new Map<string, TruckState>();
     const frame = (nowPerf: number) => {
       raf = 0;
       const dt = last ? Math.min(0.05, (nowPerf - last) / 1000) : 0;
       last = nowPerf;
-      const ppu = size.current.w / 100;
       const replayAt = replayRef.current;
       const now = nowOf(replayAt);
 
       // موضع كل صهريج من جدوله
-      const placed = new Map<string, { rig: Rig; dist: number; phase: TripPhase; m: ReturnType<typeof tripAt>; atFill: boolean }>();
       const moments = new Map<string, ReturnType<typeof tripAt>>();
       let allDone = true;
       rigs.current.forEach((r, id) => {
@@ -274,92 +196,82 @@ const TaqaStationsMap: React.FC<Props> = ({ site, cover, trips, weather, onOpen,
         moments.set(id, m);
         if (m.phase !== 'unloaded') allDone = false;
       });
+      if (replayAt != null && allDone && now - replayAt > 2000) { replayRef.current = null; setReplay(null); }
+
+      states.clear();
+      const closeUp = scene ? scene.cam.dist < scene.home.dist * 0.6 : false;
       rigs.current.forEach((r, id) => {
         const m = moments.get(id)!;
+        const tag = tagFor(id);
         // لم ينطلق بعد، أو أنهى التفريغ وأخلى نقطة التفريغ لمن بعده (يبقى آخر صهريج في القافلة)
-        if (m.phase === 'waiting' || (m.phase === 'unloaded' && r.k < r.n - 1)) { r.last = null; return; }
+        if (m.phase === 'waiting' || (m.phase === 'unloaded' && r.k < r.n - 1)) { r.last = null; tag.hidden = true; return; }
         // مكانه في طابور التفريغ: عدد من سبقه من قافلته وما زال عند المحطة
         let ahead = 0;
         for (let j = 0; j < r.k; j++) {
           const pj = moments.get(r.n > 1 ? `${r.trip.id}#${j}` : r.trip.id)?.phase;
           if (pj === 'queued' || pj === 'unloading') ahead++;
         }
-        const L = r.track.length;
+        const tr = r.track, L = tr.length;
         const spot = Math.max(L * 0.45, L - ahead * QUEUE_GAP);
         let dist: number;
-        if (m.phase === 'driving') dist = Math.min(spot, distAtTime(r.track, r.tc, m.drive * r.T));
-        else {
-          // يتقدم بهدوء إلى مكانه (عند خلوّ نقطة التفريغ) بدل القفز
-          dist = r.last && r.last.dist < spot ? Math.min(spot, r.last.dist + TRACK.vyard * dt) : spot;
-        }
-        placed.set(id, { rig: r, dist, phase: m.phase, m, atFill: dist >= L - 0.05 });
-      });
-      if (replayAt != null && allDone && now - replayAt > 2000) { replayRef.current = null; setReplay(null); }
-
-      // التتبّع والانتقالات الناعمة
-      const fid = follow.current;
-      if (fid && placed.has(fid)) {
-        const p = poseAt(placed.get(fid)!.rig.track, placed.get(fid)!.dist, LANE);
-        const { w: W, h: Hh } = size.current;
-        const z = Math.max(target.current?.z ?? view.current.z, 2.6);
-        target.current = clampView({ z, x: W / 2 - p.x * ppu * z, y: Hh / 2 - p.y * ppu * z });
-      }
-      if (target.current) {
-        const v = view.current, g = target.current, k = dt ? Math.min(1, dt * 4) : 0.15;
-        view.current = clampView({ z: v.z + (g.z - v.z) * k, x: v.x + (g.x - v.x) * k, y: v.y + (g.y - v.y) * k });
-        if (!fid && Math.abs(g.z - view.current.z) < 0.002 && Math.abs(g.x - view.current.x) < 0.5 && Math.abs(g.y - view.current.y) < 0.5) { view.current = g; target.current = null; }
-        applyView();
-      }
-
-      poses.clear();
-      const v = view.current;
-      const toScreen = (x: number, y: number): [number, number] => [x * ppu * v.z + v.x, y * ppu * v.z + v.y];
-      placed.forEach(({ rig, dist, phase, m, atFill }, id) => {
-        const tr = rig.track;
+        if (m.phase === 'driving') dist = Math.min(spot, distAtTime(tr, r.tc, m.drive * r.T));
+        // يتقدم بهدوء إلى مكانه (عند خلوّ نقطة التفريغ) بدل القفز
+        else dist = r.last && r.last.dist < spot ? Math.min(spot, r.last.dist + TRACK.vyard * dt) : spot;
+        const atFill = dist >= L - 0.05;
         const p = poseAt(tr, dist, LANE);
-        const [sx, sy] = toScreen(p.x, p.y);
-        const persp = 0.84 + 0.28 * (p.y / H);
-        const lengthPx = TRUCK_LEN * ppu * v.z * persp;
-        const prev = rig.last;
+        const prev = r.last;
         const moved = prev && dist >= prev.dist ? dist - prev.dist : 0;
         const speed = prev && dt ? moved / dt : 0;
-        rig.last = { dist, t: now };
-        const driving = (phase === 'driving' || moved > 1e-4) && dist < tr.length - 0.05;
+        r.last = { dist, t: now };
+        const driving = (m.phase === 'driving' || moved > 1e-4) && dist < L - 0.05;
         // الفرامل: الملف يتباطأ أمامه (منعطف، ساحة، وصول) — والإشارة: انعطاف حاد قادم
-        const vNow = poseAt(tr, dist).speed, vAhead = poseAt(tr, Math.min(tr.length, dist + 2.5)).speed;
+        const vNow = poseAt(tr, dist).speed, vAhead = poseAt(tr, Math.min(L, dist + 3)).speed;
         const brake = !driving || vAhead < vNow * 0.82;
-        const hAhead = poseAt(tr, Math.min(tr.length, dist + 4)).heading;
+        const hAhead = poseAt(tr, Math.min(L, dist + 5)).heading;
         let dh = hAhead - p.heading; if (dh > Math.PI) dh -= 2 * Math.PI; if (dh < -Math.PI) dh += 2 * Math.PI;
-        const signal: -1 | 0 | 1 = driving && Math.abs(dh) > 0.5 ? (dh > 0 ? 1 : -1) : 0;
         const rel = Math.min(1, speed / TRACK.vmax);
-        poses.set(id, {
-          sx, sy, mx: p.x, my: p.y, heading: p.heading, lengthPx, travelPx: moved * ppu * v.z * persp,
-          brake, signal, unloading: phase === 'unloading' && atFill, hoseSide: fillSide.current.get(rig.trip.to) ?? 1,
-          roll: driving ? Math.max(-0.07, Math.min(0.07, -dh * 0.06 * rel)) : 0,
-          pitch: driving ? (brake ? 0.025 * rel : vAhead > vNow * 1.1 ? -0.02 * rel : 0) : 0,
+        states.set(id, {
+          x: p.x, y: p.y, heading: p.heading, travel: moved, yard: p.yard,
+          brake, signal: driving && Math.abs(dh) > 0.5 ? (dh > 0 ? 1 : -1) : 0,
+          unloading: m.phase === 'unloading' && atFill, hoseSide: fillSide.get(r.trip.to) ?? 1,
+          roll: driving ? Math.max(-0.06, Math.min(0.06, -dh * 0.05 * rel)) : 0,
+          pitch: driving ? (brake ? 0.02 * rel : vAhead > vNow * 1.1 ? -0.015 * rel : 0) : 0,
           dust: driving && !p.yard ? rel * (nightRef.current ? 0.6 : 1) : 0,
         });
-        const show = id === selectedRef.current || v.z >= 1.7;
-        const tag = tagFor(id);
-        tag.hidden = !show;
-        if (show) {
-          tag.style.transform = `translate(${sx.toFixed(1)}px, ${(sy - lengthPx * 0.45).toFixed(1)}px) translate(-50%, -100%)`;
+        // علامة فوق الصهريج
+        const show = id === selectedRef.current || closeUp;
+        const sp = show && scene ? scene.project(scene.worldOf(p.x, p.y, 40)) : null;
+        tag.hidden = !sp;
+        if (sp) {
+          tag.style.transform = `translate(${sp[0].toFixed(1)}px, ${sp[1].toFixed(1)}px) translate(-50%, -100%)`;
           tag.classList.toggle('on', id === selectedRef.current);
+          const phase = m.phase === 'unloading' && !atFill ? 'queued' : m.phase;
           tag.dataset.phase = phase;
-          const label = phase === 'queued' || (phase === 'unloading' && !atFill) ? M('tagQueued')
+          setText(tag, phase === 'queued' ? M('tagQueued')
             : phase === 'unloading' ? M('tagUnloading', { n: Math.round(m.unload * 100) })
             : phase === 'unloaded' ? M('tagUnloaded')
-            : replayAt != null ? `${fmt(rig.qty)} ${liter}` : `${fmt(rig.qty)} ${liter} · ${M('minLeft', { n: Math.ceil(m.msLeft / 60000) })}`;
-          setText(tag, label);
+            : replayAt != null ? `${fmt(r.qty)} ${liter}` : `${fmt(r.qty)} ${liter} · ${M('minLeft', { n: Math.ceil(m.msLeft / 60000) })}`);
         }
       });
-      tagEls.forEach((el, id) => { if (!placed.has(id)) { el.hidden = true; if (!rigs.current.has(id)) { el.remove(); tagEls.delete(id); } } });
-      // نقاط التفريغ في المحطات (حيث يصل خرطوم الصهريج الواقف)
-      const fills: FillPose[] = fillPts.current.map(f => {
-        const [fx, fy] = toScreen(f.x, f.y);
-        return { id: f.site, sx: fx, sy: fy, heading: f.heading, lengthPx: TRUCK_LEN * ppu * v.z * (0.84 + 0.28 * (f.y / H)), side: f.side };
-      });
-      layer?.render(poses, { toScreen, ppu: ppu * v.z }, dt, fills);
+      tagEls.forEach((el, id) => { if (!rigs.current.has(id)) { el.remove(); tagEls.delete(id); } });
+
+      if (scene) {
+        // تتبّع الصهريج: الكاميرا تلحق به بنعومة
+        const fid = follow.current, fs = fid ? states.get(fid) : null;
+        if (fs) {
+          const v = scene.worldOf(fs.x, fs.y);
+          scene.setGoal({ tx: v.x, tz: v.z, dist: Math.min(scene.goal?.dist ?? scene.cam.dist, 520) });
+        }
+        scene.render(states, dt);
+        // بطاقات المحطات أمام ساحاتها
+        cardRefs.current.forEach((el, name) => {
+          const a = scene!.anchors.get(name);
+          // عند الاقتراب تختفي (البطاقات للنظرة العامة، والأسماء على المظلات)
+          const sp = a && !closeUp ? scene!.project(a) : null;
+          el.hidden = !sp;
+          if (sp) el.style.transform = `translate(${sp[0].toFixed(1)}px, ${sp[1].toFixed(1)}px) translate(-50%, 0)`;
+        });
+      }
       if (visible && onScreen) raf = requestAnimationFrame(frame);
     };
     const start = () => { if (!raf && visible && onScreen) { last = 0; raf = requestAnimationFrame(frame); } };
@@ -371,89 +283,100 @@ const TaqaStationsMap: React.FC<Props> = ({ site, cover, trips, weather, onOpen,
     io.observe(vp);
     start();
 
-    const isUi = (el: EventTarget | null) => el instanceof Element && !!el.closest('.sf-tq-ui, .sf-map-panel, .sf-map-fuel, .sf-map-wx, .sf-tq-tag');
-    const stopFollow = () => { if (follow.current) { follow.current = null; setFollowing(null); } target.current = null; };
+    const isUi = (el: EventTarget | null) => el instanceof Element && !!el.closest('.sf-tq-ui, .sf-map-panel, .sf-map-fuel, .sf-map-wx, .sf-tq-tag, .sf-tq-card');
+    const stopFollow = () => { if (follow.current) { follow.current = null; setFollowing(null); } if (scene) scene.goal = null; };
+    const local = (e: { clientX: number; clientY: number }) => { const r = vp.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
     let dragged = false;
 
-    // ---- الماوس: سحب لتحريك الخريطة، وعجلة للتكبير (التصغير عند أقل تكبير يترك الصفحة تتمرر) ----
-    let mouse: { x: number; y: number; sx: number; sy: number } | null = null;
-    const local = (e: { clientX: number; clientY: number }) => { const r = vp.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+    // ---- الماوس: سحب لتحريك الخريطة، وبالزر الأيمن (أو Shift) للتدوير، والعجلة للتكبير ----
+    let mouse: { x: number; y: number; sx: number; sy: number; rot: boolean } | null = null;
     const onDown = (e: PointerEvent) => {
-      if (e.pointerType === 'touch' || isUi(e.target) || e.button !== 0) return;
-      const p = local(e); mouse = { ...p, sx: p.x, sy: p.y }; dragged = false;
+      if (e.pointerType === 'touch' || isUi(e.target) || (e.button !== 0 && e.button !== 2)) return;
+      const p = local(e); mouse = { ...p, sx: p.x, sy: p.y, rot: e.button === 2 || e.shiftKey }; dragged = false;
     };
     const onMove = (e: PointerEvent) => {
-      if (!mouse || e.pointerType === 'touch') return;
+      if (!mouse || e.pointerType === 'touch' || !scene) return;
       const p = local(e);
       if (!dragged && Math.hypot(p.x - mouse.sx, p.y - mouse.sy) > 4) {
         dragged = true; stopFollow();
         try { vp.setPointerCapture(e.pointerId); } catch { /* المؤشر انتهى */ }
         vp.classList.add('dragging');
       }
-      if (dragged) { view.current = clampView({ ...view.current, x: view.current.x + p.x - mouse.x, y: view.current.y + p.y - mouse.y }); applyView(); }
+      if (dragged) {
+        if (mouse.rot) scene.rotate((p.x - mouse.x) * 0.006, (p.y - mouse.y) * 0.004);
+        else scene.pan(p.x - mouse.x, p.y - mouse.y);
+      }
       mouse.x = p.x; mouse.y = p.y;
     };
     const onUp = () => { mouse = null; vp.classList.remove('dragging'); };
+    const onContext = (e: MouseEvent) => { if (!isUi(e.target)) e.preventDefault(); };
     const onWheel = (e: WheelEvent) => {
-      if (isUi(e.target)) return;
-      const z = view.current.z;
-      // عند أقل تكبير وتمرير للأسفل، أو أقصى تكبير وتمرير للأعلى: تتمرر الصفحة عاديًا
-      if ((e.deltaY > 0 && z <= Z_MIN + 0.001) || (e.deltaY < 0 && z >= Z_MAX - 0.001)) return;
+      if (isUi(e.target) || !scene) return;
+      // عند أبعد مسافة وتمرير للأسفل: تتمرر الصفحة عاديًا
+      if (e.deltaY > 0 && scene.cam.dist >= scene.maxDist - 0.5) return;
       e.preventDefault(); stopFollow();
       const p = local(e);
-      zoomAt(p.x, p.y, Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0018)));
+      scene.zoomAt(Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0016)), p.x, p.y);
+    };
+    // ضغط بلا سحب: يفتح المحطة تحت المؤشر
+    const onClick = (e: MouseEvent) => {
+      if (dragged) { e.stopPropagation(); e.preventDefault(); dragged = false; return; }
+      if (isUi(e.target) || !scene) return;
+      const p = local(e);
+      const hit = scene.pick(p.x, p.y);
+      if (hit && hit !== site) onOpen(hit);
     };
 
-    // ---- اللمس: إصبع واحد يمرر الصفحة (إلا إذا كانت الخريطة مكبّرة فيحركها)، وإصبعان للتكبير والتحريك ----
-    let touch: { mode: 'pan' | 'pinch'; x: number; y: number; d: number; sx: number; sy: number } | null = null;
+    // ---- اللمس: إصبع واحد يمرر الصفحة (إلا عند الاقتراب فيحرك الخريطة)، وإصبعان للتكبير والتحريك والتدوير ----
+    let touch: { mode: 'pan' | 'pinch'; x: number; y: number; d: number; a: number; sx: number; sy: number } | null = null;
     const two = (e: TouchEvent) => {
       const a = local(e.touches[0]), b = local(e.touches[1]);
-      return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, d: Math.hypot(a.x - b.x, a.y - b.y) };
+      return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, d: Math.hypot(a.x - b.x, a.y - b.y), a: Math.atan2(b.y - a.y, b.x - a.x) };
     };
     const onTouchStart = (e: TouchEvent) => {
-      if (isUi(e.target)) return;
+      if (isUi(e.target) || !scene) return;
       if (e.touches.length >= 2) {
         e.preventDefault();
         const g = two(e); touch = { mode: 'pinch', ...g, sx: g.x, sy: g.y }; dragged = true; stopFollow(); setTouchHint(false);
-      } else if (e.touches.length === 1 && view.current.z > 1.01) {
-        const p = local(e.touches[0]); touch = { mode: 'pan', ...p, d: 0, sx: p.x, sy: p.y }; dragged = false;
+      } else if (e.touches.length === 1 && scene.isZoomed()) {
+        const p = local(e.touches[0]); touch = { mode: 'pan', ...p, d: 0, a: 0, sx: p.x, sy: p.y }; dragged = false;
       } else touch = null;
     };
     const onTouchMove = (e: TouchEvent) => {
-      if (!touch) return;
+      if (!touch || !scene) return;
       if (touch.mode === 'pinch' && e.touches.length >= 2) {
         e.preventDefault();
         const g = two(e);
-        view.current = clampView({ ...view.current, x: view.current.x + g.x - touch.x, y: view.current.y + g.y - touch.y });
-        zoomAt(g.x, g.y, g.d / Math.max(1, touch.d));
+        scene.pan(g.x - touch.x, g.y - touch.y);
+        scene.zoomAt(g.d / Math.max(1, touch.d), g.x, g.y);
+        let da = g.a - touch.a; if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI;
+        if (Math.abs(da) > 0.002) scene.rotate(-da);
         Object.assign(touch, g);
       } else if (touch.mode === 'pan' && e.touches.length === 1) {
         e.preventDefault();
         const p = local(e.touches[0]);
         if (!dragged && Math.hypot(p.x - touch.sx, p.y - touch.sy) > 6) { dragged = true; stopFollow(); }
-        view.current = clampView({ ...view.current, x: view.current.x + p.x - touch.x, y: view.current.y + p.y - touch.y });
-        applyView();
+        scene.pan(p.x - touch.x, p.y - touch.y);
         touch.x = p.x; touch.y = p.y;
       }
     };
     const onTouchEnd = (e: TouchEvent) => {
       if (e.touches.length === 0) touch = null;
-      else if (e.touches.length === 1 && view.current.z > 1.01) { const p = local(e.touches[0]); touch = { mode: 'pan', ...p, d: 0, sx: p.x, sy: p.y }; }
+      else if (e.touches.length === 1 && scene?.isZoomed()) { const p = local(e.touches[0]); touch = { mode: 'pan', ...p, d: 0, a: 0, sx: p.x, sy: p.y }; }
       else touch = null;
     };
-    // بعد السحب لا يُعدّ الإفلات ضغطًا (لا يفتح محطة)
-    const onClickCapture = (e: MouseEvent) => { if (dragged) { e.stopPropagation(); e.preventDefault(); dragged = false; } };
 
     vp.addEventListener('pointerdown', onDown);
     vp.addEventListener('pointermove', onMove);
     vp.addEventListener('pointerup', onUp);
     vp.addEventListener('pointercancel', onUp);
+    vp.addEventListener('contextmenu', onContext);
     vp.addEventListener('wheel', onWheel, { passive: false });
     vp.addEventListener('touchstart', onTouchStart, { passive: false });
     vp.addEventListener('touchmove', onTouchMove, { passive: false });
     vp.addEventListener('touchend', onTouchEnd);
     vp.addEventListener('touchcancel', onTouchEnd);
-    vp.addEventListener('click', onClickCapture, true);
+    vp.addEventListener('click', onClick, true);
 
     // لوحة الصهريج المحدد: 4 تحديثات في الثانية فقط
     const tick = window.setInterval(() => {
@@ -477,37 +400,32 @@ const TaqaStationsMap: React.FC<Props> = ({ site, cover, trips, weather, onOpen,
       vp.removeEventListener('pointermove', onMove);
       vp.removeEventListener('pointerup', onUp);
       vp.removeEventListener('pointercancel', onUp);
+      vp.removeEventListener('contextmenu', onContext);
       vp.removeEventListener('wheel', onWheel);
       vp.removeEventListener('touchstart', onTouchStart);
       vp.removeEventListener('touchmove', onTouchMove);
       vp.removeEventListener('touchend', onTouchEnd);
       vp.removeEventListener('touchcancel', onTouchEnd);
-      vp.removeEventListener('click', onClickCapture, true);
+      vp.removeEventListener('click', onClick, true);
       tagEls.forEach(el => el.remove());
-      layer?.dispose();
-      layerRef.current = null;
+      scene?.dispose();
+      sceneRef.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [H]);
+  }, []);
 
   const all = useMemo(() => [...rigs.current.values()],
   // eslint-disable-next-line react-hooks/exhaustive-deps
   [rigsVer]);
   const sel = selected ? rigs.current.get(selected) ?? null : null;
-  const fitRoute = () => {
-    if (!sel) return;
-    stopFollowing();
-    const tr = sel.track;
-    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    for (let i = 0; i < tr.x.length; i++) { x0 = Math.min(x0, tr.x[i]); x1 = Math.max(x1, tr.x[i]); y0 = Math.min(y0, tr.y[i]); y1 = Math.max(y1, tr.y[i]); }
-    fitBox(x0, y0, x1, y1);
-  };
+  const cam = (fn: (s: StationsScene) => void) => { const s = sceneRef.current; if (s) { stopFollowing(); fn(s); } };
+  const fitRoute = () => { if (sel) cam(s => s.fitPoints(sel.track.x, sel.track.y)); };
   const toggleFollow = () => {
     if (!selected) return;
     const on = follow.current !== selected;
     follow.current = on ? selected : null;
     setFollowing(on ? selected : null);
-    if (!on) target.current = null;
+    if (!on && sceneRef.current) sceneRef.current.goal = null;
   };
   const startReplay = () => {
     const at = performance.now();
@@ -530,26 +448,19 @@ const TaqaStationsMap: React.FC<Props> = ({ site, cover, trips, weather, onOpen,
 
   return (
     <div className={`sf-tq-wrap${sel && panel ? ' has-trip' : ''}`}>
-      <div ref={viewportRef} className={`sf-map sf-tq${night ? ' night' : ''}`} style={{ aspectRatio: `${art.w} / ${art.h}` }} role="group" aria-label={M('stationsAria')}>
-        <div ref={stageRef} className="sf-tq-stage">
-          <img className="sf-tq-img" src={art.src} alt="" draggable={false} />
-          <svg className="sf-tq-svg" viewBox={`0 0 100 ${H.toFixed(2)}`} aria-hidden="true">
-            {/* ساحات المحطات: منطقة ضغط تفتح الموقع (بلا حدود مرسومة) */}
-            {Object.entries(art.sites).map(([name, s]) => (
-              <ellipse key={name} className={`sf-tq-pad${name === site ? ' self' : ''}`} cx={s.pad[0]} cy={(s.pad[1] * H) / 100} rx={s.rx} ry={(s.ry * H) / 100}
-                onClick={() => { if (name !== site) onOpen(name); }}>
-                <title>{name === site ? `${name} · ${M('center')}` : M('openSite', { site: name })}</title>
-              </ellipse>
-            ))}
-          </svg>
-          {/* بطاقات المواقع: الرصيد وأيام التغطية (حجمها ثابت مع التكبير) */}
-          {Object.entries(art.sites).map(([name, s]) => {
+      <div ref={viewportRef} className={`sf-map sf-tq${night ? ' night' : ''}`} role="group" aria-label={M('stationsAria')}>
+        <div ref={glRef} className="sf-tq-gl" aria-hidden="true" />
+        {glFailed && <div className="sf-tq-nogl">{M('noGl')}</div>}
+        {/* بطاقات المحطات أمام ساحاتها: الرصيد وأيام التغطية */}
+        <div className="sf-tq-cards">
+          {SITES.map(name => {
             const v = info.get(name);
             const st: Status = v?.status ?? 'idle';
             const self = name === site;
             return (
-              <button key={name} type="button" className={`sf-tq-card ${st}${self ? ' self' : ''}`} dir="rtl"
-                style={{ left: `${s.card[0]}%`, top: `${s.card[1]}%`, '--st': STATUS_COLOR[st] } as React.CSSProperties}
+              <button key={name} ref={el => { if (el) cardRefs.current.set(name, el); else cardRefs.current.delete(name); }}
+                type="button" className={`sf-tq-card ${st}${self ? ' self' : ''}`} dir="rtl" hidden
+                style={{ '--st': STATUS_COLOR[st] } as React.CSSProperties}
                 onClick={() => { if (!self) onOpen(name); }} title={self ? undefined : M('openSite', { site: name })} disabled={self}>
                 <i />
                 <span>
@@ -563,7 +474,6 @@ const TaqaStationsMap: React.FC<Props> = ({ site, cover, trips, weather, onOpen,
             );
           })}
         </div>
-        <div ref={glRef} className="sf-tq-gl" aria-hidden="true" />
         <div ref={tagsRef} className="sf-tq-tags" />
 
         <div className="sf-map-hud">
@@ -583,9 +493,11 @@ const TaqaStationsMap: React.FC<Props> = ({ site, cover, trips, weather, onOpen,
             </div>
           </div>
           <div className="sf-map-zoom sf-tq-ui">
-            <button type="button" onClick={() => zoomBtn(1.4)} aria-label={M('zoomIn')} title={M('zoomIn')}><Plus className="w-4 h-4" /></button>
-            <button type="button" onClick={() => zoomBtn(1 / 1.4)} aria-label={M('zoomOut')} title={M('zoomOut')}><Minus className="w-4 h-4" /></button>
-            <button type="button" onClick={resetView} aria-label={M('reset')} title={M('reset')}><Maximize2 className="w-4 h-4" /></button>
+            <button type="button" onClick={() => cam(s => s.zoomAt(1.4))} aria-label={M('zoomIn')} title={M('zoomIn')}><Plus className="w-4 h-4" /></button>
+            <button type="button" onClick={() => cam(s => s.zoomAt(1 / 1.4))} aria-label={M('zoomOut')} title={M('zoomOut')}><Minus className="w-4 h-4" /></button>
+            <button type="button" onClick={() => cam(s => s.setGoal({ az: s.cam.az + Math.PI / 4 }))} aria-label={M('rotateLeft')} title={M('rotateLeft')}><RotateCcw className="w-4 h-4" /></button>
+            <button type="button" onClick={() => cam(s => s.setGoal({ az: s.cam.az - Math.PI / 4 }))} aria-label={M('rotateRight')} title={M('rotateRight')}><RotateCw className="w-4 h-4" /></button>
+            <button type="button" onClick={() => cam(s => s.reset())} aria-label={M('reset')} title={M('reset')}><Maximize2 className="w-4 h-4" /></button>
           </div>
           {touchHint && <div className="sf-tq-hint">{M('touchHint')}</div>}
           <div className="sf-map-foot">
