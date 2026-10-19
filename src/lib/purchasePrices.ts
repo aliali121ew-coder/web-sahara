@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useFuelStore } from '../context/FuelDataContext';
 import type { FuelProductMetric, InboundDelivery } from '../types';
 import { usePetrolLedger } from './petrolLedger';
@@ -7,6 +7,8 @@ import { useManualFuelCards } from './manualFuelCard';
 import { useBlackOilLedger, type ComputedBlackOilRecord } from './blackOilLedger';
 import { logPrice } from './priceLog';
 import type { PriceDay } from '../components/dashboard/PriceEditPopover';
+import { applyStationGas, stationGasLive, useStationGas } from './stationGas';
+import { usePermissions } from './usePermission';
 
 /**
  * أسعار كروت المشتريات (من الوارد أو التعديل اليدوي) في مكان واحد: تستخدمها كروت الرئيسية وسجل الأسعار
@@ -49,6 +51,17 @@ export const usePurchasePrices = () => {
   const { computed: etihadBlackOilDays } = useBlackOilLedger('etihad');
   const { overrides, setOverride, clearOverride } = usePriceOverrides();
   const { cards: manualCards, saveCard } = useManualFuelCards();
+  // كاز محطات: المجهزون المختارون من أرشيف الصحاري (آخر يوم وارد لكل منهم)
+  const { state: stationGas } = useStationGas();
+  const stationLive = useMemo(() => stationGasLive(saharaDeliveries, stationGas?.suppliers ?? []), [saharaDeliveries, stationGas?.suppliers]);
+  const canEditPrices = usePermissions().canEdit('prices');
+  // تحديث تلقائي: وارد جديد للمجهزين المختارين يغيّر قيم الكارت ويُسجَّل في سجله (من يملك تعديل الأسعار فقط يكتب)
+  useEffect(() => {
+    if (!canEditPrices || !stationGas?.suppliers.length || !stationLive || stationLive.sig === stationGas.sig) return;
+    if (applyStationGas(stationGas.suppliers, stationLive, 'auto')) {
+      logPrice({ source: 'purchases', action: 'update', key: MANUAL_ONLY_ID, name: fuelMetrics.find(m => m.id === MANUAL_ONLY_ID)?.name ?? 'كاز محطات', company: 'sahara', prevPrice: stationGas.price, price: stationLive.price });
+    }
+  }, [canEditPrices, stationGas, stationLive, fuelMetrics]);
 
   // ── السعر التلقائي من الوارد: كاز الصحاري وكاز الاتحاد من كشف الوارد، والبنزين من سجل البنزين ──
   const inboundSources = useMemo<Record<string, InboundPriceSource>>(() => {
@@ -72,7 +85,18 @@ export const usePurchasePrices = () => {
 
   // Dynamic mapping helper to get live price & trend from the supplier prices table
   const getLinkedSupplierData = (metric: FuelProductMetric) => {
-    // كاز محطات: قيم يدوية فقط (لا وارد ولا جدول موردين)
+    // كاز محطات من المجهزين المختارين: السعر والكمية من آخر يوم وارد لهم، والسابق = السعر قبل آخر تغيّر
+    if (metric.id === MANUAL_ONLY_ID && stationGas?.suppliers.length) {
+      const price = stationLive?.price ?? stationGas.price;
+      const synced = !!stationLive && stationLive.sig === stationGas.sig;
+      const previous = synced ? stationGas.previousPrice : stationGas.price || price;
+      return {
+        displayPrice: price, previousPrice: previous, trendPercent: pctChange(price, previous),
+        priceUpdatedAt: stationLive?.date || stationGas.date || '—', volume: stationLive?.volume ?? stationGas.volume,
+        source: 'standalone' as const, auto: null, src: undefined, manual: null
+      };
+    }
+    // كاز محطات بلا مجهزين مختارين: القيم اليدوية القديمة
     if (metric.id === MANUAL_ONLY_ID) {
       const m = manualCards[metric.id];
       const price = m?.price ?? metric.priceIqd;
@@ -136,7 +160,14 @@ export const usePurchasePrices = () => {
     if (v.price !== before.displayPrice) log(metric, 'update', before.displayPrice, v.price);
   };
 
-  return { fuelMetrics, priceOf: getLinkedSupplierData, savePrice, resetPrice, saveManual };
+  /** اختيار مجهزي كاز محطات: تُحسب القيم فورًا وتُسجَّل العملية */
+  const saveStationSuppliers = (metric: FuelProductMetric, suppliers: string[]) => {
+    const before = getLinkedSupplierData(metric);
+    const live = stationGasLive(saharaDeliveries, suppliers);
+    if (applyStationGas(suppliers, live, 'select') && (live?.price ?? 0) !== before.displayPrice) log(metric, 'update', before.displayPrice, live?.price ?? 0);
+  };
+
+  return { fuelMetrics, priceOf: getLinkedSupplierData, savePrice, resetPrice, saveManual, saveStationSuppliers, stationGas, stationLive };
 };
 
 export type PurchasePrice = ReturnType<ReturnType<typeof usePurchasePrices>['priceOf']>;

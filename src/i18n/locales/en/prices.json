@@ -116,5 +116,23 @@
     "start": "Window start",
     "end": "Window end",
     "hint": "Drag to select a period · double-click to show all"
+  },
+  "stationLog": {
+    "button": "Station gas log",
+    "title": "Station gas log",
+    "count": "{{count}} recorded operations",
+    "empty": "No operations yet: long-press the station gas card to choose its supplier",
+    "reason": { "select": "Supplier chosen", "auto": "New inbound" },
+    "col": {
+      "at": "Date & time",
+      "reason": "Operation",
+      "suppliers": "Suppliers (last inbound)",
+      "lastInbound": "Last inbound",
+      "qty": "Quantity (L)",
+      "price": "Price",
+      "previous": "Previous price",
+      "change": "Change",
+      "by": "User"
+    }
   }
 }
