@@ -30,7 +30,7 @@ export const SaharaPetrolArchive: React.FC = () => {
     return PETROL_STATIONS.map(({ name }) => ({ id: petrolTanks.find(p => clean(p.name) === name)?.id ?? `st:${name}`, name }));
   }, [centralTanks]);
   const stationQty = (r: ComputedPetrolRecord, id: string) => r.consumption?.[id] || 0;
-  const inboundOf = (r: ComputedPetrolRecord) => (r.inboundQty || 0) + (r.inboundInternal || 0);
+  const inboundOf = (r: ComputedPetrolRecord) => r.inboundQty || 0;
   // مرفقات كل يوم (PDF و Excel) من الخادم
   const { files, busy, error: filesError, clearError, upload, remove, replace } = useSaharaFiles();
   // وضع إدارة المرفقات (زر "تعديل" بجانب الطباعة): يُظهر تغيير وحذف الملفات
@@ -447,12 +447,7 @@ export const SaharaPetrolArchive: React.FC = () => {
                       <td key={s.id} className={`${td} ${stationQty(r, s.id) ? 'text-slate-600 dark:text-slate-300' : 'text-slate-300 dark:text-slate-600'}`}>{formatNumber(stationQty(r, s.id))}</td>
                     ))}
                     <td className={`${td} font-bold text-red-600 dark:text-red-400`}>{formatNumber(r.totalConsumption)}</td>
-                    <td
-                      className={`${td} font-bold text-emerald-600 dark:text-emerald-400`}
-                      title={r.inboundInternal ? t('finance:archive.petrol.inboundSplit', { external: formatNumber(r.inboundQty || 0), internal: formatNumber(r.inboundInternal) }) : undefined}
-                    >
-                      {formatNumber(inboundOf(r))}
-                    </td>
+                    <td className={`${td} font-bold text-emerald-600 dark:text-emerald-400`}>{formatNumber(inboundOf(r))}</td>
                     <td className={`${td} font-black ${r.current < 0 ? 'text-red-600' : 'text-slate-900 dark:text-white'}`}>{formatNumber(r.current)}</td>
                     {/* الإجراءات: الملفات تُفتح بالضغط؛ التغيير والحذف فقط في وضع إدارة الملفات */}
                     <td className={`${td} font-sans`}>

@@ -83,7 +83,7 @@ export const PetrolStationsSection: React.FC = () => {
     const WEEKDAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
     const count = timeRange === '7d' ? 7 : timeRange === '14d' ? 14 : 30;
     return petrolDays.slice(-count).map(d => {
-      const inbound = (d.inboundQty || 0) + (d.inboundInternal || 0);
+      const inbound = d.inboundQty || 0;
       const consumption = d.totalConsumption;
       const net = inbound - consumption;
       const [, mm, dd] = d.date.split('/');
