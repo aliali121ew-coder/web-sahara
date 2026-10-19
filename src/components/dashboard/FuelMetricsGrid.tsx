@@ -18,13 +18,16 @@ import { formatNumber } from '../../lib/utils';
 import { FuelProductMetric } from '../../types';
 import { PriceEditPopover } from './PriceEditPopover';
 import { usePurchasePrices, MANUAL_ONLY_ID } from '../../lib/purchasePrices';
+import { stationGasOptions } from '../../lib/stationGas';
+import { useFuelStore } from '../../context/FuelDataContext';
 import { usePermissions } from '../../lib/usePermission';
 
 
 /** layout="side": بدون ترويسة وفي عمودين (للعمود الجانبي في صفحة المشتريات) */
 export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout = 'row' }) => {
   const isSide = layout === 'side';
-  const { fuelMetrics, priceOf: getLinkedSupplierData, savePrice, resetPrice, saveManual } = usePurchasePrices();
+  const { fuelMetrics, priceOf: getLinkedSupplierData, savePrice, resetPrice, saveManual, saveStationSuppliers, stationGas } = usePurchasePrices();
+  const { saharaDeliveries } = useFuelStore();
   const { t } = useTranslation(['dashboard', 'common']);
   // تعديل السعر من البطاقة لمن يملك صلاحية تعديل الأسعار فقط
   const canEditPrices = usePermissions().canEdit('prices');
@@ -417,6 +420,8 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
             manual={d.manual ? { price: d.manual.price, setAt: d.manual.setAt } : null}
             readOnly={!isSide || !canEditPrices}
             standalone={item.id === MANUAL_ONLY_ID ? { volume: d.volume, date: d.priceUpdatedAt, onSave: v => saveManual(item, v) } : undefined}
+            // كاز محطات: الضغط المطوّل يبدأ باختيار المجهز (أو أكثر) من أرشيف وارد الصحاري
+            stationPicker={item.id === MANUAL_ONLY_ID ? { options: stationGasOptions(saharaDeliveries), selected: stationGas?.suppliers ?? [], onSave: names => saveStationSuppliers(item, names) } : undefined}
             onSave={price => savePrice(item, price)}
             onReset={() => resetPrice(item)}
             onClose={() => setOpenCard(null)}
