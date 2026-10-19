@@ -71,3 +71,8 @@ export function getBusinessDate(date: Date = new Date()): string {
   
   return `${year}/${month}/${day}`;
 }
+
+/** يوم العمل السابق (YYYY/MM/DD): اليوم 19 ← 18 */
+export function getPreviousBusinessDate(date: Date = new Date()): string {
+  return getBusinessDate(new Date(date.getTime() - 24 * 60 * 60 * 1000));
+}

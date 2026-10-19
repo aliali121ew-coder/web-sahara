@@ -39,6 +39,7 @@ import { useReportAttach } from '../../lib/saharaFiles';
 import { ReportAttachNotice } from './DayFilesCell';
 import { useCentralTanks, resolveSaharaPetrolSectionKey, tankLiters } from '../../lib/centralTanks';
 import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
+import { DateRangeCalendar } from '../ui/DateRangeCalendar';
 import { usePermissions } from '../../lib/usePermission';
 
 // منطق النموذج (يوم جديد، التعبئة من الكشف، السجل، شروط الحفظ) في lib/petrolForm.ts
@@ -74,6 +75,9 @@ export const SaharaPetrolView: React.FC = () => {
   const viewIndex = viewId ? computed.findIndex(r => r.id === viewId) : computed.length - 1;
   const view = viewIndex >= 0 ? computed[viewIndex] : null;
   const isLatestView = !!view && view.id === latest?.id;
+  // تقويم الانتقال لأي يوم مسجّل (نفس تقويم رصيد الكاز والأرشيف): الأيام المسجّلة عليها علامة
+  const [datePop, setDatePop] = useState<{ top: number; left: number } | null>(null);
+  const recordedDates = useMemo(() => new Set(computed.map(r => r.date)), [computed]);
 
   // يوم مُختار من جدول الرصيد الأسبوعي: النقر خارج الجدول يعيد العرض لآخر يوم
   const weeklyTableRef = useRef<HTMLDivElement>(null);
@@ -313,13 +317,43 @@ export const SaharaPetrolView: React.FC = () => {
           <button type="button" disabled={viewIndex <= 0} onClick={() => { setViewId(computed[viewIndex - 1]?.id ?? null); setPickedFromTable(false); }} title={t('finance:ledger.prevDay')} className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
             <ChevronRight className="w-4 h-4 ltr:rotate-180" />
           </button>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+          {/* التاريخ: يفتح تقويمًا للانتقال لأي يوم مسجّل */}
+          <button
+            type="button"
+            disabled={!computed.length}
+            onClick={e => {
+              const r = e.currentTarget.getBoundingClientRect();
+              setDatePop(p => (p ? null : { top: r.bottom + 8, left: Math.max(8, Math.min(r.left, window.innerWidth - 308)) }));
+            }}
+            title={t('finance:saharaBalance.pickDay')}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-emerald-400 dark:hover:border-emerald-700 transition-colors cursor-pointer disabled:cursor-default"
+          >
             <CalendarDays className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
             <span className="font-mono font-black text-sm text-slate-900 dark:text-white">{view?.date ?? '—'}</span>
             {view && isLatestView && (
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">{t('finance:ledger.latestDay')}</span>
             )}
-          </div>
+          </button>
+          {datePop && createPortal(
+            <>
+              <div className="fixed inset-0 z-[150]" onClick={() => setDatePop(null)} />
+              <div className="fixed z-[151]" style={{ top: datePop.top, left: datePop.left }}>
+                <DateRangeCalendar
+                  single
+                  marked={recordedDates}
+                  from={view?.date ?? ''}
+                  to={view?.date ?? ''}
+                  onApply={date => {
+                    const target = computed.find(r => r.date === date);
+                    if (target) { setViewId(target.id === latest?.id ? null : target.id); setPickedFromTable(false); }
+                    setDatePop(null);
+                  }}
+                  onClear={() => setDatePop(null)}
+                />
+              </div>
+            </>,
+            document.body
+          )}
           <button type="button" disabled={viewIndex >= computed.length - 1} onClick={() => { setViewId(viewIndex + 1 >= computed.length - 1 ? null : computed[viewIndex + 1].id); setPickedFromTable(false); }} title={t('finance:ledger.nextDay')} className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
             <ChevronLeft className="w-4 h-4 ltr:rotate-180" />
           </button>
