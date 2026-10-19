@@ -38,7 +38,7 @@ import { useTranslation, Trans } from 'react-i18next';
 import { enumText } from '../../i18n/enums';
 import { Breadcrumb } from '../navigation/Breadcrumb';
 import { useQuickAction } from '../../context/QuickActionContext';
-import { formatNumber, formatIQD } from '../../lib/utils';
+import { formatNumber, formatIQD, getPreviousBusinessDate } from '../../lib/utils';
 import { InboundDelivery } from '../../types';
 import { computeInboundPriceStats, deliveryDay } from '../../lib/inboundPrice';
 import { takeInboundFocus, FOCUS_EVENT, type InboundFocus } from '../../lib/inboundFocus';
@@ -161,9 +161,10 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
   const [filterSupplier, setFilterSupplier] = useState<string>('الكل');
   const [filterSupplierCompany, setFilterSupplierCompany] = useState<string>('الكل');
   const [filterFuelType, setFilterFuelType] = useState<string>('الكل');
-  // فلتر الفترة (YYYY/MM/DD): فارغ = كل التواريخ
-  const [dateFrom, setDateFrom] = useState<string>('');
-  const [dateTo, setDateTo] = useState<string>('');
+  // فلتر الفترة (YYYY/MM/DD): فارغ = كل التواريخ. تبويب الوارد في التقارير يفتح كل مرة على اليوم السابق
+  // (اليوم 19 ← 18)، ويمكن اختيار غيره من التقويم أو مسحه لكل التواريخ
+  const [dateFrom, setDateFrom] = useState<string>(() => (variant === 'archive' ? getPreviousBusinessDate() : ''));
+  const [dateTo, setDateTo] = useState<string>(() => (variant === 'archive' ? getPreviousBusinessDate() : ''));
   
   // Pagination State (10 items per page)
   const [currentPage, setCurrentPage] = useState<number>(1);
