@@ -43,6 +43,7 @@ import { InboundDelivery } from '../../types';
 import { computeInboundPriceStats, deliveryDay } from '../../lib/inboundPrice';
 import { takeInboundFocus, FOCUS_EVENT, type InboundFocus } from '../../lib/inboundFocus';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
+import { supplierKey } from '../../lib/archiveSuppliers';
 import {
   InboundPrintReport,
   PRINT_AVAILABLE_COLUMNS,
@@ -351,7 +352,18 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
   const supplierPersonOf = (d: InboundDelivery) =>
     d.supplierName && d.supplierName !== d.supplierCompany ? d.supplierName : '';
   const supplierCompanyOf = (d: InboundDelivery) => d.supplierCompany || d.supplierName || 'مصفى كربلاء الدولي';
-  const suppliersList = useMemo(() => ['الكل', ...Array.from(new Set(scopedDeliveries.map(supplierPersonOf).filter(Boolean)))], [scopedDeliveries]);
+  // المجهز الشخص: الاسم بين القوسين هو المجهز («اطراف النخيل ( نشوان )» و«نشوان» كلاهما نشوان)،
+  // فاختياره يُظهر كل شحناته من كل الشركات المجهزة، واختيار الشركة المجهزة يُظهر شحناتها وحدها
+  const personLabel = (name: string) => (name.match(/\(([^)]+)\)/)?.[1] ?? name).replace(/\s+/g, ' ').trim();
+  const personKey = (name: string) => supplierKey(personLabel(name));
+  const suppliersList = useMemo(() => {
+    const byKey = new Map<string, string>();
+    for (const d of scopedDeliveries) {
+      const n = supplierPersonOf(d);
+      if (n && !byKey.has(personKey(n))) byKey.set(personKey(n), personLabel(n));
+    }
+    return ['الكل', ...byKey.values()];
+  }, [scopedDeliveries]);
   const supplierCompaniesList = useMemo(() => ['الكل', ...Array.from(new Set(scopedDeliveries.map(supplierCompanyOf)))], [scopedDeliveries]);
   const fuelTypesList = useMemo(() => ['الكل', 'كاز', 'بنزين', 'نفط أسود', 'ديزل'], []);
 
@@ -367,7 +379,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
       if (!f) return;
       setLocalSearch('');
       setFilterSupplierCompany(f.company || 'الكل');
-      setFilterSupplier(f.person || 'الكل');
+      setFilterSupplier(f.person ? personLabel(f.person) : 'الكل');
       setDateFrom(f.date);
       setDateTo(f.date);
     };
@@ -379,10 +391,12 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
 
   const filteredDeliveries = useMemo(() => {
     const q = (searchQuery || localSearch).trim().toLowerCase();
+    const qKey = supplierKey(q);
 
     return scopedDeliveries.filter((d) => {
       const comp = (d.company || 'صحاري كربلاء').toLowerCase();
-      const supp = (d.supplierCompany || d.supplierName || '').toLowerCase();
+      // الشركة المجهزة واسم المجهز كلاهما (كان يُبحث في الشركة فقط إن وُجدت فلا يُعثر على المجهز)
+      const supp = `${d.supplierCompany || ''} ${d.supplierName || ''}`.toLowerCase();
       const driver = (d.driverName || '').toLowerCase();
       const truck = (d.truckNumber || '').toLowerCase();
       const voucher = (d.voucherNumber || d.receiptNumber || '').toLowerCase();
@@ -394,6 +408,8 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
         !q ||
         comp.includes(q) ||
         supp.includes(q) ||
+        // نفس الاسم بكتابة مختلفة (همزات، تاء مربوطة، مسافات)
+        (!!qKey && (supplierKey(d.supplierName || '').includes(qKey) || supplierKey(d.supplierCompany || '').includes(qKey))) ||
         driver.includes(q) ||
         truck.includes(q) ||
         voucher.includes(q) ||
@@ -404,7 +420,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
       const matchesCompany = lockedCompanyName
         ? (d.company || 'صحاري كربلاء') === lockedCompanyName
         : filterCompany === 'الكل' || (d.company || 'صحاري كربلاء') === filterCompany;
-      const matchesSupplier = filterSupplier === 'الكل' || supplierPersonOf(d) === filterSupplier;
+      const matchesSupplier = filterSupplier === 'الكل' || (!!supplierPersonOf(d) && personKey(supplierPersonOf(d)) === personKey(filterSupplier));
       const matchesSupplierCompany = filterSupplierCompany === 'الكل' || supplierCompanyOf(d) === filterSupplierCompany;
       const matchesFuel = filterFuelType === 'الكل' || color.includes(filterFuelType) || prod.includes(filterFuelType);
 
