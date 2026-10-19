@@ -119,6 +119,8 @@ export interface InboundDelivery {
 
   // Additional Metadata & Compatibility fields
   supplierName?: string;
+  /** اسم المجهز أُدخل يدويًا (ولو طابق الشركة المجهزة): يُعرض دائمًا؛ بدونه يُعدّ التطابق صيغة السجلات القديمة */
+  supplierNameSet?: boolean;
   product?: string;
   driverPhone?: string;
   receiptNumber?: string;

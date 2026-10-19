@@ -196,7 +196,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
       setDeliveryCompany(editData.company || editData.lockedCompany || 'صحاري كربلاء');
       setDeliverySupplier(editData.supplierCompany || '');
       // السجلات القديمة كانت تحفظ نفس القيمة في الحقلين
-      setDeliverySupplierName(editData.supplierName && editData.supplierName !== editData.supplierCompany ? editData.supplierName : '');
+      setDeliverySupplierName(editData.supplierName && (editData.supplierNameSet || editData.supplierName !== editData.supplierCompany) ? editData.supplierName : '');
       setEntryMode('manual');
       setDeliveryDriver(editData.driverName && !FAKE_DRIVERS.has(editData.driverName) ? editData.driverName : '');
       setTruckNumberText(String(editData.truckNumber || '').trim());
@@ -437,6 +437,8 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
       company: targetComp,
       supplierCompany: deliverySupplier,
       supplierName: deliverySupplierName.trim(),
+      // اسم المجهز من النافذة مقصود ولو طابق الشركة المجهزة: يُعرض في الجدول
+      supplierNameSet: !!deliverySupplierName.trim(),
       driverName: deliveryDriver,
       truckNumber: truckNumberText.trim(),
       voucherNumber: deliveryVoucher || `VCH-${Date.now().toString().slice(-4)}`,

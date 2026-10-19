@@ -350,7 +350,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
 
   // اسم المجهز (الشخص) والشركة المجهزة — السجلات القديمة تحمل قيمة واحدة في الحقلين
   const supplierPersonOf = (d: InboundDelivery) =>
-    d.supplierName && d.supplierName !== d.supplierCompany ? d.supplierName : '';
+    d.supplierName && (d.supplierNameSet || d.supplierName !== d.supplierCompany) ? d.supplierName : '';
   const supplierCompanyOf = (d: InboundDelivery) => d.supplierCompany || d.supplierName || 'مصفى كربلاء الدولي';
   // المجهز الشخص: الاسم بين القوسين هو المجهز («اطراف النخيل ( نشوان )» و«نشوان» كلاهما نشوان)،
   // فاختياره يُظهر كل شحناته من كل الشركات المجهزة، واختيار الشركة المجهزة يُظهر شحناتها وحدها
@@ -486,6 +486,9 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
     } else if (field === 'receiptUnloadDate') {
       if (!v) return;
       updateDelivery(item.id, { receiptUnloadDate: v, date: v });
+    } else if (field === 'supplierName') {
+      // اسم مُدخل يدويًا يُعرض ولو طابق الشركة المجهزة (كان يُخفى فيبدو أن التعديل لم يُحفظ)
+      updateDelivery(item.id, { supplierName: v, supplierNameSet: !!v });
     } else {
       updateDelivery(item.id, { [field]: v } as Partial<InboundDelivery>);
     }
