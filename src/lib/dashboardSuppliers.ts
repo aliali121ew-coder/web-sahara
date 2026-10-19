@@ -5,7 +5,8 @@ import { sameSupplier, supplierKey } from './archiveSuppliers';
 
 /**
  * الموردون الظاهرون في كارت «مؤشرات الأسعار» في الرئيسية: يُختارون بعلامة صح في جدول «كل الموردين».
- * المورد غير المعلَّم لا يظهر. يُحفظ باسم المورد (المورد الواحد صف واحد في الكارت ولو ورد للشركتين).
+ * المورد غير المعلَّم لا يظهر. لكل شركة مستلمة علامتها: يُحفظ «الشركة::الاسم»، فالمورد الذي يورّد للصحاري والاتحاد
+ * يُعلَّم صف كل شركة وحده. الاسم وحده (الصيغة القديمة) يعني الشركتين معًا.
  */
 export const DASHBOARD_SUPPLIERS_KEY = 'sahara_dashboard_suppliers_v1';
 const SYNC_EVENT = 'sahara-dashboard-suppliers-updated';
@@ -19,12 +20,32 @@ export const readDashboardSuppliers = (): string[] => {
   }
 };
 
-export const isOnDashboard = (list: string[], name: string) => list.some(k => sameSupplier(k, name) || supplierKey(k) === supplierKey(name));
+type Company = 'sahara' | 'etihad';
+const SEP = '::';
+const parse = (k: string): { company?: Company; name: string } => {
+  const i = k.indexOf(SEP);
+  const co = i > 0 ? k.slice(0, i) : '';
+  return co === 'sahara' || co === 'etihad' ? { company: co, name: k.slice(i + SEP.length) } : { name: k };
+};
+const sameName = (a: string, b: string) => sameSupplier(a, b) || supplierKey(a) === supplierKey(b);
 
-/** إظهار المورد في الرئيسية أو إخفاؤه */
-export const setOnDashboard = (name: string, on: boolean) => {
-  const list = readDashboardSuppliers().filter(k => !(sameSupplier(k, name) || supplierKey(k) === supplierKey(name)));
-  if (on) list.push(name.replace(/\s+/g, ' ').trim());
+/** هل المورد معلَّم (لشركة الصف إن أُعطيت) */
+export const isOnDashboard = (list: string[], name: string, company?: Company) =>
+  list.some(k => { const e = parse(k); return sameName(e.name, name) && (!e.company || !company || e.company === company); });
+
+/** إظهار المورد في الرئيسية أو إخفاؤه؛ بشركة: صف تلك الشركة وحده (علامة الشركة الأخرى تبقى كما هي) */
+export const setOnDashboard = (name: string, on: boolean, company?: Company) => {
+  const clean = name.replace(/\s+/g, ' ').trim();
+  const list: string[] = [];
+  for (const k of readDashboardSuppliers()) {
+    const e = parse(k);
+    if (!sameName(e.name, name)) { list.push(k); continue; }
+    if (!company) continue;
+    // صيغة قديمة (الشركتان): تبقى علامة الشركة الأخرى
+    if (!e.company) list.push(`${company === 'sahara' ? 'etihad' : 'sahara'}${SEP}${e.name}`);
+    else if (e.company !== company) list.push(k);
+  }
+  if (on) list.push(company ? `${company}${SEP}${clean}` : clean);
   localStorage.setItem(DASHBOARD_SUPPLIERS_KEY, JSON.stringify(list));
   window.dispatchEvent(new Event(SYNC_EVENT));
 };
