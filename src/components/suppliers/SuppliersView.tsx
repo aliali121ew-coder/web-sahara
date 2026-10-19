@@ -95,6 +95,9 @@ const EMPTY: SupplierPriceRecord = {
   category: 'تجاري', availability: 'متوفر', lastUpdated: '', company: 'sahara',
 };
 
+/** السعر الحالي اليدوي قد يكون فارغًا (0): يُعرض «—» */
+const priceText = (v: number) => (v ? fmtPrice(v) : '—');
+
 const SupplierModal: React.FC<{ initial: SupplierPriceRecord; isNew: boolean; onClose: () => void; onSave: (s: SupplierPriceRecord) => void; onDelete?: () => void }> = ({ initial, isNew, onClose, onSave, onDelete }) => {
   const { t } = useTranslation(['suppliers', 'common']);
   const [f, setF] = useState<SupplierPriceRecord>(initial);
@@ -102,10 +105,12 @@ const SupplierModal: React.FC<{ initial: SupplierPriceRecord; isNew: boolean; on
   const [confirmDelete, setConfirmDelete] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const set = <K extends keyof SupplierPriceRecord>(k: K, v: SupplierPriceRecord[K]) => setF(p => ({ ...p, [k]: v }));
-  const priceNum = Number(price.replace(/,/g, ''));
-  const valid = f.supplierName.trim() && f.product.trim() && priceNum > 0;
+  // السعر الحالي يدوي ويمكن تركه فارغًا؛ المعاينة تقارنه بالسعر السابق (آخر وارد في الأرشيف) كما في الجدول
+  const priceNum = Number(price.replace(/,/g, '')) || 0;
+  const valid = f.supplierName.trim() && f.product.trim() && (priceNum > 0 || !price.trim());
+  const base = initial.previousPriceIqd || initial.priceIqd;
   const priceChanged = !isNew && priceNum > 0 && priceNum !== initial.priceIqd;
-  const delta = priceChanged && initial.priceIqd ? Math.round(((priceNum - initial.priceIqd) / initial.priceIqd) * 10000) / 100 : 0;
+  const delta = priceChanged && base ? Math.round(((priceNum - base) / base) * 10000) / 100 : 0;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -216,7 +221,7 @@ const SupplierModal: React.FC<{ initial: SupplierPriceRecord; isNew: boolean; on
                 <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${delta > 0 ? 'bg-rose-500/10 text-rose-500' : 'bg-emerald-500/10 text-emerald-600'}`}>
                   {delta > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                 </span>
-                <span className="flex-1 text-slate-600 dark:text-slate-300">{t('modal.priceNote', { old: fmtPrice(initial.priceIqd) })}</span>
+                <span className="flex-1 text-slate-600 dark:text-slate-300">{t('modal.priceNote', { old: fmtPrice(base) })}</span>
                 <span dir="ltr" className={`font-semibold tabular-nums ${delta > 0 ? 'text-rose-500' : 'text-emerald-600'}`}>{delta > 0 ? '+' : ''}{delta}%</span>
               </div>
             )}
@@ -396,7 +401,7 @@ export const SuppliersView: React.FC = () => {
     const head = [t('table.receiver'), t('table.supplier'), t('fields.product'), t('fields.category'), t('table.current'), t('table.previous'), t('table.change'), t('table.updated')];
     const list = rows;
     const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
-    const body = list.map(s => [inboundOf(s).companies.map(c => t(`receiver.${c}`)).join(' + ') || '—', s.supplierName, s.product, enumText(s.category), s.priceIqd, s.previousPriceIqd, `${s.changePercent}%`, s.lastUpdated].map(esc).join(','));
+    const body = list.map(s => [inboundOf(s).companies.map(c => t(`receiver.${c}`)).join(' + ') || '—', s.supplierName, s.product, enumText(s.category), s.priceIqd || '', s.previousPriceIqd || '', s.priceIqd ? `${s.changePercent}%` : '', s.priceIqd ? s.lastUpdated : ''].map(esc).join(','));
     const blob = new Blob(['﻿' + [head.map(esc).join(','), ...body].join('\n')], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -419,7 +424,7 @@ export const SuppliersView: React.FC = () => {
   };
   // مجموع آخر يوم وارد (كل صهاريجه) كما في الجدول
   const lastQty = sel?.lastDayQty ?? 0;
-  const diff = selected ? selected.priceIqd - selected.previousPriceIqd : 0;
+  const diff = selected?.priceIqd && selected.previousPriceIqd ? selected.priceIqd - selected.previousPriceIqd : 0;
   const ownCo: Company = selected?.company ?? 'sahara';
   const otherCo: Company = ownCo === 'sahara' ? 'etihad' : 'sahara';
   const ownMarket = market[ownCo];
@@ -500,9 +505,9 @@ export const SuppliersView: React.FC = () => {
           <StatCard
             icon={<History className="w-4 h-4 text-teal-600" />} iconBg="bg-teal-50 dark:bg-teal-950/60"
             title={t('cards.previous')}
-            value={fmtPrice(selected.previousPriceIqd)} unit={iqdL}
+            value={priceText(selected.previousPriceIqd)} unit={iqdL}
             rows={[
-              { label: t('cards.lastChange'), value: selected.history?.[1]?.date || selected.lastUpdated || '—' },
+              { label: t('cards.lastChange'), value: selected.archiveDate || '—' },
               {
                 label: t('cards.diffFromCurrent'),
                 value: (
@@ -517,9 +522,9 @@ export const SuppliersView: React.FC = () => {
           <StatCard
             icon={<Coins className="w-4 h-4 text-white" />} iconBg="bg-amber-400"
             title={t('cards.current')}
-            value={fmtPrice(selected.priceIqd)} unit={iqdL}
+            value={priceText(selected.priceIqd)} unit={iqdL}
             rows={[
-              { label: t('cards.updatedOn'), value: selected.lastUpdated || '—' },
+              { label: t('cards.updatedOn'), value: (selected.priceIqd && selected.lastUpdated) || '—' },
               { label: t('cards.vsPrevious'), value: <Signed v={selected.changePercent} suffix="%" /> },
             ]}
           />
@@ -645,12 +650,12 @@ export const SuppliersView: React.FC = () => {
                     <div className="text-[11px] text-slate-400 truncate">{s.product}</div>
                   </div>
                   <CompanyBadges companies={inb.companies} />
-                  <ChangePill pct={s.changePercent} />
+                  {s.priceIqd ? <ChangePill pct={s.changePercent} /> : null}
                 </div>
                 <dl className="mt-3 grid grid-cols-2 min-[480px]:grid-cols-4 sm:grid-cols-2 gap-2 text-center">
                   {[
-                    { k: t('table.current'), v: fmtPrice(s.priceIqd), strong: true },
-                    { k: t('table.previous'), v: fmtPrice(s.previousPriceIqd) },
+                    { k: t('table.current'), v: priceText(s.priceIqd), strong: true },
+                    { k: t('table.previous'), v: priceText(s.previousPriceIqd) },
                     { k: t('table.density'), v: s.density || '—' },
                     { k: t('table.color'), v: s.color || '—' },
                   ].map(({ k, v, strong }) => (
@@ -661,7 +666,7 @@ export const SuppliersView: React.FC = () => {
                   ))}
                 </dl>
                 <div className="mt-3 flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-slate-400 tabular-nums">{t('table.updated')}: {s.lastUpdated || '—'}</span>
+                  <span className="text-[11px] text-slate-400 tabular-nums">{t('table.updated')}: {(s.priceIqd && s.lastUpdated) || '—'}</span>
                   <span className="ms-auto flex items-center gap-1.5 text-[11px] text-slate-500" onClick={e => e.stopPropagation()}>{t('table.dashboard')}{dashToggle(s)}</span>
                   {editable && (
                     <button type="button" onClick={e => { e.stopPropagation(); setEditing({ rec: s, isNew: false }); }}
@@ -712,10 +717,10 @@ export const SuppliersView: React.FC = () => {
                       <td className={td}><span className="block truncate max-w-[160px]">{s.product || '—'}</span></td>
                       <td className={`${td} tabular-nums`} dir="ltr" style={{ textAlign: 'start' }}>{s.density || '—'}</td>
                       <td className={td}><span className="block truncate max-w-[120px]">{s.color || '—'}</span></td>
-                      <td className={`${td} font-semibold text-slate-900 dark:text-white tabular-nums`}>{fmtPrice(s.priceIqd)}</td>
-                      <td className={`${td} tabular-nums`}>{fmtPrice(s.previousPriceIqd)}</td>
-                      <td className={td}><ChangePill pct={s.changePercent} /></td>
-                      <td className={`${td} tabular-nums`}>{s.lastUpdated}</td>
+                      <td className={`${td} font-semibold text-slate-900 dark:text-white tabular-nums`}>{priceText(s.priceIqd)}</td>
+                      <td className={`${td} tabular-nums`}>{priceText(s.previousPriceIqd)}</td>
+                      <td className={td}>{s.priceIqd ? <ChangePill pct={s.changePercent} /> : '—'}</td>
+                      <td className={`${td} tabular-nums`}>{(s.priceIqd && s.lastUpdated) || '—'}</td>
                       <td className={td} onClick={e => e.stopPropagation()}>
                         {editable ? (
                           <button type="button" onClick={() => setEditing({ rec: s, isNew: false })} aria-label={t('common:actions.edit')} title={t('common:actions.edit')}

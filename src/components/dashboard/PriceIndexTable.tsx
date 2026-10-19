@@ -4,7 +4,7 @@ import { useFuelData } from '../../context/FuelDataContext';
 import { useTranslation } from 'react-i18next';
 import { Avatar, CompanyBadges, fmtPrice } from '../suppliers/supplierUi';
 import { SectionHeader } from './SectionHeader';
-import { latestSupplierPrices, sameSupplier } from '../../lib/archiveSuppliers';
+import { sameSupplier } from '../../lib/archiveSuppliers';
 import { isOnDashboard, useDashboardSuppliers } from '../../lib/dashboardSuppliers';
 
 /** مربع الاتجاه لفرق التغيّر: سهم مستقيم داخل كارت صغير بدل الإشارة (+ / −) */
@@ -39,68 +39,35 @@ const ChangeCell: React.FC<{ pct: number }> = ({ pct }) => {
 
 /**
  * مؤشرات الأسعار في الرئيسية (كل الموردين بلا تكرار): نفس أعمدة جدول «كل الموردين» (بلا الشركة المستلمة وآخر تحديث والإجراء)،
- * ومصدرها سجلات الأسعار نفسها؛ للعرض فقط (الصفوف لا تنقل لأي صفحة).
+ * ومصدرها سجلات الأسعار نفسها (الموردون الذين لهم سعر حالي يدوي)؛ للعرض فقط (الصفوف لا تنقل لأي صفحة).
  */
 export const PriceIndexTable: React.FC = () => {
-  const { supplierPrices, searchQuery, saharaDeliveries, etihadDeliveries } = useFuelData();
+  const { supplierPrices, searchQuery } = useFuelData();
   const { t } = useTranslation(['dashboard', 'common']);
-  // من أرشيف وارد الشركتين مباشرة: أحدث المجهزين ورودًا أولًا، وكل مجهز يُقارن بسعر شحنته السابقة
   // الموردون المعلَّمون بعلامة صح في صفحة الموردين فقط
   const shown = useDashboardSuppliers();
-  const latest = useMemo(() => latestSupplierPrices(saharaDeliveries, etihadDeliveries), [saharaDeliveries, etihadDeliveries]);
-  // سجل الموردين هو المرجع: كل مورد فيه يظهر هنا، وأي تحديث عليه (سعر/اسم/كثافة/لون من صفحة الموردين
-  // ويُسجَّل في سجل الأسعار والمشتريات) يظهر فورًا. الأحدث بين آخر تحديث للسجل وآخر وارد من الأرشيف هو المعروض
+  // من سجل الموردين: السعر الحالي يدوي (يظهر المورد هنا حين يُكتب له سعر حالي)، والسابق سعر آخر وارد له في الأرشيف.
+  // أي تعديل يدوي أو وارد جديد يظهر فورًا. الأحدث تعديلًا أولًا
   const rows = useMemo(() => {
     const day = (d: string) => (d || '').replace(/-/g, '/');
-    // «آخر وارد» من الأرشيف دائمًا (لا تاريخ آخر تعديل في صفحة الموردين): آخر شحنة للمورد في شركة الصف،
-    // وإن لم يكن له وارد فيها فآخر شحنة له في أي من الأرشيفين
-    const lastInbound = (company: string | undefined, name: string) => {
-      const mine = latest.filter(l => sameSupplier(l.supplierName, name));
-      const own = mine.find(l => l.company === company);
-      return own?.date ?? mine.reduce((m, l) => (l.date > m ? l.date : m), '');
-    };
-    const used = new Set<string>();
-    const merged = latest.map(item => {
-      const rec = supplierPrices.find(r => r.id === item.id) ?? supplierPrices.find(r => r.company === item.company && sameSupplier(r.supplierName, item.supplierName));
-      if (rec) used.add(rec.id);
-      // تحديث يدوي في سجل الموردين بعد آخر وارد (أو في نفس يومه): قيم السجل
-      const manual = !!rec && (day(rec.lastUpdated) > item.date || (rec.edited === true && day(rec.lastUpdated) === item.date));
-      if (rec && manual) {
-        const prev = rec.previousPriceIqd || rec.priceIqd;
+    const list = supplierPrices
+      .filter(rec => rec.priceIqd > 0 && isOnDashboard(shown, rec.supplierName))
+      .filter(rec => rec.supplierName.includes(searchQuery) || (rec.product || '').includes(searchQuery))
+      .sort((a, b) => day(b.lastUpdated).localeCompare(day(a.lastUpdated)))
+      .map(rec => {
+        const previous = rec.previousPriceIqd || 0;
+        const diff = previous ? rec.priceIqd - previous : 0;
         return {
-          id: rec.id, company: rec.company ?? item.company, supplierName: rec.supplierName, logo: rec.logo, date: item.date, product: rec.product || item.product,
-          density: rec.density ?? item.density, color: rec.color ?? item.color, price: rec.priceIqd,
-          previousPrice: rec.previousPriceIqd ? rec.previousPriceIqd : null, prev, diff: rec.priceIqd - prev,
-          pct: rec.changePercent ?? (prev ? Math.round(((rec.priceIqd - prev) / prev) * 10000) / 100 : 0),
-          sortKey: `${day(rec.lastUpdated)}|9`,
+          id: rec.id, company: rec.company ?? 'sahara', supplierName: rec.supplierName, logo: rec.logo, product: rec.product,
+          density: rec.density, color: rec.color, price: rec.priceIqd, previousPrice: previous || null, diff,
+          pct: previous ? Math.round((diff / previous) * 10000) / 100 : 0,
         };
-      }
-      // آخر وارد من الأرشيف: مقارنة بشحنة نفس المجهز السابقة
-      const prev = item.previousPrice ?? item.price;
-      const diff = item.price - prev;
-      // الشركة المستلمة: من سجل المورد إن عُدّلت فيه، وإلا من الأرشيف الذي ورد إليه
-      return { ...item, company: rec?.company ?? item.company, supplierName: rec?.edited ? rec.supplierName : item.supplierName, logo: rec?.logo, prev, diff, pct: prev ? Math.round((diff / prev) * 10000) / 100 : 0, sortKey: `${item.date}|${item.recency}` };
-    });
-    // موردو السجل بلا وارد في الأرشيف (أُضيفوا يدويًا): بقيم السجل
-    for (const rec of supplierPrices) {
-      if (used.has(rec.id) || !rec.priceIqd) continue;
-      const prev = rec.previousPriceIqd || rec.priceIqd;
-      merged.push({
-        id: rec.id, company: rec.company ?? 'sahara', supplierName: rec.supplierName, logo: rec.logo, date: lastInbound(rec.company ?? 'sahara', rec.supplierName), product: rec.product,
-        density: rec.density, color: rec.color, price: rec.priceIqd, previousPrice: rec.previousPriceIqd ? rec.previousPriceIqd : null, prev,
-        diff: rec.priceIqd - prev, pct: rec.changePercent ?? 0, sortKey: `${day(rec.lastUpdated)}|9`, recency: '',
-      } as (typeof merged)[number]);
-    }
+      });
     // كل الموردين بلا تكرار: المورد الواحد (ولو ورد للشركتين) يظهر مرة واحدة بأحدث صف له
-    const seen: typeof merged = [];
-    for (const item of merged
-      .filter(item => isOnDashboard(shown, item.supplierName))
-      .filter(item => item.supplierName.includes(searchQuery) || (item.product || '').includes(searchQuery))
-      .sort((a, b) => b.sortKey.localeCompare(a.sortKey))) {
-      if (!seen.some(x => sameSupplier(x.supplierName, item.supplierName))) seen.push(item);
-    }
+    const seen: typeof list = [];
+    for (const item of list) if (!seen.some(x => sameSupplier(x.supplierName, item.supplierName))) seen.push(item);
     return seen;
-  }, [latest, supplierPrices, searchQuery, shown]);
+  }, [supplierPrices, searchQuery, shown]);
 
   // كل العناوين في الوسط؛ خلية المجهز (الشعار والاسم) بمحاذاة البداية
   const th = 'px-3 xl:px-4 pt-3 pb-1 text-center text-[13px] font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap';
