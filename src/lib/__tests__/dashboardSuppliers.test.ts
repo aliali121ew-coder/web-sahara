@@ -15,4 +15,23 @@ describe('موردو كارت مؤشرات الأسعار', () => {
     setOnDashboard('أطراف النخيل', false);
     expect(readDashboardSuppliers()).toEqual([]);
   });
+
+  it('لكل شركة علامتها: تعليم صف الصحاري لا يمس صف الاتحاد', () => {
+    setOnDashboard('اسعد كاظم', true, 'sahara');
+    expect(isOnDashboard(readDashboardSuppliers(), 'اسعد كاظم', 'sahara')).toBe(true);
+    expect(isOnDashboard(readDashboardSuppliers(), 'اسعد كاظم', 'etihad')).toBe(false);
+    setOnDashboard('اسعد كاظم', true, 'etihad');
+    setOnDashboard('اسعد كاظم', false, 'sahara');
+    expect(isOnDashboard(readDashboardSuppliers(), 'اسعد كاظم', 'sahara')).toBe(false);
+    expect(isOnDashboard(readDashboardSuppliers(), 'اسعد كاظم', 'etihad')).toBe(true);
+  });
+
+  it('الصيغة القديمة (الاسم وحده) تعني الشركتين، وإلغاء شركة يُبقي الأخرى', () => {
+    setOnDashboard('اسعد كاظم', true);
+    expect(isOnDashboard(readDashboardSuppliers(), 'اسعد كاظم', 'sahara')).toBe(true);
+    expect(isOnDashboard(readDashboardSuppliers(), 'اسعد كاظم', 'etihad')).toBe(true);
+    setOnDashboard('اسعد كاظم', false, 'sahara');
+    expect(isOnDashboard(readDashboardSuppliers(), 'اسعد كاظم', 'sahara')).toBe(false);
+    expect(isOnDashboard(readDashboardSuppliers(), 'اسعد كاظم', 'etihad')).toBe(true);
+  });
 });
