@@ -1,5 +1,10 @@
 import { withPdf } from './pdfDoc';
 /**
+ * الشكل الحالي للملف (PDF "مخطط خزانات الوقود"): رسم بلا جداول، وتُقرأ منه نسب امتلاء قسم "خزانات النفط الأسود"
+ * في الأعلى فقط (سطر النسب الأول تحت العنوان، من اليمين لليسار) ويُهمل الباقي (الكاز، البنزين، الريان، الطاقة).
+ * كل نسبة تملأ خزان قسم النفط الأسود للصحاري المقابل لها بالترتيب (النسبة × سعة الخزان).
+ *
+ * الشكل القديم:
  * ملف الخزانات اليومي (Excel أو PDF): تُقرأ منه كميات 9 خزانات نفط أسود فقط ويُهمل الباقي:
  * "الخزان الرئيسي 1..6" (جدول مستوى الخزانات الرئيسية، عمود "الكمية")، ثم
  * "خزان رقم 1 و2 و4 ( نفط اسود )" (جدول خزانات الكاز، عمود "سعة الخزان").
@@ -97,7 +102,26 @@ export const parseTanksPdfRows = (rows: PdfItem[][]): (number | null)[] => {
   return TANKS_FILE_SLOTS.map(s => found.get(`${s.kind}:${s.no}`) ?? null);
 };
 
-const readPdf = (file: File) => withPdf(file, false, async pdf => {
+/** نسب قسم النفط الأسود في الأعلى (من اليمين لليسار)، أو null إن لم يكن الملف بالشكل الحالي */
+export const parseTanksDiagram = (rows: PdfItem[][]): number[] | null => {
+  const head = rows.findIndex(r => skel(r.map(it => it.str).join(' ')).includes(skel('خزانات النفط الاسود')));
+  if (head < 0) return null;
+  for (const row of rows.slice(head + 1)) {
+    const pcts = row
+      .map(it => ({ x: it.x, m: norm(it.str).match(/^(\d+(?:\.\d+)?)\s*%$/) }))
+      .filter((p): p is { x: number; m: RegExpMatchArray } => !!p.m);
+    if (pcts.length >= 2) return pcts.sort((a, b) => b.x - a.x).map(p => Number(p.m[1]));
+  }
+  return null;
+};
+
+export interface TanksReading {
+  /** liters: كميات الشكل القديم بترتيب TANKS_FILE_SLOTS؛ percent: نسب الامتلاء بترتيب خزانات القسم */
+  unit: 'liters' | 'percent';
+  values: (number | null)[];
+}
+
+const readPdf = (file: File) => withPdf(file, false, async (pdf): Promise<TanksReading> => {
   const rows: PdfItem[][] = [];
   for (let p = 1; p <= Math.min(pdf.numPages, 3); p++) {
     const content = await (await pdf.getPage(p)).getTextContent();
@@ -112,11 +136,12 @@ const readPdf = (file: File) => withPdf(file, false, async pdf => {
     }
     page.sort((a, b) => b.y - a.y).forEach(r => rows.push(r.items));
   }
-  return parseTanksPdfRows(rows);
+  const pcts = parseTanksDiagram(rows);
+  return pcts ? { unit: 'percent', values: pcts } : { unit: 'liters', values: parseTanksPdfRows(rows) };
 });
 
 /** قراءة الملف: PDF، أو أول ورقة Excel فيها الخزانات */
-export const readTanksReportFile = async (file: File): Promise<(number | null)[]> => {
+export const readTanksReportFile = async (file: File): Promise<TanksReading> => {
   if (/\.pdf$/i.test(file.name)) return readPdf(file);
   const XLSX = await import('xlsx');
   const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
@@ -126,5 +151,5 @@ export const readTanksReportFile = async (file: File): Promise<(number | null)[]
     if (vals.filter(v => v !== null).length > best.filter(v => v !== null).length) best = vals;
     if (vals.every(v => v !== null)) break;
   }
-  return best;
+  return { unit: 'liters', values: best };
 };
