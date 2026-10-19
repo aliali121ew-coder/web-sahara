@@ -26,6 +26,7 @@ import {
 } from '../lib/mockData';
 import { logPrice } from '../lib/priceLog';
 import { buildArchiveSuppliers, sameSupplier, supplierKey, deliveriesOfSupplier, archiveValue, recordColor } from '../lib/archiveSuppliers';
+import { setOnDashboard } from '../lib/dashboardSuppliers';
 
 const MOCK_SUPPLIERS_REMOVED_KEY = 'sahara_supplier_mock_removed';
 const SUPPLIER_NAMES_REPAIRED_KEY = 'sahara_supplier_names_repaired';
@@ -33,6 +34,12 @@ const SUPPLIER_SOURCE_V2_KEY = 'sahara_supplier_source_v2';
 const SUPPLIER_COLOR_YELLOW_KEY = 'sahara_supplier_color_yellow_v1';
 /** إعادة بناء لمرة واحدة (2026/10/10): حذف كل بيانات الموردين وبناؤها من جديد من أرشيف وارد الصحاري والاتحاد */
 const SUPPLIERS_RESET_V3_KEY = 'sahara_supplier_reset_v3';
+/** لمرة واحدة: السعر الحالي صار يدويًا فقط، فتُفرَّغ كل الأسعار الحالية (المنسوخة من الأرشيف) */
+const SUPPLIER_CURRENT_MANUAL_KEY = 'sahara_supplier_current_manual_v1';
+/** نسبة التغيّر بين السعر الحالي (اليدوي) والسابق (آخر وارد)؛ 0 إن نقص أحدهما */
+const changePct = (current: number, previous: number) => (current && previous ? Math.round(((current - previous) / previous) * 10000) / 100 : 0);
+/** سجل أرشيف بالقاعدة الجديدة: الحالي فارغ حتى يُكتب يدويًا، والسابق سعر آخر وارد */
+const fromArchive = (a: SupplierPriceRecord): SupplierPriceRecord => ({ ...a, priceIqd: 0, previousPriceIqd: a.priceIqd, changePercent: 0, archiveDate: a.lastUpdated });
 
 interface FuelDataContextType {
   activeTab: NavTabId;
@@ -432,8 +439,8 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // لمرة واحدة: حذف بيانات الموردين الحالية (بما فيها الأسماء المقطوعة من استيراد خاطئ) ونقل الموردين
       // من أرشيف وارد الصحاري والاتحاد. العلامة تُزامَن مع الخادم فلا يتكرر الحذف على بقية الأجهزة
       if (!localStorage.getItem(SUPPLIERS_RESET_V3_KEY)) {
-        list = buildArchiveSuppliers(saharaDeliveries, etihadDeliveries);
-        [SUPPLIERS_RESET_V3_KEY, MOCK_SUPPLIERS_REMOVED_KEY, SUPPLIER_NAMES_REPAIRED_KEY, SUPPLIER_SOURCE_V2_KEY, SUPPLIER_COLOR_YELLOW_KEY]
+        list = buildArchiveSuppliers(saharaDeliveries, etihadDeliveries).map(fromArchive);
+        [SUPPLIERS_RESET_V3_KEY, MOCK_SUPPLIERS_REMOVED_KEY, SUPPLIER_NAMES_REPAIRED_KEY, SUPPLIER_SOURCE_V2_KEY, SUPPLIER_COLOR_YELLOW_KEY, SUPPLIER_CURRENT_MANUAL_KEY]
           .forEach(k => localStorage.setItem(k, '1'));
         return list;
       }
@@ -451,22 +458,28 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const built = buildArchiveSuppliers(saharaDeliveries, etihadDeliveries);
       const builtById = new Map(built.map(b => [b.id, b]));
       const userData = (x: SupplierPriceRecord) => !!(x.phone || x.location || x.contactName || x.logo);
-      const day = (d?: string) => (d || '').replace(/-/g, '/');
       // 1) مورد أُضيف تلقائيًا ولم يعد في الأرشيف (أُعيدت تسميته أو حُذفت شحناته): يُحذف، ما لم يُدخل له المستخدم بيانات أو يعدّله
       const orphan = (x: SupplierPriceRecord) =>
         x.id.startsWith('sup-a-') && !!x.company && !x.edited && !userData(x) && !builtById.has(x.id);
       if (list.some(orphan)) list = list.filter(x => !orphan(x));
-      // 2) الموجودون: يُحدَّث السعر والسابق والتاريخ والكثافة واللون والاسم من آخر وارد في الأرشيف إن كان أحدث
-      //    من آخر تحديث للسجل (التعديل اليدوي الأحدث من آخر وارد يبقى)، وبيانات المستخدم (هاتف، موقع، شعار) تبقى
+      // 2) الموجودون: السعر السابق = سعر آخر وارد مسعّر للمجهز في أرشيف شركته (لا أقل سعر)، يتبع كل وارد جديد فورًا.
+      //    السعر الحالي يدوي فقط فلا يمسّه الأرشيف. وعند وصول وارد أحدث تُحدَّث الكثافة واللون والمنتج والاسم وسجل الأسعار،
+      //    وبيانات المستخدم (هاتف، موقع، شعار) تبقى. السجل اليدوي (ليس sup-a-) يُطابق بالاسم في شركته
       let refreshed = false;
       const updated = list.map(x => {
-        const b = builtById.get(x.id);
-        if (!b || !(b.lastUpdated > day(x.lastUpdated))) return x;
+        const b = builtById.get(x.id)
+          ?? (!x.id.startsWith('sup-a-') && x.company ? built.find(a => a.company === x.company && sameSupplier(a.supplierName, x.supplierName)) : undefined);
+        if (!b || !b.priceIqd) return x;
+        const newer = x.archiveDate !== undefined && b.lastUpdated > x.archiveDate;
+        const pct = changePct(x.priceIqd, b.priceIqd);
+        if (!newer && x.previousPriceIqd === b.priceIqd && x.changePercent === pct && x.archiveDate === b.lastUpdated) return x;
         refreshed = true;
         return {
-          ...x, priceIqd: b.priceIqd, previousPriceIqd: b.previousPriceIqd, changePercent: b.changePercent, lastUpdated: b.lastUpdated,
-          history: b.history, product: b.product || x.product, density: b.density ?? x.density, color: b.color ?? x.color,
-          supplierName: x.edited ? x.supplierName : b.supplierName,
+          ...x, previousPriceIqd: b.priceIqd, changePercent: pct, archiveDate: b.lastUpdated,
+          ...(newer ? {
+            history: b.history, product: b.product || x.product, density: b.density ?? x.density, color: b.color ?? x.color,
+            supplierName: x.edited ? x.supplierName : b.supplierName,
+          } : {}),
         };
       });
       if (refreshed) list = updated;
@@ -475,6 +488,7 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         .filter(a => !list.some(s => s.id === a.id || ((!s.company || s.company === a.company) && supplierKey(s.supplierName) === supplierKey(a.supplierName))))
         .map(a => {
           const old = legacy.find(l => sameSupplier(l.supplierName, a.supplierName));
+          a = fromArchive(a);
           return old ? { ...a, phone: old.phone, location: old.location, contactName: old.contactName, contactRole: old.contactRole, logo: old.logo, category: old.category } : a;
         });
       // إصلاح لمرة واحدة: نقل الأسماء أثناء الفصل أعطى بعض السجلات اسم مورد قريب؛ يُعاد لكل سجل أرشيف اسمه الأصلي
@@ -523,6 +537,12 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           return { ...x, density, color };
         });
         if (touched) list = filled;
+      }
+      // لمرة واحدة: السعر الحالي صار يدويًا فقط؛ تُفرَّغ الأسعار الحالية كلها (والسابق يبقى سعر آخر وارد).
+      // التاريخ يبقى كما هو: الأجهزة التي ما زالت على النسخة السابقة تنسخ سعر الأرشيف لسجل تاريخه أقدم من آخر وارد
+      if (!localStorage.getItem(SUPPLIER_CURRENT_MANUAL_KEY)) {
+        list = list.map(x => ({ ...x, priceIqd: 0, changePercent: 0 }));
+        localStorage.setItem(SUPPLIER_CURRENT_MANUAL_KEY, '1');
       }
       // لمرة واحدة: «أصفر مخضر» المنسوخ من الأرشيف يصبح «أصفر» في سجلات الأسعار
       if (!localStorage.getItem(SUPPLIER_COLOR_YELLOW_KEY)) {
@@ -752,22 +772,29 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const today = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
     // سجل عدّله المستخدم: لا يحذفه التنظيف التلقائي حين يختلف اسمه عن الأرشيف
     supplier = { ...supplier, edited: true };
+    // السعر الحالي يدوي: تغييره يُظهر المورد في مؤشر الأسعار في الرئيسية (علامة «الرئيسية» تُفعَّل، ويمكن إلغاؤها)
+    if (supplier.priceIqd > 0 && (before?.priceIqd ?? 0) !== supplier.priceIqd) setOnDashboard(supplier.supplierName, true);
+    // السعر السابق لا يُكتب هنا: هو سعر آخر وارد من الأرشيف (تحدّثه مزامنة الأرشيف)
+    const previous = supplier.previousPriceIqd || 0;
     setSupplierPrices(prev => {
       const old = prev.find(s => s.id === supplier.id);
       if (!old) {
-        const rec = { ...supplier, previousPriceIqd: supplier.previousPriceIqd || supplier.priceIqd, changePercent: 0, lastUpdated: today, history: [{ date: today, price: supplier.priceIqd }] };
+        const rec = {
+          ...supplier, previousPriceIqd: previous, changePercent: changePct(supplier.priceIqd, previous), lastUpdated: today,
+          history: supplier.priceIqd ? [{ date: today, price: supplier.priceIqd }] : [],
+        };
         return [...prev, rec];
       }
       const priceChanged = old.priceIqd !== supplier.priceIqd;
       const next: SupplierPriceRecord = priceChanged
         ? {
             ...supplier,
-            previousPriceIqd: old.priceIqd,
-            changePercent: old.priceIqd ? Math.round(((supplier.priceIqd - old.priceIqd) / old.priceIqd) * 10000) / 100 : 0,
+            previousPriceIqd: old.previousPriceIqd || previous,
+            changePercent: changePct(supplier.priceIqd, old.previousPriceIqd || previous),
             lastUpdated: today,
-            history: [{ date: today, price: supplier.priceIqd }, ...(old.history ?? [{ date: old.lastUpdated, price: old.priceIqd }])].slice(0, 60),
+            history: supplier.priceIqd ? [{ date: today, price: supplier.priceIqd }, ...(old.history ?? [])].slice(0, 60) : old.history,
           }
-        : { ...supplier, history: old.history };
+        : { ...supplier, previousPriceIqd: old.previousPriceIqd, changePercent: old.changePercent, history: old.history };
       return prev.map(s => (s.id === supplier.id ? next : s));
     });
   };
