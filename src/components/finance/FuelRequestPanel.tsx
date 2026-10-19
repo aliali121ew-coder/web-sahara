@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, PackageCheck, Send, Truck, X } from 'lucide-react';
 import { HUB_SITES, canEditSite } from '../../lib/siteAccess';
-import { createSiteRequest, requestsOf, setRequestStatus, useSiteRequests, type SiteRequest } from '../../lib/siteRequests';
+import { createSiteRequest, requestsOf, setRequestStatus, suggestTankers, useSiteRequests, type SiteRequest } from '../../lib/siteRequests';
 import { usePermissions } from '../../lib/usePermission';
 import { useSessionProfile } from '../../lib/session';
 
@@ -44,11 +44,17 @@ export const FuelRequestPanel: React.FC<{ site: string }> = ({ site }) => {
 
   const others = HUB_SITES.filter(s => s !== site);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ source: others[0], qty: '', note: '' });
+  const blank = { qty: '', note: '', hours: '', mins: '', tankers: '' };
+  const [form, setForm] = useState({ source: others[0], ...blank });
   const qty = Number(form.qty.replace(/,/g, ''));
+  // عدد الصهاريج يُقترح من الكمية ما لم يكتبه المستخدم
+  const tankers = form.tankers ? Number(form.tankers) : suggestTankers(qty);
+  const etaMin = (Number(form.hours) || 0) * 60 + (Number(form.mins) || 0);
   const send = () => {
-    if (createSiteRequest(site, form.source, qty, form.note, by)) setForm({ source: form.source, qty: '', note: '' });
+    if (createSiteRequest(site, form.source, qty, form.note, by, { etaMin, tankers })) setForm({ source: form.source, ...blank });
   };
+  const digits = (v: string, max: number) => { const d = v.replace(/[^\d]/g, ''); return d ? String(Math.min(max, Number(d))) : ''; };
+  const etaText = (m?: number) => (m ? R('etaShort', { h: Math.floor(m / 60), m: String(m % 60).padStart(2, '0') }) : '');
   const act = (id: string, status: SiteRequest['status']) => setRequestStatus(id, status, by);
 
   const row = (r: SiteRequest, dir: 'in' | 'out') => (
@@ -56,7 +62,7 @@ export const FuelRequestPanel: React.FC<{ site: string }> = ({ site }) => {
       <span className="sf-fr-ico">{r.status === 'approved' ? <Truck className="w-3.5 h-3.5" /> : <TankerIcon className="sf-tanker-ico sm" />}</span>
       <span className="sf-fr-main">
         <b>{dir === 'in' ? R('fromSite', { site: r.site }) : R('toSite', { site: r.source })} · {fmt(r.qty)} {t('finance:siteFarms.liter')}</b>
-        <small>{when(r.createdAt)}{r.by ? ` · ${r.by}` : ''}{r.note ? ` · ${r.note}` : ''}</small>
+        <small>{when(r.createdAt)}{r.by ? ` · ${r.by}` : ''}{r.tankers ? ` · ${R('tankersN', { n: r.tankers })}` : ''}{r.etaMin ? ` · ${etaText(r.etaMin)}` : ''}{r.note ? ` · ${r.note}` : ''}</small>
       </span>
       <span className={`sf-fr-st ${r.status}`}>{R(`status.${r.status}`)}</span>
       {canAct && dir === 'in' && r.status === 'pending' && (
@@ -98,10 +104,19 @@ export const FuelRequestPanel: React.FC<{ site: string }> = ({ site }) => {
                 <input inputMode="numeric" value={form.qty} placeholder="0"
                   onChange={e => { const d = e.target.value.replace(/[^\d]/g, ''); setForm({ ...form, qty: d ? Number(d).toLocaleString('en-US') : '' }); }} />
               </label>
+              <label><span>{R('etaHours')}</span>
+                <input inputMode="numeric" value={form.hours} placeholder="0" onChange={e => setForm({ ...form, hours: digits(e.target.value, 168) })} />
+              </label>
+              <label><span>{R('etaMins')}</span>
+                <input inputMode="numeric" value={form.mins} placeholder="0" onChange={e => setForm({ ...form, mins: digits(e.target.value, 59) })} />
+              </label>
+              <label className="wide"><span>{R('tankers')}</span>
+                <input inputMode="numeric" value={form.tankers} placeholder={String(suggestTankers(qty))} onChange={e => setForm({ ...form, tankers: digits(e.target.value, 20) })} />
+              </label>
               <label className="wide"><span>{R('note')}</span>
                 <input value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} />
               </label>
-              <button type="button" className="send" disabled={!(qty > 0)} onClick={send}><Send className="w-4 h-4" />{R('send')}</button>
+              <button type="button" className="send" disabled={!(qty > 0) || !(etaMin > 0) || !(tankers >= 1)} onClick={send}><Send className="w-4 h-4" />{R('send')}</button>
             </div>
           )}
           <div className="sf-fr-lists">

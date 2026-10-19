@@ -44,8 +44,22 @@ export const buildRoute = (net: RoadNet, from: string, to: string, hRatio: numbe
     legs.unshift({ pts: p.pts, yard: p.yard });
     n = p.n;
   }
+  // من نقطة الوقوف عند خزان محطة الانطلاق إلى مدخلها، ومن مدخل الوجهة إلى خزانها (داخل الساحة: بطيء)
+  const yardOut = (station: string, entry: string): RoadPt[] => {
+    const y = net.yards[station];
+    return y ? [...(y.from[entry] ?? []), ...(y.pre ? [y.pre] : []), y.park] : [];
+  };
+  let first = '';
+  for (let n = reached; ; ) { const p = prev.get(n); if (!p) { first = n; break; } n = p.n; }
   const out: RoutePoint[] = [];
-  legs.forEach(leg => leg.pts.forEach((p, i) => { if (out.length && i === 0) return; out.push({ ...toU(p), yard: leg.yard }); }));
+  const push = (p: RoadPt, yard: boolean) => {
+    const u = toU(p), last = out[out.length - 1];
+    if (last && Math.hypot(last.x - u.x, last.y - u.y) < 1e-6) return;
+    out.push({ ...u, yard });
+  };
+  [...yardOut(from, first)].reverse().forEach(p => push(p, true));
+  legs.forEach(leg => leg.pts.forEach(p => push(p, leg.yard)));
+  yardOut(to, reached).forEach(p => push(p, true));
   return out.length > 1 ? out : null;
 };
 
@@ -63,15 +77,15 @@ export interface Track {
 export const TRACK = {
   /** خطوة إعادة التقسيم */
   step: 0.2,
-  /** السرعة القصوى على الطريق المستقيم (وحدة/ثانية) */
-  vmax: 4.2,
+  /** السرعة القصوى على الطريق المستقيم (وحدة/ثانية في عرض الرحلة) */
+  vmax: 7.5,
   /** داخل ساحة محطة */
-  vyard: 1.3,
+  vyard: 2.4,
   /** التسارع والتباطؤ الطوليان (وحدة/ث²) */
-  accel: 1.1,
-  decel: 1.6,
+  accel: 1.5,
+  decel: 2.1,
   /** التسارع الجانبي المسموح في المنعطفات */
-  lateral: 2.2,
+  lateral: 2.6,
 };
 
 /** مسار بخطوات متساوية مع تنعيم خفيف للزوايا، وملف السرعة عليه */
@@ -155,28 +169,60 @@ export const poseAt = (t: Track, dist: number, lane = 0, look = 0.9): TrackPose 
 };
 
 /** loading = عند محطة الانطلاق قبل التحرك (تفريق صهاريج نفس المحطة)، moving، arrived = عند الوجهة */
-export type SimPhase = 'loading' | 'moving' | 'arrived';
-export interface SimState { dist: number; phase: SimPhase; dwell: number; speed: number }
-
-/** زمن الانتظار عند الوجهة قبل إعادة المحاكاة من البداية */
-export const ARRIVE_DWELL = 4;
-/** أدنى سرعة تقدّم حتى لا تتوقف المركبة قبل خط الوصول (ملف السرعة صفر عند الطرفين) */
-const CREEP = 0.18;
-
-/** خطوة محاكاة: يتقدم الصهريج بسرعة ملف المسار × المضاعف، ويقف عند الوصول ثم يعيد الرحلة */
-export const stepSim = (st: SimState, t: Track, dt: number, mult = 1): SimState => {
-  if (st.phase === 'loading') {
-    const dwell = st.dwell - dt;
-    return dwell > 0 ? { ...st, dwell, speed: 0 } : { dist: st.dist, phase: 'moving', dwell: 0, speed: 0 };
-  }
-  if (st.phase === 'arrived') {
-    const dwell = st.dwell - dt;
-    return dwell > 0 ? { ...st, dwell, speed: 0 } : { dist: 0, phase: 'moving', dwell: 0, speed: 0 };
-  }
-  // سرعة ناعمة: تقترب من سرعة الملف (لا قفزات عند تغيّر الحد)
-  const target = Math.max(CREEP, poseAt(t, st.dist).speed) * mult;
-  const speed = st.speed + (target - st.speed) * Math.min(1, dt * 3);
-  const dist = st.dist + Math.max(CREEP * mult, speed) * dt;
-  if (dist >= t.length) return { dist: t.length, phase: 'arrived', dwell: ARRIVE_DWELL, speed: 0 };
-  return { dist, phase: 'moving', dwell: 0, speed };
+/** زمن قطع المسار بملف السرعة (ثوانٍ تراكمية)؛ أدنى سرعة vfloor حتى لا يكون الزمن لانهائيًا عند التوقف */
+export const timeTrack = (t: Track, vfloor = 0.35) => {
+  const n = t.s.length, tc = new Float32Array(n);
+  for (let i = 1; i < n; i++) tc[i] = tc[i - 1] + (t.s[i] - t.s[i - 1]) / Math.max(vfloor, (t.v[i] + t.v[i - 1]) / 2);
+  return tc;
 };
+
+/** المسافة على المسار بعد زمن tau من الانطلاق (عكس timeTrack) */
+export const distAtTime = (t: Track, tc: Float32Array, tau: number) => {
+  const n = tc.length, T = tc[n - 1];
+  if (tau <= 0) return 0;
+  if (tau >= T) return t.length;
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (tc[mid] <= tau) lo = mid; else hi = mid; }
+  const k = (tau - tc[lo]) / Math.max(1e-9, tc[hi] - tc[lo]);
+  return t.s[lo] + (t.s[hi] - t.s[lo]) * k;
+};
+
+/**
+ * جدول رحلة صهريج بالوقت الحقيقي: الانطلاق (الموافقة + ترتيبه في القافلة)، ومدة القيادة (مدة الوصول)، ومدة التفريغ.
+ * لا توجد بيانات GPS: الموقع تقديري من هذا الجدول.
+ */
+export interface TripPlan { start: number; driveMs: number; queueMs: number; unloadMs: number }
+/** waiting = لم ينطلق بعد، driving، queued = وصل وينتظر دوره عند نقطة التفريغ، unloading، unloaded */
+export type TripPhase = 'waiting' | 'driving' | 'queued' | 'unloading' | 'unloaded';
+export interface TripMoment { phase: TripPhase; drive: number; unload: number; msLeft: number }
+
+/** معدل تفريغ تقديري (لتر/دقيقة) وفاصل الانطلاق بين صهاريج القافلة ومدة افتراضية حين لا تُحدد مدة الوصول */
+export const UNLOAD_LPM = 1000;
+export const CONVOY_GAP_MIN = 2;
+export const DEFAULT_ETA_MIN = 60;
+
+/**
+ * صهاريج القافلة تنطلق بفاصل، وتفرغ واحدًا بعد الآخر عند نقطة التفريغ: الصهريج k يبدأ التفريغ
+ * بعد وصوله وبعد انتهاء من قبله، فينتظر دوره (queueMs) إذا كان التفريغ أطول من فاصل الانطلاق.
+ */
+export const queuedPlan = (start0: number, gapMs: number, driveMs: number, unloadMs: number, k: number): TripPlan => ({
+  start: start0 + k * gapMs,
+  driveMs,
+  queueMs: k * Math.max(0, unloadMs - gapMs),
+  unloadMs,
+});
+
+export const planTrip = (approvedAt: number, etaMin: number, qtyEach: number, index: number): TripPlan =>
+  queuedPlan(approvedAt, CONVOY_GAP_MIN * 60000, Math.max(1, etaMin) * 60000, Math.max(60000, (qtyEach / UNLOAD_LPM) * 60000), index);
+
+export const tripAt = (p: TripPlan, now: number): TripMoment => {
+  const e = now - p.start;
+  if (e < 0) return { phase: 'waiting', drive: 0, unload: 0, msLeft: -e };
+  if (e < p.driveMs) return { phase: 'driving', drive: e / p.driveMs, unload: 0, msLeft: p.driveMs - e };
+  const q = e - p.driveMs;
+  if (q < p.queueMs) return { phase: 'queued', drive: 1, unload: 0, msLeft: p.queueMs - q };
+  const u = q - p.queueMs;
+  if (u < p.unloadMs) return { phase: 'unloading', drive: 1, unload: u / p.unloadMs, msLeft: p.unloadMs - u };
+  return { phase: 'unloaded', drive: 1, unload: 1, msLeft: 0 };
+};
+

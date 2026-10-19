@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createSiteRequest, inTransit, readSiteRequests, requestsOf, setRequestStatus } from '../siteRequests';
+import { createSiteRequest, inTransit, readSiteRequests, requestsOf, setRequestStatus, suggestTankers } from '../siteRequests';
 import { canEditSite, canViewAnySite, canViewSite, sitePerm } from '../siteAccess';
 import { canReadKey, canWriteKey, ALL_SECTIONS } from '../permCatalog';
 
@@ -28,6 +28,16 @@ describe('صلاحيات المواقع', () => {
 
 describe('الطلبات بين المواقع', () => {
   beforeEach(() => localStorage.clear());
+
+  it('مدة الوصول وعدد الصهاريج تُحفظ مع الطلب (والقيم غير المعقولة تُهمل)', () => {
+    const r = createSiteRequest('البياض', 'الطاقة', 70000, '', undefined, { etaMin: 90.4, tankers: 2 })!;
+    expect(r).toMatchObject({ etaMin: 90, tankers: 2 });
+    const bad = createSiteRequest('البياض', 'الطاقة', 1000, '', undefined, { etaMin: 0, tankers: 50 })!;
+    expect(bad.etaMin).toBeUndefined();
+    expect(bad.tankers).toBeUndefined();
+    expect(suggestTankers(70000)).toBe(2);
+    expect(suggestTankers(5000)).toBe(1);
+  });
 
   it('طلب ← موافقة (شاحنة في الطريق) ← استلام، والانتقالات الخاطئة مرفوضة', () => {
     expect(createSiteRequest('التسمين', 'التسمين', 100, '')).toBeNull();

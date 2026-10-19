@@ -5,6 +5,7 @@ import * as THREE from 'three';
  * ومقطورة خزان بيضاوي بنهايتين مقبّبتين، وأحزمة كروم، وخط برتقالي، وممشى علوي بفتحات تعبئة ودرابزين، وخراطيم، وسلم خلفي،
  * ولوحة مواد خطرة، وست محاور عجلات بجنوط. المقدمة باتجاه +x.
  * userData.wheels = مجموعات العجلات (تدور حول z مع سرعة المركبة). polished = خزان ستانلس لامع (يحتاج بيئة انعكاس).
+ * userData.brake / signalL / signalR / beacon = خامات الأضواء (شدتها تتغير)، userData.hose = خرطوم التفريغ (مخفي).
  */
 export interface TankerOptions { cab?: number; polished?: boolean }
 export const createTanker = (opts: TankerOptions = {}): THREE.Group => {
@@ -60,7 +61,20 @@ export const createTanker = (opts: TankerOptions = {}): THREE.Group => {
   const plac = M(0xdc2626, { emissive: 0x7f1d1d, emissiveIntensity: 0.4 });
   [0.56, -0.56].forEach(z => add(new THREE.BoxGeometry(0.24, 0.24, 0.01), plac, -1.25, 1.36, z, 0, 0, Math.PI / 4));
   // الإضاءة الخلفية والمصد الخلفي ورفارف الطين
-  [0.42, -0.42].forEach(z => add(new THREE.BoxGeometry(0.04, 0.1, 0.2), lamp(0xef4444), -3.62, 0.62, z));
+  const brake = lamp(0xef4444); brake.emissiveIntensity = 0.7;
+  [0.42, -0.42].forEach(z => add(new THREE.BoxGeometry(0.04, 0.1, 0.2), brake, -3.62, 0.62, z));
+  // الإشارات الجانبية (أمام وخلف كل جانب) ومصباح التحذير على السقف وخرطوم التفريغ
+  const signal = () => { const m = lamp(0xf59e0b); m.emissiveIntensity = 0.15; return m; };
+  const signalL = signal(), signalR = signal();
+  ([[signalL, -1], [signalR, 1]] as const).forEach(([m, sd]) => {
+    add(new THREE.BoxGeometry(0.06, 0.07, 0.07), m, 3.31, 0.55, sd * 0.56);
+    add(new THREE.BoxGeometry(0.04, 0.07, 0.08), m, -3.62, 0.78, sd * 0.42);
+  });
+  const beacon = lamp(0xf59e0b); beacon.emissiveIntensity = 0.1;
+  add(new THREE.CylinderGeometry(0.07, 0.08, 0.1, 12), beacon, 2.15, 1.97, 0);
+  const hoseCurve = new THREE.CatmullRomCurve3([new THREE.Vector3(-1.3, 0.62, 0.52), new THREE.Vector3(-1.15, 0.32, 0.85), new THREE.Vector3(-0.85, 0.06, 1.3), new THREE.Vector3(-0.5, 0.05, 1.75)]);
+  const hose = add(new THREE.TubeGeometry(hoseCurve, 24, 0.055, 8), M(0x111827, { roughness: 0.7 }), 0, 0, 0);
+  hose.visible = false;
   add(new THREE.BoxGeometry(0.12, 0.12, 1.1), dark, -3.6, 0.45, 0);
   [0.5, -0.5].forEach(z => { add(new THREE.BoxGeometry(0.04, 0.32, 0.26), dark, 0.62, 0.36, z); add(new THREE.BoxGeometry(0.04, 0.32, 0.26), dark, -3.25, 0.36, z); });
   // العجلات: إطار وجنط ومحور (أمامي، اثنان للقاطرة، ثلاثة للمقطورة)
@@ -78,6 +92,7 @@ export const createTanker = (opts: TankerOptions = {}): THREE.Group => {
     }
   }));
   g.userData.wheels = wheels;
+  Object.assign(g.userData, { brake, signalL, signalR, beacon, hose });
   g.scale.setScalar(0.56);
   return g;
 };

@@ -21,6 +21,10 @@ export interface SiteRequest {
   status: RequestStatus;
   createdAt: string;
   by?: string;
+  /** مدة الوصول المطلوبة بالدقائق (تبدأ من الموافقة) */
+  etaMin?: number;
+  /** عدد الصهاريج التي تنقل الكمية */
+  tankers?: number;
   approvedAt?: string;
   approvedBy?: string;
   closedAt?: string;
@@ -46,9 +50,21 @@ const write = (list: SiteRequest[]) => {
 
 const now = () => new Date().toISOString();
 
-export const createSiteRequest = (site: string, source: string, qty: number, note: string, by?: string): SiteRequest | null => {
+/** سعة الصهريج الافتراضية (لتر) لاقتراح عدد الصهاريج من الكمية */
+export const TANKER_CAPACITY = 36000;
+export const suggestTankers = (qty: number) => Math.min(20, Math.max(1, Math.ceil((qty || 0) / TANKER_CAPACITY)));
+
+export interface RequestOptions { etaMin?: number; tankers?: number }
+
+export const createSiteRequest = (site: string, source: string, qty: number, note: string, by?: string, opts: RequestOptions = {}): SiteRequest | null => {
   if (!site || !source || site === source || !(qty > 0)) return null;
-  const req: SiteRequest = { id: `sr-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, site, source, qty: Math.round(qty), note: note.trim() || undefined, status: 'pending', createdAt: now(), by };
+  const eta = Math.round(opts.etaMin ?? 0);
+  const tankers = Math.round(opts.tankers ?? 0);
+  const req: SiteRequest = {
+    id: `sr-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, site, source, qty: Math.round(qty), note: note.trim() || undefined, status: 'pending', createdAt: now(), by,
+    ...(eta >= 1 && eta <= 7 * 24 * 60 ? { etaMin: eta } : {}),
+    ...(tankers >= 1 && tankers <= 20 ? { tankers } : {}),
+  };
   write([req, ...readSiteRequests()]);
   return req;
 };

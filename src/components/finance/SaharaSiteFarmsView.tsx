@@ -346,7 +346,7 @@ export const SaharaSiteFarmsView: React.FC<{ site?: string; mode?: 'site' | 'ann
     .filter(r => r.status === 'approved' && (isTaqa || r.site === site || r.source === site))
     .map(r => isTaqa
       // الطاقة: الصهريج يسير على الشوارع بين لوحي الموقعين
-      ? { id: r.id, qty: r.qty, dir: r.site === site ? 'in' : 'out', from: r.source, to: r.site, text: t('finance:siteFarms.map.tripFromTo', { from: r.source, to: r.site }), since: r.approvedAt }
+      ? { id: r.id, qty: r.qty, dir: r.site === site ? 'in' : 'out', from: r.source, to: r.site, text: t('finance:siteFarms.map.tripFromTo', { from: r.source, to: r.site }), since: r.approvedAt, etaMin: r.etaMin, tankers: r.tankers }
       // موقع: من خارجه إلى خزانه أو العكس، باتجاه الموقع الآخر على المخطط
       : r.site === site
         ? { id: r.id, qty: r.qty, dir: 'in', from: 'outside', to: 'station', text: `${t('finance:siteFarms.map.tripIn')} ${r.source}`, bearing: bearingTo(site, r.source) }
