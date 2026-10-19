@@ -26,7 +26,6 @@ export interface PetrolForm {
   /** خانة الرصيد السابق مفتوحة للإدخال */
   prevEditing: boolean;
   inboundQty: string;
-  inboundInternal: string;
   inboundPrice: string;
   consumption: Record<string, string>;
   balances: Record<string, string>;
@@ -44,7 +43,6 @@ export const newPetrolForm = (computed: Day[], stations: PetrolStation[]): Petro
     editPrevious: false,
     prevEditing: computed.length === 0,
     inboundQty: '',
-    inboundInternal: '',
     // الكشف لا يحتوي السعر: يُقترح آخر سعر شراء مسجّل
     inboundPrice: fmtInput([...computed].reverse().find(r => r.inboundPrice > 0)?.inboundPrice),
     consumption: Object.fromEntries(stations.map(s => [s.id, ''])),
@@ -76,7 +74,6 @@ export const applyPetrolReport = (form: PetrolForm, data: PetrolReportExtraction
   const date = dateFromFile ?? form.date;
   const next: PetrolForm = { ...form, date, consumption, balances };
   if (data.inboundQty !== undefined) { next.inboundQty = fmtInput(data.inboundQty); filled++; }
-  if (data.inboundInternal !== undefined) { next.inboundInternal = fmtInput(data.inboundInternal); filled++; }
   if (data.inboundPrice !== undefined) { next.inboundPrice = fmtInput(data.inboundPrice); filled++; }
   // الرصيد السابق من الملف يُستعمل فقط إن لم يوجد يوم قبله في النظام (لتاريخ الكشف)
   if (data.previous !== undefined && petrolAutoPrevious(computed, date, form.id) === null) {
@@ -94,7 +91,6 @@ export const petrolRecord = (form: PetrolForm, computed: Day[]): PetrolLedgerRec
     id: form.id || `pet-${Date.now()}`,
     date: form.date,
     inboundQty: num(form.inboundQty),
-    inboundInternal: num(form.inboundInternal),
     inboundPrice: num(form.inboundPrice),
     consumption: Object.fromEntries(Object.entries(form.consumption).map(([k, v]) => [k, num(v)])),
     stationBalances: Object.fromEntries(Object.entries(form.balances).map(([k, v]) => [k, num(v)])),

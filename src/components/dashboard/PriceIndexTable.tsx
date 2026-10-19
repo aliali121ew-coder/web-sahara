@@ -46,21 +46,21 @@ export const PriceIndexTable: React.FC = () => {
   const { t } = useTranslation(['dashboard', 'common']);
   // الموردون المعلَّمون بعلامة صح في صفحة الموردين فقط
   const shown = useDashboardSuppliers();
-  // من سجل الموردين: السعر الحالي يدوي (يظهر المورد هنا حين يُكتب له سعر حالي)، والسابق سعر آخر وارد له في الأرشيف.
-  // أي تعديل يدوي أو وارد جديد يظهر فورًا. الأحدث تعديلًا أولًا
+  // من سجل الموردين: كل مورد معلَّم يظهر، والسعر الحالي يدوي («—» حتى يُكتب)، والسابق سعر آخر وارد له في الأرشيف.
+  // أي تعديل يدوي أو وارد جديد يظهر فورًا. من له سعر حالي أولًا، ثم الأحدث تعديلًا
   const rows = useMemo(() => {
     const day = (d: string) => (d || '').replace(/-/g, '/');
     const list = supplierPrices
-      .filter(rec => rec.priceIqd > 0 && isOnDashboard(shown, rec.supplierName))
+      .filter(rec => isOnDashboard(shown, rec.supplierName))
       .filter(rec => rec.supplierName.includes(searchQuery) || (rec.product || '').includes(searchQuery))
-      .sort((a, b) => day(b.lastUpdated).localeCompare(day(a.lastUpdated)))
+      .sort((a, b) => Number(b.priceIqd > 0) - Number(a.priceIqd > 0) || day(b.lastUpdated).localeCompare(day(a.lastUpdated)))
       .map(rec => {
         const previous = rec.previousPriceIqd || 0;
-        const diff = previous ? rec.priceIqd - previous : 0;
+        const diff = previous && rec.priceIqd ? rec.priceIqd - previous : 0;
         return {
           id: rec.id, company: rec.company ?? 'sahara', supplierName: rec.supplierName, logo: rec.logo, product: rec.product,
           density: rec.density, color: rec.color, price: rec.priceIqd, previousPrice: previous || null, diff,
-          pct: previous ? Math.round((diff / previous) * 10000) / 100 : 0,
+          pct: previous ? Math.round((diff / previous) * 10000) / 100 : 0, hasPrice: rec.priceIqd > 0,
         };
       });
     // كل الموردين بلا تكرار: المورد الواحد (ولو ورد للشركتين) يظهر مرة واحدة بأحدث صف له
@@ -111,7 +111,7 @@ export const PriceIndexTable: React.FC = () => {
                     <CompanyBadges companies={[s.company]} />
                   </div>
                 </td>
-                <td className={`${td} font-extrabold text-slate-900 dark:text-white tabular-nums`}>{fmtPrice(s.price)} <span className={iqd}>{t('common:units.iqd')}</span></td>
+                <td className={`${td} font-extrabold text-slate-900 dark:text-white tabular-nums`}>{s.hasPrice ? <>{fmtPrice(s.price)} <span className={iqd}>{t('common:units.iqd')}</span></> : '—'}</td>
                 <td className={`${td} ${plain} tabular-nums`}>{s.density || '—'}</td>
                 <td className={`${td} tabular-nums font-normal text-slate-700 dark:text-slate-300`}>
                   {s.previousPrice === null ? '—' : <>{fmtPrice(s.previousPrice)} <span className={iqd}>{t('common:units.iqd')}</span></>}
@@ -124,7 +124,7 @@ export const PriceIndexTable: React.FC = () => {
                     </span>
                   ) : '—'}
                 </td>
-                <td className={td}><ChangeCell pct={s.pct} /></td>
+                <td className={td}>{s.hasPrice ? <ChangeCell pct={s.pct} /> : '—'}</td>
                 <td className={`${td} ${plain}`}><span className="block truncate max-w-[120px] mx-auto">{s.color || '—'}</span></td>
                 <td className={`${td} ${plain}`}><span className="block truncate max-w-[160px] mx-auto">{s.product || '—'}</span></td>
               </tr>

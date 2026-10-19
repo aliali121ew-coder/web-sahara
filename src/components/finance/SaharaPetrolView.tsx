@@ -142,7 +142,6 @@ export const SaharaPetrolView: React.FC = () => {
       editPrevious: r.previousOverride != null,
       prevEditing: false,
       inboundQty: fmtInput(r.inboundQty),
-      inboundInternal: fmtInput(r.inboundInternal),
       inboundPrice: fmtInput(r.inboundPrice),
       consumption: Object.fromEntries(stations.map(s => [s.id, fmtInput(r.consumption?.[s.id])])),
       balances: Object.fromEntries(stations.map(s => [s.id, fmtInput(r.stationBalances?.[s.id] ?? s.balance)]))
@@ -156,9 +155,8 @@ export const SaharaPetrolView: React.FC = () => {
   const dateTaken = !!form && computed.some(r => r.date === form.date && r.id !== form.id);
   const formConsumption = form ? Object.values(form.consumption).reduce((a, v) => a + num(v), 0) : 0;
   const formPrevious = form ? (form.editPrevious || autoPrevious === null ? num(form.previous) : autoPrevious) : 0;
-  // الرصيد الحالي يشمل الوارد الداخلي (لكنه لا يظهر ضمن كارت الوارد)
-  const formCurrent = formPrevious + (form ? num(form.inboundQty) + num(form.inboundInternal) : 0) - formConsumption;
-  const formEmpty = !!form && !num(form.inboundQty) && !num(form.inboundInternal) && !formConsumption;
+  const formCurrent = formPrevious + (form ? num(form.inboundQty) : 0) - formConsumption;
+  const formEmpty = !!form && !num(form.inboundQty) && !formConsumption;
   const overCapacity = form ? stations.filter(s => s.capacity > 0 && num(form.balances[s.id] || '') > s.capacity) : [];
   const canSave = !!form && petrolSaveBlockers(form, computed, stations).length === 0;
   const startEditPrevious = () => form && setForm({ ...form, prevEditing: true, previous: form.previous || fmtInput(autoPrevious ?? 0) });
@@ -171,7 +169,6 @@ export const SaharaPetrolView: React.FC = () => {
     setForm({
     ...form,
     inboundQty: '',
-    inboundInternal: '',
     inboundPrice: '',
     consumption: Object.fromEntries(stations.map(s => [s.id, ''])),
     balances: Object.fromEntries(stations.map(s => [s.id, '']))
@@ -960,25 +957,10 @@ export const SaharaPetrolView: React.FC = () => {
               {/* 4. الوارد */}
               <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-3.5">
                 <div className={cardTitle}><span className={cardNum}>4</span><Truck className="w-3.5 h-3.5" /><span>{t('finance:ledger.inbound')}</span></div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <label className="space-y-1">
                     <div className="min-h-5 flex items-center"><span className={fieldLabel}>{t('finance:saharaPetrol.form.externalL')}</span></div>
                     <input inputMode="numeric" dir="ltr" className={field} value={form.inboundQty} placeholder="0" onChange={e => setForm({ ...form, inboundQty: withCommas(e.target.value) })} />
-                  </label>
-                  <label className="space-y-1">
-                    <div className="min-h-5 flex items-center gap-1.5">
-                      <span className={fieldLabel}>{t('finance:saharaPetrol.form.internalL')}</span>
-                      <span className="text-[9.5px] font-bold text-slate-400">{t('finance:saharaPetrol.form.balanceOnly')}</span>
-                    </div>
-                    <input
-                      inputMode="numeric"
-                      dir="ltr"
-                      className={field}
-                      value={form.inboundInternal}
-                      placeholder="0"
-                      title={t('finance:saharaPetrol.form.internalHint')}
-                      onChange={e => setForm({ ...form, inboundInternal: withCommas(e.target.value) })}
-                    />
                   </label>
                   <label className="space-y-1">
                     <div className="min-h-5 flex items-center"><span className={fieldLabel}>{t('finance:saharaPetrol.form.pricePerLiter')}</span></div>
