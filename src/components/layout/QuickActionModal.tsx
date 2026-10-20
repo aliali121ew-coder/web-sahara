@@ -656,30 +656,31 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-3 bg-slate-950/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-[70vw] max-w-[1420px] h-fit max-h-[96vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200/90 dark:border-slate-800 flex flex-col overflow-hidden font-cairo z-10 animate-in zoom-in-95 duration-150">
+      <div className="relative w-full sm:w-[92vw] lg:w-[70vw] max-w-[1420px] h-fit max-h-[96vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200/90 dark:border-slate-800 flex flex-col overflow-hidden font-cairo z-10 animate-in zoom-in-95 duration-150">
         
         {/* Enterprise Clean Header */}
-        <div className="px-6 py-2.5 sm:py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-2xs select-none shrink-0">
-          <div className="flex items-center gap-3">
+        {/* الهاتف: العنوان وزر الإغلاق في سطر، واختيار يدوي / رفع ملف بعرض النافذة تحته */}
+        <div className="px-4 sm:px-6 py-2.5 sm:py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex flex-wrap sm:flex-nowrap items-center justify-between gap-y-2.5 shadow-2xs select-none shrink-0">
+          <div className="flex items-center gap-3 min-w-0 flex-1 order-1">
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-800 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-2xs shrink-0">
               <Truck className="w-5 h-5 stroke-[2.2]" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white tracking-tight">
+                <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white tracking-tight truncate">
                   {editData?.id ? t('deliveries:editTitle') : t('deliveries:quick.newTitle')}
                 </h3>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                <span className="hidden sm:inline text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 whitespace-nowrap">
                   ERP Gate Entry
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate">
                 {t('deliveries:quick.subtitle')}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 ms-auto me-3">
+          <div className="order-3 sm:order-2 w-full sm:w-auto flex items-center gap-2 sm:ms-auto sm:me-3">
             {!editData?.lockedCompany && (
               <select
                 value={deliveryCompany}
@@ -692,7 +693,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
             )}
             {/* طريقة الإدخال: يدوي أو رفع ملف الوارد اليومي (للتسجيل الجديد فقط) */}
             {!editData?.id && (
-              <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
+              <div className="flex-1 sm:flex-none flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
                 {([
                   { key: 'manual', label: t('deliveries:quick.manual'), icon: PenLine },
                   { key: 'upload', label: t('deliveries:quick.upload'), icon: Upload }
@@ -701,7 +702,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                     key={key}
                     type="button"
                     onClick={() => setEntryMode(key)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${entryMode === key ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-white/70 dark:hover:bg-slate-700'}`}
+                    className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap cursor-pointer transition-all ${entryMode === key ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-white/70 dark:hover:bg-slate-700'}`}
                   >
                     <ModeIcon className="w-3.5 h-3.5" />
                     {enumText(label)}
@@ -715,7 +716,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
             type="button"
             onClick={onClose}
             aria-label={t('common:actions.close')}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer border border-slate-200/80 dark:border-slate-700"
+            className="order-2 sm:order-3 shrink-0 ms-2 sm:ms-0 p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer border border-slate-200/80 dark:border-slate-700"
           >
             <X className="w-4.5 h-4.5 stroke-[2.5]" />
           </button>
