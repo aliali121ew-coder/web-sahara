@@ -331,29 +331,43 @@ const realVoucher = (v: unknown) => {
 export const inboundKey = (date: unknown, voucher: unknown, qty: unknown) =>
   `${String(date ?? '').split(' ')[0].replace(/-/g, '/')}|${realVoucher(voucher)}|${Math.round(Number(qty) || 0)}`;
 
-/** عدّ بصمات شحنات الأرشيف (للشركة المستلمة) */
-export const archiveKeyCounts = (deliveries: { receiptUnloadDate?: string; date?: string; voucherNumber?: string; receiptNumber?: string; receivedQuantity?: number; volumeLiters?: number }[]) => {
-  const m = new Map<string, number>();
+/** بصمة بلا فوجر (التاريخ + الكمية): لصف في الملف بلا رقم فوجر بينما الشحنة نفسها في الأرشيف لها فوجر */
+const looseKey = (date: unknown, qty: unknown) => inboundKey(date, '', qty);
+
+export interface ArchiveKeys { exact: Map<string, number>; loose: Map<string, number> }
+
+/** عدّ بصمات شحنات الأرشيف (للشركة المستلمة): بالفوجر، وبالتاريخ والكمية فقط */
+export const archiveKeyCounts = (deliveries: { receiptUnloadDate?: string; date?: string; voucherNumber?: string; receiptNumber?: string; receivedQuantity?: number; volumeLiters?: number }[]): ArchiveKeys => {
+  const exact = new Map<string, number>();
+  const loose = new Map<string, number>();
   for (const d of deliveries) {
-    const k = inboundKey(d.receiptUnloadDate || d.date, d.voucherNumber || d.receiptNumber, d.receivedQuantity ?? d.volumeLiters);
-    m.set(k, (m.get(k) ?? 0) + 1);
+    const date = d.receiptUnloadDate || d.date, qty = d.receivedQuantity ?? d.volumeLiters;
+    const k = inboundKey(date, d.voucherNumber || d.receiptNumber, qty);
+    exact.set(k, (exact.get(k) ?? 0) + 1);
+    const l = looseKey(date, qty);
+    loose.set(l, (loose.get(l) ?? 0) + 1);
   }
-  return m;
+  return { exact, loose };
 };
 
 /**
  * أي ملف وارد (يومي أو أرشيف كامل) يُقارن بأرشيف الشركة كله: يبقى منه ما لم يُسجَّل فقط.
  * المطابقة بالعدد: إن تكررت نفس البصمة في الملف أكثر مما في الأرشيف تُضاف الزيادة فقط
- * (صهريجان بنفس الفوجر والكمية في نفس اليوم شحنتان). الصف بلا تاريخ يبقى (يأخذ تاريخ الفترة).
+ * (صهريجان بنفس الفوجر والكمية في نفس اليوم شحنتان). الصف بلا فوجر في الملف يُطابق بالتاريخ والكمية
+ * (ملف الأرشيف يترك الفوجر فارغًا لشحنات سُجّلت في التطبيق بفوجرها). الصف بلا تاريخ يبقى (يأخذ تاريخ الفترة).
  */
-export const pickUnrecorded = (rows: InboundImportRow[], archive: Map<string, number>) => {
-  const left = new Map(archive);
+export const pickUnrecorded = (rows: InboundImportRow[], archive: ArchiveKeys) => {
+  const exact = new Map(archive.exact);
+  const loose = new Map(archive.loose);
+  const take = (m: Map<string, number>, k: string) => { const n = m.get(k) ?? 0; if (n > 0) m.set(k, n - 1); return n > 0; };
   const recordedIdx: number[] = [];
   const kept = rows.filter((r, i) => {
     if (!r.receiptUnloadDate) return true;
-    const k = inboundKey(r.receiptUnloadDate, r.voucherNumber, r.receivedQuantity);
-    const n = left.get(k) ?? 0;
-    if (n > 0) { left.set(k, n - 1); recordedIdx.push(i); return false; }
+    const l = looseKey(r.receiptUnloadDate, r.receivedQuantity);
+    const hit = realVoucher(r.voucherNumber)
+      ? take(exact, inboundKey(r.receiptUnloadDate, r.voucherNumber, r.receivedQuantity)) && (take(loose, l) || true)
+      : take(loose, l);
+    if (hit) { recordedIdx.push(i); return false; }
     return true;
   });
   return { rows: kept, recordedIdx };
