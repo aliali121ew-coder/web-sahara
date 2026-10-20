@@ -10,6 +10,7 @@ import {
   Flame,
   Activity,
   ArrowDownLeft,
+  Droplets,
   Boxes,
   PieChart as PieIcon,
   X,
@@ -201,6 +202,12 @@ export const SaharaGasSection: React.FC = () => {
           {/* Header Row: Title & Average Price Pill */}
           <div className="flex items-start justify-between gap-3">
             <div>
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
+                <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950/60 flex items-center justify-center text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/40">
+                  <Droplets className="w-3.5 h-3.5" />
+                </div>
+                <span>{t('dashboard:sahara.balance')}</span>
+              </div>
               <div className="flex items-baseline gap-2 mt-1.5">
                 <span className="text-3xl sm:text-4xl lg:text-[36px] font-black text-slate-900 dark:text-white font-mono tracking-tight">
                   {formatNumber(actualBalance)}
