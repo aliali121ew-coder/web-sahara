@@ -348,9 +348,8 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
     return ['الكل', ...Array.from(new Set(scopedDeliveries.map((d) => d.company || 'صحاري كربلاء')))];
   }, [lockedCompanyName, scopedDeliveries]);
 
-  // اسم المجهز (الشخص) والشركة المجهزة — السجلات القديمة تحمل قيمة واحدة في الحقلين
-  const supplierPersonOf = (d: InboundDelivery) =>
-    d.supplierName && (d.supplierNameSet || d.supplierName !== d.supplierCompany) ? d.supplierName : '';
+  // اسم المجهز (الشخص) والشركة المجهزة كما في الملف، ولو تشابها (كان المتطابق يُخفى فيظهر حقل الشركة وحده)
+  const supplierPersonOf = (d: InboundDelivery) => d.supplierName || '';
   const supplierCompanyOf = (d: InboundDelivery) => d.supplierCompany || d.supplierName || 'مصفى كربلاء الدولي';
   // المجهز الشخص: الاسم بين القوسين هو المجهز («اطراف النخيل ( نشوان )» و«نشوان» كلاهما نشوان)،
   // فاختياره يُظهر كل شحناته من كل الشركات المجهزة، واختيار الشركة المجهزة يُظهر شحناتها وحدها

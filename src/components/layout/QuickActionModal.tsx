@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
-import { hasBrokenGlyphs, parseInboundFile, pickUnrecordedDays, voucherKey, type InboundImportRow } from '../../lib/inboundImport';
+import { archiveKeyCounts, hasBrokenGlyphs, parseInboundFile, pickUnrecorded, type InboundImportRow } from '../../lib/inboundImport';
 import { fixInboundNamesWithAi } from '../../lib/inboundAi';
 import { applyNameIndex, isKnownName, readNameIndex, useNameIndex, type NameFix, type NameKind } from '../../lib/nameIndex';
 import { NameIndexModal } from '../deliveries/NameIndexModal';
@@ -160,7 +160,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
   const [importState, setImportState] = useState<
     | { status: 'idle' }
     | { status: 'reading'; fileName: string }
-    | { status: 'ready'; fileName: string; rows: InboundImportRow[]; file: File; recordedDays: number; fixes: NameFix[][] }
+    | { status: 'ready'; fileName: string; rows: InboundImportRow[]; file: File; recorded: number[]; fixes: NameFix[][] }
     | { status: 'error'; message: string }
   >({ status: 'idle' });
   // القراءة الذكية لأسماء ملف PDF (تبدأ تلقائيًا عند رموز تالفة، أو من زرها)
@@ -195,8 +195,8 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
     if (isOpen && editData) {
       setDeliveryCompany(editData.company || editData.lockedCompany || 'صحاري كربلاء');
       setDeliverySupplier(editData.supplierCompany || '');
-      // السجلات القديمة كانت تحفظ نفس القيمة في الحقلين
-      setDeliverySupplierName(editData.supplierName && (editData.supplierNameSet || editData.supplierName !== editData.supplierCompany) ? editData.supplierName : '');
+      // اسم المجهز كما هو، ولو طابق الشركة المجهزة
+      setDeliverySupplierName(editData.supplierName || '');
       setEntryMode('manual');
       setDeliveryDriver(editData.driverName && !FAKE_DRIVERS.has(editData.driverName) ? editData.driverName : '');
       setTruckNumberText(String(editData.truckNumber || '').trim());
@@ -492,22 +492,17 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
   // الشركة المستلمة: من الصفحة التي فُتحت منها النافذة (صحاري أو الاتحاد)
   const receivingCompany = (editData?.lockedCompany || deliveryCompany) as 'صحاري كربلاء' | 'شركة الاتحاد';
   const companyDeliveries = deliveries.filter((d) => d.company === receivingCompany);
-  const existingVouchers = new Set(
-    companyDeliveries.map((d) => voucherKey(d.voucherNumber || d.receiptNumber)).filter(Boolean)
-  );
-  // الأيام التي فيها شحنة مسجّلة لهذه الشركة: ملف الأرشيف يُقرأ منه ما بعدها فقط
-  const recordedDays = new Set(
-    companyDeliveries.map((d) => String(d.receiptUnloadDate || d.date || '').split(' ')[0].replace(/-/g, '/')).filter(Boolean)
-  );
+  // كل ملف وارد (يومي أو أرشيف) يُقارن بأرشيف الشركة كله: بصمة كل شحنة = التاريخ + الفوجر + الكمية
+  // (كان يُتجاوز اليوم كله إن سُجّلت فيه شحنة، ويُطابق بالفوجر وحده وهو مشترك بين صهاريج اليوم)
 
   const handleImportFile = async (file: File) => {
     setImportState({ status: 'reading', fileName: file.name });
     try {
       const fileRows = await parseInboundFile(file);
       if (!fileRows.length) throw new Error(t('deliveries:quick.noRows'));
-      const picked = pickUnrecordedDays(fileRows, recordedDays);
+      const picked = pickUnrecorded(fileRows, archiveKeyCounts(companyDeliveries));
+      if (!picked.rows.length) throw new Error(t('deliveries:quick.allDaysRecorded'));
       const rows = picked.rows;
-      if (!rows.length) throw new Error(t('deliveries:quick.allDaysRecorded'));
       // الفترة تُؤخذ من تواريخ الشحنات في الملف تلقائيًا (كانت "اليوم" فتُتجاهل شحنات الأيام الأخرى)،
       // وتبقى قابلة للتغيير يدويًا من زر الفترة
       const dates = rows.map(r => r.receiptUnloadDate).filter(Boolean).sort();
@@ -515,12 +510,13 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
         setImportFrom(dates[0]);
         setImportTo(dates[dates.length - 1]);
       }
-      const indexed = withIndex(rows);
-      setImportState({ status: 'ready', fileName: file.name, rows: indexed.rows, fixes: indexed.fixes, file, recordedDays: picked.recordedDays });
+      // المعاينة تعرض صفوف الملف كلها، والمسجّل منها مسبقًا معلَّم ولا يُضاف
+      const indexed = withIndex(fileRows);
+      setImportState({ status: 'ready', fileName: file.name, rows: indexed.rows, fixes: indexed.fixes, file, recorded: picked.recordedIdx });
       setAiState({ status: 'idle' });
       aiRun.current = null;
-      if (file.name.toLowerCase().endsWith('.pdf') && rows.some(r => hasBrokenGlyphs(`${r.supplierName} ${r.supplierCompany} ${r.driverName} ${r.truckNumber}`))) {
-        void runAiNames(file, rows);
+      if (file.name.toLowerCase().endsWith('.pdf') && fileRows.some(r => hasBrokenGlyphs(`${r.supplierName} ${r.supplierCompany} ${r.driverName} ${r.truckNumber}`))) {
+        void runAiNames(file, fileRows);
       }
     } catch (err) {
       setImportState({ status: 'error', message: err instanceof Error ? err.message : t('deliveries:quick.readFailed') });
@@ -567,10 +563,11 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
     }
     return value;
   };
-  const isDuplicateRow = (r: InboundImportRow) => !!r.voucherNumber && existingVouchers.has(voucherKey(r.voucherNumber));
+  const recordedSet = new Set(importState.status === 'ready' ? importState.recorded : []);
+  const isDuplicateRow = (i: number) => recordedSet.has(i);
   const rowDate = (r: InboundImportRow) => r.receiptUnloadDate || importFrom;
   const isOutOfRange = (r: InboundImportRow) => rowDate(r) < importFrom || rowDate(r) > importTo;
-  const newImportRows = importRows.filter((r) => !isDuplicateRow(r) && !isOutOfRange(r));
+  const newImportRows = importRows.filter((r, i) => !isDuplicateRow(i) && !isOutOfRange(r));
 
   const handleImportSubmit = () => {
     newImportRows.forEach((r) => {
@@ -785,8 +782,8 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                           <span className="font-black text-slate-800 dark:text-slate-100 truncate max-w-[260px]" title={importState.fileName}>{importState.fileName}</span>
                           <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-700 font-bold text-slate-600 dark:text-slate-300">{t('deliveries:shipments', { count: importRows.length })}</span>
                           <span className="px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 font-bold text-emerald-700 dark:text-emerald-300">{t('deliveries:quick.newCount', { count: newImportRows.length })}</span>
-                          {importState.recordedDays > 0 && (
-                            <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-700 font-bold text-slate-500 dark:text-slate-300">{t('deliveries:quick.recordedDaysSkipped', { count: importState.recordedDays })}</span>
+                          {importState.recorded.length > 0 && (
+                            <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-700 font-bold text-slate-500 dark:text-slate-300">{t('deliveries:quick.recordedRowsSkipped', { count: importState.recorded.length })}</span>
                           )}
                           {importRows.length > newImportRows.length && (
                             <span className="px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950/50 font-bold text-amber-700 dark:text-amber-300">{t('deliveries:quick.skipCount', { count: importRows.length - newImportRows.length })}</span>
@@ -837,7 +834,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
                               {importRows.map((r, i) => {
-                                const dup = isDuplicateRow(r);
+                                const dup = isDuplicateRow(i);
                                 const outside = !dup && isOutOfRange(r);
                                 return (
                                   <tr key={i} className={dup || outside ? 'opacity-50' : 'odd:bg-white even:bg-slate-50/60 dark:odd:bg-slate-800 dark:even:bg-slate-800/60'}>

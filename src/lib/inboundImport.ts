@@ -318,19 +318,43 @@ export const voucherKey = (v: unknown) => {
   return t.replace(/\D/g, '') || t;
 };
 
+/** فوجر فارغ أو «_» أو «لا يوجد»: لا يُطابق به */
+const realVoucher = (v: unknown) => {
+  const t = String(v ?? '').replace(/\s+/g, ' ').trim();
+  return !t || t === '_' || t === '-' || t === 'لا يوجد' ? '' : voucherKey(t);
+};
+
 /**
- * ملف الأرشيف (كل الأيام في كل رفع): يبقى من الملف ما يخص الأيام غير المسجّلة فقط.
- * الفوجر المكرر داخل الملف يُؤخذ آخر صف له لأنه الأحدث إضافة.
- * الصف بلا تاريخ يبقى (يأخذ تاريخ الفترة كما كان).
+ * بصمة الشحنة للمطابقة مع الأرشيف: التاريخ + الفوجر + الكمية.
+ * الفوجر وحده لا يكفي (فوجر واحد يُكتب لعدة صهاريج في نفس اليوم)، ورقم العجلة يُعاد تنسيقه عند الحفظ فلا يُعتمد.
  */
-export const pickUnrecordedDays = (rows: InboundImportRow[], recordedDays: Set<string>) => {
-  const lastByVoucher = new Map<string, number>();
-  rows.forEach((r, i) => { if (r.voucherNumber) lastByVoucher.set(voucherKey(r.voucherNumber), i); });
-  const latest = rows.filter((r, i) => !r.voucherNumber || lastByVoucher.get(voucherKey(r.voucherNumber)) === i);
-  const skipped = new Set<string>();
-  const kept = latest.filter(r => {
-    if (r.receiptUnloadDate && recordedDays.has(r.receiptUnloadDate)) { skipped.add(r.receiptUnloadDate); return false; }
+export const inboundKey = (date: unknown, voucher: unknown, qty: unknown) =>
+  `${String(date ?? '').split(' ')[0].replace(/-/g, '/')}|${realVoucher(voucher)}|${Math.round(Number(qty) || 0)}`;
+
+/** عدّ بصمات شحنات الأرشيف (للشركة المستلمة) */
+export const archiveKeyCounts = (deliveries: { receiptUnloadDate?: string; date?: string; voucherNumber?: string; receiptNumber?: string; receivedQuantity?: number; volumeLiters?: number }[]) => {
+  const m = new Map<string, number>();
+  for (const d of deliveries) {
+    const k = inboundKey(d.receiptUnloadDate || d.date, d.voucherNumber || d.receiptNumber, d.receivedQuantity ?? d.volumeLiters);
+    m.set(k, (m.get(k) ?? 0) + 1);
+  }
+  return m;
+};
+
+/**
+ * أي ملف وارد (يومي أو أرشيف كامل) يُقارن بأرشيف الشركة كله: يبقى منه ما لم يُسجَّل فقط.
+ * المطابقة بالعدد: إن تكررت نفس البصمة في الملف أكثر مما في الأرشيف تُضاف الزيادة فقط
+ * (صهريجان بنفس الفوجر والكمية في نفس اليوم شحنتان). الصف بلا تاريخ يبقى (يأخذ تاريخ الفترة).
+ */
+export const pickUnrecorded = (rows: InboundImportRow[], archive: Map<string, number>) => {
+  const left = new Map(archive);
+  const recordedIdx: number[] = [];
+  const kept = rows.filter((r, i) => {
+    if (!r.receiptUnloadDate) return true;
+    const k = inboundKey(r.receiptUnloadDate, r.voucherNumber, r.receivedQuantity);
+    const n = left.get(k) ?? 0;
+    if (n > 0) { left.set(k, n - 1); recordedIdx.push(i); return false; }
     return true;
   });
-  return { rows: kept, recordedDays: skipped.size, olderCopies: rows.length - latest.length };
+  return { rows: kept, recordedIdx };
 };
