@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { mergeStatic } from './mergeStatic';
 
 /**
  * صهريج وقود واقعي (قاطرة ومقطورة نصفية) مبني بالأمتار على مقاسات حقيقية (الطول الكلي 16.5 م)، ثم مصغّر إلى 3.95 وحدة
@@ -58,6 +59,7 @@ export const createTanker = (opts: TankerOptions = {}): THREE.Group => {
   const head = lamp(0xfff6d5, 1.6);
   [0.92, -0.92].forEach(z => { box(0.05, 0.2, 0.42, head, 8.33, 1.0, z); box(0.05, 0.1, 0.16, lamp(0xfff6d5, 1), 8.33, 0.8, z * 0.8); });
   const signalL = lamp(0xf59e0b, 0.15), signalR = lamp(0xf59e0b, 0.15);
+  signalL.name = 'signalL'; signalR.name = 'signalR';
   box(0.05, 0.14, 0.14, signalL, 8.33, 1.0, -1.18); box(0.05, 0.14, 0.14, signalR, 8.33, 1.0, 1.18);
   box(0.03, 0.22, 0.5, M(0xf97316, { emissive: 0x7c2d12, emissiveIntensity: 0.2 }), 8.35, 0.62, 0);  // لوحة المواد الخطرة
   // المرايا بأذرعها، والدرجات، والرفارف
@@ -111,7 +113,7 @@ export const createTanker = (opts: TankerOptions = {}): THREE.Group => {
   });
   // المصد الخلفي وأضواء الفرامل والإشارات والعواكس
   box(0.15, 0.18, 2.4, M(0x9ca3af, { roughness: 0.4, metalness: 0.6 }), -8.2, 0.5, 0);
-  const brake = lamp(0xef4444, 0.7);
+  const brake = lamp(0xef4444, 0.7); brake.name = 'brake';
   [0.95, -0.95].forEach(z => box(0.05, 0.16, 0.36, brake, -8.28, 0.82, z));
   box(0.05, 0.14, 0.14, signalL, -8.28, 0.82, -0.62); box(0.05, 0.14, 0.14, signalR, -8.28, 0.82, 0.62);
   box(0.03, 0.22, 0.5, M(0xf97316, { emissive: 0x7c2d12, emissiveIntensity: 0.2 }), -8.3, 1.2, 0);
@@ -135,7 +137,7 @@ export const createTanker = (opts: TankerOptions = {}): THREE.Group => {
   [-4.6, -5.95, -7.3].forEach(x => [0.92, -0.92].forEach(z => wheel(x, z, true)));
 
   // مصباح التحذير على السقف، وخرطوم التفريغ (من خزانة الصمامات إلى نقطة التفريغ)
-  const beacon = lamp(0xf59e0b, 0.1);
+  const beacon = lamp(0xf59e0b, 0.1); beacon.name = 'beacon';
   cyl(0.12, 0.16, beacon, 6.4, 4.38, 0, 'y');
   const hose = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
     new THREE.Vector3(-2.2, 0.8, 1.1), new THREE.Vector3(-2.0, 0.2, 2.0), new THREE.Vector3(-1.6, 0.12, 3.3), new THREE.Vector3(-1.3, 0.6, 3.95), new THREE.Vector3(-1.17, 1.15, 4.09)]), 32, 0.075, 8), M(0x111827, { roughness: 0.7 }));
@@ -144,6 +146,10 @@ export const createTanker = (opts: TankerOptions = {}): THREE.Group => {
   const hoseTip = new THREE.Object3D(); hoseTip.position.set(-1.17, 1.15, 4.09); g.add(hoseTip);
 
   g.traverse(o => { if (o instanceof THREE.Mesh) { o.castShadow = true; o.receiveShadow = true; } });
+  // دمج الأجزاء الثابتة حسب الخامة (مئات القطع تصير بضع عشرات)، مع إبقاء العجلات (تدور) والخرطوم وطرفه مستقلة
+  wheels.forEach(w => { mergeStatic(w); w.userData.keep = true; });
+  hose.userData.keep = true;
+  mergeStatic(g);
   g.scale.setScalar(TANKER_LEN / REAL_LEN);
   Object.assign(root.userData, { wheels, brake, signalL, signalR, beacon, hose, hoseTip });
   return root;

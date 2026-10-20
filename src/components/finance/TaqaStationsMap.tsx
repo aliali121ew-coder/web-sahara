@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Crosshair, Maximize2, Minus, Moon, Play, Plus, Radio, RotateCcw, RotateCw, Route, Sun } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Crosshair, Maximize2, Minus, Moon, Navigation2, Play, Plus, Radio, RotateCcw, RotateCw, Route, Sun } from 'lucide-react';
 import type { SiteCover } from '../../lib/siteFarmsMap';
 import type { SiteWeather } from '../../lib/weather';
 import { NET, SITE_NAMES, SITE_PLANS } from '../../lib/stationNetwork';
@@ -78,6 +78,7 @@ const TaqaStationsMap: React.FC<Props> = ({ site, cover, trips, weather, onOpen,
   const tagsRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef(new Map<string, HTMLButtonElement>());
   const sceneRef = useRef<StationsScene | null>(null);
+  const compassRef = useRef<HTMLSpanElement>(null);
   const [glFailed, setGlFailed] = useState(false);
   const follow = useRef<string | null>(null);
   const [following, setFollowing] = useState<string | null>(null);
@@ -183,6 +184,9 @@ const TaqaStationsMap: React.FC<Props> = ({ site, cover, trips, weather, onOpen,
     const liter = t('finance:siteFarms.liter');
 
     let raf = 0, last = 0, visible = document.visibilityState !== 'hidden', onScreen = true;
+    /** آخر رسم فعلي: عند السكون يُرسم المشهد نحو 8 مرات في الثانية فقط (الصهاريج المباشرة بطيئة) */
+    let lastDraw = 0, pendingDt = 0;
+    const IDLE_MS = 120;
     const states = new Map<string, TruckState>();
     const frame = (nowPerf: number) => {
       raf = 0;
@@ -270,7 +274,15 @@ const TaqaStationsMap: React.FC<Props> = ({ site, cover, trips, weather, onOpen,
           const v = scene.worldOf(fs.x, fs.y);
           scene.setGoal({ tx: v.x, tz: v.z, dist: Math.min(scene.goal?.dist ?? scene.cam.dist, 520) });
         }
-        scene.render(states, dt);
+        // رسم كامل أثناء حركة الكاميرا أو السحب أو عرض الرحلة، وإلا بمعدل منخفض (توفير المعالج والبطارية)
+        pendingDt += dt;
+        const busy = replayRef.current != null || !!scene.goal || (mouse != null && dragged) || touch != null;
+        if (busy || nowPerf - lastDraw >= IDLE_MS) {
+          scene.render(states, Math.min(0.25, pendingDt));
+          lastDraw = nowPerf; pendingDt = 0;
+          // البوصلة تدور مع اتجاه الكاميرا (السهم يشير إلى الشمال)
+          if (compassRef.current) compassRef.current.style.transform = `rotate(${(-scene.cam.az * 180) / Math.PI}deg)`;
+        }
         // بطاقات المحطات أمام ساحاتها
         cardRefs.current.forEach((el, name) => {
           const a = scene!.anchors.get(name);
@@ -311,8 +323,9 @@ const TaqaStationsMap: React.FC<Props> = ({ site, cover, trips, weather, onOpen,
         vp.classList.add('dragging');
       }
       if (dragged) {
-        if (mouse.rot) scene.rotate((p.x - mouse.x) * 0.006, (p.y - mouse.y) * 0.004);
-        else scene.pan(p.x - mouse.x, p.y - mouse.y);
+        // السحب يتبع المؤشر مباشرة (بلا تأخير)
+        if (mouse.rot) scene.rotate((p.x - mouse.x) * 0.006, (p.y - mouse.y) * 0.004, true);
+        else scene.pan(p.x - mouse.x, p.y - mouse.y, true);
       }
       mouse.x = p.x; mouse.y = p.y;
     };
@@ -355,16 +368,17 @@ const TaqaStationsMap: React.FC<Props> = ({ site, cover, trips, weather, onOpen,
       if (touch.mode === 'pinch' && e.touches.length >= 2) {
         e.preventDefault();
         const g = two(e);
-        scene.pan(g.x - touch.x, g.y - touch.y);
-        scene.zoomAt(g.d / Math.max(1, touch.d), g.x, g.y);
+        // الإصبعان: تكبير فوري بنسبة تغير المسافة بينهما، وتحريك بمنتصفهما، وتدوير بزاوية الخط بينهما
+        scene.pan(g.x - touch.x, g.y - touch.y, true);
+        scene.zoomAt(g.d / Math.max(1, touch.d), g.x, g.y, true);
         let da = g.a - touch.a; if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI;
-        if (Math.abs(da) > 0.002) scene.rotate(-da);
+        if (Math.abs(da) > 0.002) scene.rotate(-da, 0, true);
         Object.assign(touch, g);
       } else if (touch.mode === 'pan' && e.touches.length === 1) {
         e.preventDefault();
         const p = local(e.touches[0]);
         if (!dragged && Math.hypot(p.x - touch.sx, p.y - touch.sy) > 6) { dragged = true; stopFollow(); }
-        scene.pan(p.x - touch.x, p.y - touch.y);
+        scene.pan(p.x - touch.x, p.y - touch.y, true);
         touch.x = p.x; touch.y = p.y;
       }
     };
@@ -427,6 +441,15 @@ const TaqaStationsMap: React.FC<Props> = ({ site, cover, trips, weather, onOpen,
   [rigsVer]);
   const sel = selected ? rigs.current.get(selected) ?? null : null;
   const cam = (fn: (s: StationsScene) => void) => { const s = sceneRef.current; if (s) { stopFollowing(); fn(s); } };
+  /** زر بضغط مستمر: ينفّذ الحركة فورًا ثم يكررها ما دام مضغوطًا (الكاميرا تنزلق بينها بنعومة) */
+  const holdTimer = useRef<number | null>(null);
+  const holdStop = () => { if (holdTimer.current != null) { window.clearInterval(holdTimer.current); holdTimer.current = null; } };
+  useEffect(() => holdStop, []);
+  const hold = (fn: (s: StationsScene) => void) => ({
+    onPointerDown: (e: React.PointerEvent) => { e.preventDefault(); holdStop(); cam(fn); holdTimer.current = window.setInterval(() => cam(fn), 70); },
+    onPointerUp: holdStop, onPointerLeave: holdStop, onPointerCancel: holdStop,
+    onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cam(fn); } },
+  });
   const fitRoute = () => { if (sel) cam(s => s.fitPoints(sel.track.x, sel.track.y)); };
   const toggleFollow = () => {
     if (!selected) return;
@@ -507,9 +530,19 @@ const TaqaStationsMap: React.FC<Props> = ({ site, cover, trips, weather, onOpen,
             </div>
             <button type="button" onClick={() => cam(s => s.zoomAt(1.4))} aria-label={M('zoomIn')} title={M('zoomIn')}><Plus className="w-4 h-4" /></button>
             <button type="button" onClick={() => cam(s => s.zoomAt(1 / 1.4))} aria-label={M('zoomOut')} title={M('zoomOut')}><Minus className="w-4 h-4" /></button>
-            <button type="button" onClick={() => cam(s => s.rotate(Math.PI / 4))} aria-label={M('rotateLeft')} title={M('rotateLeft')}><RotateCcw className="w-4 h-4" /></button>
-            <button type="button" onClick={() => cam(s => s.rotate(-Math.PI / 4))} aria-label={M('rotateRight')} title={M('rotateRight')}><RotateCw className="w-4 h-4" /></button>
             <button type="button" onClick={() => cam(s => s.reset())} aria-label={M('reset')} title={M('reset')}><Maximize2 className="w-4 h-4" /></button>
+            {/* لوحة التنقل: تحريك الخريطة في الاتجاهات الأربعة (بالضغط المستمر)، وتدوير، وبوصلة تعيد الشمال */}
+            <div className="sf-tq-nav" role="group" aria-label={M('navigate')}>
+              <button type="button" {...hold(s => s.rotate(0.06))} aria-label={M('rotateLeft')} title={M('rotateLeft')}><RotateCcw className="w-3.5 h-3.5" /></button>
+              <button type="button" {...hold(s => s.pan(0, s.viewH * 0.06))} aria-label={M('moveUp')} title={M('moveUp')}><ChevronUp className="w-4 h-4" /></button>
+              <button type="button" {...hold(s => s.rotate(-0.06))} aria-label={M('rotateRight')} title={M('rotateRight')}><RotateCw className="w-3.5 h-3.5" /></button>
+              <button type="button" {...hold(s => s.pan(s.viewH * 0.06, 0))} aria-label={M('moveLeft')} title={M('moveLeft')}><ChevronLeft className="w-4 h-4" /></button>
+              <button type="button" className="compass" onClick={() => cam(s => s.setGoal({ az: 0 }))} aria-label={M('north')} title={M('north')}><span ref={compassRef}><Navigation2 className="w-4 h-4" /></span></button>
+              <button type="button" {...hold(s => s.pan(-s.viewH * 0.06, 0))} aria-label={M('moveRight')} title={M('moveRight')}><ChevronRight className="w-4 h-4" /></button>
+              <span />
+              <button type="button" {...hold(s => s.pan(0, -s.viewH * 0.06))} aria-label={M('moveDown')} title={M('moveDown')}><ChevronDown className="w-4 h-4" /></button>
+              <span />
+            </div>
           </div>
           {touchHint && <div className="sf-tq-hint">{M('touchHint')}</div>}
           <div className="sf-map-foot">

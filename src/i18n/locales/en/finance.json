@@ -476,6 +476,12 @@
       "touchHint": "Two fingers to zoom, pan and rotate",
       "rotateRight": "Rotate right",
       "viewMode": "View mode",
+      "navigate": "Map navigation",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "moveLeft": "Move left",
+      "moveRight": "Move right",
+      "north": "Reset north",
       "rotateLeft": "Rotate left",
       "tagQueued": "Waiting turn",
       "stQueued": "At {{site}}, waiting to unload ({{t}})"

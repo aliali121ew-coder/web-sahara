@@ -41,6 +41,13 @@
 .sf-tq-mode { display: flex; border-radius: 10px; overflow: hidden; border: 1px solid rgba(56, 189, 248, .35); }
 .sf-tq-mode button { flex: 1; width: auto !important; height: 30px; padding: 0 8px; border: 0 !important; border-radius: 0 !important; background: rgba(8, 28, 52, .78); color: #7fa6c6; font-size: 11px; font-weight: 800; cursor: pointer; }
 .sf-tq-mode button.on { background: rgba(56, 189, 248, .3); color: #e0f2fe; }
+.sf-tq-nav { display: grid; grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(3, 30px); gap: 2px; padding: 3px; margin-top: 4px; border-radius: 12px; background: rgba(8, 28, 52, .72); border: 1px solid rgba(56, 189, 248, .25); }
+.sf-tq-nav button { width: 30px !important; height: 30px !important; display: grid; place-items: center; padding: 0; border: 0 !important; border-radius: 8px !important; background: transparent; color: #cbd5e1; cursor: pointer; touch-action: none; user-select: none; }
+.sf-tq-nav button:hover { background: rgba(56, 189, 248, .2); color: #fff; }
+.sf-tq-nav button:active { background: rgba(56, 189, 248, .35); }
+.sf-tq-nav .compass { background: rgba(56, 189, 248, .14); color: #f87171; }
+.sf-tq-nav .compass span { display: grid; place-items: center; transition: transform .12s linear; }
+@media (max-width: 640px) { .sf-tq-nav { display: none; } }
 .sf-tq-hint { display: none; position: absolute; bottom: 44px; left: 50%; transform: translateX(-50%); z-index: 4; padding: 3px 10px; border-radius: 999px; background: rgba(6, 18, 34, .78); color: #cbd5e1; font-size: 10.5px; white-space: nowrap; pointer-events: none; }
 @media (pointer: coarse) { .sf-tq-hint { display: block; } .sf-tq.zoomed .sf-tq-hint { display: none; } }
 /* لوحة الصهريج المحدد (تحت الخريطة) */

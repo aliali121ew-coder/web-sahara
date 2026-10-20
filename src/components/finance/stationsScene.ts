@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { NET, SITE_NAMES, SITE_PLANS, STATION_OFFSET_Z, WORLD_S, type SitePlan } from '../../lib/stationNetwork';
 import { createDesert, type Desert } from './desertGround';
+import { mergeStatic } from './mergeStatic';
 import { createDesertShrub, createSmallTree, createStation, type StationModel } from './stationModel';
 import { TANKER_LEN, createTanker } from './tankerModel';
 
@@ -108,6 +109,8 @@ export class StationsScene {
   private roadMat!: THREE.MeshStandardMaterial;
   private lampHeads: THREE.MeshStandardMaterial[] = [];
   private pools: THREE.Mesh[] = [];
+  private disposed = false;
+  private lamps!: THREE.Group;
   private trucks = new Map<string, Truck>();
   private dust: Dust[] = [];
   private emitCarry = new Map<string, number>();
@@ -131,7 +134,8 @@ export class StationsScene {
 
   constructor(host: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    // كثافة البكسل محدودة: شاشات الهاتف 3× تضاعف عمل الرسم دون فرق واضح
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.shadowMap.enabled = true;
@@ -165,18 +169,30 @@ export class StationsScene {
     // تسطيح الأرض تحت الطرق والساحات: شبكة شبكية لنقاط الطرق لتسريع البحث
     const roadPts: [number, number][] = [];
     NET.edges.forEach(e => { if (!e.yard) e.pts.forEach(p => roadPts.push([p[0] * WORLD_S, p[1] * WORLD_S])); });
-    const CELL = 200, grid = new Map<string, [number, number][]>();
-    roadPts.forEach(p => { const k = `${Math.floor(p[0] / CELL)},${Math.floor(p[1] / CELL)}`; (grid.get(k) ?? grid.set(k, []).get(k)!).push(p); });
+    // شبكة بمفاتيح رقمية ومصفوفات مسطحة: تُستدعى مئات الآلاف من المرات عند بناء الأرض
+    const CELL = 200, grid = new Map<number, number[]>();
+    const key = (cx: number, cz: number) => cx * 100003 + cz;
+    roadPts.forEach(([x, z]) => { const k = key(Math.floor(x / CELL), Math.floor(z / CELL)); const a = grid.get(k); if (a) a.push(x, z); else grid.set(k, [x, z]); });
     const roadDist = (x: number, z: number) => {
       let d = Infinity; const cx = Math.floor(x / CELL), cz = Math.floor(z / CELL);
-      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const p of grid.get(`${cx + i},${cz + j}`) ?? []) { const dd = (p[0] - x) ** 2 + (p[1] - z) ** 2; if (dd < d) d = dd; }
+      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+        const a = grid.get(key(cx + i, cz + j)); if (!a) continue;
+        for (let n = 0; n < a.length; n += 2) { const dd = (a[n] - x) ** 2 + (a[n + 1] - z) ** 2; if (dd < d) d = dd; }
+      }
       return Math.sqrt(d);
     };
-    const padDist = (x: number, z: number) => Math.min(...SITE_NAMES.map(n => {
-      const s = SITE_PLANS[n], dx = x - s.x, dz = z - s.z, c = Math.cos(-s.angle), sn = Math.sin(-s.angle);
-      const lx = dx * c + dz * sn, lz = -dx * sn + dz * c;
-      return Math.hypot(Math.max(0, Math.abs(lx) - s.w / 2), Math.max(0, Math.abs(lz) - s.d / 2));
-    }));
+    const padT = SITE_NAMES.map(n => { const s = SITE_PLANS[n]; return { x: s.x, z: s.z, c: Math.cos(-s.angle), sn: Math.sin(-s.angle), hw: s.w / 2, hd: s.d / 2, r: Math.hypot(s.w, s.d) / 2 }; });
+    const padDist = (x: number, z: number) => {
+      let best = Infinity;
+      for (const p of padT) {
+        const dx = x - p.x, dz = z - p.z;
+        if (Math.abs(dx) > p.r + best || Math.abs(dz) > p.r + best) continue;
+        const lx = dx * p.c + dz * p.sn, lz = -dx * p.sn + dz * p.c;
+        const d = Math.hypot(Math.max(0, Math.abs(lx) - p.hw), Math.max(0, Math.abs(lz) - p.hd));
+        if (d < best) best = d;
+      }
+      return best;
+    };
     const flat = (x: number, z: number) => {
       const d = Math.min(padDist(x, z) - 30, roadDist(x, z) - 45);
       return d <= 0 ? 1 : d < 80 ? 1 - d / 80 : 0;
@@ -184,13 +200,24 @@ export class StationsScene {
     const span = Math.max(this.bounds.x1 - this.bounds.x0, this.bounds.z1 - this.bounds.z0);
     // الأرض تُبنى حول أصلها ثم تُزاح إلى مركز الخريطة: دالة التسطيح تستقبل إحداثياتها المحلية
     const ox = (this.bounds.x0 + this.bounds.x1) / 2, oz = (this.bounds.z0 + this.bounds.z1) / 2;
-    this.desert = createDesert({ size: span * 3.2, segments: 320, height: 30, flat: (x, z) => flat(x + ox, z + oz), shrubs: 4200 });
+    this.desert = createDesert({ size: span * 3.2, segments: 260, height: 30, flat: (x, z) => flat(x + ox, z + oz), shrubs: 4200 });
     this.desert.group.position.set(ox, 0, oz);
     this.scene.add(this.desert.group);
     this.disposables.push(this.desert);
 
     this.buildRoads(roadDist, padDist);
-    SITE_NAMES.forEach(n => this.buildSite(n, SITE_PLANS[n], roadDist));
+    // المحطات تُبنى واحدة كل إطار: الخريطة تظهر فورًا والصفحة تبقى مستجيبة أثناء البناء
+    const queue = [...SITE_NAMES];
+    const next = () => {
+      if (this.disposed) return;
+      const n = queue.shift();
+      if (!n) return;
+      this.buildSite(n, SITE_PLANS[n], roadDist);
+      this.stations[this.stations.length - 1]?.glow.forEach(([m, d, nn]) => { m.emissiveIntensity = this.night ? nn : d; });
+      this.stations[this.stations.length - 1]?.lights.forEach(l => { l.intensity = this.night ? 2500 : 0; });
+      setTimeout(next, 0);
+    };
+    setTimeout(next, 0);
     this.stars = this.buildStars();
     this.moon = this.buildMoon();
 
@@ -217,14 +244,17 @@ export class StationsScene {
     this.roadMat = new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.92, polygonOffset: true, polygonOffsetFactor: -2 });
     const shoulder = new THREE.MeshStandardMaterial({ color: 0xa88458, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1 });
     this.disposables.push(this.roadMat, shoulder);
+    const roads = new THREE.Group(); this.scene.add(roads);
+    this.lamps = new THREE.Group(); this.scene.add(this.lamps);
     const poleMat = new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.4, metalness: 0.7 });
     const poolTex = radial([[0, 'rgba(255,214,150,.75)'], [0.5, 'rgba(255,190,120,.3)'], [1, 'rgba(255,190,120,0)']]);
-    this.disposables.push(poleMat, poolTex);
+    const poolMat = new THREE.MeshBasicMaterial({ map: poolTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+    this.disposables.push(poleMat, poolTex, poolMat);
     NET.edges.forEach(e => {
       if (e.yard) return;
       const pts = e.pts.map(p => [p[0] * WORLD_S, p[1] * WORLD_S] as [number, number]);
-      const sh = new THREE.Mesh(ribbon(pts, 82, 1, 0.25), shoulder); sh.receiveShadow = true; this.scene.add(sh); this.disposables.push(sh.geometry);
-      const rd = new THREE.Mesh(ribbon(pts, 64, 60, 0.35), this.roadMat); rd.receiveShadow = true; this.scene.add(rd); this.disposables.push(rd.geometry);
+      const sh = new THREE.Mesh(ribbon(pts, 82, 1, 0.25), shoulder); sh.receiveShadow = true; roads.add(sh);
+      const rd = new THREE.Mesh(ribbon(pts, 64, 60, 0.35), this.roadMat); rd.receiveShadow = true; roads.add(rd);
       // أعمدة إنارة متباعدة بالتناوب على جانبي الطريق (بعيدًا عن الساحات)
       let acc = 140, side = 1;
       for (let i = 1; i < pts.length; i++) {
@@ -235,19 +265,24 @@ export class StationsScene {
         const nx = (-(b[1] - a[1]) / l) * side, nz = ((b[0] - a[0]) / l) * side;
         const bx = b[0] + nx * 48, bz = b[1] + nz * 48;
         if (padDist(bx, bz) < 60 || roadDist(bx, bz) < 40) continue;
-        this.lamp(bx, bz, -nx, -nz, poleMat, poolTex);
+        this.lamp(bx, bz, -nx, -nz, poleMat, poolMat);
       }
     });
+    // دمج الطرق والأعمدة والبقع المضيئة: عشرات الأجسام تصير بضعة
+    mergeStatic(roads).forEach(m => this.disposables.push(m.geometry));
+    const merged = mergeStatic(this.lamps, this.lampHeads.map(m => [m, 0, 4] as [THREE.MeshStandardMaterial, number, number]));
+    merged.forEach(m => this.disposables.push(m.geometry));
+    this.pools = merged.filter(m => m.material === poolMat);
   }
 
-  private lamp(x: number, z: number, dx: number, dz: number, poleMat: THREE.Material, poolTex: THREE.Texture) {
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.3, 52, 8), poleMat); pole.position.set(x, 26, z); pole.castShadow = true; this.scene.add(pole);
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 16), poleMat); arm.position.set(x + dx * 8, 52, z + dz * 8); arm.lookAt(x + dx * 20, 52, z + dz * 20); this.scene.add(arm);
+  private lamp(x: number, z: number, dx: number, dz: number, poleMat: THREE.Material, poolMat: THREE.Material) {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.3, 52, 8), poleMat); pole.position.set(x, 26, z); pole.castShadow = true; this.lamps.add(pole);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 16), poleMat); arm.position.set(x + dx * 8, 52, z + dz * 8); arm.lookAt(x + dx * 20, 52, z + dz * 20); this.lamps.add(arm);
     const hm = new THREE.MeshStandardMaterial({ color: 0xe5e7eb, emissive: 0xffd9a0, emissiveIntensity: 0 }); this.lampHeads.push(hm);
-    const head = new THREE.Mesh(new THREE.BoxGeometry(7, 1.6, 3), hm); head.position.set(x + dx * 15, 51, z + dz * 15); head.lookAt(x + dx * 30, 51, z + dz * 30); this.scene.add(head);
-    const pool = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), new THREE.MeshBasicMaterial({ map: poolTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
-    pool.rotation.x = -Math.PI / 2; pool.position.set(x + dx * 26, 0.6, z + dz * 26); pool.visible = false; this.pools.push(pool); this.scene.add(pool);
-    this.disposables.push(pole.geometry, arm.geometry, head.geometry, hm, pool.geometry, pool.material as THREE.Material);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(7, 1.6, 3), hm); head.position.set(x + dx * 15, 51, z + dz * 15); head.lookAt(x + dx * 30, 51, z + dz * 30); this.lamps.add(head);
+    const pool = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), poolMat);
+    pool.rotation.x = -Math.PI / 2; pool.position.set(x + dx * 26, 0.6, z + dz * 26); this.pools.push(pool); this.lamps.add(pool);
+    this.disposables.push(hm);
   }
 
   private buildSite(name: string, s: SitePlan, roadDist: (x: number, z: number) => number) {
@@ -298,6 +333,9 @@ export class StationsScene {
     g.add(st.group);
     this.stations.push(st);
     this.disposables.push(st);
+    // دمج كل الأجسام الثابتة في الساحة (المحطة والأشجار والرصيف) حسب الخامة: من مئات عمليات الرسم إلى عشرات
+    pad.userData.keep = true;
+    mergeStatic(g, st.glow).forEach(m => this.disposables.push(m.geometry));
     const [ax, az] = padWorld(s, 0, s.d / 2 + 34);
     this.anchors.set(name, new THREE.Vector3(ax, 2, az));
   }
@@ -409,6 +447,8 @@ export class StationsScene {
     };
   }
   get maxDist() { return this.home.dist * 1.15; }
+  /** ارتفاع اللوحة بالبكسل (لخطوة أزرار التحريك) */
+  get viewH() { return this.h; }
   private applyCam() {
     const { tx, tz, dist, az, el } = this.cam;
     this.camera.position.set(tx + Math.sin(az) * Math.cos(el) * dist, Math.sin(el) * dist, tz + Math.cos(az) * Math.cos(el) * dist);
@@ -426,31 +466,36 @@ export class StationsScene {
   }
   /** الحالة التي تُبنى عليها الحركة التالية: الهدف إن وُجد (فتتراكم الحركات بسلاسة) وإلا الوضع الحالي */
   private get base() { return this.goal ?? this.cam; }
-  /** سحب الخريطة بالبكسل (انزلاق ناعم نحو الهدف) */
-  pan(dx: number, dy: number) {
-    const b = this.base;
+  /** يطبّق حالة جديدة: فورًا (لمس مباشر يتبع الأصابع) أو كهدف تنزلق إليه الكاميرا */
+  private move(next: CamState, now: boolean) {
+    if (now) { this.cam = this.clampCam(next); this.goal = null; this.applyCam(); }
+    else this.goal = this.clampCam(next);
+  }
+  /** سحب الخريطة بالبكسل (now: يتبع الإصبع/الماوس فورًا) */
+  pan(dx: number, dy: number, now = false) {
+    const b = now ? this.cam : this.base;
     const k = (2 * b.dist * Math.tan((this.camera.fov * Math.PI) / 360)) / this.h;
     const rx = Math.cos(b.az), rz = -Math.sin(b.az), fx = -Math.sin(b.az), fz = -Math.cos(b.az);
     const f = 1 / Math.max(0.35, Math.sin(b.el));
-    this.goal = this.clampCam({ ...b, tx: b.tx - rx * dx * k + fx * dy * k * f, tz: b.tz - rz * dx * k + fz * dy * k * f });
+    this.move({ ...b, tx: b.tx - rx * dx * k + fx * dy * k * f, tz: b.tz - rz * dx * k + fz * dy * k * f }, now);
   }
   groundAt(sx: number, sy: number) {
     this.raycaster.setFromCamera(new THREE.Vector2((sx / this.w) * 2 - 1, -(sy / this.h) * 2 + 1), this.camera);
     const p = new THREE.Vector3();
     return this.raycaster.ray.intersectPlane(this.groundPlane, p) ? p : null;
   }
-  /** تكبير حول نقطة الشاشة: النقطة تحت المؤشر تبقى تحته، والانتقال ناعم */
-  zoomAt(f: number, sx = this.w / 2, sy = this.h / 2) {
-    const b = this.base;
+  /** تكبير حول نقطة الشاشة: النقطة تحت المؤشر/الأصابع تبقى تحتها (now: فوري بقدر فتحة الأصابع) */
+  zoomAt(f: number, sx = this.w / 2, sy = this.h / 2, now = false) {
+    const b = now ? this.cam : this.base;
     const dist = Math.max(140, Math.min(this.maxDist, b.dist / f));
     const r = dist / b.dist;
     const p = this.groundAt(sx, sy);
-    this.goal = this.clampCam(p ? { ...b, dist, tx: p.x + (b.tx - p.x) * r, tz: p.z + (b.tz - p.z) * r } : { ...b, dist });
+    this.move(p ? { ...b, dist, tx: p.x + (b.tx - p.x) * r, tz: p.z + (b.tz - p.z) * r } : { ...b, dist }, now);
   }
   /** تدوير حول مركز النظر (والميلان في العرض ثلاثي الأبعاد فقط) */
-  rotate(dAz: number, dEl = 0) {
-    const b = this.base;
-    this.goal = this.clampCam({ ...b, az: b.az + dAz, el: b.el + dEl });
+  rotate(dAz: number, dEl = 0, now = false) {
+    const b = now ? this.cam : this.base;
+    this.move({ ...b, az: b.az + dAz, el: b.el + dEl }, now);
   }
   setGoal(g: Partial<CamState>) { this.goal = this.clampCam({ ...this.base, ...g }); }
   reset() { this.goal = { ...this.home }; }
@@ -580,6 +625,7 @@ export class StationsScene {
   }
 
   dispose() {
+    this.disposed = true;
     this.sync([]);
     this.dust.forEach(d => { d.sprite.material.dispose(); });
     this.disposables.forEach(d => d.dispose());

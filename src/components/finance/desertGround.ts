@@ -104,8 +104,9 @@ export const createDesert = (o: DesertOptions): Desert => {
 
   // شجيرات جافة (عناقيد كرات مضغوطة) وحجارة صغيرة، في تجمعات طبيعية
   const rnd = (() => { let s = seed * 9301 + 49297; return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; })();
-  const bushGeo = new THREE.IcosahedronGeometry(1, 1), rockGeo = new THREE.DodecahedronGeometry(1, 0);
-  trash.push(bushGeo, rockGeo);
+  // أشكال منخفضة المضلعات: آلاف النسخ دون ثقل
+  const bushGeo = new THREE.IcosahedronGeometry(1, 0), rockGeo = new THREE.DodecahedronGeometry(1, 0), pebbleGeo = new THREE.TetrahedronGeometry(1, 0);
+  trash.push(bushGeo, rockGeo, pebbleGeo);
   const bushMat = new THREE.MeshStandardMaterial({ roughness: 0.95 }), rockMat = new THREE.MeshStandardMaterial({ roughness: 0.9 });
   trash.push(bushMat, rockMat);
   const bushes = new THREE.InstancedMesh(bushGeo, bushMat, shrubs), rocks = new THREE.InstancedMesh(rockGeo, rockMat, Math.round(shrubs / 3));
@@ -138,9 +139,9 @@ export const createDesert = (o: DesertOptions): Desert => {
   }
   bushes.count = nb; rocks.count = nr;
   // خصلات عشب جاف صغيرة كثيفة موزعة على كل الأرض (ملمس الصورة)
-  const tuftGeo = new THREE.ConeGeometry(1, 1.4, 5); trash.push(tuftGeo);
+  const tuftGeo = new THREE.ConeGeometry(1, 1.4, 4); trash.push(tuftGeo);
   const tuftMat = new THREE.MeshStandardMaterial({ roughness: 1 }); trash.push(tuftMat);
-  const TUFTS = shrubs * 7;
+  const TUFTS = shrubs * 4;
   const tufts = new THREE.InstancedMesh(tuftGeo, tuftMat, TUFTS);
   let nt = 0;
   for (let tries = 0; nt < TUFTS && tries < TUFTS * 2; tries++) {
@@ -154,8 +155,8 @@ export const createDesert = (o: DesertOptions): Desert => {
   tufts.count = nt;
   group.add(tufts);
   // حصى: حجارة صغيرة مجسمة بأحجام متفاوتة في بقع الحصى
-  const GRAVEL = shrubs * 4;
-  const gravel = new THREE.InstancedMesh(rockGeo, rockMat, GRAVEL);
+  const GRAVEL = shrubs * 2;
+  const gravel = new THREE.InstancedMesh(pebbleGeo, rockMat, GRAVEL);
   let ng = 0;
   for (let tries = 0; ng < GRAVEL && tries < GRAVEL * 4; tries++) {
     const px = (rnd() - 0.5) * 2 * half, pz = (rnd() - 0.5) * 2 * half;
