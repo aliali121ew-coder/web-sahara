@@ -105,6 +105,11 @@ describe('pickUnrecorded (مطابقة أي ملف مع أرشيف الشركة)
     expect(res.rows.map(x => [x.voucherNumber, x.receivedQuantity])).toEqual([['3474', 36087], ['0386', 36224]]);
   });
 
+  it('صف بلا فوجر في الملف يطابق شحنة الأرشيف التي لها فوجر بنفس التاريخ والكمية', () => {
+    const res = pickUnrecorded([r('', '2026/01/09', 19700), r('', '2026/01/09', 14891), r('', '2026/01/10', 19700)], archive(['6395', '2026/01/09', 19700]));
+    expect(res.rows.map(x => [x.receiptUnloadDate, x.receivedQuantity])).toEqual([['2026/01/09', 14891], ['2026/01/10', 19700]]);
+  });
+
   it('«لا يوجد» و«_» ليست أرقام فوجر: المطابقة بالتاريخ والكمية', () => {
     const res = pickUnrecorded([r('لا يوجد', '2026/10/18', 3554), r('_', '2026/10/18', 500)], archive(['لا يوجد ', '2026/10/18', 3554]));
     expect(res.rows.map(x => x.receivedQuantity)).toEqual([500]);
