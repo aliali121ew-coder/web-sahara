@@ -185,14 +185,14 @@ export const BlackOilSection: React.FC = () => {
               </div>
 
               {/* Coverage Forecast Badge (يؤمن) */}
-              <div className="shrink-0 text-right">
+              <div className="shrink-0 flex flex-col items-center">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800/60 shadow-2xs">
                   <Calendar className="w-3 h-3 text-sky-600 dark:text-sky-400 shrink-0" />
                   <span className="text-[11px] font-black font-mono text-sky-700 dark:text-sky-300 whitespace-nowrap">
                     {t('dashboard:coverage.covers')} {t('common:units.days', { count: saharaCoverageDays })}
                   </span>
                 </div>
-                <span className="text-[9.5px] text-slate-400 dark:text-slate-500 block text-left font-mono mt-0.5 pr-1">
+                <span className="text-[9.5px] text-slate-400 dark:text-slate-500 block text-center font-mono mt-1" dir="ltr">
                   ({saharaCoverageDate})
                 </span>
               </div>
@@ -244,17 +244,19 @@ export const BlackOilSection: React.FC = () => {
 
             {/* Dual Data Metric Breakdown */}
             <div className="grid grid-cols-2 gap-2 pt-0.5">
-              <div className="p-2 rounded-xl bg-sky-50/60 dark:bg-sky-950/30 border border-sky-200/60 dark:border-sky-900/40">
+              <div className="p-2.5 rounded-xl bg-sky-50/60 dark:bg-sky-950/30 border border-sky-200/60 dark:border-sky-900/40 flex flex-col justify-between gap-1.5 min-w-0">
                 <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 block leading-tight">{t('dashboard:balance.actual')}</span>
-                <span className="font-mono font-black text-[14px] leading-tight text-sky-900 dark:text-sky-200 block break-words">
-                  {formatNumber(saharaTotalBalance)} <span className="text-[10.5px] font-normal">{t('common:units.liter')} ({saharaFill}%)</span>
+                <span className="flex items-baseline gap-1 min-w-0">
+                  <span className="font-mono font-black text-[15px] leading-none tabular-nums text-sky-900 dark:text-sky-200 truncate">{formatNumber(saharaTotalBalance)}</span>
+                  <span className="text-[10.5px] font-bold text-slate-400 shrink-0">{t('common:units.liter')}</span>
                 </span>
               </div>
 
-              <div className="p-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80">
+              <div className="p-2.5 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 flex flex-col justify-between gap-1.5 min-w-0">
                 <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 block leading-tight">{t('dashboard:capacity.remainingOfCapacity')}</span>
-                <span className="font-mono font-black text-[14px] leading-tight text-slate-900 dark:text-slate-100 block break-words">
-                  {formatNumber(saharaRemainingCapacity)} <span className="text-[10.5px] font-normal text-slate-500 dark:text-slate-400">{t('common:units.liter')}</span>
+                <span className="flex items-baseline gap-1 min-w-0">
+                  <span className="font-mono font-black text-[15px] leading-none tabular-nums text-slate-900 dark:text-slate-100 truncate">{formatNumber(saharaRemainingCapacity)}</span>
+                  <span className="text-[10.5px] font-bold text-slate-400 shrink-0">{t('common:units.liter')}</span>
                 </span>
               </div>
             </div>
@@ -321,14 +323,14 @@ export const BlackOilSection: React.FC = () => {
               </div>
 
               {/* Coverage Forecast Badge (يؤمن) */}
-              <div className="shrink-0 text-right">
+              <div className="shrink-0 flex flex-col items-center">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800/60 shadow-2xs">
                   <Calendar className="w-3 h-3 text-teal-600 dark:text-teal-400 shrink-0" />
                   <span className="text-[11px] font-black font-mono text-teal-700 dark:text-teal-300 whitespace-nowrap">
                     {t('dashboard:coverage.covers')} {t('common:units.days', { count: etihadCoverageDays })}
                   </span>
                 </div>
-                <span className="text-[9.5px] text-slate-400 dark:text-slate-500 block text-left font-mono mt-0.5 pr-1">
+                <span className="text-[9.5px] text-slate-400 dark:text-slate-500 block text-center font-mono mt-1" dir="ltr">
                   ({etihadCoverageDate})
                 </span>
               </div>
@@ -380,17 +382,19 @@ export const BlackOilSection: React.FC = () => {
 
             {/* Dual Data Metric Breakdown */}
             <div className="grid grid-cols-2 gap-2 pt-0.5">
-              <div className="p-2 rounded-xl bg-teal-50/60 dark:bg-teal-950/30 border border-teal-200/60 dark:border-teal-900/40">
+              <div className="p-2.5 rounded-xl bg-teal-50/60 dark:bg-teal-950/30 border border-teal-200/60 dark:border-teal-900/40 flex flex-col justify-between gap-1.5 min-w-0">
                 <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 block leading-tight">{t('dashboard:balance.actual')}</span>
-                <span className="font-mono font-black text-[14px] leading-tight text-teal-900 dark:text-teal-200 block break-words">
-                  {formatNumber(etihadTotalBalance)} <span className="text-[10.5px] font-normal">{t('common:units.liter')} ({etihadFill}%)</span>
+                <span className="flex items-baseline gap-1 min-w-0">
+                  <span className="font-mono font-black text-[15px] leading-none tabular-nums text-teal-900 dark:text-teal-200 truncate">{formatNumber(etihadTotalBalance)}</span>
+                  <span className="text-[10.5px] font-bold text-slate-400 shrink-0">{t('common:units.liter')}</span>
                 </span>
               </div>
 
-              <div className="p-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80">
+              <div className="p-2.5 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 flex flex-col justify-between gap-1.5 min-w-0">
                 <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 block leading-tight">{t('dashboard:capacity.remainingOfCapacity')}</span>
-                <span className="font-mono font-black text-[14px] leading-tight text-slate-900 dark:text-slate-100 block break-words">
-                  {formatNumber(etihadRemainingCapacity)} <span className="text-[10.5px] font-normal text-slate-500 dark:text-slate-400">{t('common:units.liter')}</span>
+                <span className="flex items-baseline gap-1 min-w-0">
+                  <span className="font-mono font-black text-[15px] leading-none tabular-nums text-slate-900 dark:text-slate-100 truncate">{formatNumber(etihadRemainingCapacity)}</span>
+                  <span className="text-[10.5px] font-bold text-slate-400 shrink-0">{t('common:units.liter')}</span>
                 </span>
               </div>
             </div>
