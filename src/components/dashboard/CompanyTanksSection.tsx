@@ -1,7 +1,6 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { SectionHeader } from './SectionHeader';
 import { Waves, Building2, Fuel } from 'lucide-react';
-import { formatNumber } from '../../lib/utils';
 import { useTranslation } from 'react-i18next';
 import { TankGlobalSvgDefs } from '../tanks/TankGlobalSvgDefs';
 import { Tank3DCard, type CalculatedTankUnit } from '../tanks/Tank3DCard';
@@ -150,7 +149,6 @@ export const CompanyTanksSection: React.FC = () => {
       <div className="grid grid-cols-1 xl:grid-cols-[2fr_2fr_1fr] gap-4 items-stretch">
         {groups.map(g => {
           const Icon = g.icon;
-          const cap = g.tanks.reduce((a, t) => a + t.capacityLiters, 0);
           return (
             <div
               key={g.key}
@@ -164,9 +162,6 @@ export const CompanyTanksSection: React.FC = () => {
                   </div>
                   <div className="min-w-0">
                     <div className="font-black text-slate-900 dark:text-white truncate">{g.title}</div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                      {t('dashboard:companyTanks.sections', { count: g.tanks.length })} · {t('dashboard:capacity.label')} <span className="font-mono">{formatNumber(cap)}</span> {t('common:units.liter')}
-                    </div>
                   </div>
                 </div>
 
