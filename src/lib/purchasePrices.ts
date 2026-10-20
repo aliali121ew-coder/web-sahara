@@ -58,10 +58,11 @@ export const usePurchasePrices = () => {
   const canEditPrices = usePermissions().canEdit('prices');
   // صفحة على نسخة غير المنشورة لا تكتب: حساب النسختين قد يختلف فتتبادلان الكتابة بلا توقف ويمتلئ سجل الأسعار
   const outdated = useAppUpdateAvailable();
-  // تحديث تلقائي: وارد جديد للمجهزين المختارين يغيّر قيم الكارت ويُسجَّل في سجله (من يملك تعديل الأسعار فقط يكتب)
+  // تحديث تلقائي: وارد جديد للمجهزين المختارين يغيّر قيم الكارت (من يملك تعديل الأسعار فقط يكتب)،
+  // وسجل الأسعار يأخذ العملية فقط إن تغيّر السعر (وارد جديد بنفس السعر يحدّث الكمية والتاريخ بلا عملية)
   useEffect(() => {
     if (!canEditPrices || outdated || !stationGas?.suppliers.length || !stationLive || stationLive.sig === stationGas.sig) return;
-    if (applyStationGas(stationGas.suppliers, stationLive, 'auto')) {
+    if (applyStationGas(stationGas.suppliers, stationLive, 'auto') && stationLive.price !== stationGas.price) {
       logPrice({ source: 'purchases', action: 'update', key: MANUAL_ONLY_ID, name: fuelMetrics.find(m => m.id === MANUAL_ONLY_ID)?.name ?? 'كاز محطات', company: 'sahara', prevPrice: stationGas.price, price: stationLive.price });
     }
   }, [canEditPrices, outdated, stationGas, stationLive, fuelMetrics]);
