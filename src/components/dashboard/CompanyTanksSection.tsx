@@ -20,6 +20,38 @@ import { usePetrolLedger, PETROL_TOTAL_CAPACITY } from '../../lib/petrolLedger';
 /** ارتفاع افتراضي للخزان المجمّع (المنسوب يُحسب منه كنسبة امتلاء) */
 const VIRTUAL_HEIGHT = 10;
 
+/** جسم الخزان المعدني (نفس ألوان خزانات المنظومة) */
+const steelBody: React.CSSProperties = {
+  background: 'linear-gradient(to right, #9aa3ad, #f4f6f8 18%, #dde2e7 45%, #a7b0ba 85%, #7d8791)',
+  borderColor: '#5b646d'
+};
+
+/** خزان مصغّر بنفس شكل خزان المنظومة (قبة معدنية، جسم أسطواني، سائل بلون حالته): لكارت الهاتف */
+const MiniTank: React.FC<{ tank: CalculatedTankUnit; group: string }> = ({ tank, group }) => {
+  const { t } = useTranslation(['dashboard', 'common']);
+  const pct = Math.min(100, Math.max(0, tank.fillPercent));
+  const th = tank.theme;
+  return (
+    <div className="flex flex-col items-center text-center min-w-0">
+      <div className="relative w-14">
+        <div className="w-full h-2.5 rounded-t-[100%] border-t border-x" style={steelBody} />
+        <div className="w-full h-0.5 border-y" style={steelBody} />
+        <div className="relative w-full h-20 border-x border-b overflow-hidden flex flex-col justify-end shadow-md" style={steelBody}>
+          <div className="absolute inset-x-0 top-1/2 h-px bg-slate-400/40 z-20" />
+          <div className="w-full relative" style={{ height: `${pct}%`, background: `linear-gradient(to top, ${th.gradientFrom}, ${th.gradientVia}, ${th.gradientTo})` }}>
+            <div className="absolute top-0 inset-x-0 h-0.5 bg-white/80 shadow-[0_0_6px_#fff]" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-black/30" />
+          </div>
+          <span className="absolute inset-x-0 top-1 text-[10px] font-black font-mono text-slate-800 z-30 tabular-nums">{pct.toFixed(0)}%</span>
+        </div>
+      </div>
+      <div className="mt-1.5 text-[11px] font-black text-slate-800 dark:text-slate-100 leading-tight truncate max-w-full">{tank.name}</div>
+      <div className="text-[9.5px] font-bold text-slate-400 truncate max-w-full">{group}</div>
+      <div className="mt-0.5 text-[10px] font-mono font-bold text-slate-600 dark:text-slate-300 tabular-nums" dir="ltr">{formatNumber(tank.currentStoredLiters)} {t('common:units.liter')}</div>
+    </div>
+  );
+};
+
 /**
  * تفاصيل خزانات الشركة (الشاشة الرئيسية) بتصميم خزانات المنظومة:
  * الكمية من نفس مصادر الكروت العلوية (رصيد الصحاري، السجل اليومي للنفط الأسود، سجل البنزين)،
@@ -111,8 +143,15 @@ export const CompanyTanksSection: React.FC = () => {
         </div>
       } />
 
-      {/* الكروت الأم: الاتحاد (خزانان)، الصحاري (خزانان)، البنزين (خزان) */}
-      <div className="grid grid-cols-1 xl:grid-cols-[2fr_2fr_1fr] gap-4 items-stretch">
+      {/* الهاتف: كل الخزانات في كارت واحد بخزانات مصغّرة بنفس الشكل */}
+      <div className="sm:hidden rounded-[26px] bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 shadow-soft-card p-3.5">
+        <div className="grid grid-cols-3 gap-x-2 gap-y-4">
+          {groups.flatMap(g => g.tanks.map(tk => <MiniTank key={tk.id} tank={tk} group={g.title} />))}
+        </div>
+      </div>
+
+      {/* الكروت الأم: الاتحاد (خزانان)، الصحاري (خزانان)، البنزين (خزان) — من التابلت وأكبر */}
+      <div className="hidden sm:grid grid-cols-1 xl:grid-cols-[2fr_2fr_1fr] gap-4 items-stretch">
         {groups.map(g => {
           const Icon = g.icon;
           const cap = g.tanks.reduce((a, t) => a + t.capacityLiters, 0);
