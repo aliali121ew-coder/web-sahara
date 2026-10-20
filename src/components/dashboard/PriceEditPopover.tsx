@@ -6,6 +6,7 @@ import { enumText } from '../../i18n/enums';
 import { formatNumber } from '../../lib/utils';
 import { sameSupplier } from '../../lib/archiveSuppliers';
 import type { StationGasPart } from '../../lib/stationGas';
+import { DateField } from '../ui/DateField';
 
 export interface PriceDay {
   date: string;
@@ -218,8 +219,8 @@ export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon
               </label>
               <label className="block">
                 <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{t('dashboard:popover.lastUpdateDate')}</span>
-                <input type="date" dir="ltr" value={fDate} onChange={e => setFDate(e.target.value)}
-                  className="mt-1 w-full h-11 px-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-teal-500 bg-white dark:bg-slate-900 text-base font-bold font-mono text-slate-900 dark:text-white outline-none" />
+                <DateField value={fDate} format="dash" onChange={setFDate} iconClassName="text-teal-600"
+                  className="mt-1 w-full h-11 px-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-teal-500 bg-white dark:bg-slate-900 text-base text-slate-900 dark:text-white" />
               </label>
             </div>
             <div className="mx-4 mt-2.5 flex items-start gap-1.5 text-[10.5px] leading-relaxed text-slate-500 dark:text-slate-400">
