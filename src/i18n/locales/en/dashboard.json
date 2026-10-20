@@ -76,8 +76,8 @@
   },
   "blackOil": {
     "details": "Black oil details",
-    "sahara": "Black oil – Sahara Karbala",
-    "etihad": "Black oil – Etihad Company",
+    "sahara": "Sahara Karbala",
+    "etihad": "Etihad Company",
     "both": "Sahara Karbala + Etihad",
     "combinedBalance": "Combined actual balance"
   },
