@@ -34,7 +34,9 @@ export const DateField: React.FC<{
   const btnRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const [style, setStyle] = useState<React.CSSProperties>({ visibility: 'hidden' });
+  // مخفي وثابت قبل القياس: بدون position:fixed يمتد الغلاف بعرض الصفحة فيُحسب الموضع خطأ (يلتصق بطرف الشاشة)
+  const HIDDEN: React.CSSProperties = { position: 'fixed', top: 0, left: 0, visibility: 'hidden' };
+  const [style, setStyle] = useState<React.CSSProperties>(HIDDEN);
   const current = toSlash(value);
 
   // الموضع: تحت الزر، ويفتح للأعلى إن لم تكفِ المساحة، ومحصور داخل الشاشة
@@ -77,7 +79,7 @@ export const DateField: React.FC<{
         aria-label={ariaLabel}
         aria-haspopup="dialog"
         aria-expanded={open}
-        onClick={() => { setStyle({ visibility: 'hidden' }); setOpen(o => !o); }}
+        onClick={() => { setStyle(HIDDEN); setOpen(o => !o); }}
         className={`inline-flex items-center gap-2 cursor-pointer disabled:cursor-default disabled:opacity-60 ${className}`}
       >
         {children ?? (
@@ -90,7 +92,7 @@ export const DateField: React.FC<{
       {open && createPortal(
         <>
           <div className="fixed inset-0 z-[300]" onClick={() => setOpen(false)} />
-          <div ref={popRef} style={style} className="z-[301] animate-in zoom-in-95 duration-150" dir={i18n.dir()} role="dialog">
+          <div ref={popRef} style={style} className="z-[301] w-max animate-in zoom-in-95 duration-150" dir={i18n.dir()} role="dialog">
             <DateRangeCalendar
               single
               from={current}
