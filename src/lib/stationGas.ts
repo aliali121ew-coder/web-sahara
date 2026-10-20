@@ -8,7 +8,8 @@ import { deliveryDay } from './inboundPrice';
 
 /**
  * كارت «كاز محطات» (صفحة الأسعار): يُختار له مجهز أو أكثر من أرشيف وارد الصحاري، ويأخذ سعره وكميته
- * من آخر يوم ورد فيه كل مجهز (كميات اليوم الواحد تُجمع، والسعر متوسط موزون بالكمية مثل كروت الأرشيف).
+ * من أحدث يوم وارد بين المختارين، ومن المجهزين الذين وردوا في ذلك اليوم فقط
+ * (كميات اليوم تُجمع، والسعر متوسط موزون بالكمية مثل كروت الأرشيف).
  * يتحدّث تلقائيًا مع كل وارد جديد للمجهزين المختارين، وكل تغيّر يُحفظ في سجل خاص بالكارت للمقارنة.
  */
 
@@ -91,11 +92,20 @@ export const stationGasOptions = (sahara: InboundDelivery[]): StationGasPart[] =
   return out.sort((a, b) => b.date.localeCompare(a.date) || a.name.localeCompare(b.name));
 };
 
-/** قيم الكارت من المجهزين المختارين: الكمية مجموع آخر يوم لكل مجهز، والسعر متوسطها الموزون */
+/**
+ * أجزاء الكارت: أحدث يوم وارد بين المجهزين المختارين، ومن ورد في ذلك اليوم فقط
+ * (مجهز آخر وارده أقدم لا يُجمع مع اليوم الأحدث)
+ */
+export const latestDayParts = (parts: StationGasPart[]) => {
+  const date = parts.map(p => p.date).sort().pop() ?? '';
+  return parts.filter(p => p.date === date);
+};
+
+/** قيم الكارت من المجهزين المختارين: أحدث يوم وارد بينهم، الكمية مجموع وارد ذلك اليوم والسعر متوسطه الموزون */
 export const stationGasLive = (sahara: InboundDelivery[], suppliers: string[]): StationGasLive | null => {
   if (!suppliers.length) return null;
   const idx = indexDeliveries(sahara);
-  const parts = suppliers.map(n => lastDayOf(deliveriesFromIndex(idx, n), n)).filter((p): p is StationGasPart => !!p);
+  const parts = latestDayParts(suppliers.map(n => lastDayOf(deliveriesFromIndex(idx, n), n)).filter((p): p is StationGasPart => !!p));
   const volume = parts.reduce((a, p) => a + p.qty, 0);
   const priced = parts.filter(p => p.price > 0);
   const pq = priced.reduce((a, p) => a + p.qty, 0);

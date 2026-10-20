@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { enumText } from '../../i18n/enums';
 import { formatNumber } from '../../lib/utils';
 import { sameSupplier } from '../../lib/archiveSuppliers';
-import type { StationGasPart } from '../../lib/stationGas';
+import { latestDayParts, type StationGasPart } from '../../lib/stationGas';
 import { DateField } from '../ui/DateField';
 
 export interface PriceDay {
@@ -65,11 +65,13 @@ export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon
   const isPicked = (n: string) => picked.some(p => p === n || sameSupplier(p, n));
   const togglePick = (n: string) => setPicked(list => (isPicked(n) ? list.filter(p => !(p === n || sameSupplier(p, n))) : [...list, n]));
   const pickedParts = (stationPicker?.options ?? []).filter(o => isPicked(o.name));
-  const pickedQty = pickedParts.reduce((a, p) => a + p.qty, 0);
-  const pricedParts = pickedParts.filter(p => p.price > 0);
+  // قيم الكارت: أحدث يوم وارد بين المختارين ومن ورد فيه فقط (مثل الكارت نفسه)
+  const dayParts = latestDayParts(pickedParts);
+  const pickedQty = dayParts.reduce((a, p) => a + p.qty, 0);
+  const pricedParts = dayParts.filter(p => p.price > 0);
   const pricedQty = pricedParts.reduce((a, p) => a + p.qty, 0);
   const pickedPrice = pricedQty ? Math.round((pricedParts.reduce((a, p) => a + p.qty * p.price, 0) / pricedQty) * 10) / 10 : 0;
-  const pickedDate = pickedParts.map(p => p.date).sort().pop() ?? '';
+  const pickedDate = dayParts[0]?.date ?? '';
   const shownOptions = (stationPicker?.options ?? []).filter(o => !pickQ.trim() || o.name.includes(pickQ.trim()) || sameSupplier(o.name, pickQ));
   const saveStandalone = () => {
     if (!standalone || !fValid) return;

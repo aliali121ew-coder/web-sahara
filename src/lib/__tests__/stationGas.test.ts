@@ -24,11 +24,19 @@ describe('كارت كاز محطات', () => {
     ]);
   });
 
-  it('أكثر من مجهز: الكمية مجموعهم والسعر متوسطهم الموزون وتاريخ أحدثهم', () => {
+  it('أكثر من مجهز: أحدث يوم وارد بينهم ومن ورد فيه فقط (لا يُجمع يوم أقدم مع الأحدث)', () => {
     const live = stationGasLive(archive, ['اسعد كاظم', 'مستودع السدة'])!;
-    expect(live.volume).toBe(70000);
-    expect(live.price).toBe(Math.round(((30000 * 860 + 40000 * 800) / 70000) * 10) / 10);
     expect(live.date).toBe('2026/10/18');
+    expect(live.parts.map(p => p.name)).toEqual(['اسعد كاظم']);
+    expect(live.volume).toBe(30000);
+    expect(live.price).toBe(860);
+  });
+
+  it('مجهزان وردا في نفس أحدث يوم: تُجمع كمياتهما والسعر موزون', () => {
+    const both = [...archive, d('9', 'مستودع السدة', '2026/10/18', 10000, 800)];
+    const live = stationGasLive(both, ['اسعد كاظم', 'مستودع السدة'])!;
+    expect(live.volume).toBe(40000);
+    expect(live.price).toBe(Math.round(((30000 * 860 + 10000 * 800) / 40000) * 10) / 10);
   });
 
   it('كل تغيّر يُحفظ مرة واحدة في السجل، والسابق = السعر قبل التغيّر', () => {
