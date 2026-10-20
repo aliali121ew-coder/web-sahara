@@ -181,10 +181,6 @@ export const BlackOilSection: React.FC = () => {
                   <h3 className="font-black text-sm sm:text-base leading-snug text-slate-900 dark:text-white break-words">
                     {t('dashboard:blackOil.sahara')}
                   </h3>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[11px] font-medium text-slate-400">{t('dashboard:capacity.totalColon')}</span>
-                    <span className="font-mono font-bold text-[11px] text-slate-700 dark:text-slate-300">{formatNumber(saharaCapacity)} {t('common:units.liter')}</span>
-                  </div>
                 </div>
               </div>
 
@@ -321,10 +317,6 @@ export const BlackOilSection: React.FC = () => {
                   <h3 className="font-black text-sm sm:text-base leading-snug text-slate-900 dark:text-white break-words">
                     {t('dashboard:blackOil.etihad')}
                   </h3>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[11px] font-medium text-slate-400">{t('dashboard:capacity.totalColon')}</span>
-                    <span className="font-mono font-bold text-[11px] text-slate-700 dark:text-slate-300">{formatNumber(etihadCapacity)} {t('common:units.liter')}</span>
-                  </div>
                 </div>
               </div>
 
@@ -477,10 +469,6 @@ export const BlackOilSection: React.FC = () => {
             <div className="text-2xl sm:text-3xl lg:text-[40px] font-black font-mono text-white tracking-tight leading-none flex items-baseline gap-2 drop-shadow-md">
               {formatNumber(grandTotalBalance)}
               <span className="text-sm sm:text-base font-bold text-purple-300">{t('common:units.liter')}</span>
-            </div>
-            <div className="flex items-center gap-1.5 pt-1">
-              <span className="text-[11px] text-purple-300/70 font-medium">{t('dashboard:capacity.grandTotalColon')}</span>
-              <span className="text-[11px] font-mono font-bold text-purple-200">{formatNumber(totalCapacity)} {t('common:units.liter')}</span>
             </div>
           </div>
 
