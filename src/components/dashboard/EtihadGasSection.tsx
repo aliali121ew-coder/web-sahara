@@ -428,10 +428,6 @@ export const EtihadGasSection: React.FC = () => {
               <div className="hidden sm:block kpi-num font-black text-slate-900 dark:text-white font-mono">
                 {formatNumber(totalOutflow)} <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </div>
-              <div className="mt-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[10px] text-slate-400 min-w-0">
-                <span className="whitespace-nowrap">{t('dashboard:flow.consumption')}: <strong className="font-mono text-slate-600 dark:text-slate-300">{formatNumber(totalConsumption)}</strong></span>
-                <span className="whitespace-nowrap">{t('dashboard:flow.sales')}: <strong className="font-mono text-slate-600 dark:text-slate-300">{formatNumber(totalSales)}</strong></span>
-              </div>
             </div>
 
             {/* 3. فرق الاستهلاك الفعلي بين أمس واليوم (الاستهلاك + المبيعات) */}
