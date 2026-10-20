@@ -311,3 +311,50 @@ export const parseInboundFile = async (file: File): Promise<InboundImportRow[]> 
   if (/\.(xlsx|xls|csv)$/.test(name)) return parseExcel(file);
   throw new Error(i18n.t('common:fileImport.excelPdfOnly'));
 };
+
+/** مفتاح الفوجر كما يحفظه addDelivery: الأرقام فقط، وإلا النص كما هو */
+export const voucherKey = (v: unknown) => {
+  const t = String(v ?? '').trim();
+  return t.replace(/\D/g, '') || t;
+};
+
+/** فوجر فارغ أو «_» أو «لا يوجد»: لا يُطابق به */
+const realVoucher = (v: unknown) => {
+  const t = String(v ?? '').replace(/\s+/g, ' ').trim();
+  return !t || t === '_' || t === '-' || t === 'لا يوجد' ? '' : voucherKey(t);
+};
+
+/**
+ * بصمة الشحنة للمطابقة مع الأرشيف: التاريخ + الفوجر + الكمية.
+ * الفوجر وحده لا يكفي (فوجر واحد يُكتب لعدة صهاريج في نفس اليوم)، ورقم العجلة يُعاد تنسيقه عند الحفظ فلا يُعتمد.
+ */
+export const inboundKey = (date: unknown, voucher: unknown, qty: unknown) =>
+  `${String(date ?? '').split(' ')[0].replace(/-/g, '/')}|${realVoucher(voucher)}|${Math.round(Number(qty) || 0)}`;
+
+/** عدّ بصمات شحنات الأرشيف (للشركة المستلمة) */
+export const archiveKeyCounts = (deliveries: { receiptUnloadDate?: string; date?: string; voucherNumber?: string; receiptNumber?: string; receivedQuantity?: number; volumeLiters?: number }[]) => {
+  const m = new Map<string, number>();
+  for (const d of deliveries) {
+    const k = inboundKey(d.receiptUnloadDate || d.date, d.voucherNumber || d.receiptNumber, d.receivedQuantity ?? d.volumeLiters);
+    m.set(k, (m.get(k) ?? 0) + 1);
+  }
+  return m;
+};
+
+/**
+ * أي ملف وارد (يومي أو أرشيف كامل) يُقارن بأرشيف الشركة كله: يبقى منه ما لم يُسجَّل فقط.
+ * المطابقة بالعدد: إن تكررت نفس البصمة في الملف أكثر مما في الأرشيف تُضاف الزيادة فقط
+ * (صهريجان بنفس الفوجر والكمية في نفس اليوم شحنتان). الصف بلا تاريخ يبقى (يأخذ تاريخ الفترة).
+ */
+export const pickUnrecorded = (rows: InboundImportRow[], archive: Map<string, number>) => {
+  const left = new Map(archive);
+  const recordedIdx: number[] = [];
+  const kept = rows.filter((r, i) => {
+    if (!r.receiptUnloadDate) return true;
+    const k = inboundKey(r.receiptUnloadDate, r.voucherNumber, r.receivedQuantity);
+    const n = left.get(k) ?? 0;
+    if (n > 0) { left.set(k, n - 1); recordedIdx.push(i); return false; }
+    return true;
+  });
+  return { rows: kept, recordedIdx };
+};
