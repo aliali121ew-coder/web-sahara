@@ -71,9 +71,6 @@ export const OfficialReportHeaderRow: React.FC<OfficialReportHeaderRowProps> = (
         <span className={`${compact ? 'text-[10.5px]' : 'text-[12.5px]'} font-black text-slate-950 block leading-tight whitespace-nowrap`}>
           {t('print.etihadGroup')}
         </span>
-        <span className="text-[9.5px] font-bold text-blue-900 block whitespace-nowrap">
-          {t('print.partner')}
-        </span>
       </div>
     </div>
 

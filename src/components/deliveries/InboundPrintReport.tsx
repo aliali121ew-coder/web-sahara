@@ -230,10 +230,6 @@ const InboundPrintReportComponent: React.FC<InboundPrintReportProps> = ({
       <style>{pageCssRule}</style>
 
       {pagesData.map((page) => {
-        // Page specific calculations
-        const pageVolume = page.items.reduce((acc, d) => acc + (d.receivedQuantity ?? d.volumeLiters ?? 0), 0);
-        const pageCost = page.items.reduce((acc, d) => acc + (d.productCost ?? d.totalCostIqd ?? 0), 0);
-
         return (
           <div
             key={page.pageNumber}
@@ -249,8 +245,7 @@ const InboundPrintReportComponent: React.FC<InboundPrintReportProps> = ({
 
                   {/* Applied Filters Sub-strip */}
                   {(filterCompany !== 'الكل' || filterSupplier !== 'الكل' || filterFuelType !== 'الكل' || filterMonthYear) && (
-                    <div className="mt-2 pt-1 border-t border-dashed border-slate-300 flex items-center justify-between text-[9.5px] text-slate-700 bg-slate-50 px-3 py-1 rounded">
-                      <span className="font-bold text-slate-900">{t('deliveries:print.filtersTitle')}</span>
+                    <div className="mt-2 pt-1 border-t border-dashed border-slate-300 flex items-center justify-start text-[9.5px] text-slate-700 bg-slate-50 px-3 py-1 rounded">
                       <div className="flex items-center gap-3">
                         {filterCompany !== 'الكل' && <span><Trans t={t} i18nKey="deliveries:print.filter.company" values={{ value: enumText(filterCompany) }} components={{ 1: <strong className="text-blue-900" /> }} /></span>}
                         {filterSupplier !== 'الكل' && <span><Trans t={t} i18nKey="deliveries:print.filter.supplier" values={{ value: enumText(filterSupplier) }} components={{ 1: <strong className="text-blue-900" /> }} /></span>}
@@ -444,6 +439,8 @@ const InboundPrintReportComponent: React.FC<InboundPrintReportProps> = ({
                 </tbody>
 
                 {/* 📌 Table Footer Totals (Matching Header Navy Blue Color & Perfectly Centered) */}
+                {/* سطر المجموع في الورقة الأخيرة فقط (المجموع الكلي) */}
+                {page.isLastPage && (
                 <tfoot>
                   {(() => {
                     // ثلاث خلايا مدموجة تغطي عرض الجدول: المجموع حتى عمود الكمية، الكمية حتى عمود التكلفة، والتكلفة حتى النهاية
@@ -453,14 +450,13 @@ const InboundPrintReportComponent: React.FC<InboundPrintReportProps> = ({
                     const a = qIdx > 0 && cIdx > qIdx ? qIdx : Math.max(1, Math.ceil(n / 3));
                     const b = qIdx > 0 && cIdx > qIdx ? cIdx - qIdx : Math.max(1, Math.ceil((n - a) / 2));
                     const c = Math.max(1, n - a - b);
-                    const grand = page.isLastPage;
-                    const vol = grand ? grandTotalVolume : pageVolume;
-                    const cost = grand ? grandTotalCost : pageCost;
+                    const vol = grandTotalVolume;
+                    const cost = grandTotalCost;
                     const cell = 'py-2.5 px-2 text-center border-e border-blue-900 whitespace-nowrap';
                     return (
                       <tr className={`bg-[#0f2b5c] text-white font-black border-t-2 border-slate-800 ${tableHeaderFontSizeClass}`}>
                         <td colSpan={a} className={`${cell} text-[11px]`}>
-                          {grand ? t('deliveries:print.foot.grand', { count: deliveries.length }) : t('deliveries:print.foot.page', { page: page.pageNumber, count: page.items.length })}
+                          {t('deliveries:print.foot.grand', { count: deliveries.length })}
                         </td>
                         <td colSpan={b} className={cell}>
                           <span className="text-blue-200 font-bold">{t('deliveries:print.foot.qty')}: </span>
@@ -474,6 +470,7 @@ const InboundPrintReportComponent: React.FC<InboundPrintReportProps> = ({
                     );
                   })()}
                 </tfoot>
+                )}
               </table>
             </div>
 
