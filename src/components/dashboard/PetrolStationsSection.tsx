@@ -179,7 +179,7 @@ export const PetrolStationsSection: React.FC = () => {
     <div className="space-y-4 animate-in fade-in duration-300">
       
       {/* 🌟 Section Header */}
-      <SectionHeader title={t('dashboard:petrol.title')} icon={
+      <SectionHeader updatedAt={latestPetrol?.date} title={t('dashboard:petrol.title')} icon={
         <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-600 via-orange-500 to-amber-400 text-white shadow-md shadow-amber-500/20">
           <Fuel className="w-4 h-4 text-amber-50" />
           <span className="absolute -top-1 -right-1 flex h-2 w-2">

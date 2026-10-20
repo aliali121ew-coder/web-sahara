@@ -12,16 +12,16 @@ export const MainDashboard: React.FC = () => {
   return (
     <div className="dash-root space-y-10 sm:space-y-[42px] animate-in fade-in duration-300 pb-6">
       {/* Section 1: كاز - صحاري كربلاء 2026 */}
-      <div id="dash-sahara-gas" className="scroll-mt-20 rounded-[28px]"><SaharaGasSection /></div>
+      <div id="dash-sahara-gas" data-co="sahara" className="scroll-mt-20 rounded-[28px]"><SaharaGasSection /></div>
 
       {/* Section 2: كاز - شركة الاتحاد */}
-      <div id="dash-etihad-gas" className="scroll-mt-20 rounded-[28px]"><EtihadGasSection /></div>
+      <div id="dash-etihad-gas" data-co="etihad" className="scroll-mt-20 rounded-[28px]"><EtihadGasSection /></div>
 
       {/* Section 3: تفاصيل نفط الأسود (الصحاري + الاتحاد + الإجمالي) */}
-      <div id="dash-black-oil" className="scroll-mt-20 rounded-[28px]"><BlackOilSection /></div>
+      <div id="dash-black-oil" data-co="black-oil" className="scroll-mt-20 rounded-[28px]"><BlackOilSection /></div>
 
       {/* Section 4: منظومة بنزين المحطات (الأرصدة + الوارد والصادر) */}
-      <div id="dash-petrol" className="scroll-mt-20 rounded-[28px]"><PetrolStationsSection /></div>
+      <div id="dash-petrol" data-co="petrol" className="scroll-mt-20 rounded-[28px]"><PetrolStationsSection /></div>
 
       {/* Section 5: قسم مشتريات الوقود والمشتقات (5 بطاقات) */}
       <div id="dash-purchases" className="scroll-mt-20 rounded-[28px]"><FuelMetricsGrid /></div>

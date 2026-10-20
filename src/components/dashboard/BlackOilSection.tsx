@@ -151,7 +151,7 @@ export const BlackOilSection: React.FC = () => {
     <div className="space-y-4">
       
       {/* Section Header */}
-      <SectionHeader title={t('dashboard:blackOil.details')} icon={
+      <SectionHeader updatedAt={[saharaLedger.latest?.date, etihadLedger.latest?.date].filter(Boolean).sort().pop()} title={t('dashboard:blackOil.details')} icon={
         <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-700 via-indigo-600 to-slate-900 text-white shadow-md shadow-purple-500/20">
           <Droplets className="w-4 h-4 text-purple-200" />
         </div>

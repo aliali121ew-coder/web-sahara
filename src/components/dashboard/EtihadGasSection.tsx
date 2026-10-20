@@ -193,7 +193,7 @@ export const EtihadGasSection: React.FC = () => {
     <div className="space-y-3.5">
       
       {/* Section Header */}
-      <SectionHeader title={t('dashboard:etihad.title')} icon={
+      <SectionHeader updatedAt={latest?.date} title={t('dashboard:etihad.title')} icon={
         <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-teal-700 via-teal-600 to-emerald-600 text-white shadow-md shadow-teal-500/20">
           <Building2 className="w-4 h-4 text-teal-100" />
         </div>

@@ -188,7 +188,7 @@ export const SaharaGasSection: React.FC = () => {
     <div className="space-y-3.5">
       
       {/* Section Header */}
-      <SectionHeader title={t('dashboard:sahara.title')} icon={
+      <SectionHeader updatedAt={latestDay?.date} title={t('dashboard:sahara.title')} icon={
         <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-700 via-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20">
           <Flame className="w-4 h-4 text-amber-300 animate-pulse" />
         </div>
