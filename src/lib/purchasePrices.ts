@@ -9,6 +9,7 @@ import { logPrice } from './priceLog';
 import type { PriceDay } from '../components/dashboard/PriceEditPopover';
 import { applyStationGas, stationGasLive, useStationGas } from './stationGas';
 import { usePermissions } from './usePermission';
+import { useAppUpdateAvailable } from './appUpdate';
 
 /**
  * أسعار كروت المشتريات (من الوارد أو التعديل اليدوي) في مكان واحد: تستخدمها كروت الرئيسية وسجل الأسعار
@@ -55,13 +56,15 @@ export const usePurchasePrices = () => {
   const { state: stationGas } = useStationGas();
   const stationLive = useMemo(() => stationGasLive(saharaDeliveries, stationGas?.suppliers ?? []), [saharaDeliveries, stationGas?.suppliers]);
   const canEditPrices = usePermissions().canEdit('prices');
+  // صفحة على نسخة غير المنشورة لا تكتب: حساب النسختين قد يختلف فتتبادلان الكتابة بلا توقف ويمتلئ سجل الأسعار
+  const outdated = useAppUpdateAvailable();
   // تحديث تلقائي: وارد جديد للمجهزين المختارين يغيّر قيم الكارت ويُسجَّل في سجله (من يملك تعديل الأسعار فقط يكتب)
   useEffect(() => {
-    if (!canEditPrices || !stationGas?.suppliers.length || !stationLive || stationLive.sig === stationGas.sig) return;
+    if (!canEditPrices || outdated || !stationGas?.suppliers.length || !stationLive || stationLive.sig === stationGas.sig) return;
     if (applyStationGas(stationGas.suppliers, stationLive, 'auto')) {
       logPrice({ source: 'purchases', action: 'update', key: MANUAL_ONLY_ID, name: fuelMetrics.find(m => m.id === MANUAL_ONLY_ID)?.name ?? 'كاز محطات', company: 'sahara', prevPrice: stationGas.price, price: stationLive.price });
     }
-  }, [canEditPrices, stationGas, stationLive, fuelMetrics]);
+  }, [canEditPrices, outdated, stationGas, stationLive, fuelMetrics]);
 
   // ── السعر التلقائي من الوارد: كاز الصحاري وكاز الاتحاد من كشف الوارد، والبنزين من سجل البنزين ──
   const inboundSources = useMemo<Record<string, InboundPriceSource>>(() => {
