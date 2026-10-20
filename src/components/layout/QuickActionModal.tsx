@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
-import { hasBrokenGlyphs, parseInboundFile, type InboundImportRow } from '../../lib/inboundImport';
+import { archiveKeyCounts, hasBrokenGlyphs, parseInboundFile, pickUnrecorded, type InboundImportRow } from '../../lib/inboundImport';
 import { fixInboundNamesWithAi } from '../../lib/inboundAi';
 import { applyNameIndex, isKnownName, readNameIndex, useNameIndex, type NameFix, type NameKind } from '../../lib/nameIndex';
 import { NameIndexModal } from '../deliveries/NameIndexModal';
@@ -34,7 +34,8 @@ import { useFuelStore } from '../../context/FuelDataContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { enumText } from '../../i18n/enums';
 import { useTranslation } from 'react-i18next';
-import { formatIQD, formatNumber } from '../../lib/utils';
+import { formatIQD, formatNumber, getPreviousBusinessDate } from '../../lib/utils';
+import { DateField } from '../ui/DateField';
 
 interface QuickActionModalProps {
   isOpen: boolean;
@@ -160,7 +161,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
   const [importState, setImportState] = useState<
     | { status: 'idle' }
     | { status: 'reading'; fileName: string }
-    | { status: 'ready'; fileName: string; rows: InboundImportRow[]; file: File; fixes: NameFix[][] }
+    | { status: 'ready'; fileName: string; rows: InboundImportRow[]; file: File; recorded: number[]; fixes: NameFix[][] }
     | { status: 'error'; message: string }
   >({ status: 'idle' });
   // القراءة الذكية لأسماء ملف PDF (تبدأ تلقائيًا عند رموز تالفة، أو من زرها)
@@ -187,16 +188,17 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
   const [deliveryDensity, setDeliveryDensity] = useState('0.842');
   const [deliveryColor, setDeliveryColor] = useState('احمر');
   const [rawPrice, setRawPrice] = useState('510');
+  // شحنة جديدة: تاريخ الاستلام يبدأ باليوم السابق (اليوم 20 ← 19) مثل تبويب الوارد، ويُغيَّر يدويًا
   const [deliveryDate, setDeliveryDate] = useState(() => {
-    return new Date().toISOString().split('T')[0].replace(/-/g, '/');
+    return getPreviousBusinessDate();
   });
 
   useEffect(() => {
     if (isOpen && editData) {
       setDeliveryCompany(editData.company || editData.lockedCompany || 'صحاري كربلاء');
       setDeliverySupplier(editData.supplierCompany || '');
-      // السجلات القديمة كانت تحفظ نفس القيمة في الحقلين
-      setDeliverySupplierName(editData.supplierName && editData.supplierName !== editData.supplierCompany ? editData.supplierName : '');
+      // اسم المجهز كما هو، ولو طابق الشركة المجهزة
+      setDeliverySupplierName(editData.supplierName || '');
       setEntryMode('manual');
       setDeliveryDriver(editData.driverName && !FAKE_DRIVERS.has(editData.driverName) ? editData.driverName : '');
       setTruckNumberText(String(editData.truckNumber || '').trim());
@@ -209,7 +211,8 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
       const prc = (editData.productPrice ?? editData.pricePerLiter ?? 0).toString();
       const cleanPrc = prc.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
       setRawPrice(cleanPrc);
-      setDeliveryDate(editData.receiptUnloadDate ? editData.receiptUnloadDate.split(' ')[0] : new Date().toISOString().split('T')[0].replace(/-/g, '/'));
+      // شحنة جديدة من تبويب وارد شركة (يصل معها lockedCompany فقط، بلا تاريخ): اليوم السابق؛ تعديل شحنة: تاريخها
+      setDeliveryDate(editData.receiptUnloadDate ? editData.receiptUnloadDate.split(' ')[0] : getPreviousBusinessDate());
       
       if (editData.attachments && editData.attachments.length > 0) {
         setAttachments(editData.attachments);
@@ -241,7 +244,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
       setDeliveryDensity('0.842');
       setDeliveryColor('احمر');
       setRawPrice('510');
-      setDeliveryDate(new Date().toISOString().split('T')[0].replace(/-/g, '/'));
+      setDeliveryDate(getPreviousBusinessDate());
       setAttachments([]);
     }
   }, [isOpen, editData]);
@@ -369,6 +372,16 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nameIndex]);
 
+  // بطاقة النجاح تختفي وحدها بعد اكتمال حركة علامة الصح (ويبقى زر ✕ للإغلاق الفوري)
+  // (onClose يتجدد مع كل عرض للصفحة: يُقرأ من مرجع حتى لا يُعاد المؤقت من أوله)
+  const onCloseRef = React.useRef(onClose);
+  onCloseRef.current = onClose;
+  useEffect(() => {
+    if (!submitted) return;
+    const id = window.setTimeout(() => { setSubmitted(false); onCloseRef.current(); }, 1800);
+    return () => window.clearTimeout(id);
+  }, [submitted]);
+
   if (!isOpen) return null;
 
   // Number formatting helpers with live typing support
@@ -437,6 +450,8 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
       company: targetComp,
       supplierCompany: deliverySupplier,
       supplierName: deliverySupplierName.trim(),
+      // اسم المجهز من النافذة مقصود ولو طابق الشركة المجهزة: يُعرض في الجدول
+      supplierNameSet: !!deliverySupplierName.trim(),
       driverName: deliveryDriver,
       truckNumber: truckNumberText.trim(),
       voucherNumber: deliveryVoucher || `VCH-${Date.now().toString().slice(-4)}`,
@@ -483,21 +498,24 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
     setAttachments([]);
     setDeliveryVoucher(`VCH-2026-${Math.floor(1000 + Math.random() * 9000)}`);
 
-    // تبقى بطاقة النجاح ظاهرة حتى يغلقها المستخدم بزر ✕
+    // بطاقة النجاح تظهر ثم تختفي تلقائيًا
     setSubmitted(true);
   };
 
   // الشركة المستلمة: من الصفحة التي فُتحت منها النافذة (صحاري أو الاتحاد)
   const receivingCompany = (editData?.lockedCompany || deliveryCompany) as 'صحاري كربلاء' | 'شركة الاتحاد';
-  const existingVouchers = new Set(
-    deliveries.filter((d) => d.company === receivingCompany).map((d) => String(d.voucherNumber || d.receiptNumber || '').trim()).filter(Boolean)
-  );
+  const companyDeliveries = deliveries.filter((d) => d.company === receivingCompany);
+  // كل ملف وارد (يومي أو أرشيف) يُقارن بأرشيف الشركة كله: بصمة كل شحنة = التاريخ + الفوجر + الكمية
+  // (كان يُتجاوز اليوم كله إن سُجّلت فيه شحنة، ويُطابق بالفوجر وحده وهو مشترك بين صهاريج اليوم)
 
   const handleImportFile = async (file: File) => {
     setImportState({ status: 'reading', fileName: file.name });
     try {
-      const rows = await parseInboundFile(file);
-      if (!rows.length) throw new Error(t('deliveries:quick.noRows'));
+      const fileRows = await parseInboundFile(file);
+      if (!fileRows.length) throw new Error(t('deliveries:quick.noRows'));
+      const picked = pickUnrecorded(fileRows, archiveKeyCounts(companyDeliveries));
+      if (!picked.rows.length) throw new Error(t('deliveries:quick.allDaysRecorded'));
+      const rows = picked.rows;
       // الفترة تُؤخذ من تواريخ الشحنات في الملف تلقائيًا (كانت "اليوم" فتُتجاهل شحنات الأيام الأخرى)،
       // وتبقى قابلة للتغيير يدويًا من زر الفترة
       const dates = rows.map(r => r.receiptUnloadDate).filter(Boolean).sort();
@@ -505,12 +523,13 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
         setImportFrom(dates[0]);
         setImportTo(dates[dates.length - 1]);
       }
-      const indexed = withIndex(rows);
-      setImportState({ status: 'ready', fileName: file.name, rows: indexed.rows, fixes: indexed.fixes, file });
+      // المعاينة تعرض صفوف الملف كلها، والمسجّل منها مسبقًا معلَّم ولا يُضاف
+      const indexed = withIndex(fileRows);
+      setImportState({ status: 'ready', fileName: file.name, rows: indexed.rows, fixes: indexed.fixes, file, recorded: picked.recordedIdx });
       setAiState({ status: 'idle' });
       aiRun.current = null;
-      if (file.name.toLowerCase().endsWith('.pdf') && rows.some(r => hasBrokenGlyphs(`${r.supplierName} ${r.supplierCompany} ${r.driverName} ${r.truckNumber}`))) {
-        void runAiNames(file, rows);
+      if (file.name.toLowerCase().endsWith('.pdf') && fileRows.some(r => hasBrokenGlyphs(`${r.supplierName} ${r.supplierCompany} ${r.driverName} ${r.truckNumber}`))) {
+        void runAiNames(file, fileRows);
       }
     } catch (err) {
       setImportState({ status: 'error', message: err instanceof Error ? err.message : t('deliveries:quick.readFailed') });
@@ -557,10 +576,11 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
     }
     return value;
   };
-  const isDuplicateRow = (r: InboundImportRow) => !!r.voucherNumber && existingVouchers.has(r.voucherNumber.trim());
+  const recordedSet = new Set(importState.status === 'ready' ? importState.recorded : []);
+  const isDuplicateRow = (i: number) => recordedSet.has(i);
   const rowDate = (r: InboundImportRow) => r.receiptUnloadDate || importFrom;
   const isOutOfRange = (r: InboundImportRow) => rowDate(r) < importFrom || rowDate(r) > importTo;
-  const newImportRows = importRows.filter((r) => !isDuplicateRow(r) && !isOutOfRange(r));
+  const newImportRows = importRows.filter((r, i) => !isDuplicateRow(i) && !isOutOfRange(r));
 
   const handleImportSubmit = () => {
     newImportRows.forEach((r) => {
@@ -636,30 +656,31 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-3 bg-slate-950/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-[70vw] max-w-[1420px] h-fit max-h-[96vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200/90 dark:border-slate-800 flex flex-col overflow-hidden font-cairo z-10 animate-in zoom-in-95 duration-150">
+      <div className="relative w-full sm:w-[92vw] lg:w-[70vw] max-w-[1420px] h-fit max-h-[96vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200/90 dark:border-slate-800 flex flex-col overflow-hidden font-cairo z-10 animate-in zoom-in-95 duration-150">
         
         {/* Enterprise Clean Header */}
-        <div className="px-6 py-2.5 sm:py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-2xs select-none shrink-0">
-          <div className="flex items-center gap-3">
+        {/* الهاتف: العنوان وزر الإغلاق في سطر، واختيار يدوي / رفع ملف بعرض النافذة تحته */}
+        <div className="px-4 sm:px-6 py-2.5 sm:py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex flex-wrap sm:flex-nowrap items-center justify-between gap-y-2.5 shadow-2xs select-none shrink-0">
+          <div className="flex items-center gap-3 min-w-0 flex-1 order-1">
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-800 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-2xs shrink-0">
               <Truck className="w-5 h-5 stroke-[2.2]" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white tracking-tight">
+                <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white tracking-tight truncate">
                   {editData?.id ? t('deliveries:editTitle') : t('deliveries:quick.newTitle')}
                 </h3>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                <span className="hidden sm:inline text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 whitespace-nowrap">
                   ERP Gate Entry
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate">
                 {t('deliveries:quick.subtitle')}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 ms-auto me-3">
+          <div className="order-3 sm:order-2 w-full sm:w-auto flex items-center gap-2 sm:ms-auto sm:me-3">
             {!editData?.lockedCompany && (
               <select
                 value={deliveryCompany}
@@ -672,7 +693,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
             )}
             {/* طريقة الإدخال: يدوي أو رفع ملف الوارد اليومي (للتسجيل الجديد فقط) */}
             {!editData?.id && (
-              <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
+              <div className="flex-1 sm:flex-none flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
                 {([
                   { key: 'manual', label: t('deliveries:quick.manual'), icon: PenLine },
                   { key: 'upload', label: t('deliveries:quick.upload'), icon: Upload }
@@ -681,7 +702,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                     key={key}
                     type="button"
                     onClick={() => setEntryMode(key)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${entryMode === key ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-white/70 dark:hover:bg-slate-700'}`}
+                    className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap cursor-pointer transition-all ${entryMode === key ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-white/70 dark:hover:bg-slate-700'}`}
                   >
                     <ModeIcon className="w-3.5 h-3.5" />
                     {enumText(label)}
@@ -695,7 +716,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
             type="button"
             onClick={onClose}
             aria-label={t('common:actions.close')}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer border border-slate-200/80 dark:border-slate-700"
+            className="order-2 sm:order-3 shrink-0 ms-2 sm:ms-0 p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer border border-slate-200/80 dark:border-slate-700"
           >
             <X className="w-4.5 h-4.5 stroke-[2.5]" />
           </button>
@@ -775,6 +796,9 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                           <span className="font-black text-slate-800 dark:text-slate-100 truncate max-w-[260px]" title={importState.fileName}>{importState.fileName}</span>
                           <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-700 font-bold text-slate-600 dark:text-slate-300">{t('deliveries:shipments', { count: importRows.length })}</span>
                           <span className="px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 font-bold text-emerald-700 dark:text-emerald-300">{t('deliveries:quick.newCount', { count: newImportRows.length })}</span>
+                          {importState.recorded.length > 0 && (
+                            <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-700 font-bold text-slate-500 dark:text-slate-300">{t('deliveries:quick.recordedRowsSkipped', { count: importState.recorded.length })}</span>
+                          )}
                           {importRows.length > newImportRows.length && (
                             <span className="px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950/50 font-bold text-amber-700 dark:text-amber-300">{t('deliveries:quick.skipCount', { count: importRows.length - newImportRows.length })}</span>
                           )}
@@ -824,7 +848,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
                               {importRows.map((r, i) => {
-                                const dup = isDuplicateRow(r);
+                                const dup = isDuplicateRow(i);
                                 const outside = !dup && isOutOfRange(r);
                                 return (
                                   <tr key={i} className={dup || outside ? 'opacity-50' : 'odd:bg-white even:bg-slate-50/60 dark:odd:bg-slate-800 dark:even:bg-slate-800/60'}>
@@ -1097,15 +1121,8 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                       {t('deliveries:quick.receiptUnload')}
                     </label>
                     <div className="relative">
-                      <Calendar className={`w-4.5 h-4.5 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-3.5' : 'left-3.5'} text-slate-400`} />
-                      <input
-                        type="text"
-                        value={deliveryDate}
-                        onChange={(e) => setDeliveryDate(e.target.value)}
-                        required
-                        placeholder="YYYY/MM/DD"
-                        className={`w-full h-11 sm:h-12 ${isRTL ? 'pr-10 pl-3.5' : 'pl-10 pr-3.5'} py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-900 outline-none font-sans font-bold transition-all`}
-                      />
+                      <DateField value={deliveryDate} onChange={setDeliveryDate} iconClassName="text-emerald-600 !w-4.5 !h-4.5"
+                        className="w-full h-11 sm:h-12 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900 text-slate-900 dark:text-white hover:border-emerald-500 transition-all" />
                     </div>
                   </div>
 

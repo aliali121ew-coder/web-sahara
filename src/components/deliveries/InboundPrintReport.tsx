@@ -136,8 +136,9 @@ const InboundPrintReportComponent: React.FC<InboundPrintReportProps> = ({
       return [{ pageNumber: 1, items: [], startIndex: 0, isFirstPage: true, isLastPage: true }];
     }
 
-    const page1Capacity = showKpiCards ? 22 : 24;
-    const subsequentPageCapacity = 24;
+    // 21 شحنة كحد أقصى لكل ورقة: مساحة لالتفاف الأسماء الطويلة على سطرين بدل قصّها
+    const page1Capacity = 21;
+    const subsequentPageCapacity = 21;
 
     const pages = [];
     let currentIndex = 0;
@@ -229,11 +230,6 @@ const InboundPrintReportComponent: React.FC<InboundPrintReportProps> = ({
       <style>{pageCssRule}</style>
 
       {pagesData.map((page) => {
-        // Page specific calculations
-        const pageVolume = page.items.reduce((acc, d) => acc + (d.receivedQuantity ?? d.volumeLiters ?? 0), 0);
-        const pageCost = page.items.reduce((acc, d) => acc + (d.productCost ?? d.totalCostIqd ?? 0), 0);
-        const pageAvgPrice = pageVolume > 0 ? pageCost / pageVolume : 0;
-
         return (
           <div
             key={page.pageNumber}
@@ -249,8 +245,7 @@ const InboundPrintReportComponent: React.FC<InboundPrintReportProps> = ({
 
                   {/* Applied Filters Sub-strip */}
                   {(filterCompany !== 'الكل' || filterSupplier !== 'الكل' || filterFuelType !== 'الكل' || filterMonthYear) && (
-                    <div className="mt-2 pt-1 border-t border-dashed border-slate-300 flex items-center justify-between text-[9.5px] text-slate-700 bg-slate-50 px-3 py-1 rounded">
-                      <span className="font-bold text-slate-900">{t('deliveries:print.filtersTitle')}</span>
+                    <div className="mt-2 pt-1 border-t border-dashed border-slate-300 flex items-center justify-start text-[9.5px] text-slate-700 bg-slate-50 px-3 py-1 rounded">
                       <div className="flex items-center gap-3">
                         {filterCompany !== 'الكل' && <span><Trans t={t} i18nKey="deliveries:print.filter.company" values={{ value: enumText(filterCompany) }} components={{ 1: <strong className="text-blue-900" /> }} /></span>}
                         {filterSupplier !== 'الكل' && <span><Trans t={t} i18nKey="deliveries:print.filter.supplier" values={{ value: enumText(filterSupplier) }} components={{ 1: <strong className="text-blue-900" /> }} /></span>}
@@ -345,7 +340,7 @@ const InboundPrintReportComponent: React.FC<InboundPrintReportProps> = ({
                       return (
                         <tr
                           key={item.id || idx}
-                          className={`${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} h-[25px]`}
+                          className={`${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} h-[25px] align-middle`}
                         >
                           {activeCols.map((col) => {
                             switch (col.id) {
@@ -357,37 +352,37 @@ const InboundPrintReportComponent: React.FC<InboundPrintReportProps> = ({
                                 );
                               case 'company':
                                 return (
-                                  <td key={col.id} className={`${rowPaddingClass} px-1 text-center font-bold text-slate-950 border-e border-slate-300 truncate`}>
+                                  <td key={col.id} className={`${rowPaddingClass} px-1 text-center font-bold text-slate-950 border-e border-slate-300 whitespace-normal break-words leading-tight`}>
                                     {enumText(item.company || 'صحاري كربلاء')}
                                   </td>
                                 );
                               case 'supplier':
                                 return (
-                                  <td key={col.id} className={`${rowPaddingClass} px-1 text-center font-semibold text-slate-900 border-e border-slate-300 truncate`}>
+                                  <td key={col.id} className={`${rowPaddingClass} px-1 text-center font-semibold text-slate-900 border-e border-slate-300 whitespace-normal break-words leading-tight`}>
                                     {enumText(item.supplierCompany || item.supplierName || 'مصفى كربلاء الدولي')}
                                   </td>
                                 );
                               case 'driver':
                                 return (
-                                  <td key={col.id} className={`${rowPaddingClass} px-1 text-center text-slate-900 border-e border-slate-300 truncate`}>
+                                  <td key={col.id} className={`${rowPaddingClass} px-1 text-center text-slate-900 border-e border-slate-300 whitespace-normal break-words leading-tight`}>
                                     {item.driverName || t('deliveries:print.unspecified')}
                                   </td>
                                 );
                               case 'truckNumber':
                                 return (
-                                  <td key={col.id} className={`${rowPaddingClass} px-0.5 font-sans font-bold text-slate-900 border-e border-slate-300 text-center truncate`}>
+                                  <td key={col.id} className={`${rowPaddingClass} px-0.5 font-sans font-bold text-slate-900 border-e border-slate-300 text-center whitespace-normal break-words leading-tight`}>
                                     {formatTruckNumber(item.truckNumber)}
                                   </td>
                                 );
                               case 'voucherNumber':
                                 return (
-                                  <td key={col.id} className={`${rowPaddingClass} px-0.5 font-sans font-black text-blue-950 border-e border-slate-300 text-center truncate`}>
+                                  <td key={col.id} className={`${rowPaddingClass} px-0.5 font-sans font-black text-blue-950 border-e border-slate-300 text-center whitespace-normal break-words leading-tight`}>
                                     {formatVoucherNumber(voucher)}
                                   </td>
                                 );
                               case 'fuelType':
                                 return (
-                                  <td key={col.id} className={`${rowPaddingClass} px-0.5 font-bold text-slate-900 border-e border-slate-300 text-center truncate`}>
+                                  <td key={col.id} className={`${rowPaddingClass} px-0.5 font-bold text-slate-900 border-e border-slate-300 text-center whitespace-normal break-words leading-tight`}>
                                     {fuel}
                                   </td>
                                 );
@@ -405,7 +400,7 @@ const InboundPrintReportComponent: React.FC<InboundPrintReportProps> = ({
                                 );
                               case 'color':
                                 return (
-                                  <td key={col.id} className={`${rowPaddingClass} px-0.5 text-slate-800 border-e border-slate-300 text-center truncate`}>
+                                  <td key={col.id} className={`${rowPaddingClass} px-0.5 text-slate-800 border-e border-slate-300 text-center whitespace-normal break-words leading-tight`}>
                                     {color}
                                   </td>
                                 );
@@ -417,7 +412,7 @@ const InboundPrintReportComponent: React.FC<InboundPrintReportProps> = ({
                                 );
                               case 'cost':
                                 return (
-                                  <td key={col.id} className={`${rowPaddingClass} px-1 font-sans font-black text-emerald-900 border-e border-slate-300 text-center truncate`}>
+                                  <td key={col.id} className={`${rowPaddingClass} px-1 font-sans font-black text-emerald-900 border-e border-slate-300 text-center whitespace-normal break-words leading-tight`}>
                                     {formatIQD(cost)}
                                   </td>
                                 );
@@ -429,7 +424,7 @@ const InboundPrintReportComponent: React.FC<InboundPrintReportProps> = ({
                                 );
                               case 'status':
                                 return (
-                                  <td key={col.id} className={`${rowPaddingClass} px-0.5 font-bold text-blue-800 border-e border-slate-300 text-center truncate`}>
+                                  <td key={col.id} className={`${rowPaddingClass} px-0.5 font-bold text-blue-800 border-e border-slate-300 text-center whitespace-normal break-words leading-tight`}>
                                     {status}
                                   </td>
                                 );
@@ -444,57 +439,38 @@ const InboundPrintReportComponent: React.FC<InboundPrintReportProps> = ({
                 </tbody>
 
                 {/* 📌 Table Footer Totals (Matching Header Navy Blue Color & Perfectly Centered) */}
+                {/* سطر المجموع في الورقة الأخيرة فقط (المجموع الكلي) */}
+                {page.isLastPage && (
                 <tfoot>
-                  <tr className={`bg-[#0f2b5c] text-white font-black border-t-2 border-slate-800 ${tableHeaderFontSizeClass}`}>
-                    {activeCols.map((col, cIdx) => {
-                      if (cIdx === 0) {
-                        return (
-                          <td key={col.id} className="py-2 px-1 text-center border-e border-blue-900 font-black whitespace-nowrap">
-                            {page.isLastPage && totalPages === 1 ? t('deliveries:print.total') : t('deliveries:print.pageTotal', { page: page.pageNumber })}
-                          </td>
-                        );
-                      }
-                      if (col.id === 'company') {
-                        return (
-                          <td key={col.id} className="py-2 px-1.5 text-center border-e border-blue-900 text-[10px] font-black truncate">
-                            {page.isLastPage && totalPages > 1
-                              ? t('deliveries:print.grandTotal', { count: deliveries.length })
-                              : t('deliveries:print.onPage', { count: page.items.length })}
-                          </td>
-                        );
-                      }
-                      if (col.id === 'quantity') {
-                        const volToDisplay = page.isLastPage && totalPages > 1 ? grandTotalVolume : pageVolume;
-                        return (
-                          <td key={col.id} className="py-2 px-1 text-center font-sans font-black text-amber-300 border-e border-blue-900 whitespace-nowrap">
-                            {formatNumber(volToDisplay)} {t('common:units.liter')}
-                          </td>
-                        );
-                      }
-                      if (col.id === 'cost') {
-                        const costToDisplay = page.isLastPage && totalPages > 1 ? grandTotalCost : pageCost;
-                        return (
-                          <td key={col.id} className="py-2 px-1 text-center font-sans font-black text-emerald-300 border-e border-blue-900 whitespace-nowrap">
-                            {formatIQD(costToDisplay)}
-                          </td>
-                        );
-                      }
-                      if (col.id === 'price') {
-                        const priceToDisplay = page.isLastPage && totalPages > 1 ? grandAvgPrice : pageAvgPrice;
-                        return (
-                          <td key={col.id} className="py-2 px-1 text-center font-sans font-black text-white border-e border-blue-900 whitespace-nowrap">
-                            {t('deliveries:print.avg', { value: priceToDisplay.toFixed(1) })}
-                          </td>
-                        );
-                      }
-                      return (
-                        <td key={col.id} className="py-2 px-1 text-center border-e border-blue-900 text-blue-200 font-normal">
-                          -
+                  {(() => {
+                    // ثلاث خلايا مدموجة تغطي عرض الجدول: المجموع حتى عمود الكمية، الكمية حتى عمود التكلفة، والتكلفة حتى النهاية
+                    const n = activeCols.length || 1;
+                    const qIdx = activeCols.findIndex(c => c.id === 'quantity');
+                    const cIdx = activeCols.findIndex(c => c.id === 'cost');
+                    const a = qIdx > 0 && cIdx > qIdx ? qIdx : Math.max(1, Math.ceil(n / 3));
+                    const b = qIdx > 0 && cIdx > qIdx ? cIdx - qIdx : Math.max(1, Math.ceil((n - a) / 2));
+                    const c = Math.max(1, n - a - b);
+                    const vol = grandTotalVolume;
+                    const cost = grandTotalCost;
+                    const cell = 'py-2.5 px-2 text-center border-e border-blue-900 whitespace-nowrap';
+                    return (
+                      <tr className={`bg-[#0f2b5c] text-white font-black border-t-2 border-slate-800 ${tableHeaderFontSizeClass}`}>
+                        <td colSpan={a} className={`${cell} text-[11px]`}>
+                          {t('deliveries:print.foot.grand', { count: deliveries.length })}
                         </td>
-                      );
-                    })}
-                  </tr>
+                        <td colSpan={b} className={cell}>
+                          <span className="text-blue-200 font-bold">{t('deliveries:print.foot.qty')}: </span>
+                          <span className="font-sans text-[11px] text-amber-300">{formatNumber(vol)} {t('common:units.liter')}</span>
+                        </td>
+                        <td colSpan={c} className={cell}>
+                          <span className="text-blue-200 font-bold">{t('deliveries:print.foot.cost')}: </span>
+                          <span className="font-sans text-[11px] text-emerald-300">{formatIQD(cost)}</span>
+                        </td>
+                      </tr>
+                    );
+                  })()}
                 </tfoot>
+                )}
               </table>
             </div>
 
@@ -502,51 +478,14 @@ const InboundPrintReportComponent: React.FC<InboundPrintReportProps> = ({
             <div className="w-full shrink-0 mt-auto pt-2">
               {/* ✍️ 4. Formal Verification & Signatures Section (Rendered on LAST PAGE ONLY, spaced by header height) */}
               {showSignatures && page.isLastPage && (
-                <div className="print-avoid-break mt-6 mb-2">
-                  <div className="border border-slate-400 rounded p-1.5 bg-slate-50">
-                    <div className="text-[9px] font-black text-slate-900 mb-0.5 border-b border-slate-300 pb-0.5 flex items-center justify-between">
-                      <span>{t('deliveries:print.approval.title')}</span>
-                      <span className="text-[8px] font-bold text-slate-600">
-                        {t('deliveries:print.approval.central')}
-                      </span>
+                <div className="print-avoid-break mt-6 mb-2 flex items-stretch justify-between gap-6">
+                  {(['organizer', 'manager'] as const).map(k => (
+                    <div key={k} className="w-[34%] border border-dashed border-slate-400 rounded p-1.5 bg-white text-center flex flex-col justify-between">
+                      <span className="text-[9.5px] font-black text-slate-800 block">{t(`deliveries:print.sign.${k}`)}</span>
+                      <div className="h-7 border-b border-slate-300 my-1"></div>
+                      <span className="text-[7.5px] text-slate-500 block">{t('common:print.signature')}</span>
                     </div>
-
-                    <div className="grid grid-cols-4 gap-2 text-center">
-                      
-                      {/* Signature 1 */}
-                      <div className="border border-dashed border-slate-400 rounded p-1 bg-white flex flex-col justify-between">
-                        <span className="text-[8.5px] font-black text-slate-800 block">{t('deliveries:print.sign.preparer')}</span>
-                        <div className="h-5 border-b border-slate-200 my-0.5"></div>
-                        <span className="text-[7.5px] text-slate-500 block">{t('common:print.signature')}</span>
-                      </div>
-
-                      {/* Signature 2 */}
-                      <div className="border border-dashed border-slate-400 rounded p-1 bg-white flex flex-col justify-between">
-                        <span className="text-[8.5px] font-black text-slate-800 block">{t('deliveries:print.sign.receiver')}</span>
-                        <div className="h-5 border-b border-slate-200 my-0.5"></div>
-                        <span className="text-[7.5px] text-slate-500 block">{t('common:print.signature')}</span>
-                      </div>
-
-                      {/* Signature 3 */}
-                      <div className="border border-dashed border-slate-400 rounded p-1 bg-white flex flex-col justify-between">
-                        <span className="text-[8.5px] font-black text-slate-800 block">{t('deliveries:print.sign.audit')}</span>
-                        <div className="h-5 border-b border-slate-200 my-0.5"></div>
-                        <span className="text-[7.5px] text-slate-500 block">{t('common:print.signature')}</span>
-                      </div>
-
-                      {/* Signature 4 */}
-                      <div className="border border-dashed border-slate-400 rounded p-1 bg-white flex flex-col justify-between">
-                        <span className="text-[8.5px] font-black text-slate-800 block">{t('deliveries:print.approval.stampTitle')}</span>
-                        <div className="h-5 border-b border-slate-200 my-0.5 flex items-center justify-center">
-                          <span className="text-[7px] text-slate-400 border border-slate-300 px-2 rounded font-sans">
-                            {t('deliveries:print.approval.stamp')}
-                          </span>
-                        </div>
-                        <span className="text-[7.5px] text-slate-500 block">{t('deliveries:print.approval.final')}</span>
-                      </div>
-
-                    </div>
-                  </div>
+                  ))}
                 </div>
               )}
 

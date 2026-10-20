@@ -1,9 +1,12 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Zap, PenLine, RotateCcw, Check, Truck, Info } from 'lucide-react';
+import { X, Zap, PenLine, RotateCcw, Check, Truck, Info, Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { enumText } from '../../i18n/enums';
 import { formatNumber } from '../../lib/utils';
+import { sameSupplier } from '../../lib/archiveSuppliers';
+import { latestDayParts, type StationGasPart } from '../../lib/stationGas';
+import { DateField } from '../ui/DateField';
 
 export interface PriceDay {
   date: string;
@@ -31,6 +34,8 @@ interface Props {
   /** عرض فقط: بلا تعديل ولا رجوع للتلقائي (الصفحة الرئيسية) */
   readOnly?: boolean;
   standalone?: { volume: number; date: string; onSave: (v: { price: number; volume: number; date: string }) => void };
+  /** كاز محطات: اختيار مجهز أو أكثر من أرشيف وارد الصحاري (مكان الإدخال اليدوي) */
+  stationPicker?: { options: StationGasPart[]; selected: string[]; onSave: (names: string[]) => void };
   onSave: (price: number) => void;
   onReset: () => void;
   onClose: () => void;
@@ -41,7 +46,7 @@ const EST_HEIGHT = 470;
 const toInputDate = (d: string) => (/^\d{4}\/\d{2}\/\d{2}$/.test(d) ? d.replace(/\//g, '-') : '');
 
 /** نافذة سعر المنتج: تنفتح في مكان الكارت بحركة تكبير، وفيها تعديل السعر يدويًا أو إرجاعه للتلقائي */
-export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon: Icon, iconClass, price, autoPrice, autoDate, days, manual, standalone, readOnly, onSave, onReset, onClose }) => {
+export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon: Icon, iconClass, price, autoPrice, autoDate, days, manual, standalone, stationPicker, readOnly, onSave, onReset, onClose }) => {
   const { t } = useTranslation(['dashboard', 'common']);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -54,6 +59,20 @@ export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon
   const fPriceNum = Number(fPrice.replace(/[^\d.]/g, ''));
   const fVolumeNum = Number(fVolume.replace(/[^\d.]/g, ''));
   const fValid = fPriceNum >= 0 && fVolumeNum >= 0 && fDate !== '';
+  // اختيار المجهزين (كاز محطات): القيم تُحسب فورًا من آخر يوم وارد لكل مجهز مختار
+  const [picked, setPicked] = useState<string[]>(stationPicker?.selected ?? []);
+  const [pickQ, setPickQ] = useState('');
+  const isPicked = (n: string) => picked.some(p => p === n || sameSupplier(p, n));
+  const togglePick = (n: string) => setPicked(list => (isPicked(n) ? list.filter(p => !(p === n || sameSupplier(p, n))) : [...list, n]));
+  const pickedParts = (stationPicker?.options ?? []).filter(o => isPicked(o.name));
+  // قيم الكارت: أحدث يوم وارد بين المختارين ومن ورد فيه فقط (مثل الكارت نفسه)
+  const dayParts = latestDayParts(pickedParts);
+  const pickedQty = dayParts.reduce((a, p) => a + p.qty, 0);
+  const pricedParts = dayParts.filter(p => p.price > 0);
+  const pricedQty = pricedParts.reduce((a, p) => a + p.qty, 0);
+  const pickedPrice = pricedQty ? Math.round((pricedParts.reduce((a, p) => a + p.qty * p.price, 0) / pricedQty) * 10) / 10 : 0;
+  const pickedDate = dayParts[0]?.date ?? '';
+  const shownOptions = (stationPicker?.options ?? []).filter(o => !pickQ.trim() || o.name.includes(pickQ.trim()) || sameSupplier(o.name, pickQ));
   const saveStandalone = () => {
     if (!standalone || !fValid) return;
     standalone.onSave({ price: Math.round(fPriceNum * 100) / 100, volume: Math.round(fVolumeNum), date: fDate.replace(/-/g, '/') });
@@ -130,7 +149,64 @@ export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon
           </button>
         </div>
 
-        {standalone && !readOnly ? (
+        {stationPicker && !readOnly ? (
+          <>
+            <div className="mx-4">
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <span className="text-[12px] font-black text-slate-800 dark:text-slate-100">{t('dashboard:popover.pickSuppliers')}</span>
+                {picked.length > 0 && <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300">{t('dashboard:popover.selectedCount', { count: picked.length })}</span>}
+              </div>
+              <div className="relative">
+                <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <input value={pickQ} onChange={e => setPickQ(e.target.value)} placeholder={t('dashboard:popover.searchSupplier')}
+                  className="w-full h-9 ps-8 pe-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-[12.5px] text-slate-900 dark:text-white outline-none focus:border-teal-500" />
+              </div>
+              <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-slate-200/80 dark:border-slate-700/60 divide-y divide-slate-100 dark:divide-slate-800">
+                {shownOptions.length === 0 ? (
+                  <div className="py-5 text-center text-[11px] text-slate-400">{t(stationPicker.options.length ? 'dashboard:popover.noMatch' : 'dashboard:popover.noSuppliers')}</div>
+                ) : shownOptions.map(o => {
+                  const on = isPicked(o.name);
+                  return (
+                    <button key={o.name} type="button" role="checkbox" aria-checked={on} onClick={() => togglePick(o.name)}
+                      className={`w-full px-2.5 py-2 flex items-center gap-2.5 text-start cursor-pointer transition-colors ${on ? 'bg-teal-50/70 dark:bg-teal-950/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
+                      <span className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${on ? 'bg-teal-500 border-teal-500 text-white' : 'border-slate-300 dark:border-slate-600 text-transparent'}`}>
+                        <Check className="w-3.5 h-3.5" strokeWidth={3} />
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-[12.5px] font-bold text-slate-800 dark:text-slate-100 truncate">{o.name}</span>
+                        <span className="block text-[10.5px] text-slate-400 font-mono">{o.date} · {formatNumber(o.qty)} {t('common:units.liter')}</span>
+                      </span>
+                      <span className="font-mono font-black text-[12.5px] text-slate-900 dark:text-white">{o.price ? formatNumber(o.price) : '—'}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="mx-4 mt-2.5 grid grid-cols-3 gap-2 text-center">
+              {[
+                { k: t('dashboard:popover.literPrice'), v: pickedPrice ? formatNumber(pickedPrice) : '—' },
+                { k: t('dashboard:popover.quantity'), v: pickedQty ? formatNumber(pickedQty) : '—' },
+                { k: t('dashboard:popover.lastInbound'), v: pickedDate || '—' },
+              ].map(c => (
+                <div key={c.k} className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 py-1.5">
+                  <div className="text-[10px] font-bold text-slate-400">{c.k}</div>
+                  <div className="font-mono font-black text-[12.5px] text-slate-900 dark:text-white">{c.v}</div>
+                </div>
+              ))}
+            </div>
+            <div className="mx-4 mt-2.5 flex items-start gap-1.5 text-[10.5px] leading-relaxed text-slate-500 dark:text-slate-400">
+              <Info className="w-3.5 h-3.5 shrink-0 mt-px" />
+              <span>{t('dashboard:popover.pickSuppliersNote')}</span>
+            </div>
+            <div className="mt-3.5 px-4 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+              <button type="button" onClick={close} className="px-3 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">{t('common:actions.cancel')}</button>
+              <button type="button" onClick={() => { stationPicker.onSave(pickedParts.map(p => p.name)); close(); }} disabled={!pickedParts.length}
+                className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-40 text-white text-xs font-bold cursor-pointer active:scale-95 transition-all inline-flex items-center gap-1.5">
+                <Check className="w-4 h-4" />{t('common:actions.save')}
+              </button>
+            </div>
+          </>
+        ) : standalone && !readOnly ? (
           <>
             <div className="mx-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 p-3.5 space-y-3">
               <label className="block">
@@ -145,8 +221,8 @@ export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon
               </label>
               <label className="block">
                 <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{t('dashboard:popover.lastUpdateDate')}</span>
-                <input type="date" dir="ltr" value={fDate} onChange={e => setFDate(e.target.value)}
-                  className="mt-1 w-full h-11 px-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-teal-500 bg-white dark:bg-slate-900 text-base font-bold font-mono text-slate-900 dark:text-white outline-none" />
+                <DateField value={fDate} format="dash" onChange={setFDate} iconClassName="text-teal-600"
+                  className="mt-1 w-full h-11 px-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-teal-500 bg-white dark:bg-slate-900 text-base text-slate-900 dark:text-white" />
               </label>
             </div>
             <div className="mx-4 mt-2.5 flex items-start gap-1.5 text-[10.5px] leading-relaxed text-slate-500 dark:text-slate-400">

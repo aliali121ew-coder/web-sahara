@@ -38,11 +38,13 @@ import { useTranslation, Trans } from 'react-i18next';
 import { enumText } from '../../i18n/enums';
 import { Breadcrumb } from '../navigation/Breadcrumb';
 import { useQuickAction } from '../../context/QuickActionContext';
-import { formatNumber, formatIQD } from '../../lib/utils';
+import { formatNumber, formatIQD, getPreviousBusinessDate } from '../../lib/utils';
 import { InboundDelivery } from '../../types';
 import { computeInboundPriceStats, deliveryDay } from '../../lib/inboundPrice';
 import { takeInboundFocus, FOCUS_EVENT, type InboundFocus } from '../../lib/inboundFocus';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
+import { DateField } from '../ui/DateField';
+import { supplierKey } from '../../lib/archiveSuppliers';
 import {
   InboundPrintReport,
   PRINT_AVAILABLE_COLUMNS,
@@ -161,9 +163,10 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
   const [filterSupplier, setFilterSupplier] = useState<string>('الكل');
   const [filterSupplierCompany, setFilterSupplierCompany] = useState<string>('الكل');
   const [filterFuelType, setFilterFuelType] = useState<string>('الكل');
-  // فلتر الفترة (YYYY/MM/DD): فارغ = كل التواريخ
-  const [dateFrom, setDateFrom] = useState<string>('');
-  const [dateTo, setDateTo] = useState<string>('');
+  // فلتر الفترة (YYYY/MM/DD): فارغ = كل التواريخ. تبويب الوارد في التقارير يفتح كل مرة على اليوم السابق
+  // (اليوم 19 ← 18)، ويمكن اختيار غيره من التقويم أو مسحه لكل التواريخ
+  const [dateFrom, setDateFrom] = useState<string>(() => (variant === 'archive' ? getPreviousBusinessDate() : ''));
+  const [dateTo, setDateTo] = useState<string>(() => (variant === 'archive' ? getPreviousBusinessDate() : ''));
   
   // Pagination State (10 items per page)
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -346,11 +349,21 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
     return ['الكل', ...Array.from(new Set(scopedDeliveries.map((d) => d.company || 'صحاري كربلاء')))];
   }, [lockedCompanyName, scopedDeliveries]);
 
-  // اسم المجهز (الشخص) والشركة المجهزة — السجلات القديمة تحمل قيمة واحدة في الحقلين
-  const supplierPersonOf = (d: InboundDelivery) =>
-    d.supplierName && d.supplierName !== d.supplierCompany ? d.supplierName : '';
+  // اسم المجهز (الشخص) والشركة المجهزة كما في الملف، ولو تشابها (كان المتطابق يُخفى فيظهر حقل الشركة وحده)
+  const supplierPersonOf = (d: InboundDelivery) => d.supplierName || '';
   const supplierCompanyOf = (d: InboundDelivery) => d.supplierCompany || d.supplierName || 'مصفى كربلاء الدولي';
-  const suppliersList = useMemo(() => ['الكل', ...Array.from(new Set(scopedDeliveries.map(supplierPersonOf).filter(Boolean)))], [scopedDeliveries]);
+  // المجهز الشخص: الاسم بين القوسين هو المجهز («اطراف النخيل ( نشوان )» و«نشوان» كلاهما نشوان)،
+  // فاختياره يُظهر كل شحناته من كل الشركات المجهزة، واختيار الشركة المجهزة يُظهر شحناتها وحدها
+  const personLabel = (name: string) => (name.match(/\(([^)]+)\)/)?.[1] ?? name).replace(/\s+/g, ' ').trim();
+  const personKey = (name: string) => supplierKey(personLabel(name));
+  const suppliersList = useMemo(() => {
+    const byKey = new Map<string, string>();
+    for (const d of scopedDeliveries) {
+      const n = supplierPersonOf(d);
+      if (n && !byKey.has(personKey(n))) byKey.set(personKey(n), personLabel(n));
+    }
+    return ['الكل', ...byKey.values()];
+  }, [scopedDeliveries]);
   const supplierCompaniesList = useMemo(() => ['الكل', ...Array.from(new Set(scopedDeliveries.map(supplierCompanyOf)))], [scopedDeliveries]);
   const fuelTypesList = useMemo(() => ['الكل', 'كاز', 'بنزين', 'نفط أسود', 'ديزل'], []);
 
@@ -366,7 +379,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
       if (!f) return;
       setLocalSearch('');
       setFilterSupplierCompany(f.company || 'الكل');
-      setFilterSupplier(f.person || 'الكل');
+      setFilterSupplier(f.person ? personLabel(f.person) : 'الكل');
       setDateFrom(f.date);
       setDateTo(f.date);
     };
@@ -378,10 +391,12 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
 
   const filteredDeliveries = useMemo(() => {
     const q = (searchQuery || localSearch).trim().toLowerCase();
+    const qKey = supplierKey(q);
 
     return scopedDeliveries.filter((d) => {
       const comp = (d.company || 'صحاري كربلاء').toLowerCase();
-      const supp = (d.supplierCompany || d.supplierName || '').toLowerCase();
+      // الشركة المجهزة واسم المجهز كلاهما (كان يُبحث في الشركة فقط إن وُجدت فلا يُعثر على المجهز)
+      const supp = `${d.supplierCompany || ''} ${d.supplierName || ''}`.toLowerCase();
       const driver = (d.driverName || '').toLowerCase();
       const truck = (d.truckNumber || '').toLowerCase();
       const voucher = (d.voucherNumber || d.receiptNumber || '').toLowerCase();
@@ -393,6 +408,8 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
         !q ||
         comp.includes(q) ||
         supp.includes(q) ||
+        // نفس الاسم بكتابة مختلفة (همزات، تاء مربوطة، مسافات)
+        (!!qKey && (supplierKey(d.supplierName || '').includes(qKey) || supplierKey(d.supplierCompany || '').includes(qKey))) ||
         driver.includes(q) ||
         truck.includes(q) ||
         voucher.includes(q) ||
@@ -403,7 +420,7 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
       const matchesCompany = lockedCompanyName
         ? (d.company || 'صحاري كربلاء') === lockedCompanyName
         : filterCompany === 'الكل' || (d.company || 'صحاري كربلاء') === filterCompany;
-      const matchesSupplier = filterSupplier === 'الكل' || supplierPersonOf(d) === filterSupplier;
+      const matchesSupplier = filterSupplier === 'الكل' || (!!supplierPersonOf(d) && personKey(supplierPersonOf(d)) === personKey(filterSupplier));
       const matchesSupplierCompany = filterSupplierCompany === 'الكل' || supplierCompanyOf(d) === filterSupplierCompany;
       const matchesFuel = filterFuelType === 'الكل' || color.includes(filterFuelType) || prod.includes(filterFuelType);
 
@@ -469,6 +486,9 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
     } else if (field === 'receiptUnloadDate') {
       if (!v) return;
       updateDelivery(item.id, { receiptUnloadDate: v, date: v });
+    } else if (field === 'supplierName') {
+      // اسم مُدخل يدويًا يُعرض ولو طابق الشركة المجهزة (كان يُخفى فيبدو أن التعديل لم يُحفظ)
+      updateDelivery(item.id, { supplierName: v, supplierNameSet: !!v });
     } else {
       updateDelivery(item.id, { [field]: v } as Partial<InboundDelivery>);
     }
@@ -1228,7 +1248,10 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                       {/* 11. تاريخ الاستلام */}
                       {visibleColumns.receiptDate && (
                         <td className="py-3.5 px-3.5 whitespace-nowrap font-sans text-slate-500 dark:text-slate-400 text-[11px]">
-                          {editMode ? editInput(item, 'receiptUnloadDate', item.receiptUnloadDate || item.date || '') : (
+                          {editMode ? (
+                            <DateField value={item.receiptUnloadDate || item.date || ''} onChange={v => commitField(item, 'receiptUnloadDate', v)} iconClassName="text-amber-600 !w-3.5 !h-3.5"
+                              className="px-2 py-1 rounded-lg border border-amber-300 dark:border-amber-700/70 bg-amber-50/70 dark:bg-slate-800 text-slate-900 dark:text-white text-xs !gap-1.5" />
+                          ) : (
                           <div className="flex items-center gap-1">
                             <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
                             <span>{receiptDate}</span>

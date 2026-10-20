@@ -57,6 +57,7 @@ import {
 import { useCentralTanks, resolveSaharaGasoilSectionKey, tankLiters } from '../../lib/centralTanks';
 import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
 import { usePermissions } from '../../lib/usePermission';
+import { DateField } from '../ui/DateField';
 
 
 /**
@@ -136,8 +137,6 @@ const DieselGeneratorIcon: React.FC<{ className?: string }> = ({ className }) =>
   </svg>
 );
 
-const toInputDate = (d: string) => d.replace(/\//g, '-');
-const fromInputDate = (d: string) => d.replace(/-/g, '/');
 
 const EXTERNAL_ICONS: Record<SaharaExternalSource, React.ComponentType<{ className?: string }>> = {
   government: Globe,
@@ -874,16 +873,8 @@ onValue={v => setForm({ ...form!, [key]: v })}
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <label className={`flex items-center gap-1.5 h-9 pe-1 ps-2.5 rounded-xl border bg-slate-50 dark:bg-slate-800 ${dateTaken ? 'border-red-400' : 'border-slate-200 dark:border-slate-700'}`}>
-                  <CalendarDays className="w-4 h-4 text-teal-600 shrink-0" />
-                  <input
-                    type="date"
-                    aria-label={t('finance:ledger.form.date')}
-                    className="bg-transparent text-xs font-mono font-bold text-slate-900 dark:text-white outline-none w-[118px]"
-                    value={toInputDate(form.date)}
-                    onChange={e => setForm({ ...form, date: fromInputDate(e.target.value) })}
-                  />
-                </label>
+                <DateField value={form.date} onChange={v => setForm({ ...form, date: v })} ariaLabel={t('finance:ledger.form.date')} iconClassName="text-teal-600"
+                  className={`h-9 px-2.5 rounded-xl border bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white !gap-1.5 ${dateTaken ? 'border-red-400' : 'border-slate-200 dark:border-slate-700'}`} />
                 <button type="button" onClick={() => setForm(null)} aria-label={t('common:actions.close')} className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700 cursor-pointer">
                   <X className="w-4.5 h-4.5" />
                 </button>

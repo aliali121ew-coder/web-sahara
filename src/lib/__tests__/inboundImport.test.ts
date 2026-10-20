@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parsePdfTable, type PdfTextItem } from '../inboundImport';
+import { archiveKeyCounts, parsePdfTable, pickUnrecorded, voucherKey, type InboundImportRow, type PdfTextItem } from '../inboundImport';
 
 // هندسة نصوص "ارشيف وارد الصحاري.pdf" الحقيقية (الحافتان الأفقيتان كما يستخرجها pdf.js)
 const it_ = (str: string, left: number, right: number, y: number): PdfTextItem => ({ str, left, right, y });
@@ -81,5 +81,42 @@ describe('inbound PDF with a broken font map (Etihad archive)', () => {
     expect(rows[0]).toMatchObject({ supplierName: 'علي كريم', driverName: 'محمد عبدالله', truckNumber: '11547', voucherNumber: '003457', receivedQuantity: 43690, productDensity: '31', productPrice: 840, productCost: 36699600, receiptUnloadDate: '2026/10/12' });
     expect(rows[1]).toMatchObject({ supplierName: 'اسعد كامل', driverName: 'ماجد سرحان', voucherNumber: '', receivedQuantity: 35797, receiptUnloadDate: '2026/10/12' });
     expect(rows[2]).toMatchObject({ supplierName: 'محطة سبع البوسلطان', receivedQuantity: 3633, productCost: 1453200 });
+  });
+});
+
+describe('pickUnrecorded (مطابقة أي ملف مع أرشيف الشركة)', () => {
+  const r = (voucherNumber: string, receiptUnloadDate: string, receivedQuantity = 1000): InboundImportRow => ({
+    supplierName: 'س', supplierCompany: 'ش', driverName: 'د', truckNumber: '1', voucherNumber, receivedQuantity,
+    productDensity: '', productColor: '', productPrice: 0, productCost: 0, receiptUnloadDate
+  });
+  const archive = (...ds: [string, string, number][]) =>
+    archiveKeyCounts(ds.map(([voucherNumber, receiptUnloadDate, receivedQuantity]) => ({ voucherNumber, receiptUnloadDate, receivedQuantity })));
+
+  it('يبقي غير المسجّل فقط ولو كان يومه مسجّلًا جزئيًا، والصف بلا تاريخ يبقى', () => {
+    const rows = [r('1', '2026/10/14'), r('2', '2026/10/15'), r('3', '2026/10/15'), r('4', '2026/10/16'), r('5', '')];
+    const res = pickUnrecorded(rows, archive(['1', '2026/10/14', 1000], ['VCH-2', '2026-10-15', 1000]));
+    expect(res.rows.map(x => x.voucherNumber)).toEqual(['3', '4', '5']);
+    expect(res.recordedIdx).toEqual([0, 1]);
+  });
+
+  it('فوجر واحد لعدة صهاريج في اليوم: يُطابق بالكمية، والزيادة في العدد تُضاف', () => {
+    const rows = [r('3474', '2026/04/22', 36777), r('3474', '2026/04/22', 36087), r('0386', '2026/04/20', 36224), r('0386', '2026/04/20', 36224)];
+    const res = pickUnrecorded(rows, archive(['3474', '2026/04/22', 36777], ['0386', '2026/04/20', 36224]));
+    expect(res.rows.map(x => [x.voucherNumber, x.receivedQuantity])).toEqual([['3474', 36087], ['0386', 36224]]);
+  });
+
+  it('صف بلا فوجر في الملف يطابق شحنة الأرشيف التي لها فوجر بنفس التاريخ والكمية', () => {
+    const res = pickUnrecorded([r('', '2026/01/09', 19700), r('', '2026/01/09', 14891), r('', '2026/01/10', 19700)], archive(['6395', '2026/01/09', 19700]));
+    expect(res.rows.map(x => [x.receiptUnloadDate, x.receivedQuantity])).toEqual([['2026/01/09', 14891], ['2026/01/10', 19700]]);
+  });
+
+  it('«لا يوجد» و«_» ليست أرقام فوجر: المطابقة بالتاريخ والكمية', () => {
+    const res = pickUnrecorded([r('لا يوجد', '2026/10/18', 3554), r('_', '2026/10/18', 500)], archive(['لا يوجد ', '2026/10/18', 3554]));
+    expect(res.rows.map(x => x.receivedQuantity)).toEqual([500]);
+  });
+
+  it('مفتاح الفوجر يطابق ما يحفظه التطبيق (الأرقام فقط)', () => {
+    expect(voucherKey(' VCH-0034 ')).toBe('0034');
+    expect(voucherKey('ABC')).toBe('ABC');
   });
 });

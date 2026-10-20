@@ -10,7 +10,7 @@ import { PriceIndexTable } from './PriceIndexTable';
 // معرّفات الأقسام (dash-…) يستخدمها بحث الأقسام في الشريط العلوي (navigation/SectionSearch.tsx)
 export const MainDashboard: React.FC = () => {
   return (
-    <div className="dash-root space-y-12 sm:space-y-[50px] animate-in fade-in duration-300 pb-6">
+    <div className="dash-root space-y-10 sm:space-y-[42px] animate-in fade-in duration-300 pb-6">
       {/* Section 1: كاز - صحاري كربلاء 2026 */}
       <div id="dash-sahara-gas" className="scroll-mt-20 rounded-[28px]"><SaharaGasSection /></div>
 

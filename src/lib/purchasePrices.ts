@@ -1,12 +1,15 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useFuelStore } from '../context/FuelDataContext';
 import type { FuelProductMetric, InboundDelivery } from '../types';
 import { usePetrolLedger } from './petrolLedger';
 import { usePriceOverrides } from './priceOverrides';
 import { useManualFuelCards } from './manualFuelCard';
 import { useBlackOilLedger, type ComputedBlackOilRecord } from './blackOilLedger';
-import { logPrice } from './priceLog';
+import { logPrice, removePriceLogEntries } from './priceLog';
 import type { PriceDay } from '../components/dashboard/PriceEditPopover';
+import { applyStationGas, clearStationGasLog, stationGasLive, useStationGas } from './stationGas';
+import { usePermissions } from './usePermission';
+import { useAppUpdateAvailable } from './appUpdate';
 
 /**
  * أسعار كروت المشتريات (من الوارد أو التعديل اليدوي) في مكان واحد: تستخدمها كروت الرئيسية وسجل الأسعار
@@ -39,6 +42,8 @@ const fromDeliveries = (list: InboundDelivery[]): InboundPriceSource => {
 
 /** كارت يدوي بالكامل: غير مرتبط بالوارد، يُدخل سعره وكميته وتاريخه للعرض فقط */
 export const MANUAL_ONLY_ID = 'fuel-muhassan';
+/** لمرة واحدة (2026/10/20): مسح عمليات كاز محطات من سجل الأسعار وسجل الكارت (امتلآ بتبادل الكتابة بين نسختين) */
+const STATION_GAS_LOG_RESET_KEY = 'sahara_station_gas_log_reset_v1';
 
 const companyOf = (m: FuelProductMetric): 'sahara' | 'etihad' => (m.company === 'شركة الاتحاد' ? 'etihad' : 'sahara');
 
@@ -49,6 +54,32 @@ export const usePurchasePrices = () => {
   const { computed: etihadBlackOilDays } = useBlackOilLedger('etihad');
   const { overrides, setOverride, clearOverride } = usePriceOverrides();
   const { cards: manualCards, saveCard } = useManualFuelCards();
+  // كاز محطات: المجهزون المختارون من أرشيف الصحاري (آخر يوم وارد لكل منهم)
+  const { state: stationGas } = useStationGas();
+  const stationLive = useMemo(() => stationGasLive(saharaDeliveries, stationGas?.suppliers ?? []), [saharaDeliveries, stationGas?.suppliers]);
+  const canEditPrices = usePermissions().canEdit('prices');
+  // صفحة على نسخة غير المنشورة لا تكتب: حساب النسختين قد يختلف فتتبادلان الكتابة بلا توقف ويمتلئ سجل الأسعار
+  const outdated = useAppUpdateAvailable();
+  // تحديث تلقائي: وارد جديد للمجهزين المختارين يغيّر قيم الكارت (من يملك تعديل الأسعار فقط يكتب)،
+  // وسجل الأسعار يأخذ العملية فقط إن تغيّر السعر (وارد جديد بنفس السعر يحدّث الكمية والتاريخ بلا عملية)
+  useEffect(() => {
+    if (!canEditPrices || outdated || !stationGas?.suppliers.length || !stationLive || stationLive.sig === stationGas.sig) return;
+    if (applyStationGas(stationGas.suppliers, stationLive, 'auto') && stationLive.price !== stationGas.price) {
+      logPrice({ source: 'purchases', action: 'update', key: MANUAL_ONLY_ID, name: fuelMetrics.find(m => m.id === MANUAL_ONLY_ID)?.name ?? 'كاز محطات', company: 'sahara', prevPrice: stationGas.price, price: stationLive.price });
+    }
+  }, [canEditPrices, outdated, stationGas, stationLive, fuelMetrics]);
+
+  // بداية جديدة لسجل كاز محطات: تُحذف عملياته وتُسجَّل لقطة بسعره الحالي (فيبقى مطابقًا في تبويب المطابقة).
+  // العلامة تُزامَن مع الخادم فلا يتكرر المسح على بقية الأجهزة
+  useEffect(() => {
+    if (!canEditPrices || outdated || localStorage.getItem(STATION_GAS_LOG_RESET_KEY)) return;
+    removePriceLogEntries(e => e.source === 'purchases' && e.key === MANUAL_ONLY_ID);
+    clearStationGasLog();
+    if (stationGas?.suppliers.length) {
+      logPrice({ source: 'purchases', action: 'snapshot', key: MANUAL_ONLY_ID, name: fuelMetrics.find(m => m.id === MANUAL_ONLY_ID)?.name ?? 'كاز محطات', company: 'sahara', prevPrice: null, price: stationGas.price });
+    }
+    localStorage.setItem(STATION_GAS_LOG_RESET_KEY, '1');
+  }, [canEditPrices, outdated, stationGas, fuelMetrics]);
 
   // ── السعر التلقائي من الوارد: كاز الصحاري وكاز الاتحاد من كشف الوارد، والبنزين من سجل البنزين ──
   const inboundSources = useMemo<Record<string, InboundPriceSource>>(() => {
@@ -72,7 +103,18 @@ export const usePurchasePrices = () => {
 
   // Dynamic mapping helper to get live price & trend from the supplier prices table
   const getLinkedSupplierData = (metric: FuelProductMetric) => {
-    // كاز محطات: قيم يدوية فقط (لا وارد ولا جدول موردين)
+    // كاز محطات من المجهزين المختارين: السعر والكمية من آخر يوم وارد لهم، والسابق = السعر قبل آخر تغيّر
+    if (metric.id === MANUAL_ONLY_ID && stationGas?.suppliers.length) {
+      const price = stationLive?.price ?? stationGas.price;
+      const synced = !!stationLive && stationLive.sig === stationGas.sig;
+      const previous = synced ? stationGas.previousPrice : stationGas.price || price;
+      return {
+        displayPrice: price, previousPrice: previous, trendPercent: pctChange(price, previous),
+        priceUpdatedAt: stationLive?.date || stationGas.date || '—', volume: stationLive?.volume ?? stationGas.volume,
+        source: 'standalone' as const, auto: null, src: undefined, manual: null
+      };
+    }
+    // كاز محطات بلا مجهزين مختارين: القيم اليدوية القديمة
     if (metric.id === MANUAL_ONLY_ID) {
       const m = manualCards[metric.id];
       const price = m?.price ?? metric.priceIqd;
@@ -136,7 +178,14 @@ export const usePurchasePrices = () => {
     if (v.price !== before.displayPrice) log(metric, 'update', before.displayPrice, v.price);
   };
 
-  return { fuelMetrics, priceOf: getLinkedSupplierData, savePrice, resetPrice, saveManual };
+  /** اختيار مجهزي كاز محطات: تُحسب القيم فورًا وتُسجَّل العملية */
+  const saveStationSuppliers = (metric: FuelProductMetric, suppliers: string[]) => {
+    const before = getLinkedSupplierData(metric);
+    const live = stationGasLive(saharaDeliveries, suppliers);
+    if (applyStationGas(suppliers, live, 'select') && (live?.price ?? 0) !== before.displayPrice) log(metric, 'update', before.displayPrice, live?.price ?? 0);
+  };
+
+  return { fuelMetrics, priceOf: getLinkedSupplierData, savePrice, resetPrice, saveManual, saveStationSuppliers, stationGas, stationLive };
 };
 
 export type PurchasePrice = ReturnType<ReturnType<typeof usePurchasePrices>['priceOf']>;

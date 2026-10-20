@@ -18,11 +18,10 @@ import {
   type BlackOilForm, type SiteForm
 } from '../../lib/blackOilForm';
 import { usePermissions } from '../../lib/usePermission';
+import { DateField } from '../ui/DateField';
 
 export { getBlackOilAvgDaily, DEFAULT_BLACK_OIL_AVG_DAILY } from '../../lib/blackOilLedger';
 
-const toInputDate = (d: string) => d.replace(/\//g, '-');
-const fromInputDate = (d: string) => d.replace(/-/g, '/');
 // منطق النموذج (يوم جديد، التعبئة من التقرير، الحسابات، السجل، شروط الحفظ) في lib/blackOilForm.ts
 type FormState = BlackOilForm;
 
@@ -454,7 +453,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive' | 'h
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <label className="space-y-1">
                     <div className="min-h-5 flex items-center"><span className={fieldLabel}>{t('finance:blackOil.col.date')}</span></div>
-                    <input type="date" className={field} value={toInputDate(form.date)} onChange={e => setForm({ ...form, date: fromInputDate(e.target.value) })} />
+                    <DateField className={`${field} !flex`} value={form.date} onChange={v => setForm({ ...form, date: v })} iconClassName="text-violet-600" />
                   </label>
                   <div className="space-y-1">
                     <div className="min-h-5 flex items-center justify-between">

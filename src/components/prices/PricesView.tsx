@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ShoppingCart, ChevronRight, ChevronLeft, CalendarDays } from 'lucide-react';
+import { ShoppingCart, ChevronRight, ChevronLeft, CalendarDays, History } from 'lucide-react';
 import { useFuelStore } from '../../context/FuelDataContext';
 import { useTranslation, Trans } from 'react-i18next';
 import { enumText } from '../../i18n/enums';
@@ -11,6 +11,7 @@ import { FuelMetricsGrid } from '../dashboard/FuelMetricsGrid';
 import { PriceIndexTable } from '../dashboard/PriceIndexTable';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
 import { PurchasesChart } from './PurchasesChart';
+import { StationGasLogModal } from './StationGasLogModal';
 import { CATEGORIES, type CategoryKey, type CategoryFilter, type PurchaseRow, avgPrice, fmtPrice, addDays, daysBetween, weekStart, monthEnd } from './purchasesData';
 
 /** قسم الشحنة من شركتها ومنتجها ("كاز محطات" لا يُسجَّل له وارد في كشف الوارد حاليًا) */
@@ -94,6 +95,8 @@ export const PricesView: React.FC = () => {
   const [toDate, setToDate] = useState('');
   const [datePop, setDatePop] = useState<{ top: number; left: number } | null>(null);
   const [page, setPage] = useState(1);
+  // سجل كارت كاز محطات (كل تغيّر في مجهزيه أو آخر واردهم)
+  const [stationLogOpen, setStationLogOpen] = useState(false);
 
   // حدود الفترة المعروضة [from, to] (للمقارنة مع الفترة السابقة بنفس الطول)
   const bounds = useMemo(() => {
@@ -188,6 +191,11 @@ export const PricesView: React.FC = () => {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <button type="button" onClick={() => setStationLogOpen(true)} title={t('prices:stationLog.title')}
+                className="flex items-center gap-1.5 h-8 px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-[11px] font-bold cursor-pointer transition-colors">
+                <History className="w-4 h-4" />
+                <span>{t('prices:stationLog.button')}</span>
+              </button>
               <div className="flex items-center p-0.5 bg-slate-100 dark:bg-slate-800 rounded-xl">
                 {(['today', 'week', 'month'] as const).map(k => (
                   <button key={k} type="button" onClick={() => { setRange(k); setPage(1); }} className={chip(range === k)}>
@@ -335,6 +343,7 @@ export const PricesView: React.FC = () => {
 
       {/* ── القسم 3: مؤشرات أسعار الشركات والموردين ── */}
       <PriceIndexTable />
+      {stationLogOpen && <StationGasLogModal onClose={() => setStationLogOpen(false)} />}
     </div>
   );
 };

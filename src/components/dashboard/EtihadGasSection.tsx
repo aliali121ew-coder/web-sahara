@@ -3,7 +3,6 @@ import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { SectionHeader } from './SectionHeader';
 import {
   Building2,
-  Calendar,
   Boxes,
   ArrowDownLeft,
   Activity,
@@ -208,14 +207,6 @@ export const EtihadGasSection: React.FC = () => {
           {/* Header Row: Title & Average Price Pill */}
           <div className="flex items-start justify-between gap-3">
             <div>
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
-                <div className="w-6 h-6 rounded-lg bg-teal-50 dark:bg-teal-950/60 flex items-center justify-center text-teal-600 dark:text-teal-400 border border-teal-200/60 dark:border-teal-800/40">
-                  <Boxes className="w-3.5 h-3.5" />
-                </div>
-                <span>
-                  {t('dashboard:etihad.totalBalance')}
-                </span>
-              </div>
               <div className="flex items-baseline gap-2 mt-1.5">
                 <span className="text-3xl sm:text-4xl lg:text-[36px] font-black font-mono tracking-tight text-slate-900 dark:text-white">
                   {formatNumber(etihadTotalBalance)}
@@ -604,16 +595,6 @@ export const EtihadGasSection: React.FC = () => {
           {/* Card 3: Smart Coverage Prediction (يؤمن لغاية - Spans across 2 columns) */}
           <div className="sm:col-span-2 p-4 sm:p-5 rounded-[26px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-soft-card hover:shadow-soft-hover transition-all flex flex-col justify-between space-y-3 overflow-hidden">
             
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-start gap-1.5 text-slate-700 dark:text-slate-200 font-bold text-xs min-w-0">
-                <Calendar className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
-                <span className="leading-snug">{t('dashboard:etihad.coverageTitle')}</span>
-              </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 text-[10px] font-bold border border-teal-200 dark:border-teal-800/60 shadow-2xs shrink-0">
-                {t('dashboard:etihad.surplus')}
-              </span>
-            </div>
-
             <div>
               <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
                 {t('dashboard:coverage.until')} <span className="text-teal-600 dark:text-teal-400 font-mono">{coverageDays === null ? '—' : `${t('common:units.days', { count: coverageDays })}`}</span>

@@ -6,7 +6,6 @@ import {
   MinusCircle,
   Calculator,
   Building2,
-  Calendar,
   DollarSign,
   AlertCircle,
   Check,
@@ -35,6 +34,7 @@ import { useTranslation } from 'react-i18next';
 import { readEtihadReportFile } from '../../lib/etihadReportFile';
 import { useReportAttach } from '../../lib/saharaFiles';
 import { ReportAttachNotice } from './DayFilesCell';
+import { DateField } from '../ui/DateField';
 
 interface EtihadTransactionModalProps {
   isOpen: boolean;
@@ -359,17 +359,8 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                         <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
                           {t('finance:tx.date')}
                         </label>
-                        <div className="relative">
-                          <Calendar className={`w-4 h-4 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-3' : 'left-3'} text-slate-400`} />
-                          <input
-                            type="text"
-                            value={date}
-                            onChange={(e) => setDate(e.target.value)}
-                            required
-                            placeholder="YYYY/MM/DD"
-                            className={`w-full h-10 sm:h-10.5 ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 outline-none font-sans font-bold transition-all text-center`}
-                          />
-                        </div>
+                        <DateField value={date} onChange={setDate} iconClassName="text-blue-600"
+                          className="w-full h-10 sm:h-10.5 px-3 justify-center text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900 text-slate-900 dark:text-white hover:border-blue-500 transition-all" />
                       </div>
                     </div>
                   </div>

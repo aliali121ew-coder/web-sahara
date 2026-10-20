@@ -298,10 +298,10 @@ export const SuppliersView: React.FC = () => {
   // الموردون الظاهرون في كارت مؤشرات الأسعار في الرئيسية (علامة صح في العمود الأخير)
   const dashboardList = useDashboardSuppliers();
   const dashToggle = (s: SupplierPriceRecord) => {
-    const on = isOnDashboard(dashboardList, s.supplierName);
+    const on = isOnDashboard(dashboardList, s.supplierName, s.company);
     return (
       <button type="button" role="checkbox" aria-checked={on} disabled={!editable}
-        onClick={e => { e.stopPropagation(); setOnDashboard(s.supplierName, !on); }}
+        onClick={e => { e.stopPropagation(); setOnDashboard(s.supplierName, !on, s.company); }}
         title={t(on ? 'table.onDashboard' : 'table.offDashboard')} aria-label={t('table.dashboard')}
         className={`w-6 h-6 rounded-md border-2 inline-flex items-center justify-center transition-colors ${on ? 'bg-teal-500 border-teal-500 text-white' : 'border-slate-300 dark:border-slate-600 text-transparent hover:border-teal-400'} ${editable ? 'cursor-pointer' : 'cursor-default opacity-70'}`}>
         <Check className="w-4 h-4" strokeWidth={3} />
@@ -667,6 +667,7 @@ export const SuppliersView: React.FC = () => {
                 </dl>
                 <div className="mt-3 flex items-center justify-between gap-2">
                   <span className="text-[11px] text-slate-400 tabular-nums">{t('table.updated')}: {(s.priceIqd && s.lastUpdated) || '—'}</span>
+                  <span className="text-[11px] text-slate-400 tabular-nums">{t('table.lastInbound')}: {inb.lastDay ? `${formatNumber(inb.lastDayQty)} ${t('common:units.liter')} · ${inb.lastDay}` : '—'}</span>
                   <span className="ms-auto flex items-center gap-1.5 text-[11px] text-slate-500" onClick={e => e.stopPropagation()}>{t('table.dashboard')}{dashToggle(s)}</span>
                   {editable && (
                     <button type="button" onClick={e => { e.stopPropagation(); setEditing({ rec: s, isNew: false }); }}
@@ -693,13 +694,14 @@ export const SuppliersView: React.FC = () => {
                   <th className={th}>{t('table.previous')}</th>
                   <th className={th}>{t('table.change')}</th>
                   <th className={th}>{t('table.updated')}</th>
+                  <th className={th}>{t('table.lastInbound')}</th>
                   <th className={th}>{t('table.action')}</th>
                   <th className={th}>{t('table.dashboard')}</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.length === 0 && (
-                  <tr><td colSpan={11} className="py-12 text-center text-sm text-slate-400">{t('empty')}</td></tr>
+                  <tr><td colSpan={12} className="py-12 text-center text-sm text-slate-400">{t('empty')}</td></tr>
                 )}
                 {pageRows.map(s => {
                   const active = s.id === selected?.id;
@@ -721,6 +723,15 @@ export const SuppliersView: React.FC = () => {
                       <td className={`${td} tabular-nums`}>{priceText(s.previousPriceIqd)}</td>
                       <td className={td}>{s.priceIqd ? <ChangePill pct={s.changePercent} /> : '—'}</td>
                       <td className={`${td} tabular-nums`}>{(s.priceIqd && s.lastUpdated) || '—'}</td>
+                      {/* آخر وارد من الأرشيف: مجموع كمية كل شحنات المجهز في آخر يوم ورد فيه (لشركة الصف) */}
+                      <td className={`${td} tabular-nums`}>
+                        {inb.lastDay ? (
+                          <div className="leading-tight">
+                            <div className="font-semibold text-slate-800 dark:text-slate-100">{formatNumber(inb.lastDayQty)} <span className="text-[11px] font-medium text-slate-400">{t('common:units.liter')}</span></div>
+                            <div className="text-[11px] text-slate-400">{inb.lastDay}</div>
+                          </div>
+                        ) : '—'}
+                      </td>
                       <td className={td} onClick={e => e.stopPropagation()}>
                         {editable ? (
                           <button type="button" onClick={() => setEditing({ rec: s, isNew: false })} aria-label={t('common:actions.edit')} title={t('common:actions.edit')}

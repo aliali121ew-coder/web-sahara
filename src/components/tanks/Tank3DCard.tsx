@@ -369,7 +369,7 @@ export const Tank3DCard: React.FC<Tank3DCardProps> = React.memo(({ tank, onLevel
                 step="0.01"
                 min="0"
                 max={tank.maxLevelMeters}
-                value={tank.levelMeters}
+                value={Number(tank.levelMeters.toFixed(2))}
                 disabled={!isEditable}
                 readOnly={!isEditable}
                 onChange={(e) => isEditable && onLevelChange(tank.id, parseFloat(e.target.value))}

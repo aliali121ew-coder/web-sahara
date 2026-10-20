@@ -25,6 +25,7 @@ import { useTranslation, Trans } from 'react-i18next';
 import { EtihadPrintModal } from './EtihadPrintModal';
 import { Breadcrumb } from '../navigation/Breadcrumb';
 import { usePermissions } from '../../lib/usePermission';
+import { DateField } from '../ui/DateField';
 
 export interface EtihadArchiveViewProps {
   records: EtihadBalanceRecord[];
@@ -386,21 +387,11 @@ export const EtihadArchiveView: React.FC<EtihadArchiveViewProps> = ({
                     <div className="space-y-3">
                       <div>
                         <label className="block text-xs font-bold text-slate-500 mb-1">{t('finance:etihadArchive.fromDate')}</label>
-                        <input
-                          type="date"
-                          value={startDate}
-                          onChange={(e) => setStartDate(e.target.value)}
-                          className="w-full text-xs p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 dark:text-white outline-hidden focus:ring-2 focus:ring-teal-500"
-                        />
+                        <DateField value={startDate} format="dash" max={endDate || undefined} onChange={setStartDate} className="w-full text-xs p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 dark:text-white hover:border-teal-500" iconClassName="text-teal-600" />
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-slate-500 mb-1">{t('finance:etihadArchive.toDate')}</label>
-                        <input
-                          type="date"
-                          value={endDate}
-                          onChange={(e) => setEndDate(e.target.value)}
-                          className="w-full text-xs p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 dark:text-white outline-hidden focus:ring-2 focus:ring-teal-500"
-                        />
+                        <DateField value={endDate} format="dash" min={startDate || undefined} onChange={setEndDate} className="w-full text-xs p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 dark:text-white hover:border-teal-500" iconClassName="text-teal-600" />
                       </div>
                       <div className="flex justify-end gap-2 pt-1">
                         <button

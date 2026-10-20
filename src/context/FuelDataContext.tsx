@@ -773,7 +773,7 @@ export const FuelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // سجل عدّله المستخدم: لا يحذفه التنظيف التلقائي حين يختلف اسمه عن الأرشيف
     supplier = { ...supplier, edited: true };
     // السعر الحالي يدوي: تغييره يُظهر المورد في مؤشر الأسعار في الرئيسية (علامة «الرئيسية» تُفعَّل، ويمكن إلغاؤها)
-    if (supplier.priceIqd > 0 && (before?.priceIqd ?? 0) !== supplier.priceIqd) setOnDashboard(supplier.supplierName, true);
+    if (supplier.priceIqd > 0 && (before?.priceIqd ?? 0) !== supplier.priceIqd) setOnDashboard(supplier.supplierName, true, supplier.company);
     // السعر السابق لا يُكتب هنا: هو سعر آخر وارد من الأرشيف (تحدّثه مزامنة الأرشيف)
     const previous = supplier.previousPriceIqd || 0;
     setSupplierPrices(prev => {

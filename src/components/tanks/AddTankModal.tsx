@@ -86,7 +86,8 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
         setTankCode(editingTank.code);
         setCapacityStr(formatWithCommas(editingTank.capacityLiters));
         setMaxLevelStr(editingTank.maxLevelMeters.toString());
-        setLevelStr(editingTank.levelMeters.toString());
+        // المنسوب برقمين بعد الفارزة (المحسوب من النسبة كان يظهر 14.719999999999999)
+        setLevelStr(editingTank.levelMeters.toFixed(2));
 
         const fillPercent = (editingTank.levelMeters / (editingTank.maxLevelMeters || 1));
         const stored = Math.round(fillPercent * editingTank.capacityLiters);
@@ -182,7 +183,7 @@ export const AddTankModal: React.FC<AddTankModalProps> = ({
     const currMax = parseRawNumber(maxLevelStr) || 6.0;
     if (cap > 0) {
       const calculatedLevel = Number(((newStored / cap) * currMax).toFixed(2));
-      setLevelStr(calculatedLevel.toString());
+      setLevelStr(calculatedLevel.toFixed(2));
     }
   };
 

@@ -12,6 +12,7 @@ import { EtihadBalanceRecord, DateFilterRange, etihadSalesOf } from '../../types
 import { formatNumber } from '../../lib/utils';
 import { useTranslation } from 'react-i18next';
 import { usePermissions } from '../../lib/usePermission';
+import { DateField } from '../ui/DateField';
 
 interface EtihadBalanceTableProps {
   records: EtihadBalanceRecord[];
@@ -160,21 +161,11 @@ export const EtihadBalanceTable: React.FC<EtihadBalanceTableProps> = ({
                   <div className="space-y-3">
                     <div>
                       <label className="block text-xs text-slate-500 mb-1">{t('finance:etihadArchive.fromDate')}</label>
-                      <input 
-                        type="date" 
-                        value={tempStartDate}
-                        onChange={(e) => setTempStartDate(e.target.value)}
-                        className="w-full text-xs p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 dark:text-white outline-hidden focus:ring-1 focus:ring-blue-500"
-                      />
+                      <DateField value={tempStartDate} format="dash" max={tempEndDate || undefined} onChange={setTempStartDate} className="w-full text-xs p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 dark:text-white hover:border-blue-500" iconClassName="text-blue-600" />
                     </div>
                     <div>
                       <label className="block text-xs text-slate-500 mb-1">{t('finance:etihadArchive.toDate')}</label>
-                      <input 
-                        type="date" 
-                        value={tempEndDate}
-                        onChange={(e) => setTempEndDate(e.target.value)}
-                        className="w-full text-xs p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 dark:text-white outline-hidden focus:ring-1 focus:ring-blue-500"
-                      />
+                      <DateField value={tempEndDate} format="dash" min={tempStartDate || undefined} onChange={setTempEndDate} className="w-full text-xs p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 dark:text-white hover:border-blue-500" iconClassName="text-blue-600" />
                     </div>
                     <div className="flex justify-end gap-2 pt-2">
                       <button 

@@ -51,7 +51,7 @@ export const PriceIndexTable: React.FC = () => {
   const rows = useMemo(() => {
     const day = (d: string) => (d || '').replace(/-/g, '/');
     const list = supplierPrices
-      .filter(rec => isOnDashboard(shown, rec.supplierName))
+      .filter(rec => isOnDashboard(shown, rec.supplierName, rec.company))
       .filter(rec => rec.supplierName.includes(searchQuery) || (rec.product || '').includes(searchQuery))
       .sort((a, b) => Number(b.priceIqd > 0) - Number(a.priceIqd > 0) || day(b.lastUpdated).localeCompare(day(a.lastUpdated)))
       .map(rec => {
@@ -63,9 +63,9 @@ export const PriceIndexTable: React.FC = () => {
           pct: previous ? Math.round((diff / previous) * 10000) / 100 : 0, hasPrice: rec.priceIqd > 0,
         };
       });
-    // كل الموردين بلا تكرار: المورد الواحد (ولو ورد للشركتين) يظهر مرة واحدة بأحدث صف له
+    // علامة كل شركة مستقلة: المورد المعلَّم في الصحاري والاتحاد يظهر بصف لكل شركة (بشارتها)، ولا يتكرر في الشركة نفسها
     const seen: typeof list = [];
-    for (const item of list) if (!seen.some(x => sameSupplier(x.supplierName, item.supplierName))) seen.push(item);
+    for (const item of list) if (!seen.some(x => x.company === item.company && sameSupplier(x.supplierName, item.supplierName))) seen.push(item);
     return seen;
   }, [supplierPrices, searchQuery, shown]);
 
