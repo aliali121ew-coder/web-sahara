@@ -10,9 +10,9 @@ import { fmtDayLabel } from '../../i18n/format';
 import { errorText } from '../../i18n/errors';
 import { Empty, KpiCard, Skeleton, UserAvatar, btnCls, cardCls, chipCls, clock, fullDate, inputCls, timeAgo } from './adminUi';
 
-type Severity = 'info' | 'success' | 'warn' | 'danger';
+export type Severity = 'info' | 'success' | 'warn' | 'danger';
 // التسميات في admin:audit.actions.<action>
-const ACTIONS: Record<string, { icon: React.ComponentType<{ className?: string }>; sev: Severity }> = {
+export const ACTIONS: Record<string, { icon: React.ComponentType<{ className?: string }>; sev: Severity }> = {
   'auth.login': { icon: LogIn, sev: 'success' },
   'auth.logout': { icon: LogOut, sev: 'info' },
   'auth.failed': { icon: ShieldAlert, sev: 'warn' },
@@ -29,8 +29,8 @@ const ACTIONS: Record<string, { icon: React.ComponentType<{ className?: string }
   'file.delete': { icon: FileX, sev: 'warn' },
   'profile.update': { icon: UserCog, sev: 'info' },
 };
-const actionLabel = (a: string) => (i18n.exists(`admin:audit.actions.${a}`) ? i18n.t(`admin:audit.actions.${a}`) : a);
-const SEV: Record<Severity, { dot: string; ring: string; text: string }> = {
+export const actionLabel = (a: string) => (i18n.exists(`admin:audit.actions.${a}`) ? i18n.t(`admin:audit.actions.${a}`) : a);
+export const SEV: Record<Severity, { dot: string; ring: string; text: string }> = {
   info: { dot: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300', ring: 'border-slate-200 dark:border-slate-800', text: 'text-slate-900 dark:text-white' },
   success: { dot: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300', ring: 'border-slate-200 dark:border-slate-800', text: 'text-slate-900 dark:text-white' },
   warn: { dot: 'bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300', ring: 'border-amber-200/70 dark:border-amber-900/50', text: 'text-amber-800 dark:text-amber-200' },

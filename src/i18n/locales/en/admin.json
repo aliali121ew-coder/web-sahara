@@ -354,5 +354,32 @@
     "extendHint": "The new duration counts from now and re-activates an expired account",
     "remaining": "{{time}} left",
     "expired": "Trial ended"
+  },
+  "activity": {
+    "heading": "Account log",
+    "title": "{{name}} log",
+    "close": "Close",
+    "onlineNow": "Online now · last sign-in",
+    "lastLogin": "Last sign-in",
+    "never": "Never signed in",
+    "lastDays": "Last {{count}} days",
+    "kpi": {
+      "logins": "Sign-ins",
+      "failed": "Failed",
+      "saves": "Saves",
+      "files": "Files"
+    },
+    "daily": "Daily activity",
+    "devices": "{{count}} sign-in addresses",
+    "today": "Today",
+    "lastWork": "Last operation:",
+    "filter": {
+      "all": "All",
+      "auth": "Sign-ins",
+      "work": "Operations"
+    },
+    "empty": "No recorded operations",
+    "more": "Show more",
+    "open": "Account log"
   }
 }
