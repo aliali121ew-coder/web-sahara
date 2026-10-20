@@ -146,17 +146,8 @@ export const CompanyTanksSection: React.FC = () => {
         </div>
       } />
 
-      {/* الهاتف: كل الخزانات في كارت واحد، كل خزان هو كارت المنظومة نفسه مصغّرًا (عمودان) */}
-      <div className="sm:hidden rounded-[26px] bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 shadow-soft-card p-2.5">
-        <div className="grid grid-cols-2 gap-2.5">
-          {groups.flatMap(g => g.tanks.map(tk => (
-            <ScaledTank key={tk.id}><Tank3DCard tank={tk} onLevelChange={noop} isEditable={false} summary /></ScaledTank>
-          )))}
-        </div>
-      </div>
-
-      {/* الكروت الأم: الاتحاد (خزانان)، الصحاري (خزانان)، البنزين (خزان) — من التابلت وأكبر */}
-      <div className="hidden sm:grid grid-cols-1 xl:grid-cols-[2fr_2fr_1fr] gap-4 items-stretch">
+      {/* الكروت الأم: الاتحاد (خزانان)، الصحاري (خزانان)، البنزين (خزان) — في كل المقاسات (كما في الحاسبة) */}
+      <div className="grid grid-cols-1 xl:grid-cols-[2fr_2fr_1fr] gap-4 items-stretch">
         {groups.map(g => {
           const Icon = g.icon;
           const cap = g.tanks.reduce((a, t) => a + t.capacityLiters, 0);
@@ -181,8 +172,17 @@ export const CompanyTanksSection: React.FC = () => {
 
               </div>
 
-              {/* الخزانات بتصميم المنظومة */}
-              <div className={`grid gap-3 ${g.tanks.length > 1 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+              {/* الهاتف: كارت الخزان الحقيقي مصغّرًا، خزانان في الصف، والخزان الوحيد (البنزين) في الوسط */}
+              <div className="sm:hidden flex flex-wrap justify-center gap-2.5">
+                {g.tanks.map(t => (
+                  <div key={t.id} className="w-[calc(50%-0.3125rem)]">
+                    <ScaledTank><Tank3DCard tank={t} onLevelChange={noop} isEditable={false} summary /></ScaledTank>
+                  </div>
+                ))}
+              </div>
+
+              {/* الخزانات بتصميم المنظومة (التابلت وأكبر) */}
+              <div className={`hidden sm:grid gap-3 ${g.tanks.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 {g.tanks.map(t => (
                   <Tank3DCard key={t.id} tank={t} onLevelChange={noop} isEditable={false} summary />
                 ))}
