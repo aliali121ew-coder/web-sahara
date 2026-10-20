@@ -56,6 +56,8 @@ const TaqaStationsMap: React.FC<Props> = ({ site, cover, trips, weather, onOpen,
   const { t } = useTranslation(['finance']);
   const M = useCallback((k: string, o?: Record<string, unknown>) => t(`finance:siteFarms.map.${k}`, o), [t]);
   const [pick, setPick] = useState<'day' | 'night' | null>(null);
+  /** العرض: ثلاثي الأبعاد (منظور مائل) أو ثنائي الأبعاد (من الأعلى) */
+  const [view3d, setView3d] = useState(true);
   const hour = new Date().getHours();
   const night = pick ? pick === 'night' : weather ? !weather.isDay : hour < 6 || hour >= 18;
 
@@ -499,10 +501,14 @@ const TaqaStationsMap: React.FC<Props> = ({ site, cover, trips, weather, onOpen,
             </div>
           </div>
           <div className="sf-map-zoom sf-tq-ui">
+            <div className="sf-tq-mode" role="group" aria-label={M('viewMode')}>
+              <button type="button" className={view3d ? 'on' : ''} aria-pressed={view3d} onClick={() => { setView3d(true); sceneRef.current?.setMode('3d'); }}>3D</button>
+              <button type="button" className={!view3d ? 'on' : ''} aria-pressed={!view3d} onClick={() => { setView3d(false); sceneRef.current?.setMode('2d'); }}>2D</button>
+            </div>
             <button type="button" onClick={() => cam(s => s.zoomAt(1.4))} aria-label={M('zoomIn')} title={M('zoomIn')}><Plus className="w-4 h-4" /></button>
             <button type="button" onClick={() => cam(s => s.zoomAt(1 / 1.4))} aria-label={M('zoomOut')} title={M('zoomOut')}><Minus className="w-4 h-4" /></button>
-            <button type="button" onClick={() => cam(s => s.setGoal({ az: s.cam.az + Math.PI / 4 }))} aria-label={M('rotateLeft')} title={M('rotateLeft')}><RotateCcw className="w-4 h-4" /></button>
-            <button type="button" onClick={() => cam(s => s.setGoal({ az: s.cam.az - Math.PI / 4 }))} aria-label={M('rotateRight')} title={M('rotateRight')}><RotateCw className="w-4 h-4" /></button>
+            <button type="button" onClick={() => cam(s => s.rotate(Math.PI / 4))} aria-label={M('rotateLeft')} title={M('rotateLeft')}><RotateCcw className="w-4 h-4" /></button>
+            <button type="button" onClick={() => cam(s => s.rotate(-Math.PI / 4))} aria-label={M('rotateRight')} title={M('rotateRight')}><RotateCw className="w-4 h-4" /></button>
             <button type="button" onClick={() => cam(s => s.reset())} aria-label={M('reset')} title={M('reset')}><Maximize2 className="w-4 h-4" /></button>
           </div>
           {touchHint && <div className="sf-tq-hint">{M('touchHint')}</div>}

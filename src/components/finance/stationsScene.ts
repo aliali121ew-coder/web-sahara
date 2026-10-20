@@ -19,6 +19,8 @@ const TRUCK_WORLD = TRUCK_LEN * WORLD_S;
 /** نصف قطر العجلة بوحدات النموذج بعد تصغيره */
 const WHEEL_R = (0.52 * TANKER_LEN) / 16.5;
 const DUST_MAX = 260;
+/** ميلان الكاميرا عن الأفق: العرض ثلاثي الأبعاد، وثنائي الأبعاد (شبه عمودي) */
+const EL_3D = 0.78, EL_2D = 1.5;
 const PAD_Y = 1.6;
 
 export interface TruckState {
@@ -123,9 +125,9 @@ export class StationsScene {
   private bounds = { x0: 0, x1: 0, z0: 0, z1: 0 };
   /** مواضع بطاقات المحطات (أمام ساحاتها) */
   readonly anchors = new Map<string, THREE.Vector3>();
-  cam: CamState = { tx: 0, tz: 0, dist: 4000, az: 0, el: 0.78 };
+  cam: CamState = { tx: 0, tz: 0, dist: 4000, az: 0, el: EL_3D };
   goal: CamState | null = null;
-  home: CamState = { tx: 0, tz: 0, dist: 4000, az: 0, el: 0.78 };
+  home: CamState = { tx: 0, tz: 0, dist: 4000, az: 0, el: EL_3D };
 
   constructor(host: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -358,7 +360,7 @@ export class StationsScene {
     this.night = night;
     const sky = night ? 0x0b1226 : 0xdccfb6;
     this.scene.background = new THREE.Color(sky);
-    this.scene.fog = new THREE.Fog(sky, night ? 2600 : 3600, night ? 9000 : 12000);
+    this.scene.fog = new THREE.Fog(sky, 3600, 12000);
     this.hemi.color.set(night ? 0x2a3658 : 0xfff1d6);
     this.hemi.groundColor.set(night ? 0x0e0b08 : 0x8a6a3a);
     this.hemi.intensity = night ? 0.22 : 1.05;
@@ -386,7 +388,7 @@ export class StationsScene {
     this.camera.aspect = this.w / this.h;
     this.camera.updateProjectionMatrix();
     const b = this.bounds;
-    this.home = this.fit(b.x0 + 80, b.x1 - 80, b.z0 + 60, b.z1 + 60, 0, 0.78);
+    this.home = this.fit(b.x0 + 80, b.x1 - 80, b.z0 + 60, b.z1 + 220, 0, this.mode === '2d' ? EL_2D : EL_3D);
   }
 
   /** مسافة الكاميرا وهدفها ليظهر مستطيل الأرض كاملًا */
@@ -394,14 +396,16 @@ export class StationsScene {
     const vf = (this.camera.fov * Math.PI) / 180, hf = 2 * Math.atan(Math.tan(vf / 2) * this.camera.aspect);
     const w = xb - xa, d = zb - za;
     const dist = Math.max((w / 2) / Math.tan(hf / 2), (d * Math.sin(el) / 2 + 40) / Math.tan(vf / 2)) * 1.05 + d * Math.cos(el) * 0.15;
-    return { tx: (xa + xb) / 2, tz: (za + zb) / 2 + d * 0.05, dist, az, el };
+    // في المنظور المائل يُزاح المركز قليلًا نحو المقدمة (يبدو الأبعد أصغر)؛ ومن الأعلى لا إزاحة
+    return { tx: (xa + xb) / 2, tz: (za + zb) / 2 + d * 0.05 * Math.cos(el), dist, az, el };
   }
 
   private clampCam(c: CamState): CamState {
     const b = this.bounds;
     return {
       tx: Math.max(b.x0, Math.min(b.x1, c.tx)), tz: Math.max(b.z0, Math.min(b.z1, c.tz)),
-      dist: Math.max(140, Math.min(this.maxDist, c.dist)), az: c.az, el: Math.max(0.3, Math.min(1.42, c.el)),
+      dist: Math.max(140, Math.min(this.maxDist, c.dist)), az: c.az,
+      el: this.mode === '2d' ? EL_2D : Math.max(0.3, Math.min(1.42, c.el)),
     };
   }
   get maxDist() { return this.home.dist * 1.15; }
@@ -409,6 +413,9 @@ export class StationsScene {
     const { tx, tz, dist, az, el } = this.cam;
     this.camera.position.set(tx + Math.sin(az) * Math.cos(el) * dist, Math.sin(el) * dist, tz + Math.cos(az) * Math.cos(el) * dist);
     this.camera.lookAt(tx, 0, tz);
+    // الضباب يتبع بُعد الكاميرا: الأفق يذوب في السماء دون أن يغبّش الخريطة عند الابتعاد
+    const fog = this.scene.fog as THREE.Fog | null;
+    if (fog) { fog.near = dist * 0.95 + 600; fog.far = dist * 2.6 + 4000; }
     // الشمس وظلالها حول منطقة النظر، والقمر في السماء أمام الكاميرا
     const half = Math.max(500, Math.min(3200, dist * 0.8));
     const sc = this.sun.shadow.camera;
@@ -417,36 +424,49 @@ export class StationsScene {
     this.moonLight.target.position.set(tx, 0, tz); this.moonLight.position.set(tx + 1300, 900, tz - 2400);
     this.moon.position.set(tx - Math.sin(az) * 14000 + 4000, 4200, tz - Math.cos(az) * 14000);
   }
-  /** سحب الخريطة بالبكسل */
+  /** الحالة التي تُبنى عليها الحركة التالية: الهدف إن وُجد (فتتراكم الحركات بسلاسة) وإلا الوضع الحالي */
+  private get base() { return this.goal ?? this.cam; }
+  /** سحب الخريطة بالبكسل (انزلاق ناعم نحو الهدف) */
   pan(dx: number, dy: number) {
-    const k = (2 * this.cam.dist * Math.tan((this.camera.fov * Math.PI) / 360)) / this.h;
-    const az = this.cam.az;
-    const rx = Math.cos(az), rz = -Math.sin(az), fx = -Math.sin(az), fz = -Math.cos(az);
-    const f = 1 / Math.max(0.35, Math.sin(this.cam.el));
-    this.cam = this.clampCam({ ...this.cam, tx: this.cam.tx - rx * dx * k + fx * dy * k * f, tz: this.cam.tz - rz * dx * k + fz * dy * k * f });
-    this.goal = null; this.applyCam();
+    const b = this.base;
+    const k = (2 * b.dist * Math.tan((this.camera.fov * Math.PI) / 360)) / this.h;
+    const rx = Math.cos(b.az), rz = -Math.sin(b.az), fx = -Math.sin(b.az), fz = -Math.cos(b.az);
+    const f = 1 / Math.max(0.35, Math.sin(b.el));
+    this.goal = this.clampCam({ ...b, tx: b.tx - rx * dx * k + fx * dy * k * f, tz: b.tz - rz * dx * k + fz * dy * k * f });
   }
   groundAt(sx: number, sy: number) {
     this.raycaster.setFromCamera(new THREE.Vector2((sx / this.w) * 2 - 1, -(sy / this.h) * 2 + 1), this.camera);
     const p = new THREE.Vector3();
     return this.raycaster.ray.intersectPlane(this.groundPlane, p) ? p : null;
   }
-  /** تكبير حول نقطة الشاشة */
+  /** تكبير حول نقطة الشاشة: النقطة تحت المؤشر تبقى تحته، والانتقال ناعم */
   zoomAt(f: number, sx = this.w / 2, sy = this.h / 2) {
-    const before = this.groundAt(sx, sy);
-    this.cam = this.clampCam({ ...this.cam, dist: this.cam.dist / f });
-    this.applyCam();
-    const after = this.groundAt(sx, sy);
-    if (before && after) { this.cam = this.clampCam({ ...this.cam, tx: this.cam.tx + before.x - after.x, tz: this.cam.tz + before.z - after.z }); this.applyCam(); }
-    this.goal = null;
+    const b = this.base;
+    const dist = Math.max(140, Math.min(this.maxDist, b.dist / f));
+    const r = dist / b.dist;
+    const p = this.groundAt(sx, sy);
+    this.goal = this.clampCam(p ? { ...b, dist, tx: p.x + (b.tx - p.x) * r, tz: p.z + (b.tz - p.z) * r } : { ...b, dist });
   }
+  /** تدوير حول مركز النظر (والميلان في العرض ثلاثي الأبعاد فقط) */
   rotate(dAz: number, dEl = 0) {
-    this.cam = this.clampCam({ ...this.cam, az: this.cam.az + dAz, el: this.cam.el + dEl });
-    this.goal = null; this.applyCam();
+    const b = this.base;
+    this.goal = this.clampCam({ ...b, az: b.az + dAz, el: b.el + dEl });
   }
-  setGoal(g: Partial<CamState>) { this.goal = this.clampCam({ ...(this.goal ?? this.cam), ...g }); }
+  setGoal(g: Partial<CamState>) { this.goal = this.clampCam({ ...this.base, ...g }); }
   reset() { this.goal = { ...this.home }; }
   isZoomed() { return this.cam.dist < this.home.dist * 0.95 || Math.abs(this.cam.az) > 0.05; }
+  /** العرض ثلاثي الأبعاد (منظور مائل) أو ثنائي الأبعاد (من الأعلى مثل الخريطة) بانتقال ناعم */
+  mode: '3d' | '2d' = '3d';
+  setMode(mode: '3d' | '2d') {
+    if (this.mode === mode) return;
+    // مقرّب؟ (مقارنةً بالعرض الكامل للوضع الحالي قبل تغييره)
+    const zoomed = this.base.dist < this.home.dist * 0.9;
+    this.mode = mode;
+    const el = mode === '2d' ? EL_2D : EL_3D;
+    this.home = this.fit(this.bounds.x0 + 80, this.bounds.x1 - 80, this.bounds.z0 + 60, this.bounds.z1 + 220, 0, el);
+    // من العرض الكامل إلى العرض الكامل للوضع الجديد؛ وإن كان مقرّبًا يبقى في نفس المكان بالميلان الجديد
+    this.goal = zoomed ? this.clampCam({ ...this.base, el, az: mode === '2d' ? 0 : this.base.az }) : { ...this.home };
+  }
   /** هدف ومسافة لتظهر نقاط (وحدات أرض) كاملة */
   fitPoints(xs: ArrayLike<number>, ys: ArrayLike<number>) {
     let xa = Infinity, xb = -Infinity, za = Infinity, zb = -Infinity;
@@ -516,10 +536,11 @@ export class StationsScene {
   render(states: Map<string, TruckState>, dt: number) {
     this.clock += dt;
     if (this.goal) {
-      const k = dt ? Math.min(1, dt * 4) : 0.2, g = this.goal, c = this.cam;
+      // اقتراب أُسّي مستقل عن معدل الإطارات: انسيابي وسريع الاستجابة
+      const k = dt ? 1 - Math.exp(-dt * 9) : 0.25, g = this.goal, c = this.cam;
       let da = g.az - c.az; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
       this.cam = { tx: c.tx + (g.tx - c.tx) * k, tz: c.tz + (g.tz - c.tz) * k, dist: c.dist + (g.dist - c.dist) * k, az: c.az + da * k, el: c.el + (g.el - c.el) * k };
-      if (Math.abs(g.tx - this.cam.tx) < 0.5 && Math.abs(g.tz - this.cam.tz) < 0.5 && Math.abs(g.dist - this.cam.dist) < 0.5 && Math.abs(da) < 0.002) { this.cam = { ...g }; this.goal = null; }
+      if (Math.abs(g.tx - this.cam.tx) < 0.3 && Math.abs(g.tz - this.cam.tz) < 0.3 && Math.abs(g.dist - this.cam.dist) < 0.3 && Math.abs(da) < 0.001 && Math.abs(g.el - this.cam.el) < 0.001) { this.cam = { ...g }; this.goal = null; }
     }
     this.applyCam();
     const blink = this.clock % 0.7 < 0.35, flash = this.clock % 0.5 < 0.18;
