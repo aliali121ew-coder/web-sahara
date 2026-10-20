@@ -10,6 +10,7 @@ import {
   Flame,
   Activity,
   ArrowDownLeft,
+  Droplets,
   Boxes,
   PieChart as PieIcon,
   X,
@@ -201,6 +202,12 @@ export const SaharaGasSection: React.FC = () => {
           {/* Header Row: Title & Average Price Pill */}
           <div className="flex items-start justify-between gap-3">
             <div>
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
+                <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950/60 flex items-center justify-center text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/40">
+                  <Droplets className="w-3.5 h-3.5" />
+                </div>
+                <span>{t('dashboard:sahara.balance')}</span>
+              </div>
               <div className="flex items-baseline gap-2 mt-1.5">
                 <span className="text-3xl sm:text-4xl lg:text-[36px] font-black text-slate-900 dark:text-white font-mono tracking-tight">
                   {formatNumber(actualBalance)}
@@ -354,11 +361,17 @@ export const SaharaGasSection: React.FC = () => {
             <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors min-w-0">
               <div className="flex items-center justify-between gap-1.5 text-[10.5px] font-bold text-slate-500 dark:text-slate-400 mb-1">
                 <span className="kpi-label">{t('dashboard:flow.totalInbound')}</span>
-                <div className="w-5 h-5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/40 shrink-0">
-                  <ArrowDownLeft className="w-3 h-3" />
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* الهاتف: القيمة مقابل العنوان */}
+                  <div className="sm:hidden kpi-num font-black text-slate-900 dark:text-white font-mono">
+                    {formatNumber(totalInbound)} <span className="text-[8.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
+                  </div>
+                  <div className="w-5 h-5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/40 shrink-0">
+                    <ArrowDownLeft className="w-3 h-3" />
+                  </div>
                 </div>
               </div>
-              <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
+              <div className="hidden sm:block kpi-num font-black text-slate-900 dark:text-white font-mono">
                 {formatNumber(totalInbound)} <span className="text-[8.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </div>
               {prevDay ? (
@@ -406,35 +419,52 @@ export const SaharaGasSection: React.FC = () => {
 
             {/* 3. الاستهلاك الفعلي */}
             <div className="p-2.5 sm:p-3 rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/60 flex flex-col justify-between hover:border-blue-400 dark:hover:border-blue-600 transition-colors min-w-0">
-              <div className="flex items-center justify-between gap-1.5 text-[10.5px] font-bold text-blue-700 dark:text-blue-300 mb-1">
+              <div className="flex items-center justify-between gap-1.5 text-[10.5px] font-bold text-blue-700 dark:text-blue-300 sm:mb-1">
                 <span className="kpi-label" title={t('dashboard:flow.actual')}><span className="lbl-full">{t('dashboard:flow.actual')}</span><span className="lbl-short">{t('dashboard:flow.actualShort')}</span></span>
-                <div className="w-5 h-5 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 flex items-center justify-center border border-blue-300/60 dark:border-blue-700/50 shrink-0">
-                  <Activity className="w-3 h-3" />
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* الهاتف: القيمة مقابل العنوان */}
+                  <div className="sm:hidden kpi-num font-black text-blue-900 dark:text-blue-100 font-mono">
+                    {formatNumber(actualConsumption)} <span className="text-[8.5px] font-normal text-blue-500">{t('common:units.liter')}</span>
+                  </div>
+                  <div className="w-5 h-5 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 flex items-center justify-center border border-blue-300/60 dark:border-blue-700/50 shrink-0">
+                    <Activity className="w-3 h-3" />
+                  </div>
                 </div>
               </div>
-              <div className="kpi-num font-black text-blue-900 dark:text-blue-100 font-mono">
+              <div className="hidden sm:block kpi-num font-black text-blue-900 dark:text-blue-100 font-mono">
                 {formatNumber(actualConsumption)} <span className="text-[8.5px] font-normal text-blue-500">{t('common:units.liter')}</span>
               </div>
-              <span className="text-[10px] text-blue-600 dark:text-blue-300 mt-0.5 block">{t('dashboard:flow.directOutflow')}</span>
+              <span className="hidden sm:block text-[10px] text-blue-600 dark:text-blue-300 mt-0.5">{t('dashboard:flow.directOutflow')}</span>
             </div>
 
             {/* 2. فرق الاستهلاك الفعلي بين أمس واليوم */}
             <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-blue-300 dark:hover:border-blue-700 transition-colors min-w-0">
               <div className="flex items-center justify-between gap-1.5 text-[10.5px] font-bold text-slate-500 dark:text-slate-400 mb-1">
                 <span className="kpi-label" title={t('dashboard:flow.actualDiff')}><span className="lbl-full">{t('dashboard:flow.actualDiff')}</span><span className="lbl-short">{t('dashboard:flow.actualDiffShort')}</span></span>
-                <div className="w-5 h-5 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-200/60 dark:border-blue-800/40 shrink-0">
-                  <TrendingUp className="w-3 h-3" />
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* الهاتف: الفرق مقابل العنوان */}
+                  {actualDiff === null ? (
+                    <div className="sm:hidden kpi-num font-black text-slate-400 font-mono">—</div>
+                  ) : (
+                    <div className={`sm:hidden kpi-num font-black font-mono ${actualDiff > 0 ? 'text-rose-600 dark:text-rose-400' : actualDiff < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
+                      <span dir="ltr">{actualDiff > 0 ? '▲ +' : actualDiff < 0 ? '▼ −' : ''}{formatNumber(Math.abs(actualDiff))}</span>{' '}
+                      <span className="text-[8.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
+                    </div>
+                  )}
+                  <div className="w-5 h-5 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-200/60 dark:border-blue-800/40 shrink-0">
+                    <TrendingUp className="w-3 h-3" />
+                  </div>
                 </div>
               </div>
               {actualDiff === null ? (
                 <>
-                  <div className="kpi-num font-black text-slate-400 font-mono">—</div>
+                  <div className="hidden sm:block kpi-num font-black text-slate-400 font-mono">—</div>
                   <span className="text-[10px] text-slate-400 mt-0.5 block">{t('dashboard:compare.noPrevDay')}</span>
                 </>
               ) : (
                 <>
                   <div
-                    className={`kpi-num font-black font-mono ${actualDiff > 0 ? 'text-rose-600 dark:text-rose-400' : actualDiff < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}
+                    className={`hidden sm:block kpi-num font-black font-mono ${actualDiff > 0 ? 'text-rose-600 dark:text-rose-400' : actualDiff < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}
                     title={actualDiffPct !== null ? `${Math.abs(actualDiffPct).toFixed(1)}%` : undefined}
                   >
                     <span dir="ltr">{actualDiff > 0 ? '▲ +' : actualDiff < 0 ? '▼ −' : ''}{formatNumber(Math.abs(actualDiff))}</span>{' '}

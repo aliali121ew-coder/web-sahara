@@ -197,6 +197,12 @@ export const PetrolStationsSection: React.FC = () => {
           {/* Header Row: Title & Average Price Pill */}
           <div className="flex items-start justify-between gap-3">
             <div>
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
+                <div className="w-6 h-6 rounded-lg bg-[#146f82]/10 dark:bg-[#146f82]/30 flex items-center justify-center text-[#146f82] dark:text-teal-400 border border-[#146f82]/20 dark:border-[#146f82]/40">
+                  <Fuel className="w-3.5 h-3.5" />
+                </div>
+                <span>{t('dashboard:petrol.balance')}</span>
+              </div>
               <div className="flex items-baseline gap-2 mt-1">
                 <span className="text-3xl sm:text-4xl lg:text-[36px] font-black text-slate-900 dark:text-white font-mono tracking-tight">
                   {formatNumber(totalBalance)}
