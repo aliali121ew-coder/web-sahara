@@ -202,7 +202,7 @@ export const SaharaGasSection: React.FC = () => {
           
           {/* Header Row: Title & Average Price Pill */}
           <div className="flex items-start justify-between gap-3">
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
                 <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950/60 flex items-center justify-center text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/40">
                   <Droplets className="w-3.5 h-3.5" />
@@ -306,8 +306,8 @@ export const SaharaGasSection: React.FC = () => {
                 >
                   <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/20 to-transparent opacity-60 pointer-events-none" />
                   <span className="relative z-10 min-w-0 max-w-full text-[9px] sm:text-[10px] font-bold text-white px-2 drop-shadow-sm flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-300 shrink-0"></span>
-                    <span className="truncate min-w-0">{t('dashboard:capacity.current')}</span>
+                    <span className="hidden sm:inline-block w-1.5 h-1.5 rounded-full bg-blue-300 shrink-0"></span>
+                    <span className="truncate min-w-0"><span className="sm:hidden">{t('dashboard:capacity.currentPhone')}</span><span className="hidden sm:inline">{t('dashboard:capacity.current')}</span></span>
                     <strong className="shrink-0 font-mono font-black text-blue-100">{fillLabel}</strong>
                   </span>
                 </div>

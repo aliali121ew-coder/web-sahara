@@ -203,11 +203,11 @@ export const EtihadGasSection: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
         
         {/* Main Strategic Card (Mobile/Tablet 12 Cols, Desktop 7 Cols) */}
-        <div className="col-span-1 md:col-span-12 xl:col-span-7 rounded-[28px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 shadow-soft-card hover:shadow-soft-hover transition-all flex flex-col justify-between space-y-4 h-full overflow-hidden">
+        <div className="col-span-1 md:col-span-12 xl:col-span-7 rounded-[28px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-4 sm:p-6 shadow-soft-card hover:shadow-soft-hover transition-all flex flex-col justify-between space-y-4 h-full overflow-hidden">
           
-          {/* Header Row: Title & Average Price Pill */}
+          {/* Header Row: Title & Average Price Pill — على الهاتف بنفس مقاسات الصحاري حتى يظهر كارت السعر كاملًا */}
           <div className="flex items-start justify-between gap-3">
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
                 <div className="w-6 h-6 rounded-lg bg-teal-50 dark:bg-teal-950/60 flex items-center justify-center text-teal-600 dark:text-teal-400 border border-teal-200/60 dark:border-teal-800/40">
                   <Boxes className="w-3.5 h-3.5" />
@@ -217,7 +217,7 @@ export const EtihadGasSection: React.FC = () => {
                 </span>
               </div>
               <div className="flex items-baseline gap-2 mt-1.5">
-                <span className="text-3xl sm:text-4xl lg:text-[36px] font-black font-mono tracking-tight text-slate-900 dark:text-white">
+                <span className="text-[clamp(1.5rem,7.6vw,1.875rem)] sm:text-4xl lg:text-[36px] font-black font-mono tracking-tight text-slate-900 dark:text-white">
                   {formatNumber(etihadTotalBalance)}
                 </span>
                 <span className="text-base sm:text-lg font-bold text-teal-600 dark:text-teal-400">{t('common:units.liter')}</span>
@@ -309,7 +309,7 @@ export const EtihadGasSection: React.FC = () => {
                   <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/20 to-transparent opacity-60 pointer-events-none" />
                   <span className="relative z-10 min-w-0 max-w-full text-[9px] sm:text-[10px] font-bold text-white px-2 drop-shadow-sm flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-teal-300 shrink-0"></span>
-                    <span className="truncate min-w-0">{t('dashboard:capacity.current')}</span>
+                    <span className="truncate min-w-0"><span className="sm:hidden">{t('dashboard:capacity.currentPhone')}</span><span className="hidden sm:inline">{t('dashboard:capacity.current')}</span></span>
                     <strong className="shrink-0 font-mono font-black text-teal-100">{fillLabel}</strong>
                   </span>
                 </div>
@@ -412,11 +412,17 @@ export const EtihadGasSection: React.FC = () => {
             <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-blue-300 dark:hover:border-blue-700 transition-colors min-w-0">
               <div className="flex items-center justify-between gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                 <span className="kpi-label" title={t('dashboard:flow.actual')}><span className="lbl-full">{t('dashboard:flow.actual')}</span><span className="lbl-short">{t('dashboard:flow.actualShort')}</span></span>
-                <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-200/60 dark:border-blue-800/40 shrink-0">
-                  <Activity className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* الهاتف: القيمة مقابل العنوان (مثل الصحاري) */}
+                  <div className="sm:hidden kpi-num font-black text-slate-900 dark:text-white font-mono">
+                    {formatNumber(totalOutflow)} <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
+                  </div>
+                  <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-200/60 dark:border-blue-800/40 shrink-0">
+                    <Activity className="w-3.5 h-3.5" />
+                  </div>
                 </div>
               </div>
-              <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
+              <div className="hidden sm:block kpi-num font-black text-slate-900 dark:text-white font-mono">
                 {formatNumber(totalOutflow)} <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </div>
               <div className="mt-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[10px] text-slate-400 min-w-0">
@@ -429,18 +435,29 @@ export const EtihadGasSection: React.FC = () => {
             <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-teal-300 dark:hover:border-teal-700 transition-colors min-w-0">
               <div className="flex items-center justify-between gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                 <span className="kpi-label" title={t('dashboard:flow.actualDiff')}><span className="lbl-full">{t('dashboard:flow.actualDiff')}</span><span className="lbl-short">{t('dashboard:flow.actualDiffShort')}</span></span>
-                <div className="w-6 h-6 rounded-lg bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400 flex items-center justify-center border border-teal-200/60 dark:border-teal-800/40 shrink-0">
-                  <TrendingUp className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* الهاتف: الفرق مقابل العنوان (مثل الصحاري) */}
+                  {outflowDiff === null ? (
+                    <div className="sm:hidden kpi-num font-black text-slate-400 font-mono">—</div>
+                  ) : (
+                    <div className={`sm:hidden kpi-num font-black font-mono ${outflowDiff > 0 ? 'text-rose-600 dark:text-rose-400' : outflowDiff < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
+                      <span dir="ltr">{outflowDiff > 0 ? '▲ +' : outflowDiff < 0 ? '▼ −' : ''}{formatNumber(Math.abs(outflowDiff))}</span>{' '}
+                      <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
+                    </div>
+                  )}
+                  <div className="w-6 h-6 rounded-lg bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400 flex items-center justify-center border border-teal-200/60 dark:border-teal-800/40 shrink-0">
+                    <TrendingUp className="w-3.5 h-3.5" />
+                  </div>
                 </div>
               </div>
               {outflowDiff === null ? (
                 <>
-                  <div className="kpi-num font-black text-slate-400 font-mono">—</div>
+                  <div className="hidden sm:block kpi-num font-black text-slate-400 font-mono">—</div>
                   <span className="text-[10px] text-slate-400 mt-1 block">{t('dashboard:compare.noPrevDay')}</span>
                 </>
               ) : (
                 <>
-                  <div className={`kpi-num font-black font-mono ${outflowDiff > 0 ? 'text-rose-600 dark:text-rose-400' : outflowDiff < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
+                  <div className={`hidden sm:block kpi-num font-black font-mono ${outflowDiff > 0 ? 'text-rose-600 dark:text-rose-400' : outflowDiff < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
                     <span dir="ltr">{outflowDiff > 0 ? '▲ +' : outflowDiff < 0 ? '▼ −' : ''}{formatNumber(Math.abs(outflowDiff))}</span>{' '}
                     <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
                   </div>
