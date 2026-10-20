@@ -43,6 +43,7 @@ import { InboundDelivery } from '../../types';
 import { computeInboundPriceStats, deliveryDay } from '../../lib/inboundPrice';
 import { takeInboundFocus, FOCUS_EVENT, type InboundFocus } from '../../lib/inboundFocus';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
+import { DateField } from '../ui/DateField';
 import { supplierKey } from '../../lib/archiveSuppliers';
 import {
   InboundPrintReport,
@@ -1247,7 +1248,10 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
                       {/* 11. تاريخ الاستلام */}
                       {visibleColumns.receiptDate && (
                         <td className="py-3.5 px-3.5 whitespace-nowrap font-sans text-slate-500 dark:text-slate-400 text-[11px]">
-                          {editMode ? editInput(item, 'receiptUnloadDate', item.receiptUnloadDate || item.date || '') : (
+                          {editMode ? (
+                            <DateField value={item.receiptUnloadDate || item.date || ''} onChange={v => commitField(item, 'receiptUnloadDate', v)} iconClassName="text-amber-600 !w-3.5 !h-3.5"
+                              className="px-2 py-1 rounded-lg border border-amber-300 dark:border-amber-700/70 bg-amber-50/70 dark:bg-slate-800 text-slate-900 dark:text-white text-xs !gap-1.5" />
+                          ) : (
                           <div className="flex items-center gap-1">
                             <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
                             <span>{receiptDate}</span>
