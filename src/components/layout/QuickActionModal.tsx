@@ -369,6 +369,16 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nameIndex]);
 
+  // بطاقة النجاح تختفي وحدها بعد اكتمال حركة علامة الصح (ويبقى زر ✕ للإغلاق الفوري)
+  // (onClose يتجدد مع كل عرض للصفحة: يُقرأ من مرجع حتى لا يُعاد المؤقت من أوله)
+  const onCloseRef = React.useRef(onClose);
+  onCloseRef.current = onClose;
+  useEffect(() => {
+    if (!submitted) return;
+    const id = window.setTimeout(() => { setSubmitted(false); onCloseRef.current(); }, 1800);
+    return () => window.clearTimeout(id);
+  }, [submitted]);
+
   if (!isOpen) return null;
 
   // Number formatting helpers with live typing support
@@ -485,7 +495,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
     setAttachments([]);
     setDeliveryVoucher(`VCH-2026-${Math.floor(1000 + Math.random() * 9000)}`);
 
-    // تبقى بطاقة النجاح ظاهرة حتى يغلقها المستخدم بزر ✕
+    // بطاقة النجاح تظهر ثم تختفي تلقائيًا
     setSubmitted(true);
   };
 
