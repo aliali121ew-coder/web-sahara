@@ -13,6 +13,7 @@ import { CreateAccountWizard } from './CreateAccountWizard';
 import { DEMO_DURATIONS, demoDurationMs, remainingText, useDemoMode, type DemoDurationKey } from '../../lib/demo';
 import { SupportRequests } from './SupportRequests';
 import { AuditLog } from './AuditLog';
+import { UserActivityPanel } from './UserActivityPanel';
 import { AvatarPicker, CopyButton, Empty, Issued, Skeleton, UserAvatar, btnCls, cardCls, genPassword, inputCls, timeAgo } from './adminUi';
 
 export { PermissionsEditor };
@@ -160,6 +161,8 @@ const UsersTab: React.FC<{
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [viewing, setViewing] = useState<{ acc: Account; rect: DOMRect } | null>(null);
+  // سجل حساب واحد (أيقونة السجل تحت الإجراءات): كل دخول وآخر العمليات
+  const [activity, setActivity] = useState<Account | null>(null);
 
   const filtered = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -261,12 +264,17 @@ const UsersTab: React.FC<{
                       {busy === a.id ? <Loader2 className="w-4 h-4 animate-spin" /> : a.disabled ? <CheckCircle2 className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
                     </button>
                   )}
+                  <button onClick={() => setActivity(a)} title={t('activity.open')} aria-label={t('activity.title', { name: a.name })}
+                    className="w-9 h-9 rounded-xl flex items-center justify-center text-indigo-500 hover:text-indigo-700 hover:bg-indigo-100 dark:hover:bg-indigo-900/40">
+                    <History className="w-4 h-4" />
+                  </button>
                 </div>
               </li>
             );
           })}
         </ul>
       )}
+      {activity && <UserActivityPanel acc={activity} online={online.has(activity.id)} onClose={() => setActivity(null)} />}
       {viewing && (() => {
         const v = viewing.acc;
         return (
