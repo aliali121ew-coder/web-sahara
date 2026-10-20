@@ -34,7 +34,7 @@ import { useFuelStore } from '../../context/FuelDataContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { enumText } from '../../i18n/enums';
 import { useTranslation } from 'react-i18next';
-import { formatIQD, formatNumber } from '../../lib/utils';
+import { formatIQD, formatNumber, getPreviousBusinessDate } from '../../lib/utils';
 
 interface QuickActionModalProps {
   isOpen: boolean;
@@ -187,8 +187,9 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
   const [deliveryDensity, setDeliveryDensity] = useState('0.842');
   const [deliveryColor, setDeliveryColor] = useState('احمر');
   const [rawPrice, setRawPrice] = useState('510');
+  // شحنة جديدة: تاريخ الاستلام يبدأ باليوم السابق (اليوم 20 ← 19) مثل تبويب الوارد، ويُغيَّر يدويًا
   const [deliveryDate, setDeliveryDate] = useState(() => {
-    return new Date().toISOString().split('T')[0].replace(/-/g, '/');
+    return getPreviousBusinessDate();
   });
 
   useEffect(() => {
@@ -241,7 +242,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
       setDeliveryDensity('0.842');
       setDeliveryColor('احمر');
       setRawPrice('510');
-      setDeliveryDate(new Date().toISOString().split('T')[0].replace(/-/g, '/'));
+      setDeliveryDate(getPreviousBusinessDate());
       setAttachments([]);
     }
   }, [isOpen, editData]);
