@@ -228,7 +228,8 @@ export const setSectionTankLiters = (sectionKey: string, liters: (number | null)
     const ratio = unit === 'percent' ? v / 100 : v / t.capacityLiters;
     if (ratio > 1) over.push(t.name);
     const max = t.maxLevelMeters || 1;
-    target.set(t.id, Math.min(max, Math.max(0, ratio * max)));
+    // المنسوب برقمين بعد الفارزة (نسبة × الارتفاع تعطي كسورًا عائمة مثل 14.719999999999999)
+    target.set(t.id, Math.round(Math.min(max, Math.max(0, ratio * max)) * 100) / 100);
   });
   let changed = false;
   const next = tanks.map(t => {
