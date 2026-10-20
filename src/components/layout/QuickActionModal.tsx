@@ -35,6 +35,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { enumText } from '../../i18n/enums';
 import { useTranslation } from 'react-i18next';
 import { formatIQD, formatNumber, getPreviousBusinessDate } from '../../lib/utils';
+import { DateField } from '../ui/DateField';
 
 interface QuickActionModalProps {
   isOpen: boolean;
@@ -1119,15 +1120,8 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
                       {t('deliveries:quick.receiptUnload')}
                     </label>
                     <div className="relative">
-                      <Calendar className={`w-4.5 h-4.5 absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-3.5' : 'left-3.5'} text-slate-400`} />
-                      <input
-                        type="text"
-                        value={deliveryDate}
-                        onChange={(e) => setDeliveryDate(e.target.value)}
-                        required
-                        placeholder="YYYY/MM/DD"
-                        className={`w-full h-11 sm:h-12 ${isRTL ? 'pr-10 pl-3.5' : 'pl-10 pr-3.5'} py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-900 outline-none font-sans font-bold transition-all`}
-                      />
+                      <DateField value={deliveryDate} onChange={setDeliveryDate} iconClassName="text-emerald-600 !w-4.5 !h-4.5"
+                        className="w-full h-11 sm:h-12 px-3.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900 text-slate-900 dark:text-white hover:border-emerald-500 transition-all" />
                     </div>
                   </div>
 

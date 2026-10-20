@@ -28,7 +28,10 @@ export const DateRangeCalendar: React.FC<{
   single?: boolean;
   /** أيام عليها علامة (مثل الأيام المسجّلة)؛ مع single لا يُختار إلا منها */
   marked?: Set<string>;
-}> = ({ from, to, onApply, onClear, single = false, marked }) => {
+  /** حدود الاختيار (YYYY/MM/DD): الأيام خارجها معطّلة */
+  min?: string;
+  max?: string;
+}> = ({ from, to, onApply, onClear, single = false, marked, min, max }) => {
   const { t, i18n } = useTranslation('common');
   const rtl = i18n.dir() === 'rtl';
   const today = fmt(new Date());
@@ -122,7 +125,7 @@ export const DateRangeCalendar: React.FC<{
             const band = inRange(c.key);
             const edge = isStart || isEnd;
             const isMarked = !!marked?.has(c.key);
-            const blocked = single && !!marked && !isMarked;
+            const blocked = (single && !!marked && !isMarked) || (!!min && c.key < min) || (!!max && c.key > max);
             return (
               <div
                 key={c.key}

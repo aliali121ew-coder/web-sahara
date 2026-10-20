@@ -5,6 +5,7 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { Sprout, X } from 'lucide-react';
 import type { SiteFarmsRecord } from '../../lib/siteFarms';
 import { farmDaysBetween, farmSeries, farmSummary, groupFarmDays, usageMonth, usageMonths } from '../../lib/siteFarmsUsage';
+import { DateField } from '../ui/DateField';
 
 const fmt = (n: number | null | undefined) => (n === null || n === undefined ? '—' : Math.round(n).toLocaleString('en-US'));
 const compact = (v: number) => (v >= 1e6 ? `${Math.round(v / 1e5) / 10}M` : v >= 1e3 ? `${Math.round(v / 1e3)}k` : String(v));
@@ -200,9 +201,9 @@ export const FarmUsageModal: React.FC<{ records: SiteFarmsRecord[]; site: string
             {mode === 'period' && (
               <div className="sf-range sf-fmodal-range">
                 <label><span>{t('finance:siteFarms.rangeFrom')}</span>
-                  <input type="date" className="sf-select" value={from.replace(/\//g, '-')} min={first} max={last} onChange={e => setFrom(e.target.value.replace(/-/g, '/'))} /></label>
+                  <DateField className="sf-select" value={from} min={first} max={to || last} onChange={setFrom} /></label>
                 <label><span>{t('finance:siteFarms.rangeTo')}</span>
-                  <input type="date" className="sf-select" value={to.replace(/\//g, '-')} min={first} max={last} onChange={e => setTo(e.target.value.replace(/-/g, '/'))} /></label>
+                  <DateField className="sf-select" value={to} min={from || first} max={last} onChange={setTo} /></label>
               </div>
             )}
             <div className="sf-table-wrap sf-fmodal-table">

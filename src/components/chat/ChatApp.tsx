@@ -20,6 +20,7 @@ import { systemText } from './chatUtils';
 import { DEFAULT_LOOK, lookStyle, themeById, themeStyle, type RoomLook } from './chatThemes';
 import { AdminModal } from './AdminModal';
 import { AccountModal, ConfirmDelete, ForwardModal, GroupModal, LookModal, MessageInfoModal, NewChatModal, StarredModal, ThemeModal, UserModal } from './ChatModals';
+import { DateField } from '../ui/DateField';
 
 const THEME_KEY = 'sahara_chat_theme';
 const LOOKS_KEY = 'sahara_chat_looks';
@@ -498,11 +499,12 @@ export const ChatApp: React.FC = () => {
                     <input autoFocus value={findQ} onChange={e => { setFindQ(e.target.value); setShowResults(true); }} onFocus={() => setShowResults(true)} placeholder={t('chat:searchThis')} className="cx-input w-full h-9 rounded-xl ps-9 pe-3 text-sm"
                       onKeyDown={e => { if (e.key === 'Enter' && matches.length) { setShowResults(false); setFindIdx(i => (i - 1 + matches.length) % matches.length); } if (e.key === 'Escape') closeFind(); }} />
                   </div>
-                  <label className={`h-9 px-2.5 rounded-xl flex items-center gap-1.5 text-xs font-bold cursor-pointer border cx-border ${findDate ? 'cx-accent-bg border-transparent' : 'cx-hover'}`} title={t('chat:searchDate')}>
+                  <DateField value={findDate} format="dash" max={new Date().toLocaleDateString('en-CA')} onChange={v => { setFindDate(v); setShowResults(true); }}
+                    ariaLabel={t('chat:searchDate')}
+                    className={`h-9 px-2.5 rounded-xl !gap-1.5 text-xs font-bold border cx-border ${findDate ? 'cx-accent-bg border-transparent' : 'cx-hover'}`}>
                     <CalendarDays className="w-4 h-4" />
                     {findDate ? formatDay(new Date(findDate + 'T12:00').getTime()) : t('chat:date')}
-                    <input type="date" value={findDate} max={new Date().toLocaleDateString('en-CA')} onChange={e => { setFindDate(e.target.value); setShowResults(true); }} className="w-0 h-0 opacity-0 absolute" onClick={e => (e.currentTarget as HTMLInputElement).showPicker?.()} />
-                  </label>
+                  </DateField>
                   {findDate && <button onClick={() => setFindDate('')} className="w-7 h-7 rounded-full flex items-center justify-center cx-hover" title={t('chat:clearDate')}><X className="w-3.5 h-3.5" /></button>}
                   <span className="text-xs cx-muted min-w-[3rem] text-center">{findQ || findDate ? `${matches.length ? findIdx + 1 : 0}/${matches.length}` : ''}</span>
                   <button disabled={!matches.length} onClick={() => { setShowResults(false); setFindIdx(i => (i - 1 + matches.length) % matches.length); }} className="w-8 h-8 rounded-full flex items-center justify-center cx-hover disabled:opacity-40" title={t('chat:older')}><ChevronUp className="w-4 h-4" /></button>
