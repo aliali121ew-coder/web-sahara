@@ -210,7 +210,8 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
       const prc = (editData.productPrice ?? editData.pricePerLiter ?? 0).toString();
       const cleanPrc = prc.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
       setRawPrice(cleanPrc);
-      setDeliveryDate(editData.receiptUnloadDate ? editData.receiptUnloadDate.split(' ')[0] : new Date().toISOString().split('T')[0].replace(/-/g, '/'));
+      // شحنة جديدة من تبويب وارد شركة (يصل معها lockedCompany فقط، بلا تاريخ): اليوم السابق؛ تعديل شحنة: تاريخها
+      setDeliveryDate(editData.receiptUnloadDate ? editData.receiptUnloadDate.split(' ')[0] : getPreviousBusinessDate());
       
       if (editData.attachments && editData.attachments.length > 0) {
         setAttachments(editData.attachments);
