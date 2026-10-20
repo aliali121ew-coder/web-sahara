@@ -1,30 +1,32 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { DAY_ROADS } from '../../lib/stationRoads';
-import { GROUND_D, STATIONS, WORLD_S, Y_SCALE, parkPose, toWorld, unfold, type Box, type StationLayout } from '../../lib/stationsLayout';
-import { createTanker } from './tankerModel';
+import { NET, SITE_NAMES, SITE_PLANS, STATION_OFFSET_Z, WORLD_S, type SitePlan } from '../../lib/stationNetwork';
+import { createDesert, type Desert } from './desertGround';
+import { createDesertShrub, createSmallTree, createStation, type StationModel } from './stationModel';
+import { TANKER_LEN, createTanker } from './tankerModel';
 
 /**
- * مشهد محطات مركز التوزيع ثلاثي الأبعاد (WebGL واحد طوال عمر الخريطة): صحراء بشجيرات، والشوارع المتتبَّعة
- * بأسفلت وخطوط، وساحات المحطات الست بأرصفة صفراء وسوداء وأشجار، ومظلات بمضخات وأسماء، ومبانٍ ونوافذ، وخزانات،
- * ولوحات وأعمدة إنارة، وشمس بظلال نهارًا وإنارة المحطات ليلًا؛ والصهاريج (createTanker) تسير فيه وتدخل تحت المظلات.
- * الكاميرا: سحب وتكبير وتدوير وتتبّع بانتقال ناعم.
+ * مشهد محطات مركز التوزيع ثلاثي الأبعاد (سياق WebGL واحد طوال عمر الخريطة):
+ * صحراء بكثبان وشجيرات وحصى، وشبكة الطرق حسب رسمة الإدارة بأسفلت وخطوط وأكتاف وأعمدة إنارة،
+ * والمحطات الست كنماذج حقيقية (مظلة باسم بارز، مضخات، مبنى الإدارة، لوحة المنتجات، مستودع خزانات) في نهاية فروعها،
+ * بساحات برصيف متصل وأشجار صغيرة، وشمس بظلال تتبع الكاميرا نهارًا، وقمر وإنارة تنعكس على الطريق ليلًا؛
+ * والصهاريج تسير على الشبكة وتقف عند وصلة الخزانات وتوصل خرطومها. الكاميرا: سحب وتكبير وتدوير وتتبّع.
  */
 
-/** طول الصهريج بوحدات الأرض (عرض الخريطة 100) */
+/** طول الصهريج بوحدات الأرض (84 وحدة مشهد = 16.5 م) */
 export const TRUCK_LEN = 8.4;
-const MODEL_LEN = 3.95;
-const WHEEL_R = 0.31 * 0.56;
-const HOSE_TIP = { x: -0.5 * 0.56, z: 1.75 * 0.56 };
+const TRUCK_WORLD = TRUCK_LEN * WORLD_S;
+/** نصف قطر العجلة بوحدات النموذج بعد تصغيره */
+const WHEEL_R = (0.52 * TANKER_LEN) / 16.5;
 const DUST_MAX = 260;
-const CANOPY_H = 46;
+const PAD_Y = 1.6;
 
 export interface TruckState {
   /** الموضع بوحدات الأرض والاتجاه (راديان، y نحو الجنوب) */
   x: number; y: number; heading: number;
   /** المسافة المقطوعة منذ الإطار السابق (وحدات أرض) */
   travel: number;
-  /** داخل ساحة محطة (أعلى قليلًا: فوق بلاطة الساحة) */
+  /** داخل ساحة محطة (فوق بلاطتها) */
   yard: boolean;
   brake: boolean;
   signal: -1 | 0 | 1;
@@ -39,39 +41,30 @@ interface Lights { brake?: THREE.MeshStandardMaterial; signalL?: THREE.MeshStand
 interface Truck { pivot: THREE.Group; model: THREE.Group; wheels: THREE.Object3D[]; beams: THREE.Mesh; lights: Lights; y: number }
 interface Dust { sprite: THREE.Sprite; x: number; y: number; z: number; vx: number; vz: number; age: number; life: number; size: number; alive: boolean }
 
-const W = (x: number, y: number) => toWorld(x, y);
-/** صندوق بنسب الصورة ← مركزه وأبعاده في المشهد */
-const boxWorld = (b: Box) => {
-  const [x, z] = W(b.cx, b.cy * Y_SCALE);
-  return { x, z, w: b.w * WORLD_S, d: b.d * Y_SCALE * WORLD_S };
-};
-
 let seed = 7;
 const rand = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
 
-const canvasTex = (w: number, h: number, draw: (x: CanvasRenderingContext2D) => void, srgb = true) => {
+const canvasTex = (w: number, h: number, draw: (x: CanvasRenderingContext2D) => void) => {
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   draw(c.getContext('2d')!);
-  const t = new THREE.CanvasTexture(c);
-  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 8;
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
   return t;
 };
-const noise = (x: CanvasRenderingContext2D, w: number, h: number, n: number, colors: string[], r: [number, number]) => {
-  for (let i = 0; i < n; i++) {
-    x.fillStyle = colors[(rand() * colors.length) | 0];
-    x.globalAlpha = 0.25 + rand() * 0.5;
-    const s = r[0] + rand() * (r[1] - r[0]);
-    x.beginPath(); x.ellipse(rand() * w, rand() * h, s, s * (0.6 + rand() * 0.6), rand() * 3, 0, Math.PI * 2); x.fill();
-  }
-  x.globalAlpha = 1;
-};
-const radial = (inner: string, outer: string) => canvasTex(64, 64, x => {
-  const g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, inner); g.addColorStop(1, outer);
-  x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+const radial = (stops: [number, string][]) => canvasTex(128, 128, x => {
+  const g = x.createRadialGradient(64, 64, 0, 64, 64, 64); stops.forEach(([o, c]) => g.addColorStop(o, c));
+  x.fillStyle = g; x.fillRect(0, 0, 128, 128);
 });
 
-/** شريط على الأرض على طول نقاط (مشهد) بعرض ثابت، v تراكمي لتكرار الخامة */
+const rounded = (w: number, d: number, r: number) => {
+  const s = new THREE.Shape(), x0 = -w / 2, y0 = -d / 2;
+  s.moveTo(x0 + r, y0); s.lineTo(x0 + w - r, y0); s.absarc(x0 + w - r, y0 + r, r, -Math.PI / 2, 0, false);
+  s.lineTo(x0 + w, y0 + d - r); s.absarc(x0 + w - r, y0 + d - r, r, 0, Math.PI / 2, false);
+  s.lineTo(x0 + r, y0 + d); s.absarc(x0 + r, y0 + d - r, r, Math.PI / 2, Math.PI, false);
+  s.lineTo(x0, y0 + r); s.absarc(x0 + r, y0 + r, r, Math.PI, Math.PI * 1.5, false);
+  return s;
+};
+
+/** شريط على طول نقاط (مشهد) بعرض ثابت، v تراكمي لتكرار الخامة */
 const ribbon = (pts: [number, number][], width: number, vPer: number, y: number) => {
   const pos: number[] = [], uv: number[] = [], idx: number[] = [];
   let v = 0;
@@ -88,32 +81,31 @@ const ribbon = (pts: [number, number][], width: number, vPer: number, y: number)
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-  g.setIndex(idx);
-  g.computeVertexNormals();
+  g.setIndex(idx); g.computeVertexNormals();
   return g;
 };
 
-/** مستطيل بزوايا مستديرة كبيرة (شكل ساحة المحطة) */
-const roundedShape = (w: number, d: number, r: number) => {
-  const s = new THREE.Shape();
-  const x0 = -w / 2, y0 = -d / 2;
-  s.moveTo(x0 + r, y0); s.lineTo(x0 + w - r, y0); s.absarc(x0 + w - r, y0 + r, r, -Math.PI / 2, 0, false);
-  s.lineTo(x0 + w, y0 + d - r); s.absarc(x0 + w - r, y0 + d - r, r, 0, Math.PI / 2, false);
-  s.lineTo(x0 + r, y0 + d); s.absarc(x0 + r, y0 + d - r, r, Math.PI / 2, Math.PI, false);
-  s.lineTo(x0, y0 + r); s.absarc(x0 + r, y0 + r, r, Math.PI, Math.PI * 1.5, false);
-  return s;
+/** محلي الساحة ← المشهد */
+const padWorld = (s: SitePlan, x: number, z: number): [number, number] => {
+  const c = Math.cos(s.angle), sn = Math.sin(s.angle);
+  return [s.x + x * c + z * sn, s.z - x * sn + z * c];
 };
 
 export class StationsScene {
   readonly canvas: HTMLCanvasElement;
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
-  readonly camera = new THREE.PerspectiveCamera(42, 1, 5, 9000);
-  private hemi = new THREE.HemisphereLight(0xfff1d6, 0x8a6a3a, 1);
-  private sun = new THREE.DirectionalLight(0xffffff, 2.6);
-  private stationLights: THREE.PointLight[] = [];
-  private nightMats: { mat: THREE.MeshStandardMaterial; day: number; night: number }[] = [];
+  readonly camera = new THREE.PerspectiveCamera(42, 1, 10, 40000);
+  private hemi = new THREE.HemisphereLight(0xfff1d6, 0x8a6a3a, 1.05);
+  private sun = new THREE.DirectionalLight(0xfff4e0, 2.8);
+  private moonLight = new THREE.DirectionalLight(0xb9c8ff, 0);
+  private moon: THREE.Sprite;
   private stars: THREE.Points;
+  private desert: Desert;
+  private stations: StationModel[] = [];
+  private roadMat!: THREE.MeshStandardMaterial;
+  private lampHeads: THREE.MeshStandardMaterial[] = [];
+  private pools: THREE.Mesh[] = [];
   private trucks = new Map<string, Truck>();
   private dust: Dust[] = [];
   private emitCarry = new Map<string, number>();
@@ -128,11 +120,12 @@ export class StationsScene {
   private envRT: THREE.WebGLRenderTarget;
   private raycaster = new THREE.Raycaster();
   private groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-  /** مواضع بطاقات المحطات (فوق المظلة) */
+  private bounds = { x0: 0, x1: 0, z0: 0, z1: 0 };
+  /** مواضع بطاقات المحطات (أمام ساحاتها) */
   readonly anchors = new Map<string, THREE.Vector3>();
-  cam: CamState = { tx: 0, tz: 0, dist: 1300, az: 0, el: 0.66 };
+  cam: CamState = { tx: 0, tz: 0, dist: 4000, az: 0, el: 0.78 };
   goal: CamState | null = null;
-  home: CamState = { tx: 0, tz: 0, dist: 1300, az: 0, el: 0.66 };
+  home: CamState = { tx: 0, tz: 0, dist: 4000, az: 0, el: 0.78 };
 
   constructor(host: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -152,23 +145,52 @@ export class StationsScene {
       const g = x.createLinearGradient(0, 0, 128, 0); g.addColorStop(0, 'rgba(255,244,200,.85)'); g.addColorStop(1, 'rgba(255,244,200,0)');
       x.fillStyle = g; x.beginPath(); x.moveTo(0, 26); x.lineTo(128, 0); x.lineTo(128, 64); x.lineTo(0, 38); x.closePath(); x.fill();
     });
-    this.dustTex = radial('rgba(255,255,255,.9)', 'rgba(255,255,255,0)');
-    this.shadowTex = radial('rgba(0,0,0,.5)', 'rgba(0,0,0,0)');
+    this.dustTex = radial([[0, 'rgba(255,255,255,.9)'], [1, 'rgba(255,255,255,0)']]);
+    this.shadowTex = radial([[0, 'rgba(0,0,0,.5)'], [1, 'rgba(0,0,0,0)']]);
     this.disposables.push(this.beamTex, this.dustTex, this.shadowTex);
 
-    this.sun.position.set(-700, 1100, 520);
+    // الشمس بظلال تتبع منطقة الكاميرا (دقة جيدة على خريطة كبيرة)
     this.sun.castShadow = true;
-    const sc = this.sun.shadow.camera;
-    sc.left = -760; sc.right = 760; sc.top = 760; sc.bottom = -760; sc.near = 100; sc.far = 3200;
     this.sun.shadow.mapSize.set(2048, 2048);
-    this.sun.shadow.bias = -0.0004;
-    this.sun.shadow.normalBias = 0.6;
-    this.scene.add(this.hemi, this.sun, this.sun.target);
+    this.sun.shadow.bias = -0.0004; this.sun.shadow.normalBias = 0.8;
+    this.scene.add(this.hemi, this.sun, this.sun.target, this.moonLight, this.moonLight.target);
 
-    this.buildGround();
-    this.buildRoads();
-    Object.entries(STATIONS).forEach(([name, st]) => this.buildStation(name, st));
+    // حدود الخريطة
+    const xs = SITE_NAMES.map(n => SITE_PLANS[n].x), zs = SITE_NAMES.map(n => SITE_PLANS[n].z);
+    const pad = 420;
+    this.bounds = { x0: Math.min(...xs) - pad, x1: Math.max(...xs) + pad, z0: Math.min(...zs) - pad, z1: Math.max(...zs) + pad };
+
+    // تسطيح الأرض تحت الطرق والساحات: شبكة شبكية لنقاط الطرق لتسريع البحث
+    const roadPts: [number, number][] = [];
+    NET.edges.forEach(e => { if (!e.yard) e.pts.forEach(p => roadPts.push([p[0] * WORLD_S, p[1] * WORLD_S])); });
+    const CELL = 200, grid = new Map<string, [number, number][]>();
+    roadPts.forEach(p => { const k = `${Math.floor(p[0] / CELL)},${Math.floor(p[1] / CELL)}`; (grid.get(k) ?? grid.set(k, []).get(k)!).push(p); });
+    const roadDist = (x: number, z: number) => {
+      let d = Infinity; const cx = Math.floor(x / CELL), cz = Math.floor(z / CELL);
+      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const p of grid.get(`${cx + i},${cz + j}`) ?? []) { const dd = (p[0] - x) ** 2 + (p[1] - z) ** 2; if (dd < d) d = dd; }
+      return Math.sqrt(d);
+    };
+    const padDist = (x: number, z: number) => Math.min(...SITE_NAMES.map(n => {
+      const s = SITE_PLANS[n], dx = x - s.x, dz = z - s.z, c = Math.cos(-s.angle), sn = Math.sin(-s.angle);
+      const lx = dx * c + dz * sn, lz = -dx * sn + dz * c;
+      return Math.hypot(Math.max(0, Math.abs(lx) - s.w / 2), Math.max(0, Math.abs(lz) - s.d / 2));
+    }));
+    const flat = (x: number, z: number) => {
+      const d = Math.min(padDist(x, z) - 30, roadDist(x, z) - 45);
+      return d <= 0 ? 1 : d < 80 ? 1 - d / 80 : 0;
+    };
+    const span = Math.max(this.bounds.x1 - this.bounds.x0, this.bounds.z1 - this.bounds.z0);
+    // الأرض تُبنى حول أصلها ثم تُزاح إلى مركز الخريطة: دالة التسطيح تستقبل إحداثياتها المحلية
+    const ox = (this.bounds.x0 + this.bounds.x1) / 2, oz = (this.bounds.z0 + this.bounds.z1) / 2;
+    this.desert = createDesert({ size: span * 3.2, segments: 320, height: 30, flat: (x, z) => flat(x + ox, z + oz), shrubs: 4200 });
+    this.desert.group.position.set(ox, 0, oz);
+    this.scene.add(this.desert.group);
+    this.disposables.push(this.desert);
+
+    this.buildRoads(roadDist, padDist);
+    SITE_NAMES.forEach(n => this.buildSite(n, SITE_PLANS[n], roadDist));
     this.stars = this.buildStars();
+    this.moon = this.buildMoon();
 
     for (let i = 0; i < DUST_MAX; i++) {
       const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.dustTex, transparent: true, depthWrite: false, color: 0xd8b27a, opacity: 0 }));
@@ -181,287 +203,176 @@ export class StationsScene {
 
   // ---------------- البناء ----------------
 
-  private mat(color: number, o: THREE.MeshStandardMaterialParameters = {}) {
-    const m = new THREE.MeshStandardMaterial({ color, roughness: 0.75, metalness: 0.05, ...o });
-    this.disposables.push(m);
-    return m;
-  }
-  private glow(mat: THREE.MeshStandardMaterial, day: number, night: number) { this.nightMats.push({ mat, day, night }); return mat; }
-  private mesh(geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z: number, parent: THREE.Object3D = this.scene, shadow = true) {
-    const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z);
-    m.castShadow = shadow; m.receiveShadow = true;
-    parent.add(m); this.disposables.push(geo);
-    return m;
-  }
-
-  private buildGround() {
-    const sand = canvasTex(512, 512, x => {
-      x.fillStyle = '#c4934f'; x.fillRect(0, 0, 512, 512);
-      noise(x, 512, 512, 5200, ['#bd8b48', '#cc9c5a', '#b98443', '#d2a463'], [0.6, 1.8]);
-      noise(x, 512, 512, 900, ['#a97a3c', '#8f6a35'], [0.5, 1.2]);
-      noise(x, 512, 512, 140, ['#6f6230', '#5f532a'], [0.8, 1.6]);
-    });
-    sand.wrapS = sand.wrapT = THREE.RepeatWrapping; sand.repeat.set(70, 70);
-    this.disposables.push(sand);
-    const ground = this.mesh(new THREE.PlaneGeometry(7000, 7000), this.mat(0xffffff, { map: sand, roughness: 1 }), 0, 0, 0, this.scene, false);
-    ground.rotation.x = -Math.PI / 2;
-
-    // شجيرات صحراوية وحجارة متناثرة بعيدًا عن الشوارع والساحات
-    const roadPts: [number, number][] = [];
-    DAY_ROADS.edges.forEach(e => e.pts.forEach(p => roadPts.push(W(...unfold(p)))));
-    const pads = Object.values(STATIONS).map(st => {
-      const [x0, z0] = W(st.pad.x0, st.pad.y0 * Y_SCALE), [x1, z1] = W(st.pad.x1, st.pad.y1 * Y_SCALE);
-      return { x0, z0, x1, z1 };
-    });
-    const free = (x: number, z: number) => {
-      if (pads.some(p => x > p.x0 - 18 && x < p.x1 + 18 && z > p.z0 - 18 && z < p.z1 + 18)) return false;
-      for (let i = 0; i < roadPts.length; i += 2) if (Math.abs(roadPts[i][0] - x) < 30 && Math.abs(roadPts[i][1] - z) < 30) return false;
-      return true;
-    };
-    const shrubGeo = new THREE.IcosahedronGeometry(1, 1);
-    this.disposables.push(shrubGeo);
-    const shrubs = new THREE.InstancedMesh(shrubGeo, this.mat(0xffffff, { roughness: 0.95 }), 1500);
-    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), c = new THREE.Color();
-    const tones = [0x5d5a2c, 0x6b6230, 0x4f4a26, 0x7a6a38, 0x5b4b2a];
-    let n = 0;
-    for (let tries = 0; n < 1500 && tries < 9000; tries++) {
-      const x = (rand() - 0.5) * 1500, z = (rand() - 0.5) * 1400;
-      if (!free(x, z)) continue;
-      const s = 2 + rand() * 4.5;
-      q.setFromEuler(new THREE.Euler(0, rand() * 6, 0));
-      m4.compose(new THREE.Vector3(x, s * 0.35, z), q, new THREE.Vector3(s * (1 + rand() * 0.6), s * 0.55, s));
-      shrubs.setMatrixAt(n, m4);
-      shrubs.setColorAt(n, c.setHex(tones[(rand() * tones.length) | 0]));
-      n++;
-    }
-    shrubs.count = n;
-    shrubs.castShadow = true; shrubs.receiveShadow = true;
-    this.scene.add(shrubs);
-  }
-
-  private buildRoads() {
+  private buildRoads(roadDist: (x: number, z: number) => number, padDist: (x: number, z: number) => number) {
     const asphalt = canvasTex(128, 512, x => {
-      x.fillStyle = '#3a3c40'; x.fillRect(0, 0, 128, 512);
-      noise(x, 128, 512, 900, ['#2f3135', '#45474c', '#34363a', '#4d4f54'], [0.6, 1.8]);
-      x.fillStyle = '#d9d4c7'; x.fillRect(7, 0, 4, 512); x.fillRect(117, 0, 4, 512);
+      x.fillStyle = '#3b3d41'; x.fillRect(0, 0, 128, 512);
+      for (let i = 0; i < 2500; i++) { const v = 45 + Math.random() * 30; x.fillStyle = `rgb(${v},${v + 1},${v + 4})`; x.fillRect(Math.random() * 128, Math.random() * 512, 1.5, 1.5); }
+      x.fillStyle = '#e7e2d6'; x.fillRect(6, 0, 4, 512); x.fillRect(118, 0, 4, 512);
       x.fillStyle = '#f2c230'; x.fillRect(62, 0, 4, 300);
     });
-    asphalt.wrapS = THREE.ClampToEdgeWrapping; asphalt.wrapT = THREE.RepeatWrapping;
+    asphalt.wrapT = THREE.RepeatWrapping;
     this.disposables.push(asphalt);
-    const roadMat = this.mat(0xffffff, { map: asphalt, roughness: 0.92, polygonOffset: true, polygonOffsetFactor: -1 });
-    const shoulderMat = this.mat(0x9c7a4a, { roughness: 1, polygonOffset: true, polygonOffsetFactor: -0.5 });
-    DAY_ROADS.edges.forEach(e => {
+    this.roadMat = new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.92, polygonOffset: true, polygonOffsetFactor: -2 });
+    const shoulder = new THREE.MeshStandardMaterial({ color: 0xa88458, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1 });
+    this.disposables.push(this.roadMat, shoulder);
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.4, metalness: 0.7 });
+    const poolTex = radial([[0, 'rgba(255,214,150,.75)'], [0.5, 'rgba(255,190,120,.3)'], [1, 'rgba(255,190,120,0)']]);
+    this.disposables.push(poleMat, poolTex);
+    NET.edges.forEach(e => {
       if (e.yard) return;
-      const pts = e.pts.map(p => W(...unfold(p)));
-      this.mesh(ribbon(pts, 40, 1, 0.06), shoulderMat, 0, 0, 0, this.scene, false).receiveShadow = true;
-      this.mesh(ribbon(pts, 32, 60, 0.12), roadMat, 0, 0, 0, this.scene, false).receiveShadow = true;
+      const pts = e.pts.map(p => [p[0] * WORLD_S, p[1] * WORLD_S] as [number, number]);
+      const sh = new THREE.Mesh(ribbon(pts, 82, 1, 0.25), shoulder); sh.receiveShadow = true; this.scene.add(sh); this.disposables.push(sh.geometry);
+      const rd = new THREE.Mesh(ribbon(pts, 64, 60, 0.35), this.roadMat); rd.receiveShadow = true; this.scene.add(rd); this.disposables.push(rd.geometry);
+      // أعمدة إنارة متباعدة بالتناوب على جانبي الطريق (بعيدًا عن الساحات)
+      let acc = 140, side = 1;
+      for (let i = 1; i < pts.length; i++) {
+        acc += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+        if (acc < 320) continue;
+        acc = 0; side = -side;
+        const a = pts[i - 1], b = pts[i], l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+        const nx = (-(b[1] - a[1]) / l) * side, nz = ((b[0] - a[0]) / l) * side;
+        const bx = b[0] + nx * 48, bz = b[1] + nz * 48;
+        if (padDist(bx, bz) < 60 || roadDist(bx, bz) < 40) continue;
+        this.lamp(bx, bz, -nx, -nz, poleMat, poolTex);
+      }
     });
   }
 
-  private nameTexture(text: string, color: string) {
-    const font = (getComputedStyle(document.body).fontFamily || 'sans-serif');
-    const probe = document.createElement('canvas').getContext('2d')!;
-    probe.font = `800 150px ${font}`;
-    const tw = Math.ceil(probe.measureText(text).width) + 80;
-    const t = canvasTex(tw, 220, x => {
-      x.font = `800 150px ${font}`; x.direction = 'rtl'; x.textAlign = 'center'; x.textBaseline = 'middle';
-      x.lineJoin = 'round'; x.lineWidth = 18; x.strokeStyle = 'rgba(20,24,32,.85)'; x.strokeText(text, tw / 2, 116);
-      x.fillStyle = color; x.fillText(text, tw / 2, 110);
-    });
-    this.disposables.push(t);
-    return { tex: t, aspect: tw / 220 };
+  private lamp(x: number, z: number, dx: number, dz: number, poleMat: THREE.Material, poolTex: THREE.Texture) {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.3, 52, 8), poleMat); pole.position.set(x, 26, z); pole.castShadow = true; this.scene.add(pole);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 16), poleMat); arm.position.set(x + dx * 8, 52, z + dz * 8); arm.lookAt(x + dx * 20, 52, z + dz * 20); this.scene.add(arm);
+    const hm = new THREE.MeshStandardMaterial({ color: 0xe5e7eb, emissive: 0xffd9a0, emissiveIntensity: 0 }); this.lampHeads.push(hm);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(7, 1.6, 3), hm); head.position.set(x + dx * 15, 51, z + dz * 15); head.lookAt(x + dx * 30, 51, z + dz * 30); this.scene.add(head);
+    const pool = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), new THREE.MeshBasicMaterial({ map: poolTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+    pool.rotation.x = -Math.PI / 2; pool.position.set(x + dx * 26, 0.6, z + dz * 26); pool.visible = false; this.pools.push(pool); this.scene.add(pool);
+    this.disposables.push(pole.geometry, arm.geometry, head.geometry, hm, pool.geometry, pool.material as THREE.Material);
   }
 
-  private buildStation(name: string, st: StationLayout) {
-    const g = new THREE.Group(); this.scene.add(g);
-    const [x0, z0] = W(st.pad.x0, st.pad.y0 * Y_SCALE), [x1, z1] = W(st.pad.x1, st.pad.y1 * Y_SCALE);
-    const pw = x1 - x0, pd = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, r = Math.min(pw, pd) * 0.32;
-
-    // كتف رملي فاتح حول الساحة، ثم البلاطة الخرسانية بخطوط وقوف
-    const berm = this.mesh(new THREE.ExtrudeGeometry(roundedShape(pw + 16, pd + 16, r + 8), { depth: 0.8, bevelEnabled: false }), this.mat(0xcfa064, { roughness: 1 }), cx, 0, cz, g, false);
-    berm.rotation.x = -Math.PI / 2;
-    const concrete = canvasTex(256, 256, x => {
-      x.fillStyle = '#6f747b'; x.fillRect(0, 0, 256, 256);
-      noise(x, 256, 256, 900, ['#676c73', '#777c83', '#62676e', '#7e838a'], [0.5, 2]);
-      x.strokeStyle = 'rgba(240,240,235,.55)'; x.lineWidth = 3; x.setLineDash([22, 18]);
-      x.beginPath(); x.moveTo(0, 128); x.lineTo(256, 128); x.stroke();
+  private buildSite(name: string, s: SitePlan, roadDist: (x: number, z: number) => number) {
+    const g = new THREE.Group(); g.position.set(s.x, 0, s.z); g.rotation.y = s.angle; this.scene.add(g);
+    const conc = canvasTex(512, 512, x => {
+      x.fillStyle = '#62676c'; x.fillRect(0, 0, 512, 512);
+      for (let i = 0; i < 9000; i++) { const v = 82 + Math.random() * 35; x.fillStyle = `rgb(${v},${v + 3},${v + 7})`; x.fillRect(Math.random() * 512, Math.random() * 512, 1.4, 1.4); }
+      x.strokeStyle = 'rgba(60,62,66,.55)'; x.lineWidth = 2;
+      for (let i = 0; i <= 8; i++) { x.beginPath(); x.moveTo(i * 64, 0); x.lineTo(i * 64, 512); x.stroke(); x.beginPath(); x.moveTo(0, i * 64); x.lineTo(512, i * 64); x.stroke(); }
     });
-    concrete.wrapS = concrete.wrapT = THREE.RepeatWrapping; concrete.repeat.set(1 / 45, 1 / 45);
-    this.disposables.push(concrete);
-    const pad = this.mesh(new THREE.ExtrudeGeometry(roundedShape(pw, pd, r), { depth: 1.3, bevelEnabled: false }), this.mat(0xffffff, { map: concrete, roughness: 0.85 }), cx, 0, cz, g, false);
+    conc.wrapS = conc.wrapT = THREE.RepeatWrapping; conc.repeat.set(1 / 120, 1 / 120);
+    this.disposables.push(conc);
+    const add = (m: THREE.Mesh) => { m.receiveShadow = true; g.add(m); this.disposables.push(m.geometry, m.material as THREE.Material); return m; };
+    const rim = add(new THREE.Mesh(new THREE.ExtrudeGeometry(rounded(s.w + 34, s.d + 34, 56), { depth: 1, bevelEnabled: false }), new THREE.MeshStandardMaterial({ color: 0xcfa874, roughness: 1 })));
+    rim.rotation.x = -Math.PI / 2;
+    const pad = add(new THREE.Mesh(new THREE.ExtrudeGeometry(rounded(s.w, s.d, 40), { depth: PAD_Y, bevelEnabled: false }), new THREE.MeshStandardMaterial({ map: conc, roughness: 0.85 })));
     pad.rotation.x = -Math.PI / 2;
     pad.userData.site = name;
     this.pads.push(pad);
 
-    // رصيف أصفر وأسود حول الحافة، وأشجار سرو بينه وبين الصحراء
-    const outline = roundedShape(pw, pd, r).getSpacedPoints(Math.round((pw + pd) / 3.2));
-    const curbGeo = new THREE.BoxGeometry(3.6, 1.6, 1.6); this.disposables.push(curbGeo);
-    const curbs = [new THREE.InstancedMesh(curbGeo, this.mat(0xf5c518, { roughness: 0.6 }), outline.length), new THREE.InstancedMesh(curbGeo, this.mat(0x1f2328, { roughness: 0.7 }), outline.length)];
-    const counts = [0, 0];
-    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion();
-    outline.forEach((p, i) => {
-      const nx = outline[(i + 1) % outline.length];
-      q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.atan2(-(nx.y - p.y), nx.x - p.x));
-      m4.compose(new THREE.Vector3(cx + p.x, 1.4, cz - p.y), q, new THREE.Vector3(1, 1, 1));
-      const k = i % 2; curbs[k].setMatrixAt(counts[k]++, m4);
+    // رصيف متصل حول الساحة بفتحة للمدخل، وطرفاه ينعطفان بانسيابية مع حافتي المدخل
+    const ex = s.hand === 1 ? -140 : 170, entry = new THREE.Vector3(ex, 0, s.d / 2);
+    const outline = rounded(s.w, s.d, 40).getSpacedPoints(440).map(v => new THREE.Vector3(v.x, 0, -v.y));
+    const isGap = (v: THREE.Vector3) => v.distanceTo(entry) < 34;
+    let start = outline.findIndex(isGap);
+    while (start > 0 && isGap(outline[start - 1])) start--;
+    const run = [...outline.slice(start), ...outline.slice(0, start)].filter(v => !isGap(v));
+    const ret = (end: THREE.Vector3, dir: THREE.Vector3) => Array.from({ length: 8 }, (_, k) => {
+      const a = ((k + 1) / 8) * (Math.PI / 2), R = 16;
+      return end.clone().add(dir.clone().multiplyScalar(Math.sin(a) * R)).add(new THREE.Vector3(0, 0, (1 - Math.cos(a)) * R));
     });
-    curbs.forEach((c, k) => { c.count = counts[k]; c.receiveShadow = true; g.add(c); });
-    const treeGeo = new THREE.ConeGeometry(5, 22, 8), trunkGeo = new THREE.CylinderGeometry(0.7, 0.9, 4, 6);
-    this.disposables.push(treeGeo, trunkGeo);
-    const trees = new THREE.InstancedMesh(treeGeo, this.mat(0x2e5a2a, { roughness: 0.9 }), outline.length);
-    const trunks = new THREE.InstancedMesh(trunkGeo, this.mat(0x5b4227), outline.length);
-    let tn = 0;
-    const roadNear = (wx: number, wz: number) => DAY_ROADS.edges.some(e => e.pts.some(pp => { const [rx, rz] = W(...unfold(pp)); return Math.abs(rx - wx) < 26 && Math.abs(rz - wz) < 26; }));
-    outline.forEach((p, i) => {
-      if (i % 4 || rand() < 0.25) return;
-      const wx = cx + p.x * 1.04, wz = cz - p.y * 1.04;
-      if (roadNear(wx, wz)) return;
-      const s = 0.8 + rand() * 0.5;
-      m4.compose(new THREE.Vector3(wx, 14 * s, wz), new THREE.Quaternion(), new THREE.Vector3(s, s, s)); trees.setMatrixAt(tn, m4);
-      m4.compose(new THREE.Vector3(wx, 2, wz), new THREE.Quaternion(), new THREE.Vector3(1, 1, 1)); trunks.setMatrixAt(tn, m4);
-      tn++;
+    const f = run[0], l = run[run.length - 1];
+    g.add(this.curb([...ret(f, f.clone().sub(run[1]).normalize()).reverse(), ...run, ...ret(l, l.clone().sub(run[run.length - 2]).normalize())]));
+
+    // أشجار صغيرة وشجيرات خارج الرصيف بمسافة، بعيدًا عن المدخل والطرق
+    outline.forEach((pt, i) => {
+      if (i % 22) return;
+      const w = pt.clone().add(pt.clone().normalize().multiplyScalar(30));
+      const [wx, wz] = padWorld(s, w.x, w.z);
+      if (roadDist(wx, wz) < 70 || w.distanceTo(entry) < 80) return;
+      const o = (i / 22) % 2 === 0 ? createSmallTree(undefined, i + name.length) : createDesertShrub(undefined, i + name.length);
+      o.position.copy(w); g.add(o);
     });
-    trees.count = trunks.count = tn; trees.castShadow = true; g.add(trees, trunks);
 
-    // المظلة: سقف ملون بحافة، وأعمدة، وجزر مضخات، وإنارة سفلية
-    const cb = boxWorld(st.canopy);
-    const roof = this.mesh(new THREE.BoxGeometry(cb.w, 4, cb.d), this.mat(st.colors.roof, { roughness: 0.5, metalness: 0.2 }), cb.x, CANOPY_H + 2.5, cb.z, g);
-    roof.castShadow = true;
-    this.mesh(new THREE.BoxGeometry(cb.w + 1.6, 6, cb.d + 1.6), this.mat(st.colors.band, { roughness: 0.45, metalness: 0.2 }), cb.x, CANOPY_H + 0.6, cb.z, g);
-    const glowMat = this.glow(this.mat(0xf8fafc, { emissive: 0xfff7e0, emissiveIntensity: 0 }), 0, 1.6);
-    const panel = this.mesh(new THREE.PlaneGeometry(cb.w - 2, cb.d - 2), glowMat, cb.x, CANOPY_H - 1.6, cb.z, g, false);
-    panel.rotation.x = Math.PI / 2;
-    const islands = Math.max(2, Math.round(cb.w / 42));
-    // إن كانت نقطة الوقوف تحت المظلة (البوادي) تُترك حارة للصهريج بين الجزر
-    const pk = parkPose(name), [pkx, pkz] = pk ? W(pk.x, pk.y) : [Infinity, Infinity];
-    const under = Math.abs(pkz - cb.z) < cb.d / 2 + 40 && Math.abs(pkx - cb.x) < cb.w / 2;
-    const nSlots = islands + (under ? 1 : 0);
-    let slots = Array.from({ length: nSlots }, (_, i) => cb.x - cb.w / 2 + (cb.w / nSlots) * (i + 0.5));
-    if (under) { const drop = slots.reduce((b, v, i) => (Math.abs(v - pkx) < Math.abs(slots[b] - pkx) ? i : b), 0); slots = slots.filter((_, i) => i !== drop); }
-    const colGeo = new THREE.BoxGeometry(2.4, CANOPY_H, 2.4); this.disposables.push(colGeo);
-    const colMat = this.mat(0xe5e7eb, { roughness: 0.4, metalness: 0.3 });
-    const islandMat = this.mat(0xb8bcc2), pumpMat = this.mat(0xf3f4f6, { roughness: 0.35, metalness: 0.2 }), pumpBand = this.mat(st.colors.band);
-    const screen = this.glow(this.mat(0x0f172a, { emissive: 0x38bdf8, emissiveIntensity: 0.2 }), 0.2, 1.2);
-    for (const ix of slots) {
-      this.mesh(new THREE.BoxGeometry(9, 1.6, cb.d * 0.62), islandMat, ix, 2.1, cb.z, g);
-      [-1, 1].forEach(sd => {
-        this.mesh(colGeo, colMat, ix, CANOPY_H / 2 + 1.3, cb.z + sd * cb.d * 0.34, g);
-        const pz = cb.z + sd * cb.d * 0.14;
-        this.mesh(new THREE.BoxGeometry(5.5, 14, 4.4), pumpMat, ix, 9.9, pz, g);
-        this.mesh(new THREE.BoxGeometry(5.6, 3, 4.5), pumpBand, ix, 15.6, pz, g, false);
-        this.mesh(new THREE.BoxGeometry(3.4, 2.4, 0.2), screen, ix, 11.5, pz + sd * 2.3, g, false);
-      });
-    }
-    // الاسم فوق المظلة كما في الصورة
-    const { tex, aspect } = this.nameTexture(name, st.colors.text);
-    const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
-    this.disposables.push(label.material);
-    const lh = 40;
-    label.scale.set(lh * aspect, lh, 1);
-    label.position.set(cb.x, CANOPY_H + 8, cb.z);
-    label.center.set(0.5, 0.2);
-    g.add(label);
-    this.anchors.set(name, new THREE.Vector3(cx, 2, z1 + 14));
-
-    // المبنى: جدران ونوافذ مضيئة ليلًا وسقف بحافة
-    const sb = boxWorld(st.shop);
-    this.mesh(new THREE.BoxGeometry(sb.w, 32, sb.d), this.mat(st.colors.shop, { roughness: 0.7 }), sb.x, 17.3, sb.z, g);
-    this.mesh(new THREE.BoxGeometry(sb.w + 3, 2.4, sb.d + 3), this.mat(st.colors.trim), sb.x, 34.4, sb.z, g);
-    const winTex = canvasTex(256, 64, x => {
-      x.fillStyle = '#1f2937'; x.fillRect(0, 0, 256, 64);
-      for (let i = 0; i < 6; i++) { x.fillStyle = i === 2 ? '#334155' : '#fde7b0'; x.fillRect(8 + i * 41, 10, 34, i === 2 ? 54 : 34); }
-    });
-    this.disposables.push(winTex);
-    const win = this.glow(this.mat(0xffffff, { map: winTex, emissiveMap: winTex, emissive: 0xffffff, emissiveIntensity: 0, roughness: 0.2, metalness: 0.3 }), 0.05, 1.3);
-    this.mesh(new THREE.PlaneGeometry(sb.w * 0.86, 16), win, sb.x, 12.5, sb.z + sb.d / 2 + 0.15, g, false);
-
-    // خزان الوقود الأبيض على قاعدتين
-    const [tx, tz] = W(st.tank[0], st.tank[1] * Y_SCALE);
-    const tank = this.mesh(new THREE.CylinderGeometry(10, 10, 46, 32), this.mat(0xeef2f6, { roughness: 0.3, metalness: 0.5 }), tx, 15, tz - 4, g);
-    tank.rotation.z = Math.PI / 2;
-    [-14, 14].forEach(dx => this.mesh(new THREE.BoxGeometry(3, 6, 15), this.mat(0x6b7280), tx + dx, 3, tz - 4, g));
-
-    // عمود اللوحة بشعار مضيء
-    const [sx, sz] = W(st.sign[0], st.sign[1] * Y_SCALE);
-    this.mesh(new THREE.BoxGeometry(11, 52, 4), this.mat(0x111827, { roughness: 0.4 }), sx, 27, sz, g);
-    const logo = canvasTex(128, 256, x => {
-      x.fillStyle = '#0b1220'; x.fillRect(0, 0, 128, 256);
-      x.fillStyle = '#dc2626'; x.beginPath(); x.arc(64, 70, 42, 0, Math.PI * 2); x.fill();
-      x.fillStyle = '#fff'; x.beginPath(); x.moveTo(64, 38); x.quadraticCurveTo(92, 78, 64, 98); x.quadraticCurveTo(36, 78, 64, 38); x.fill();
-      x.fillStyle = '#e5e7eb'; for (let i = 0; i < 4; i++) x.fillRect(22, 140 + i * 24, 84 - i * 12, 10);
-    });
-    this.disposables.push(logo);
-    const logoMat = this.glow(this.mat(0xffffff, { map: logo, emissiveMap: logo, emissive: 0xffffff, emissiveIntensity: 0.15 }), 0.15, 1.1);
-    this.mesh(new THREE.PlaneGeometry(9, 42), logoMat, sx, 28, sz + 2.1, g, false);
-
-    // أعمدة إنارة عند زوايا الساحة، وإنارة المحطة ليلًا
-    const poleGeo = new THREE.CylinderGeometry(0.5, 0.8, 48, 6); this.disposables.push(poleGeo);
-    const headMat = this.glow(this.mat(0xe5e7eb, { emissive: 0xfff1c1, emissiveIntensity: 0 }), 0, 2.5);
-    [[x0 + pw * 0.22, z0 + 6], [x1 - pw * 0.12, z0 + 6]].forEach(([px, pz]) => {
-      this.mesh(poleGeo, this.mat(0x9ca3af, { metalness: 0.5 }), px, 24, pz, g);
-      this.mesh(new THREE.BoxGeometry(7, 1.6, 2.6), headMat, px + 3, 48, pz, g, false);
-    });
-    const light = new THREE.PointLight(0xffd9a0, 0, 340, 1.4);
-    light.position.set(cb.x, CANOPY_H - 6, cb.z + cb.d * 0.4);
-    g.add(light); this.stationLights.push(light);
-
-    // نقطة التفريغ حيث يصل خرطوم الصهريج الواقف
-    const pp = parkPose(name);
-    if (pp) {
-      const pivot = new THREE.Group();
-      const [px, pz] = W(pp.x, pp.y);
-      pivot.position.set(px, 1.3, pz);
-      pivot.rotation.y = -pp.heading;
-      pivot.scale.setScalar((TRUCK_LEN * WORLD_S) / MODEL_LEN);
-      const mk = this.fillMarker();
-      mk.position.set(HOSE_TIP.x, 0, pp.side * HOSE_TIP.z);
-      pivot.add(mk);
-      g.add(pivot);
-    }
+    const st = createStation(name, s.colors, s.depot, undefined, s.hand);
+    st.group.position.set(0, PAD_Y, STATION_OFFSET_Z);
+    st.group.traverse(o => { if (o instanceof THREE.Mesh && !(o.material as THREE.Material).transparent) { o.castShadow = true; o.receiveShadow = true; } });
+    g.add(st.group);
+    this.stations.push(st);
+    this.disposables.push(st);
+    const [ax, az] = padWorld(s, 0, s.d / 2 + 34);
+    this.anchors.set(name, new THREE.Vector3(ax, 2, az));
   }
 
-  private fillMarker(): THREE.Group {
-    const g = new THREE.Group();
-    const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; g.add(o); this.disposables.push(geo); };
-    add(new THREE.BoxGeometry(0.62, 0.04, 0.62), this.mat(0x6b7280, { roughness: 0.9 }), 0, 0.02, 0);
-    add(new THREE.CylinderGeometry(0.2, 0.2, 0.05, 20), this.mat(0xfacc15, { emissive: 0x3f2a00, emissiveIntensity: 0.4 }), 0, 0.06, 0);
-    add(new THREE.CylinderGeometry(0.13, 0.13, 0.07, 18), this.mat(0x111827), 0, 0.09, 0);
-    add(new THREE.CylinderGeometry(0.08, 0.08, 0.08, 16), this.mat(0xdc2626, { emissive: 0x450a0a, emissiveIntensity: 0.5 }), 0, 0.13, 0);
-    add(new THREE.BoxGeometry(0.03, 0.5, 0.03), this.mat(0x9ca3af, { metalness: 0.6 }), 0.24, 0.27, -0.2);
-    add(new THREE.BoxGeometry(0.2, 0.16, 0.02), this.mat(0xf59e0b, { emissive: 0x7c2d12, emissiveIntensity: 0.6 }), 0.24, 0.5, -0.2);
-    return g;
+  /** رصيف أصفر وأسود متصل على مسار نقاط */
+  private curbMat: THREE.MeshStandardMaterial | null = null;
+  private curb(pts: THREE.Vector3[]) {
+    if (!this.curbMat) {
+      const t = canvasTex(64, 16, x => { x.fillStyle = '#e9bf2a'; x.fillRect(0, 0, 32, 16); x.fillStyle = '#1f2328'; x.fillRect(32, 0, 32, 16); });
+      t.wrapS = THREE.RepeatWrapping;
+      this.curbMat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.6 });
+      this.disposables.push(t, this.curbMat);
+    }
+    const pos: number[] = [], uv: number[] = [], idx: number[] = [];
+    let u = 0;
+    pts.forEach((p, i) => {
+      const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)];
+      const t = b.clone().sub(a).normalize(), n = new THREE.Vector3(-t.z, 0, t.x).multiplyScalar(1.3);
+      if (i) u += p.distanceTo(pts[i - 1]) / 9;
+      const L = p.clone().add(n), R = p.clone().sub(n);
+      pos.push(L.x, 0.5, L.z, L.x, 2.8, L.z, R.x, 2.8, R.z, R.x, 0.5, R.z);
+      uv.push(u, 0, u, 0.5, u, 0.5, u, 1);
+      if (i) { const o = (i - 1) * 4, c = i * 4; for (let k = 0; k < 3; k++) idx.push(o + k, c + k, o + k + 1, o + k + 1, c + k, c + k + 1); }
+    });
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals();
+    this.disposables.push(geo);
+    const m = new THREE.Mesh(geo, this.curbMat); m.castShadow = true; m.receiveShadow = true;
+    return m;
   }
 
   private buildStars() {
     const n = 900, pos = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
-      const a = rand() * Math.PI * 2, e = 0.12 + rand() * 1.3, r = 4200;
+      const a = rand() * Math.PI * 2, e = 0.12 + rand() * 1.3, r = 15000;
       pos.set([Math.cos(a) * Math.cos(e) * r, Math.sin(e) * r, Math.sin(a) * Math.cos(e) * r], i * 3);
     }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    const m = new THREE.PointsMaterial({ color: 0xdbeafe, size: 2.2, sizeAttenuation: false, fog: false });
+    const m = new THREE.PointsMaterial({ color: 0xdbeafe, size: 2, sizeAttenuation: false, fog: false });
     this.disposables.push(geo, m);
     const p = new THREE.Points(geo, m); this.scene.add(p);
     return p;
+  }
+
+  private buildMoon() {
+    const t = canvasTex(256, 256, x => {
+      const gr = x.createRadialGradient(128, 128, 0, 128, 128, 128);
+      gr.addColorStop(0, 'rgba(235,240,255,1)'); gr.addColorStop(0.32, 'rgba(225,232,250,1)'); gr.addColorStop(0.38, 'rgba(190,205,240,.35)'); gr.addColorStop(1, 'rgba(160,180,230,0)');
+      x.fillStyle = gr; x.fillRect(0, 0, 256, 256);
+      x.fillStyle = 'rgba(170,180,205,.35)'; [[110, 105, 14], [150, 140, 10], [120, 150, 8]].forEach(([cx, cy, rr]) => { x.beginPath(); x.arc(cx, cy, rr, 0, Math.PI * 2); x.fill(); });
+    });
+    const m = new THREE.SpriteMaterial({ map: t, fog: false, depthWrite: false });
+    this.disposables.push(t, m);
+    const s = new THREE.Sprite(m); s.scale.set(1400, 1400, 1); this.scene.add(s);
+    return s;
   }
 
   // ---------------- نهار / ليل ----------------
 
   setNight(night: boolean) {
     this.night = night;
-    const sky = night ? 0x0a1020 : 0xd8c8a8;
+    const sky = night ? 0x0b1226 : 0xdccfb6;
     this.scene.background = new THREE.Color(sky);
-    this.scene.fog = new THREE.Fog(sky, night ? 1600 : 2200, night ? 4200 : 5600);
-    this.hemi.color.set(night ? 0x3b4a78 : 0xfff1d6);
-    this.hemi.groundColor.set(night ? 0x1a140c : 0x8a6a3a);
-    this.hemi.intensity = night ? 0.5 : 1.05;
-    this.sun.color.set(night ? 0x9fb4ff : 0xfff4e0);
-    this.sun.intensity = night ? 0.45 : 2.8;
-    this.renderer.toneMappingExposure = night ? 1.05 : 0.92;
-    this.scene.environmentIntensity = night ? 0.25 : 0.9;
-    this.stationLights.forEach(l => { l.intensity = night ? 900 : 0; });
-    this.nightMats.forEach(({ mat, day, night: n }) => { mat.emissiveIntensity = night ? n : day; });
-    this.stars.visible = night;
+    this.scene.fog = new THREE.Fog(sky, night ? 2600 : 3600, night ? 9000 : 12000);
+    this.hemi.color.set(night ? 0x2a3658 : 0xfff1d6);
+    this.hemi.groundColor.set(night ? 0x0e0b08 : 0x8a6a3a);
+    this.hemi.intensity = night ? 0.22 : 1.05;
+    this.scene.environmentIntensity = night ? 0.12 : 1;
+    this.sun.intensity = night ? 0 : 2.8; this.sun.castShadow = !night;
+    this.moonLight.intensity = night ? 0.55 : 0; this.moonLight.castShadow = night;
+    this.moon.visible = night; this.stars.visible = night;
+    this.renderer.toneMappingExposure = night ? 1 : 0.95;
+    // الأسفلت ليلًا أنعم قليلًا فيعكس ضوء القمر والإنارة
+    this.roadMat.roughness = night ? 0.42 : 0.92; this.roadMat.metalness = night ? 0.15 : 0;
+    this.lampHeads.forEach(m => { m.emissiveIntensity = night ? 4 : 0; });
+    this.pools.forEach(p => { p.visible = night; });
+    this.desert.setNight(night);
+    this.stations.forEach(st => { st.glow.forEach(([m, d, n]) => { m.emissiveIntensity = night ? n : d; }); st.lights.forEach(l => { l.intensity = night ? 2500 : 0; }); });
     this.trucks.forEach(t => { t.beams.visible = night; });
     this.dust.forEach(d => (d.sprite.material as THREE.SpriteMaterial).color.set(night ? 0x5f5040 : 0xd8b27a));
   }
@@ -474,22 +385,23 @@ export class StationsScene {
     this.canvas.style.width = `${this.w}px`; this.canvas.style.height = `${this.h}px`;
     this.camera.aspect = this.w / this.h;
     this.camera.updateProjectionMatrix();
-    this.home = this.fit(-470, 470, -GROUND_D / 2 * WORLD_S + 20, GROUND_D / 2 * WORLD_S - 10, 0, 0.66);
+    const b = this.bounds;
+    this.home = this.fit(b.x0 + 80, b.x1 - 80, b.z0 + 60, b.z1 + 60, 0, 0.78);
   }
 
   /** مسافة الكاميرا وهدفها ليظهر مستطيل الأرض كاملًا */
   fit(xa: number, xb: number, za: number, zb: number, az = this.cam.az, el = this.cam.el): CamState {
     const vf = (this.camera.fov * Math.PI) / 180, hf = 2 * Math.atan(Math.tan(vf / 2) * this.camera.aspect);
     const w = xb - xa, d = zb - za;
-    const dist = Math.max((w / 2) / Math.tan(hf / 2), (d * Math.sin(el) / 2 + 40) / Math.tan(vf / 2)) * 1.12 + d * Math.cos(el) * 0.2;
-    return { tx: (xa + xb) / 2, tz: (za + zb) / 2 + d * 0.06, dist, az, el };
+    const dist = Math.max((w / 2) / Math.tan(hf / 2), (d * Math.sin(el) / 2 + 40) / Math.tan(vf / 2)) * 1.05 + d * Math.cos(el) * 0.15;
+    return { tx: (xa + xb) / 2, tz: (za + zb) / 2 + d * 0.05, dist, az, el };
   }
 
   private clampCam(c: CamState): CamState {
-    const max = this.home.dist * 1.15;
+    const b = this.bounds;
     return {
-      tx: Math.max(-560, Math.min(560, c.tx)), tz: Math.max(-580, Math.min(580, c.tz)),
-      dist: Math.max(120, Math.min(max, c.dist)), az: c.az, el: Math.max(0.32, Math.min(1.42, c.el)),
+      tx: Math.max(b.x0, Math.min(b.x1, c.tx)), tz: Math.max(b.z0, Math.min(b.z1, c.tz)),
+      dist: Math.max(140, Math.min(this.maxDist, c.dist)), az: c.az, el: Math.max(0.3, Math.min(1.42, c.el)),
     };
   }
   get maxDist() { return this.home.dist * 1.15; }
@@ -497,6 +409,13 @@ export class StationsScene {
     const { tx, tz, dist, az, el } = this.cam;
     this.camera.position.set(tx + Math.sin(az) * Math.cos(el) * dist, Math.sin(el) * dist, tz + Math.cos(az) * Math.cos(el) * dist);
     this.camera.lookAt(tx, 0, tz);
+    // الشمس وظلالها حول منطقة النظر، والقمر في السماء أمام الكاميرا
+    const half = Math.max(500, Math.min(3200, dist * 0.8));
+    const sc = this.sun.shadow.camera;
+    if (sc.right !== half) { Object.assign(sc, { left: -half, right: half, top: half, bottom: -half, near: 100, far: half * 4 + 3000 }); sc.updateProjectionMatrix(); Object.assign(this.moonLight.shadow.camera, { left: -half, right: half, top: half, bottom: -half, near: 100, far: half * 4 + 3000 }); this.moonLight.shadow.camera.updateProjectionMatrix(); }
+    this.sun.target.position.set(tx, 0, tz); this.sun.position.set(tx - 900, 1300, tz + 700);
+    this.moonLight.target.position.set(tx, 0, tz); this.moonLight.position.set(tx + 1300, 900, tz - 2400);
+    this.moon.position.set(tx - Math.sin(az) * 14000 + 4000, 4200, tz - Math.cos(az) * 14000);
   }
   /** سحب الخريطة بالبكسل */
   pan(dx: number, dy: number) {
@@ -531,9 +450,8 @@ export class StationsScene {
   /** هدف ومسافة لتظهر نقاط (وحدات أرض) كاملة */
   fitPoints(xs: ArrayLike<number>, ys: ArrayLike<number>) {
     let xa = Infinity, xb = -Infinity, za = Infinity, zb = -Infinity;
-    for (let i = 0; i < xs.length; i++) { const [x, z] = W(xs[i], ys[i]); xa = Math.min(xa, x); xb = Math.max(xb, x); za = Math.min(za, z); zb = Math.max(zb, z); }
-    const pad = 80;
-    this.goal = this.clampCam(this.fit(xa - pad, xb + pad, za - pad, zb + pad));
+    for (let i = 0; i < xs.length; i++) { const x = xs[i] * WORLD_S, z = ys[i] * WORLD_S; xa = Math.min(xa, x); xb = Math.max(xb, x); za = Math.min(za, z); zb = Math.max(zb, z); }
+    this.goal = this.clampCam(this.fit(xa - 200, xb + 200, za - 200, zb + 200));
   }
   /** نقطة مشهد ← الشاشة (null خلف الكاميرا) */
   project(v: THREE.Vector3): [number, number] | null {
@@ -541,7 +459,7 @@ export class StationsScene {
     if (p.z > 1) return null;
     return [((p.x + 1) / 2) * this.w, ((1 - p.y) / 2) * this.h];
   }
-  worldOf(x: number, y: number, h = 0) { const [wx, wz] = W(x, y); return new THREE.Vector3(wx, h, wz); }
+  worldOf(x: number, y: number, h = 0) { return new THREE.Vector3(x * WORLD_S, h, y * WORLD_S); }
   /** المحطة تحت نقطة الشاشة */
   pick(sx: number, sy: number): string | null {
     this.raycaster.setFromCamera(new THREE.Vector2((sx / this.w) * 2 - 1, -(sy / this.h) * 2 + 1), this.camera);
@@ -563,34 +481,33 @@ export class StationsScene {
       if (this.trucks.has(id)) return;
       const pivot = new THREE.Group();
       const model = createTanker({ cab: 0x1d3557, polished: true });
-      model.traverse(o => { if (o instanceof THREE.Mesh) { o.castShadow = true; o.receiveShadow = true; } });
       pivot.add(model);
       const flat = (tex: THREE.Texture, w: number, d: number, x: number, y: number, add = false) => {
         const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending }));
         m.rotation.x = -Math.PI / 2; m.position.set(x, y, 0); pivot.add(m); return m;
       };
       flat(this.shadowTex, 4.4, 1.3, -0.1, 0.02);
-      const beams = flat(this.beamTex, 3.4, 1.7, 3.65, 0.03, true);
+      const beams = flat(this.beamTex, 3.4, 1.7, 3.7, 0.03, true);
       beams.visible = this.night;
-      pivot.scale.setScalar((TRUCK_LEN * WORLD_S) / MODEL_LEN);
+      pivot.scale.setScalar(TRUCK_WORLD / TANKER_LEN);
       this.scene.add(pivot);
       const u = model.userData as Lights & { wheels?: THREE.Object3D[] };
-      this.trucks.set(id, { pivot, model, wheels: u.wheels ?? [], beams, lights: u, y: 0.2 });
+      this.trucks.set(id, { pivot, model, wheels: u.wheels ?? [], beams, lights: u, y: 0.4 });
     });
   }
 
   private emitDust(id: string, s: TruckState, dt: number) {
     let carry = (this.emitCarry.get(id) ?? 0) + s.dust * 50 * dt;
-    const len = TRUCK_LEN * WORLD_S, cx = Math.cos(s.heading), cz = Math.sin(s.heading);
-    const [x, z] = W(s.x, s.y);
+    const cx = Math.cos(s.heading), cz = Math.sin(s.heading);
+    const x = s.x * WORLD_S, z = s.y * WORLD_S;
     while (carry >= 1) {
       carry -= 1;
       const d = this.dust.find(p => !p.alive);
       if (!d) { carry = 0; break; }
-      const side = (rand() - 0.5) * len * 0.24, back = len * (0.42 + rand() * 0.08);
+      const side = (rand() - 0.5) * TRUCK_WORLD * 0.2, back = TRUCK_WORLD * (0.42 + rand() * 0.08);
       d.x = x - cx * back - cz * side; d.z = z - cz * back + cx * side; d.y = 2;
       d.vx = -cx * 6 + (rand() - 0.5) * 6; d.vz = -cz * 6 + (rand() - 0.5) * 6;
-      d.age = 0; d.life = 1.3 + rand() * 1.2; d.size = len * (0.14 + rand() * 0.08); d.alive = true;
+      d.age = 0; d.life = 1.3 + rand() * 1.2; d.size = TRUCK_WORLD * (0.12 + rand() * 0.08); d.alive = true;
     }
     this.emitCarry.set(id, carry);
   }
@@ -606,14 +523,13 @@ export class StationsScene {
     }
     this.applyCam();
     const blink = this.clock % 0.7 < 0.35, flash = this.clock % 0.5 < 0.18;
-    const k = (TRUCK_LEN * WORLD_S) / MODEL_LEN;
+    const k = TRUCK_WORLD / TANKER_LEN;
     this.trucks.forEach((t, id) => {
       const s = states.get(id);
       t.pivot.visible = !!s;
       if (!s) return;
-      const [x, z] = W(s.x, s.y);
-      t.y += ((s.yard ? 1.35 : 0.15) - t.y) * Math.min(1, dt * 5 || 1);
-      t.pivot.position.set(x, t.y, z);
+      t.y += ((s.yard ? PAD_Y + 0.1 : 0.4) - t.y) * Math.min(1, dt * 5 || 1);
+      t.pivot.position.set(s.x * WORLD_S, t.y, s.y * WORLD_S);
       t.pivot.rotation.y = -s.heading;
       const ease = Math.min(1, dt * 6);
       t.model.rotation.x += (s.roll - t.model.rotation.x) * ease;
@@ -621,7 +537,7 @@ export class StationsScene {
       const spin = (s.travel * WORLD_S) / k / WHEEL_R;
       if (spin) t.wheels.forEach(w => { w.rotation.z -= spin; });
       const L = t.lights;
-      if (L.brake) L.brake.emissiveIntensity = s.brake ? 3.2 : this.night ? 1.1 : 0.7;
+      if (L.brake) L.brake.emissiveIntensity = s.brake ? 3.2 : this.night ? 1.4 : 0.7;
       if (L.signalL) L.signalL.emissiveIntensity = (s.signal === -1 || s.unloading) && blink ? 3 : 0.15;
       if (L.signalR) L.signalR.emissiveIntensity = (s.signal === 1 || s.unloading) && blink ? 3 : 0.15;
       if (L.beacon) L.beacon.emissiveIntensity = s.unloading ? (flash ? 4 : 0.4) : 0.1;

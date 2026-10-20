@@ -1,4 +1,4 @@
-import { STATION_ENTRIES, type RoadNet, type RoadPt } from './stationRoads';
+import type { RoadNet, RoadPt } from './stationNetwork';
 
 /**
  * حركة صهريج على شوارع خريطة المحطات: أقصر طريق بين مدخلي محطتين، ومسار مُعاد التقسيم بخطوات متساوية،
@@ -10,7 +10,7 @@ export interface RoutePoint { x: number; y: number; yard: boolean }
 
 /** أقصر طريق على الشبكة من أي مدخل لمحطة الانطلاق إلى أي مدخل لمحطة الوجهة (null إن تعذّر) */
 export const buildRoute = (net: RoadNet, from: string, to: string, hRatio: number): RoutePoint[] | null => {
-  const starts = STATION_ENTRIES[from], ends = STATION_ENTRIES[to];
+  const starts = net.entries[from], ends = net.entries[to];
   if (!starts || !ends || from === to) return null;
   const toU = (p: RoadPt) => ({ x: p[0], y: p[1] * hRatio });
   const len = (pts: RoadPt[]) => pts.reduce((s, p, i) => (i ? s + Math.hypot(toU(p).x - toU(pts[i - 1]).x, toU(p).y - toU(pts[i - 1]).y) : 0), 0);
@@ -76,16 +76,16 @@ export interface Track {
 
 export const TRACK = {
   /** خطوة إعادة التقسيم */
-  step: 0.2,
-  /** السرعة القصوى على الطريق المستقيم (وحدة/ثانية في عرض الرحلة) */
-  vmax: 7.5,
+  step: 0.4,
+  /** السرعة القصوى على الطريق المستقيم (وحدة أرض/ثانية في عرض الرحلة؛ الصهريج 8.4 وحدة) */
+  vmax: 17,
   /** داخل ساحة محطة */
-  vyard: 2.4,
+  vyard: 3.2,
   /** التسارع والتباطؤ الطوليان (وحدة/ث²) */
-  accel: 1.5,
-  decel: 2.1,
+  accel: 2.6,
+  decel: 3.4,
   /** التسارع الجانبي المسموح في المنعطفات */
-  lateral: 2.6,
+  lateral: 5,
 };
 
 /** مسار بخطوات متساوية مع تنعيم خفيف للزوايا، وملف السرعة عليه */
@@ -196,9 +196,9 @@ export interface TripPlan { start: number; driveMs: number; queueMs: number; unl
 export type TripPhase = 'waiting' | 'driving' | 'queued' | 'unloading' | 'unloaded';
 export interface TripMoment { phase: TripPhase; drive: number; unload: number; msLeft: number }
 
-/** معدل تفريغ تقديري (لتر/دقيقة) وفاصل الانطلاق بين صهاريج القافلة ومدة افتراضية حين لا تُحدد مدة الوصول */
+/** معدل تفريغ تقديري (لتر/دقيقة) وفاصل الانطلاق بين صهاريج القافلة (3 ثوانٍ) ومدة افتراضية حين لا تُحدد مدة الوصول */
 export const UNLOAD_LPM = 1000;
-export const CONVOY_GAP_MIN = 2;
+export const CONVOY_GAP_S = 3;
 export const DEFAULT_ETA_MIN = 60;
 
 /**
@@ -213,7 +213,7 @@ export const queuedPlan = (start0: number, gapMs: number, driveMs: number, unloa
 });
 
 export const planTrip = (approvedAt: number, etaMin: number, qtyEach: number, index: number): TripPlan =>
-  queuedPlan(approvedAt, CONVOY_GAP_MIN * 60000, Math.max(1, etaMin) * 60000, Math.max(60000, (qtyEach / UNLOAD_LPM) * 60000), index);
+  queuedPlan(approvedAt, CONVOY_GAP_S * 1000, Math.max(1, etaMin) * 60000, Math.max(60000, (qtyEach / UNLOAD_LPM) * 60000), index);
 
 export const tripAt = (p: TripPlan, now: number): TripMoment => {
   const e = now - p.start;

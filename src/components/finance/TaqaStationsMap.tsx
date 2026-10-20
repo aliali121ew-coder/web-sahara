@@ -3,8 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Crosshair, Maximize2, Minus, Moon, Play, Plus, Radio, RotateCcw, RotateCw, Route, Sun } from 'lucide-react';
 import type { SiteCover } from '../../lib/siteFarmsMap';
 import type { SiteWeather } from '../../lib/weather';
-import { DAY_ROADS } from '../../lib/stationRoads';
-import { STATIONS, Y_SCALE, parkPose } from '../../lib/stationsLayout';
+import { NET, SITE_NAMES, SITE_PLANS } from '../../lib/stationNetwork';
 import { DEFAULT_ETA_MIN, TRACK, buildRoute, buildTrack, distAtTime, planTrip, poseAt, queuedPlan, timeTrack, tripAt, type Track, type TripPhase, type TripPlan } from '../../lib/tankerTrack';
 import { MapWeather } from './MapWeather';
 import type { MapTrip } from './SiteFarmsMap';
@@ -25,10 +24,12 @@ const STATUS_COLOR = { crit: '#ff2d55', warn: '#facc15', ok: '#10b981', idle: '#
 type Status = keyof typeof STATUS_COLOR;
 
 /** إزاحة المسار الأيمن عن خط وسط الشارع، والمسافة بين صهاريج القافلة في طابور التفريغ (وحدات أرض) */
-const LANE = 0.75, QUEUE_GAP = 9.6;
+const LANE = 1.6, QUEUE_GAP = 11;
+/** مسافة الأمان بين صهريج والذي أمامه في القافلة (وحدات أرض، الصهريج 8.4) */
+const FOLLOW_GAP = 11.5;
 /** عرض الرحلة: فاصل الانطلاق بين صهاريج القافلة ومدة التفريغ (ثوانٍ) */
-const REPLAY_GAP = 2.5, REPLAY_UNLOAD = 6;
-const SITES = Object.keys(STATIONS);
+const REPLAY_GAP = 3, REPLAY_UNLOAD = 6;
+const SITES = SITE_NAMES;
 
 interface Rig {
   id: string; trip: MapTrip; k: number; n: number; qty: number;
@@ -92,14 +93,14 @@ const TaqaStationsMap: React.FC<Props> = ({ site, cover, trips, weather, onOpen,
   const nightRef = useRef(night); nightRef.current = night;
   const [rigsVer, setRigsVer] = useState(0);
   /** جهة نقطة التفريغ لكل محطة (خرطوم الصهريج نحوها) */
-  const fillSide = useMemo(() => new Map(SITES.map(s => [s, parkPose(s)?.side ?? 1] as const)), []);
+  const fillSide = useMemo(() => new Map(SITES.map(s => [s, SITE_PLANS[s].hoseSide] as const)), []);
 
   const tripKey = trips.map(x => `${x.id}:${x.from}:${x.to}:${x.qty}:${x.tankers ?? 1}:${x.etaMin ?? ''}:${x.since ?? ''}`).join('|');
   useEffect(() => {
     const next = new Map<string, Rig>();
     const fromCount = new Map<string, number>();
     trips.forEach(trip => {
-      const route = buildRoute(DAY_ROADS, trip.from, trip.to, Y_SCALE);
+      const route = buildRoute(NET, trip.from, trip.to, 1);
       if (!route) return;
       const track = buildTrack(route);
       const tc = timeTrack(track);
@@ -200,6 +201,7 @@ const TaqaStationsMap: React.FC<Props> = ({ site, cover, trips, weather, onOpen,
 
       states.clear();
       const closeUp = scene ? scene.cam.dist < scene.home.dist * 0.6 : false;
+      const lead = new Map<string, number>();
       rigs.current.forEach((r, id) => {
         const m = moments.get(id)!;
         const tag = tagFor(id);
@@ -217,6 +219,10 @@ const TaqaStationsMap: React.FC<Props> = ({ site, cover, trips, weather, onOpen,
         if (m.phase === 'driving') dist = Math.min(spot, distAtTime(tr, r.tc, m.drive * r.T));
         // يتقدم بهدوء إلى مكانه (عند خلوّ نقطة التفريغ) بدل القفز
         else dist = r.last && r.last.dist < spot ? Math.min(spot, r.last.dist + TRACK.vyard * dt) : spot;
+        // مسافة أمان خلف الصهريج الذي أمامه في القافلة (تنطلق بفارق 3 ثوانٍ فلا تتراكب)
+        const front = lead.get(r.trip.id);
+        if (front != null) dist = Math.max(0, Math.min(dist, front - FOLLOW_GAP));
+        lead.set(r.trip.id, dist);
         const atFill = dist >= L - 0.05;
         const p = poseAt(tr, dist, LANE);
         const prev = r.last;
