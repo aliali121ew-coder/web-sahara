@@ -175,6 +175,7 @@
     "backToAuto": "Back to the automatic price"
   },
   "priceIndex": {
+    "awaitingCurrent": "Awaiting current price",
     "title": "Company & supplier price index",
     "supplier": "Equipper",
     "lastInbound": "Last inbound",

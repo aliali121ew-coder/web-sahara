@@ -88,14 +88,15 @@ export const PriceIndexTable: React.FC = () => {
       {rows.length === 0 && (
         <div className="py-8 text-center text-sm text-slate-400">{t(shown.length ? 'dashboard:priceIndex.empty' : 'dashboard:priceIndex.noneSelected')}</div>
       )}
-      {rows.map(s => {
+      {rows.filter(s => s.hasPrice).map(s => {
         const up = s.hasPrice && s.pct > 0, down = s.hasPrice && s.pct < 0;
         const chip = !s.hasPrice ? 'bg-slate-100 text-slate-400 dark:bg-slate-800'
           : up ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300'
           : down ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300'
           : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300';
         return (
-          <div key={s.id} className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5">
+          // خط جانبي بلون اتجاه السعر: يُفهم الاتجاه بنظرة قبل قراءة الأرقام
+          <div key={s.id} className={`rounded-2xl border border-slate-200/80 dark:border-slate-800 border-s-[4px] ${up ? 'border-s-rose-500' : down ? 'border-s-emerald-500' : 'border-s-slate-300 dark:border-s-slate-600'} bg-white dark:bg-slate-900 px-3 py-2.5`}>
             <div className="flex items-center gap-2.5 min-w-0">
               {/* شعار الشركة المستلمة مكان دائرة الحرف */}
               <span className="w-8 h-8 shrink-0 rounded-lg bg-white ring-1 ring-slate-200 dark:ring-slate-700 flex items-center justify-center p-0.5 overflow-hidden">
@@ -128,6 +129,27 @@ export const PriceIndexTable: React.FC = () => {
           </div>
         );
       })}
+      {/* بلا سعر حالي: تحت عنوان صغير وبسطر مختصر لكل مجهز (الشعار، الاسم، السعر السابق) حتى لا تزاحم الكارتات الكاملة */}
+      {rows.some(s => !s.hasPrice) && (
+        <div className="pt-1">
+          <div className="flex items-center gap-2 px-1 pb-1.5 text-[11px] font-bold text-slate-400">
+            <span>{t('dashboard:priceIndex.awaitingCurrent')}</span>
+            <span className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+          </div>
+          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
+            {rows.filter(s => !s.hasPrice).map(s => (
+              <div key={s.id} className="flex items-center gap-2.5 px-3 py-2 bg-slate-50/60 dark:bg-slate-900">
+                <span className="w-7 h-7 shrink-0 rounded-md bg-white ring-1 ring-slate-200 dark:ring-slate-700 flex items-center justify-center p-0.5 overflow-hidden">
+                  <img src={s.company === 'etihad' ? '/logos/etihad.png' : '/logos/sahara.png'} alt={t(`common:enum.company.${s.company}`)} className="w-full h-full object-contain" />
+                </span>
+                <span className="min-w-0 flex-1 text-[13px] font-bold leading-snug text-slate-700 dark:text-slate-200 break-words">{s.supplierName}</span>
+                <span className="shrink-0 text-[11px] text-slate-400">{t('dashboard:priceIndex.previous')}</span>
+                <span className="shrink-0 font-mono font-bold text-[13px] text-slate-600 dark:text-slate-300 tabular-nums">{s.previousPrice === null ? '—' : <>{fmtPrice(s.previousPrice)} <span className={iqd}>{t('common:units.iqd')}</span></>}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
 
     <div className="hidden sm:block rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-soft-card overflow-hidden">

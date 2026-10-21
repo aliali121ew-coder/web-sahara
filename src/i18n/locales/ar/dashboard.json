@@ -187,6 +187,7 @@
     "backToAuto": "الرجوع إلى السعر التلقائي"
   },
   "priceIndex": {
+    "awaitingCurrent": "بانتظار السعر الحالي",
     "title": "مؤشرات أسعار الشركات والموردين",
     "supplier": "المجهز",
     "lastInbound": "آخر وارد",
