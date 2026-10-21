@@ -28,9 +28,9 @@ import { usePermissions } from '../../lib/usePermission';
 /** layout="side": بدون ترويسة وفي عمودين (للعمود الجانبي في صفحة المشتريات) */
 /** ترتيب كروت الهاتف حسب نوع الوقود */
 const PHONE_GROUPS = [
-  { category: 'gas', label: 'dashboard:purchases.groupGas', head: 'bg-blue-50 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300 border-blue-500/70' },
-  { category: 'crude', label: 'dashboard:purchases.groupCrude', head: 'bg-purple-50 dark:bg-purple-950/50 text-purple-800 dark:text-purple-300 border-purple-500/70' },
-  { category: 'gasoline', label: 'dashboard:purchases.groupGasoline', head: 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border-amber-500/70' },
+  { category: 'gas', label: 'dashboard:purchases.groupGas' },
+  { category: 'crude', label: 'dashboard:purchases.groupCrude' },
+  { category: 'gasoline', label: 'dashboard:purchases.groupGasoline' },
 ] as const;
 
 export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout = 'row' }) => {
@@ -215,8 +215,8 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
                         {pressing === item.id && (
                           <span className="absolute bottom-0 inset-x-0 h-1 bg-teal-500 origin-right" style={{ animation: 'fmLongPress 520ms linear forwards' }} />
                         )}
-                        {/* اسم الشركة عنوان للخانة بشريط وخط تحته يفصله عن السعر */}
-                        <div className={`px-1 py-1 text-[11px] font-black leading-tight border-b-2 ${group.head}`}>{t(co)}</div>
+                        {/* اسم الشركة عنوان للخانة بشريط رصاصي (أغمق من الخانة) وخط تحته يفصله عن السعر */}
+                        <div className={`px-1 py-1 text-[11px] font-black leading-tight border-b-2 bg-slate-200/80 dark:bg-slate-700/70 text-slate-700 dark:text-slate-200 border-slate-400/70 dark:border-slate-500`}>{t(co)}</div>
                         <div className={`pt-1.5 font-black font-mono text-[20px] leading-snug tabular-nums ${displayPrice > 0 ? 'text-slate-900 dark:text-white' : 'text-slate-300 dark:text-slate-600'}`}>
                           {displayPrice > 0 ? displayPrice : '—'}
                         </div>
