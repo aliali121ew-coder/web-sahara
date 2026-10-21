@@ -107,7 +107,9 @@ const SupplierModal: React.FC<{ initial: SupplierPriceRecord; isNew: boolean; on
   const set = <K extends keyof SupplierPriceRecord>(k: K, v: SupplierPriceRecord[K]) => setF(p => ({ ...p, [k]: v }));
   // السعر الحالي يدوي ويمكن تركه فارغًا؛ المعاينة تقارنه بالسعر السابق (آخر وارد في الأرشيف) كما في الجدول
   const priceNum = Number(price.replace(/,/g, '')) || 0;
-  const valid = f.supplierName.trim() && f.product.trim() && (priceNum > 0 || !price.trim());
+  // السعر الحالي: فارغ أو 0 (بلا سعر حالي، فيظهر المورد في «بانتظار السعر الحالي») أو رقم موجب
+  const priceRaw = Number(price.replace(/,/g, ''));
+  const valid = f.supplierName.trim() && f.product.trim() && (!price.trim() || (Number.isFinite(priceRaw) && priceRaw >= 0));
   const base = initial.previousPriceIqd || initial.priceIqd;
   const priceChanged = !isNew && priceNum > 0 && priceNum !== initial.priceIqd;
   const delta = priceChanged && base ? Math.round(((priceNum - base) / base) * 10000) / 100 : 0;
