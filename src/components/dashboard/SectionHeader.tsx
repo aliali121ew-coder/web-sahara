@@ -11,7 +11,7 @@ export const SectionHeader: React.FC<{ icon: React.ReactNode; title: React.React
   return (
     <div className="flex items-center gap-2.5">
       {icon}
-      <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white whitespace-nowrap">{title}</h2>
+      <h2 className="min-w-0 text-base sm:text-lg font-black text-slate-900 dark:text-white sm:whitespace-nowrap">{title}</h2>
       <span aria-hidden className="flex-1 ms-2 h-px bg-gradient-to-l ltr:bg-gradient-to-r from-slate-200 via-slate-200/80 to-transparent dark:from-slate-700 dark:via-slate-800/80" />
       {updatedAt && (
         <span className="shrink-0 inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400">

@@ -97,26 +97,32 @@ export const PriceIndexTable: React.FC = () => {
         return (
           <div key={s.id} className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5">
             <div className="flex items-center gap-2.5 min-w-0">
-              <Avatar s={s} size="w-8 h-8" text="text-xs" />
-              <div className="min-w-0 flex-1">
-                <div className="text-[14px] font-black text-slate-900 dark:text-white truncate">{s.supplierName}</div>
-                <div className="text-[11px] text-slate-400 truncate">
-                  {t('dashboard:priceIndex.density')}: <span className="font-mono font-bold text-slate-600 dark:text-slate-300">{s.density || '—'}</span>
-                </div>
-              </div>
-              <img src={s.company === 'etihad' ? '/logos/etihad.png' : '/logos/sahara.png'} alt={t(`common:enum.company.${s.company}`)} className="h-7 w-auto max-w-[44px] object-contain shrink-0" />
-              <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[12px] font-black ${chip}`} dir="ltr">
-                {!s.hasPrice ? '—' : <>{up ? <TrendingUp className="w-3.5 h-3.5" /> : down ? <TrendingDown className="w-3.5 h-3.5" /> : <Minus className="w-3.5 h-3.5" />}{up ? '+' : ''}{s.pct}%</>}
+              {/* شعار الشركة المستلمة مكان دائرة الحرف */}
+              <span className="w-10 h-9 shrink-0 rounded-xl bg-white ring-1 ring-slate-200 dark:ring-slate-700 flex items-center justify-center p-1">
+                <img src={s.company === 'etihad' ? '/logos/etihad.png' : '/logos/sahara.png'} alt={t(`common:enum.company.${s.company}`)} className="max-h-full max-w-full object-contain" />
               </span>
+              {/* الاسم كاملًا في كل المقاسات: ينزل لسطر ثانٍ بدل القص */}
+              {/* الاسم يأخذ عرض السطر كله (نسبة التغيّر انتقلت تحت السعر الحالي) فلا يضيق الاسم الطويل */}
+              <div className="min-w-0 flex-1 text-[14px] font-black leading-snug text-slate-900 dark:text-white break-words">{s.supplierName}</div>
             </div>
-            <div className="mt-2 grid grid-cols-2 gap-1.5">
-              <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 px-2.5 py-1.5">
-                <div className="text-[10.5px] font-bold text-slate-400">{t('dashboard:priceIndex.previous')}</div>
-                <div className="font-mono font-bold text-[14px] text-slate-600 dark:text-slate-300 tabular-nums">{s.previousPrice === null ? '—' : <>{fmtPrice(s.previousPrice)} <span className={iqd}>{t('common:units.iqd')}</span></>}</div>
+            {/* سطر واحد بثلاث خانات: السعر السابق، السعر الحالي، الكثافة — والأرقام في الوسط */}
+            <div className="mt-2 grid grid-cols-3 gap-1.5 text-center [&>div]:min-w-0">
+              <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 px-1.5 py-1.5">
+                <div className="text-[clamp(9.5px,2.9vw,10.5px)] font-bold text-slate-400 whitespace-nowrap">{t('dashboard:priceIndex.previous')}</div>
+                <div className="font-mono font-bold text-[clamp(12px,3.6vw,14px)] text-slate-600 dark:text-slate-300 tabular-nums break-words">{s.previousPrice === null ? '—' : <>{fmtPrice(s.previousPrice)} <span className={iqd}>{t('common:units.iqd')}</span></>}</div>
               </div>
-              <div className={`rounded-xl px-2.5 py-1.5 ${s.hasPrice ? 'bg-blue-50 dark:bg-blue-950/40' : 'bg-slate-50 dark:bg-slate-800/60'}`}>
-                <div className={`text-[10.5px] font-bold ${s.hasPrice ? 'text-blue-600 dark:text-blue-300' : 'text-slate-400'}`}>{t('dashboard:priceIndex.current')}</div>
-                <div className={`font-mono font-black text-[14px] tabular-nums ${s.hasPrice ? 'text-blue-800 dark:text-blue-200' : 'text-slate-400'}`}>{s.hasPrice ? <>{fmtPrice(s.price)} <span className={iqd}>{t('common:units.iqd')}</span></> : '—'}</div>
+              <div className={`rounded-xl px-1.5 py-1.5 ${s.hasPrice ? 'bg-blue-50 dark:bg-blue-950/40' : 'bg-slate-50 dark:bg-slate-800/60'}`}>
+                <div className={`text-[clamp(9.5px,2.9vw,10.5px)] font-bold whitespace-nowrap ${s.hasPrice ? 'text-blue-600 dark:text-blue-300' : 'text-slate-400'}`}>{t('dashboard:priceIndex.current')}</div>
+                <div className={`font-mono font-black text-[clamp(12px,3.6vw,14px)] tabular-nums break-words ${s.hasPrice ? 'text-blue-800 dark:text-blue-200' : 'text-slate-400'}`}>{s.hasPrice ? <>{fmtPrice(s.price)} <span className={iqd}>{t('common:units.iqd')}</span></> : '—'}</div>
+                {s.hasPrice && (
+                  <span className={`mt-1 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[11px] font-black ${chip}`} dir="ltr">
+                    {up ? <TrendingUp className="w-3 h-3" /> : down ? <TrendingDown className="w-3 h-3" /> : <Minus className="w-3 h-3" />}{up ? '+' : ''}{s.pct}%
+                  </span>
+                )}
+              </div>
+              <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 px-1.5 py-1.5">
+                <div className="text-[clamp(9.5px,2.9vw,10.5px)] font-bold text-slate-400 whitespace-nowrap">{t('dashboard:priceIndex.density')}</div>
+                <div className="font-mono font-bold text-[clamp(12px,3.6vw,14px)] text-slate-600 dark:text-slate-300 tabular-nums break-words">{s.density || '—'}</div>
               </div>
             </div>
           </div>
@@ -148,7 +154,7 @@ export const PriceIndexTable: React.FC = () => {
                 <td className={`${td} ${plain} !text-start`}>
                   <div className="flex items-center gap-2.5">
                     <Avatar s={s} size="w-8 h-8" text="text-xs" />
-                    <span className="text-[14.5px] font-bold text-slate-900 dark:text-white truncate max-w-[200px] xl:max-w-[260px]">{s.supplierName}</span>
+                    <span className="text-[14.5px] font-bold leading-snug text-slate-900 dark:text-white whitespace-normal break-words min-w-[120px] max-w-[260px]">{s.supplierName}</span>
                     <CompanyBadges companies={[s.company]} />
                   </div>
                 </td>
