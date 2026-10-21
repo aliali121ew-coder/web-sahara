@@ -445,12 +445,13 @@ export const PetrolStationsSection: React.FC = () => {
 
           {/* Top Header: Title, Live Ping & Mode Controls */}
           <div className="flex flex-col gap-2.5 pb-2 border-b border-slate-100 dark:border-slate-800/80">
-            <div className="flex items-center justify-between gap-2">
+            {/* الهاتف: العنوان كاملًا وأزرار المدة تحته عند ضيق العرض بدل قص العنوان */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-slate-800 dark:text-slate-100 font-extrabold text-xs sm:text-[13px] min-w-0">
                 <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-cyan-600 to-teal-500 text-white flex items-center justify-center shadow-xs shrink-0">
                   <Activity className="w-3.5 h-3.5 animate-pulse" />
                 </div>
-                <span className="truncate">{t('dashboard:petrol.analysis')}</span>
+                <span className="leading-snug">{t('dashboard:petrol.analysis')}</span>
               </div>
               
               {/* Timeframe Selector Pills */}

@@ -114,6 +114,9 @@
     "cleanGas": "Clean gasoil"
   },
   "purchases": {
+    "lastInbound": "Last inbound",
+    "coSahara": "Sahara",
+    "coEtihad": "Etihad",
     "title": "Fuel & product purchases",
     "longPress": "Press and hold to view the price",
     "previous": "Previous:",
