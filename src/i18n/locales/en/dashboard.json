@@ -114,6 +114,12 @@
     "cleanGas": "Clean gasoil"
   },
   "purchases": {
+    "groupGas": "Gas oil",
+    "groupCrude": "Black oil",
+    "groupGasoline": "Gasoline",
+    "coStations": "Stations",
+    "noInbound": "No inbound",
+    "perLiter": "IQD / liter",
     "lastInbound": "Last inbound",
     "coSahara": "Sahara",
     "coEtihad": "Etihad",

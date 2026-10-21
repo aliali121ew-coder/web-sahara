@@ -126,6 +126,12 @@
     "cleanGas": "كاز نظيف"
   },
   "purchases": {
+    "groupGas": "الكاز",
+    "groupCrude": "النفط الأسود",
+    "groupGasoline": "البنزين",
+    "coStations": "محطات",
+    "noInbound": "لا يوجد وارد",
+    "perLiter": "د.ع / لتر",
     "lastInbound": "آخر وارد",
     "coSahara": "صحاري",
     "coEtihad": "الاتحاد",
