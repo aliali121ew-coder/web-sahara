@@ -416,7 +416,7 @@ export const SaharaGasSection: React.FC = () => {
             {/* 2. فرق الاستهلاك الفعلي بين أمس واليوم */}
             <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-blue-300 dark:hover:border-blue-700 transition-colors min-w-0">
               <div className="flex items-center justify-between gap-1.5 text-[10.5px] font-bold text-slate-500 dark:text-slate-400 mb-1">
-                <span className="kpi-label" title={t('dashboard:flow.actualDiff')}><span className="lbl-full">{t('dashboard:flow.actualDiff')}</span><span className="lbl-short">{t('dashboard:flow.actualDiffShort')}</span></span>
+                <span className="kpi-label">{t('dashboard:flow.actualDiffShort')}</span>
                 {/* الفرق مقابل العنوان في كل المقاسات */}
                 <div className="flex items-center gap-2 shrink-0">
                   {actualDiff === null ? (

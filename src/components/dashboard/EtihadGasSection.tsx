@@ -444,7 +444,7 @@ export const EtihadGasSection: React.FC = () => {
             {/* 3. فرق الاستهلاك الفعلي بين أمس واليوم (الاستهلاك + المبيعات) */}
             <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-teal-300 dark:hover:border-teal-700 transition-colors min-w-0">
               <div className="flex items-center justify-between gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
-                <span className="kpi-label" title={t('dashboard:flow.actualDiff')}><span className="lbl-full">{t('dashboard:flow.actualDiff')}</span><span className="lbl-short">{t('dashboard:flow.actualDiffShort')}</span></span>
+                <span className="kpi-label">{t('dashboard:flow.actualDiffShort')}</span>
                 <div className="flex items-center gap-2 shrink-0">
                   {/* الفرق مقابل العنوان في كل المقاسات */}
                   {outflowDiff === null ? (

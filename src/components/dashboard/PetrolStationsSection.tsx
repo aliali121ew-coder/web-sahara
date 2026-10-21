@@ -326,7 +326,7 @@ export const PetrolStationsSection: React.FC = () => {
             {/* 1. الوارد */}
             <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors min-w-0">
               <div className="flex items-center justify-between gap-1.5 text-[10.5px] font-bold text-slate-500 dark:text-slate-400 mb-1">
-                <span className="kpi-label">{t('dashboard:flow.totalInbound')}</span>
+                <span className="kpi-label">{t('dashboard:flow.dailyInbound')}</span>
                 <div className="w-5 h-5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/40 shrink-0">
                   <ArrowDownLeft className="w-3 h-3" />
                 </div>
