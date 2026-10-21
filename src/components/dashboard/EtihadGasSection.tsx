@@ -365,7 +365,7 @@ export const EtihadGasSection: React.FC = () => {
             {/* 1. الوارد */}
             <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors min-w-0">
               <div className="flex items-center justify-between gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
-                <span className="kpi-label">{t('dashboard:flow.totalInbound')}</span>
+                <span className="kpi-label">{t('dashboard:flow.dailyInbound')}</span>
                 <div className="flex items-center gap-2 shrink-0">
                   {/* الهاتف: القيمة مقابل العنوان */}
                   <div className="sm:hidden kpi-num font-black text-slate-900 dark:text-white font-mono">
@@ -386,7 +386,7 @@ export const EtihadGasSection: React.FC = () => {
                 return (
                   <div className="mt-1.5 grid grid-cols-2 gap-1.5">
                     <div className="rounded-lg ring-1 min-w-0 bg-white dark:bg-slate-900/70 ring-slate-200 dark:ring-slate-700 px-1.5 py-1 text-center" title={`${t('dashboard:price.buyAvg')} · ${latest.date}`}>
-                      <div className="text-[9px] font-bold leading-tight text-slate-400">{t('dashboard:price.todayBuy')}</div>
+                      <div className="text-[9px] font-bold leading-tight text-slate-400">{t('dashboard:price.buyPrice')}</div>
                       <div className="mt-0.5 font-mono font-black kpi-sub tabular-nums text-slate-700 dark:text-slate-200">
                         {(buys.today?.price ?? 0).toFixed(1)}<span className="text-[8.5px] font-bold text-slate-400"> {t('common:units.iqd')}</span>
                       </div>
@@ -427,6 +427,17 @@ export const EtihadGasSection: React.FC = () => {
               </div>
               <div className="hidden sm:block kpi-num font-black text-slate-900 dark:text-white font-mono">
                 {formatNumber(totalOutflow)} <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
+              </div>
+              {/* داخل الاستهلاك الفعلي: المبيعات والاستهلاك بخانتين (مثل أمس / اليوم) */}
+              <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                <div className="rounded-lg bg-white dark:bg-slate-900/70 ring-1 ring-slate-200 dark:ring-slate-700 px-1.5 py-1 text-center min-w-0">
+                  <div className="text-[9px] font-bold text-slate-400 leading-none">{t('dashboard:flow.sales')}</div>
+                  <div className="mt-0.5 font-mono font-black kpi-sub text-slate-600 dark:text-slate-300 tabular-nums">{formatNumber(totalSales)}</div>
+                </div>
+                <div className="rounded-lg bg-white dark:bg-slate-900/70 ring-1 ring-slate-200 dark:ring-slate-700 px-1.5 py-1 text-center min-w-0">
+                  <div className="text-[9px] font-bold text-slate-400 leading-none">{t('dashboard:flow.consumption')}</div>
+                  <div className="mt-0.5 font-mono font-black kpi-sub text-slate-600 dark:text-slate-300 tabular-nums">{formatNumber(totalConsumption)}</div>
+                </div>
               </div>
             </div>
 

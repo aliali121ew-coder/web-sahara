@@ -16,6 +16,7 @@
   "flow": {
     "inboundColon": "الوارد:",
     "consumptionColon": "الاستهلاك:",
+    "dailyInbound": "الوارد اليومي",
     "totalInbound": "إجمالي الوارد",
     "received": "توريدات مستلمة",
     "consumption": "استهلاك",
@@ -51,6 +52,7 @@
     "approved": "معتمد",
     "lastInboundAvg": "معدل سعر آخر وارد",
     "buyAvg": "معدل سعر الشراء",
+    "buyPrice": "سعر الشراء",
     "todayBuy": "شراء اليوم",
     "twoDayAvg": "معدل اليومين",
     "vsPrevBuy": "مقارنة بسعر شراء اليوم السابق"
