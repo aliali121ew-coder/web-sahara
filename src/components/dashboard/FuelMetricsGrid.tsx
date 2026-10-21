@@ -177,7 +177,11 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
           {fuelMetrics.map(item => {
             const config = getCardPastelConfig(item);
             const Icon = config.icon;
-            const { displayPrice, trendPercent } = getLinkedSupplierData(item);
+            const { displayPrice, trendPercent, volume, priceUpdatedAt } = getLinkedSupplierData(item);
+            // النفط الأسود موجود للشركتين: الشركة تُلحق بالاسم بدل شارة الشركة
+            const name = item.category === 'crude'
+              ? `${enumText(item.name)} - ${t(item.company.includes('اتحاد') ? 'dashboard:purchases.coEtihad' : 'dashboard:purchases.coSahara')}`
+              : enumText(item.name);
             const up = trendPercent > 0, down = trendPercent < 0;
             return (
               <div
@@ -194,8 +198,7 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
                   <span className="absolute bottom-0 inset-x-0 h-1 bg-teal-500 origin-right" style={{ animation: 'fmLongPress 520ms linear forwards' }} />
                 )}
                 <div className={`w-7 h-7 rounded-lg ${config.iconContainer} flex items-center justify-center`}><Icon className="w-3.5 h-3.5" /></div>
-                <div className="text-[11px] font-black leading-tight text-slate-900 dark:text-white break-words">{enumText(item.name)}</div>
-                <div className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${config.companyBadge} leading-tight`}>{enumText(item.company)}</div>
+                <div className="text-[11px] font-black leading-tight text-slate-900 dark:text-white break-words">{name}</div>
                 <div className="flex items-baseline gap-0.5 mt-0.5">
                   <span className={`font-black font-mono text-[17px] leading-none tabular-nums ${config.priceColor}`}>{displayPrice > 0 ? displayPrice : 0}</span>
                   <span className="text-[9px] font-bold text-slate-400">{t('common:units.iqd')}</span>
@@ -204,6 +207,14 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
                   {up ? <TrendingUp className="w-3 h-3" /> : down ? <TrendingDown className="w-3 h-3" /> : null}
                   {up ? '+' : ''}{trendPercent}%
                 </span>
+                {/* آخر وارد وتاريخه */}
+                <div className="w-full mt-0.5 pt-1 border-t border-slate-200/70 dark:border-slate-700/60 text-[9.5px] leading-snug">
+                  <div className="font-bold text-slate-400">{t('dashboard:purchases.lastInbound')}</div>
+                  <div className="font-mono font-black text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                    {formatNumber(volume || 0)} <span className="font-normal text-slate-400">{t('common:units.liter')}</span>
+                  </div>
+                  <div className="font-mono text-slate-400 whitespace-nowrap" dir="ltr">{priceUpdatedAt}</div>
+                </div>
               </div>
             );
           })}

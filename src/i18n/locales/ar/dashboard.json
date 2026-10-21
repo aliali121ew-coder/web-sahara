@@ -125,6 +125,9 @@
     "cleanGas": "كاز نظيف"
   },
   "purchases": {
+    "lastInbound": "آخر وارد",
+    "coSahara": "صحاري",
+    "coEtihad": "الاتحاد",
     "title": "مشتريات الوقود والمشتقات",
     "longPress": "اضغط مطوّلًا لعرض السعر",
     "previous": "السابق:",
