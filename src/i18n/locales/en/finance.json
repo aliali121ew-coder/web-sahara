@@ -54,6 +54,7 @@
     }
   },
   "ledger": {
+    "cascadeNote": "The balance of {{n}} later day(s) will update automatically after saving",
     "noYesterday": "No previous day",
     "noChange": "No change",
     "compareTitle": "Yesterday: {{yesterday}} → Today: {{today}}",

@@ -10,6 +10,7 @@ import { EtihadBalanceCards } from './EtihadBalanceCards';
 import { EtihadBalanceTable } from './EtihadBalanceTable';
 import { DateFilterRange } from '../../types/finance';
 import { EtihadTransactionModal } from './EtihadTransactionModal';
+import { cascadeEtihadBalances } from '../../lib/balanceCascade';
 import { EtihadQuickActions } from './EtihadQuickActions';
 import { EtihadSubtabKey } from './EtihadBalanceHubTabs';
 import { EtihadPortalHub } from './EtihadPortalHub';
@@ -432,16 +433,21 @@ export const FinanceBalance: React.FC = () => {
   };
 
   // يعيد رقم السجل حتى يُرفق به ملف الكشف في الأرشيف
+  // بعد الحفظ يُعاد حساب رصيد كل الأيام اللاحقة من يوم إلى يوم (من أقدم تاريخ تأثّر إن تغيّر تاريخ اليوم)
   const handleSaveRecord = (recordPayload: Omit<EtihadBalanceRecord, 'id'>, id?: string): string => {
     if (id) {
-      setRecords(prev => prev.map(r => r.id === id ? { ...recordPayload, id } : r));
+      setRecords(prev => {
+        const oldDate = prev.find(r => r.id === id)?.date ?? recordPayload.date;
+        const from = [oldDate, recordPayload.date].map(d => d.replace(/-/g, '/')).sort()[0];
+        return cascadeEtihadBalances(prev.map(r => r.id === id ? { ...recordPayload, id } : r), from);
+      });
       return id;
     }
     const newRecord: EtihadBalanceRecord = {
       ...recordPayload,
       id: `rec-${Date.now()}`
     };
-    setRecords(prev => [newRecord, ...prev]);
+    setRecords(prev => cascadeEtihadBalances([newRecord, ...prev], newRecord.date));
     return newRecord.id;
   };
 
@@ -665,6 +671,7 @@ export const FinanceBalance: React.FC = () => {
         editRecord={editingRecord}
         lastRecordedPrice={metrics?.averagePrice || 0}
         defaultPreviousBalance={metrics?.currentBalance || 0}
+        otherDates={records.filter(r => r.id !== editingRecord?.id).map(r => r.date)}
       />
 
       {/* Global Print & PDF Modal */}

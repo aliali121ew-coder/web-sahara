@@ -54,6 +54,7 @@
     }
   },
   "ledger": {
+    "cascadeNote": "سيتحدّث رصيد {{n}} من الأيام اللاحقة تلقائيًا بعد الحفظ",
     "noYesterday": "لا يوجد أمس",
     "noChange": "بدون تغيير",
     "compareTitle": "أمس: {{yesterday}} ← اليوم: {{today}}",

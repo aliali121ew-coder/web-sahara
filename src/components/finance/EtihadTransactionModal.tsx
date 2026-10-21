@@ -35,6 +35,7 @@ import { readEtihadReportFile } from '../../lib/etihadReportFile';
 import { useReportAttach } from '../../lib/saharaFiles';
 import { ReportAttachNotice } from './DayFilesCell';
 import { DateField } from '../ui/DateField';
+import { laterDaysCount } from '../../lib/balanceCascade';
 
 interface EtihadTransactionModalProps {
   isOpen: boolean;
@@ -44,6 +45,8 @@ interface EtihadTransactionModalProps {
   editRecord?: EtihadBalanceRecord | null;
   lastRecordedPrice?: number;
   defaultPreviousBalance?: number;
+  /** تواريخ الأيام الأخرى المسجّلة: لتنبيه أن رصيد الأيام اللاحقة سيتحدّث بعد الحفظ */
+  otherDates?: string[];
 }
 
 export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
@@ -52,7 +55,8 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
   onSave,
   editRecord,
   lastRecordedPrice = 0,
-  defaultPreviousBalance = 0
+  defaultPreviousBalance = 0,
+  otherDates = []
 }) => {
   const { direction } = useLanguage();
   const { t, i18n } = useTranslation(['finance', 'common']);
@@ -75,6 +79,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
 
   // Form State
   const [date, setDate] = useState<string>('2026/09/09');
+  const laterDays = laterDaysCount(otherDates, date);
   const [previousBalance, setPreviousBalance] = useState<string>(formatInputValue(defaultPreviousBalance));
   const [purchases, setPurchases] = useState<string>('');
 
@@ -682,6 +687,11 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
 
             {/* 🛡️ Enterprise Permanent Sticky Bottom Action Toolbar (Matches QuickActionModal) */}
             <div className="px-5 py-2.5 bg-white dark:bg-slate-900 border-t border-slate-200/90 dark:border-slate-800 flex items-center justify-end gap-2.5 shrink-0 shadow-lg select-none z-10">
+              {laterDays > 0 && (
+                <span className="me-auto text-[11px] font-bold text-amber-700 dark:text-amber-300">
+                  {t('finance:ledger.cascadeNote', { n: laterDays })}
+                </span>
+              )}
               <button
                 type="button"
                 onClick={onClose}
