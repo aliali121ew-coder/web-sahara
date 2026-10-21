@@ -43,6 +43,8 @@ interface Props {
 
 const WIDTH = 360;
 const EST_HEIGHT = 470;
+/** حجم النافذة بعد الفتح: أصغر بـ10% من حجمها الطبيعي حتى لا تبدو مكبّرة زيادة */
+const OPEN_SCALE = 0.9;
 const toInputDate = (d: string) => (/^\d{4}\/\d{2}\/\d{2}$/.test(d) ? d.replace(/\//g, '-') : '');
 
 /** نافذة سعر المنتج: تنفتح في مكان الكارت بحركة تكبير، وفيها تعديل السعر يدويًا أو إرجاعه للتلقائي */
@@ -86,7 +88,7 @@ export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon
   const top = Math.min(Math.max(12, anchor.top - 16), Math.max(12, vh - EST_HEIGHT - 12));
   // نقطة الانطلاق = مركز الكارت، ومقياس البداية = حجم الكارت
   const origin = `${anchor.left + anchor.width / 2 - left}px ${anchor.top + anchor.height / 2 - top}px`;
-  const startScale = Math.min(1, anchor.width / width);
+  const startScale = Math.min(OPEN_SCALE, anchor.width / width);
 
   useLayoutEffect(() => {
     const id = requestAnimationFrame(() => setOpen(true));
@@ -128,7 +130,7 @@ export const PriceEditPopover: React.FC<Props> = ({ anchor, title, company, icon
         style={{
           top, left, width,
           transformOrigin: origin,
-          transform: open ? 'scale(1)' : `scale(${startScale})`,
+          transform: open ? `scale(${OPEN_SCALE})` : `scale(${startScale})`,
           opacity: open ? 1 : 0,
           transition: 'transform 320ms cubic-bezier(0.2, 0.9, 0.25, 1.15), opacity 200ms ease-out'
         }}
