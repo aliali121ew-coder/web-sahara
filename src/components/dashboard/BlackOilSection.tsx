@@ -163,7 +163,7 @@ export const BlackOilSection: React.FC = () => {
         {/* ========================================================================= */}
         {/* CARD 1: Sahara Black Oil (5 Cols - صحاري كربلاء) - Light Luminous Sky Cyan */}
         {/* ========================================================================= */}
-        <div className="xl:col-span-5 rounded-[26px] bg-gradient-to-b from-sky-500/[0.04] via-white to-cyan-50/40 dark:from-sky-950/20 dark:via-slate-900 dark:to-slate-900/90 border border-sky-200/80 dark:border-sky-800/40 p-5 sm:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-xl hover:border-sky-400/80 dark:hover:border-sky-500/60 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between space-y-4 relative overflow-hidden group">
+        <div className="xl:col-span-5 rounded-[26px] bg-gradient-to-b from-sky-500/[0.04] via-white to-cyan-50/40 dark:from-sky-950/20 dark:via-slate-900 dark:to-slate-900/90 border border-sky-200/80 dark:border-sky-800/40 p-4 sm:p-5 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-xl hover:border-sky-400/80 dark:hover:border-sky-500/60 hover:-translate-y-1 transition-all duration-300 flex flex-col gap-4 relative overflow-hidden group">
           
           {/* Top Ambient Glow */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-sky-400/10 dark:bg-sky-500/10 rounded-full blur-2xl pointer-events-none -mr-8 -mt-8" />
@@ -264,7 +264,7 @@ export const BlackOilSection: React.FC = () => {
           </div>
 
           {/* Bottom Operational Stats: Inbound / Outbound */}
-          <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-800 relative z-10">
+          <div className="mt-auto grid grid-cols-2 gap-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-800 relative z-10">
             <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-wrap items-center justify-between gap-x-1 gap-y-0.5 min-w-0">
               <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 shrink-0">
                 <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
@@ -301,7 +301,7 @@ export const BlackOilSection: React.FC = () => {
         {/* ========================================================================= */}
         {/* CARD 2: Etihad Black Oil (4 Cols - شركة الاتحاد) */}
         {/* ========================================================================= */}
-        <div className="xl:col-span-4 rounded-[26px] bg-gradient-to-b from-teal-500/[0.04] via-white to-slate-50/50 dark:from-teal-950/20 dark:via-slate-900 dark:to-slate-900/90 border border-teal-200/80 dark:border-teal-900/40 p-5 sm:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-xl hover:border-teal-400/80 dark:hover:border-teal-500/50 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between space-y-4 relative overflow-hidden group">
+        <div className="xl:col-span-4 rounded-[26px] bg-gradient-to-b from-teal-500/[0.04] via-white to-slate-50/50 dark:from-teal-950/20 dark:via-slate-900 dark:to-slate-900/90 border border-teal-200/80 dark:border-teal-900/40 p-4 sm:p-5 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-xl hover:border-teal-400/80 dark:hover:border-teal-500/50 hover:-translate-y-1 transition-all duration-300 flex flex-col gap-4 relative overflow-hidden group">
           
           {/* Top Ambient Glow */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-teal-400/10 dark:bg-teal-500/10 rounded-full blur-2xl pointer-events-none -mr-8 -mt-8" />
@@ -402,7 +402,7 @@ export const BlackOilSection: React.FC = () => {
           </div>
 
           {/* Bottom Operational Stats: Inbound / Outbound */}
-          <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-800 relative z-10">
+          <div className="mt-auto grid grid-cols-2 gap-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-800 relative z-10">
             <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-wrap items-center justify-between gap-x-1 gap-y-0.5 min-w-0">
               <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 shrink-0">
                 <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
@@ -438,7 +438,7 @@ export const BlackOilSection: React.FC = () => {
         {/* ========================================================================= */}
         {/* CARD 3: Consolidated Strategic Master Widget (3 Cols - الماستر المجمع المضغوط الفاخر) */}
         {/* ========================================================================= */}
-        <div className="xl:col-span-3 md:col-span-2 xl:col-span-3 rounded-[26px] bg-gradient-to-br from-slate-900 via-purple-950 to-indigo-950 text-white border border-purple-500/30 p-5 sm:p-6 shadow-xl shadow-purple-950/20 hover:shadow-2xl hover:border-purple-400/50 transition-all duration-300 flex flex-col justify-between space-y-4 relative overflow-hidden group">
+        <div className="xl:col-span-3 md:col-span-2 xl:col-span-3 rounded-[26px] bg-gradient-to-br from-slate-900 via-purple-950 to-indigo-950 text-white border border-purple-500/30 p-4 sm:p-5 shadow-xl shadow-purple-950/20 hover:shadow-2xl hover:border-purple-400/50 transition-all duration-300 flex flex-col gap-4 relative overflow-hidden group">
           
           {/* Ambient Glow in Background */}
           <div className="absolute top-0 right-0 w-36 h-36 bg-purple-500/20 rounded-full blur-3xl pointer-events-none -mr-10 -mt-10" />
@@ -514,7 +514,7 @@ export const BlackOilSection: React.FC = () => {
           </div>
 
           {/* Frosted Glass Coverage Block (يؤمن لغاية) */}
-          <div className="p-3.5 rounded-2xl bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/15 shadow-inner relative z-10 space-y-1">
+          <div className="mt-auto p-3.5 rounded-2xl bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/15 shadow-inner relative z-10 space-y-1">
             <div className="flex items-center justify-between">
               <div className="text-base font-black text-white leading-tight font-cairo flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-purple-300" />
