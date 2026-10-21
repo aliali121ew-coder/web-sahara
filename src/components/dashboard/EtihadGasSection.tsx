@@ -367,8 +367,8 @@ export const EtihadGasSection: React.FC = () => {
               <div className="flex items-center justify-between gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                 <span className="kpi-label">{t('dashboard:flow.dailyInbound')}</span>
                 <div className="flex items-center gap-2 shrink-0">
-                  {/* الهاتف: القيمة مقابل العنوان */}
-                  <div className="sm:hidden kpi-num font-black text-slate-900 dark:text-white font-mono">
+                  {/* القيمة مقابل العنوان في كل المقاسات */}
+                  <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
                     {formatNumber(totalInbound)} <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
                   </div>
                   <div className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/40 shrink-0">
@@ -376,7 +376,7 @@ export const EtihadGasSection: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <div className="hidden sm:block kpi-num font-black text-slate-900 dark:text-white font-mono">
+              <div className="hidden kpi-num font-black text-slate-900 dark:text-white font-mono">
                 {formatNumber(totalInbound)} <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </div>
               {latest ? (() => {
