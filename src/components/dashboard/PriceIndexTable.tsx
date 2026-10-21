@@ -83,7 +83,48 @@ export const PriceIndexTable: React.FC = () => {
           <BadgeDollarSign className="w-4 h-4 text-blue-100" />
         </div>
       } />
-    <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-soft-card overflow-hidden">
+    {/* الهاتف: كارت أم بداخله كارت مستطيل لكل مجهز (شعار الشركة، الاسم، الكثافة، السعر السابق والحالي، التغيّر) */}
+    <div className="sm:hidden rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-soft-card p-2.5 space-y-2">
+      {rows.length === 0 && (
+        <div className="py-8 text-center text-sm text-slate-400">{t(shown.length ? 'dashboard:priceIndex.empty' : 'dashboard:priceIndex.noneSelected')}</div>
+      )}
+      {rows.map(s => {
+        const up = s.hasPrice && s.pct > 0, down = s.hasPrice && s.pct < 0;
+        const chip = !s.hasPrice ? 'bg-slate-100 text-slate-400 dark:bg-slate-800'
+          : up ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300'
+          : down ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300'
+          : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300';
+        return (
+          <div key={s.id} className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <Avatar s={s} size="w-8 h-8" text="text-xs" />
+              <div className="min-w-0 flex-1">
+                <div className="text-[14px] font-black text-slate-900 dark:text-white truncate">{s.supplierName}</div>
+                <div className="text-[11px] text-slate-400 truncate">
+                  {t('dashboard:priceIndex.density')}: <span className="font-mono font-bold text-slate-600 dark:text-slate-300">{s.density || '—'}</span>
+                </div>
+              </div>
+              <img src={s.company === 'etihad' ? '/logos/etihad.png' : '/logos/sahara.png'} alt={t(`common:enum.company.${s.company}`)} className="h-7 w-auto max-w-[44px] object-contain shrink-0" />
+              <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[12px] font-black ${chip}`} dir="ltr">
+                {!s.hasPrice ? '—' : <>{up ? <TrendingUp className="w-3.5 h-3.5" /> : down ? <TrendingDown className="w-3.5 h-3.5" /> : <Minus className="w-3.5 h-3.5" />}{up ? '+' : ''}{s.pct}%</>}
+              </span>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-1.5">
+              <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 px-2.5 py-1.5">
+                <div className="text-[10.5px] font-bold text-slate-400">{t('dashboard:priceIndex.previous')}</div>
+                <div className="font-mono font-bold text-[14px] text-slate-600 dark:text-slate-300 tabular-nums">{s.previousPrice === null ? '—' : <>{fmtPrice(s.previousPrice)} <span className={iqd}>{t('common:units.iqd')}</span></>}</div>
+              </div>
+              <div className={`rounded-xl px-2.5 py-1.5 ${s.hasPrice ? 'bg-blue-50 dark:bg-blue-950/40' : 'bg-slate-50 dark:bg-slate-800/60'}`}>
+                <div className={`text-[10.5px] font-bold ${s.hasPrice ? 'text-blue-600 dark:text-blue-300' : 'text-slate-400'}`}>{t('dashboard:priceIndex.current')}</div>
+                <div className={`font-mono font-black text-[14px] tabular-nums ${s.hasPrice ? 'text-blue-800 dark:text-blue-200' : 'text-slate-400'}`}>{s.hasPrice ? <>{fmtPrice(s.price)} <span className={iqd}>{t('common:units.iqd')}</span></> : '—'}</div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+
+    <div className="hidden sm:block rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-soft-card overflow-hidden">
       <div className="overflow-x-auto px-3 sm:px-4 pb-4 bg-slate-50/70 dark:bg-slate-950/30">
         <table className="w-full border-separate border-spacing-y-1.5">
           <thead>
