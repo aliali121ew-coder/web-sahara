@@ -413,8 +413,8 @@ export const EtihadGasSection: React.FC = () => {
               <div className="flex items-center justify-between gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                 <span className="kpi-label" title={t('dashboard:flow.actual')}><span className="lbl-full">{t('dashboard:flow.actual')}</span><span className="lbl-short">{t('dashboard:flow.actualShort')}</span></span>
                 <div className="flex items-center gap-2 shrink-0">
-                  {/* الهاتف: القيمة مقابل العنوان (مثل الصحاري) */}
-                  <div className="sm:hidden kpi-num font-black text-slate-900 dark:text-white font-mono">
+                  {/* القيمة مقابل العنوان في كل المقاسات */}
+                  <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
                     {formatNumber(totalOutflow)} <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
                   </div>
                   <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-200/60 dark:border-blue-800/40 shrink-0">
@@ -422,7 +422,7 @@ export const EtihadGasSection: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <div className="hidden sm:block kpi-num font-black text-slate-900 dark:text-white font-mono">
+              <div className="hidden kpi-num font-black text-slate-900 dark:text-white font-mono">
                 {formatNumber(totalOutflow)} <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </div>
               {/* داخل الاستهلاك الفعلي: المبيعات والاستهلاك بخانتين (مثل أمس / اليوم) */}
@@ -443,11 +443,11 @@ export const EtihadGasSection: React.FC = () => {
               <div className="flex items-center justify-between gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                 <span className="kpi-label" title={t('dashboard:flow.actualDiff')}><span className="lbl-full">{t('dashboard:flow.actualDiff')}</span><span className="lbl-short">{t('dashboard:flow.actualDiffShort')}</span></span>
                 <div className="flex items-center gap-2 shrink-0">
-                  {/* الهاتف: الفرق مقابل العنوان (مثل الصحاري) */}
+                  {/* الفرق مقابل العنوان في كل المقاسات */}
                   {outflowDiff === null ? (
-                    <div className="sm:hidden kpi-num font-black text-slate-400 font-mono">—</div>
+                    <div className="kpi-num font-black text-slate-400 font-mono">—</div>
                   ) : (
-                    <div className={`sm:hidden kpi-num font-black font-mono ${outflowDiff > 0 ? 'text-rose-600 dark:text-rose-400' : outflowDiff < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
+                    <div className={`kpi-num font-black font-mono ${outflowDiff > 0 ? 'text-rose-600 dark:text-rose-400' : outflowDiff < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
                       <span dir="ltr">{outflowDiff > 0 ? '▲ +' : outflowDiff < 0 ? '▼ −' : ''}{formatNumber(Math.abs(outflowDiff))}</span>{' '}
                       <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
                     </div>
@@ -459,12 +459,12 @@ export const EtihadGasSection: React.FC = () => {
               </div>
               {outflowDiff === null ? (
                 <>
-                  <div className="hidden sm:block kpi-num font-black text-slate-400 font-mono">—</div>
+                  <div className="hidden kpi-num font-black text-slate-400 font-mono">—</div>
                   <span className="text-[10px] text-slate-400 mt-1 block">{t('dashboard:compare.noPrevDay')}</span>
                 </>
               ) : (
                 <>
-                  <div className={`hidden sm:block kpi-num font-black font-mono ${outflowDiff > 0 ? 'text-rose-600 dark:text-rose-400' : outflowDiff < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
+                  <div className={`hidden kpi-num font-black font-mono ${outflowDiff > 0 ? 'text-rose-600 dark:text-rose-400' : outflowDiff < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
                     <span dir="ltr">{outflowDiff > 0 ? '▲ +' : outflowDiff < 0 ? '▼ −' : ''}{formatNumber(Math.abs(outflowDiff))}</span>{' '}
                     <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
                   </div>
