@@ -157,7 +157,7 @@ export const BlackOilSection: React.FC = () => {
         </div>
       } />
 
-      {/* الشاشات الكبيرة: كارتا الصحاري والاتحاد بنفس العرض، والكارت الكلي أصغر منهما */}
+      {/* الشاشات الكبيرة: كارتا الصحاري والاتحاد بنفس العرض، والكارت الكلي أصغر منهما (وأجزاؤه موزعة بمسافات متساوية على ارتفاعه) */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.75fr)] gap-4 items-stretch">
         
         {/* ========================================================================= */}
@@ -438,7 +438,7 @@ export const BlackOilSection: React.FC = () => {
         {/* ========================================================================= */}
         {/* CARD 3: Consolidated Strategic Master Widget (3 Cols - الماستر المجمع المضغوط الفاخر) */}
         {/* ========================================================================= */}
-        <div className="md:col-span-2 xl:col-span-1 rounded-[26px] bg-gradient-to-br from-slate-900 via-purple-950 to-indigo-950 text-white border border-purple-500/30 p-4 sm:p-5 shadow-xl shadow-purple-950/20 hover:shadow-2xl hover:border-purple-400/50 transition-all duration-300 flex flex-col gap-4 relative overflow-hidden group">
+        <div className="md:col-span-2 xl:col-span-1 rounded-[26px] bg-gradient-to-br from-slate-900 via-purple-950 to-indigo-950 text-white border border-purple-500/30 p-4 sm:p-5 shadow-xl shadow-purple-950/20 hover:shadow-2xl hover:border-purple-400/50 transition-all duration-300 flex flex-col justify-between gap-4 relative overflow-hidden group">
           
           {/* Ambient Glow in Background */}
           <div className="absolute top-0 right-0 w-36 h-36 bg-purple-500/20 rounded-full blur-3xl pointer-events-none -mr-10 -mt-10" />
@@ -514,7 +514,7 @@ export const BlackOilSection: React.FC = () => {
           </div>
 
           {/* Frosted Glass Coverage Block (يؤمن لغاية) */}
-          <div className="mt-auto p-3.5 rounded-2xl bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/15 shadow-inner relative z-10 space-y-1">
+          <div className="p-3.5 rounded-2xl bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/15 shadow-inner relative z-10 space-y-1">
             <div className="flex items-center justify-between">
               <div className="text-base font-black text-white leading-tight font-cairo flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-purple-300" />
