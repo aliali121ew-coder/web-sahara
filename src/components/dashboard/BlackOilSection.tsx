@@ -157,13 +157,13 @@ export const BlackOilSection: React.FC = () => {
         </div>
       } />
 
-      {/* Grid: 2 Spacious Main Cards (Sahara 5/12 + Etihad 4/12) + 1 Compact Luxury Executive Card (3/12) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4 items-stretch">
+      {/* الشاشات الكبيرة: كارتا الصحاري والاتحاد بنفس العرض، والكارت الكلي أصغر منهما */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.75fr)] gap-4 items-stretch">
         
         {/* ========================================================================= */}
         {/* CARD 1: Sahara Black Oil (5 Cols - صحاري كربلاء) - Light Luminous Sky Cyan */}
         {/* ========================================================================= */}
-        <div className="xl:col-span-5 rounded-[26px] bg-gradient-to-b from-sky-500/[0.04] via-white to-cyan-50/40 dark:from-sky-950/20 dark:via-slate-900 dark:to-slate-900/90 border border-sky-200/80 dark:border-sky-800/40 p-4 sm:p-5 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-xl hover:border-sky-400/80 dark:hover:border-sky-500/60 hover:-translate-y-1 transition-all duration-300 flex flex-col gap-4 relative overflow-hidden group">
+        <div className="rounded-[26px] bg-gradient-to-b from-sky-500/[0.04] via-white to-cyan-50/40 dark:from-sky-950/20 dark:via-slate-900 dark:to-slate-900/90 border border-sky-200/80 dark:border-sky-800/40 p-4 sm:p-5 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-xl hover:border-sky-400/80 dark:hover:border-sky-500/60 hover:-translate-y-1 transition-all duration-300 flex flex-col gap-4 relative overflow-hidden group">
           
           {/* Top Ambient Glow */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-sky-400/10 dark:bg-sky-500/10 rounded-full blur-2xl pointer-events-none -mr-8 -mt-8" />
@@ -301,7 +301,7 @@ export const BlackOilSection: React.FC = () => {
         {/* ========================================================================= */}
         {/* CARD 2: Etihad Black Oil (4 Cols - شركة الاتحاد) */}
         {/* ========================================================================= */}
-        <div className="xl:col-span-4 rounded-[26px] bg-gradient-to-b from-teal-500/[0.04] via-white to-slate-50/50 dark:from-teal-950/20 dark:via-slate-900 dark:to-slate-900/90 border border-teal-200/80 dark:border-teal-900/40 p-4 sm:p-5 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-xl hover:border-teal-400/80 dark:hover:border-teal-500/50 hover:-translate-y-1 transition-all duration-300 flex flex-col gap-4 relative overflow-hidden group">
+        <div className="rounded-[26px] bg-gradient-to-b from-teal-500/[0.04] via-white to-slate-50/50 dark:from-teal-950/20 dark:via-slate-900 dark:to-slate-900/90 border border-teal-200/80 dark:border-teal-900/40 p-4 sm:p-5 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-xl hover:border-teal-400/80 dark:hover:border-teal-500/50 hover:-translate-y-1 transition-all duration-300 flex flex-col gap-4 relative overflow-hidden group">
           
           {/* Top Ambient Glow */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-teal-400/10 dark:bg-teal-500/10 rounded-full blur-2xl pointer-events-none -mr-8 -mt-8" />
@@ -438,7 +438,7 @@ export const BlackOilSection: React.FC = () => {
         {/* ========================================================================= */}
         {/* CARD 3: Consolidated Strategic Master Widget (3 Cols - الماستر المجمع المضغوط الفاخر) */}
         {/* ========================================================================= */}
-        <div className="xl:col-span-3 md:col-span-2 xl:col-span-3 rounded-[26px] bg-gradient-to-br from-slate-900 via-purple-950 to-indigo-950 text-white border border-purple-500/30 p-4 sm:p-5 shadow-xl shadow-purple-950/20 hover:shadow-2xl hover:border-purple-400/50 transition-all duration-300 flex flex-col gap-4 relative overflow-hidden group">
+        <div className="md:col-span-2 xl:col-span-1 rounded-[26px] bg-gradient-to-br from-slate-900 via-purple-950 to-indigo-950 text-white border border-purple-500/30 p-4 sm:p-5 shadow-xl shadow-purple-950/20 hover:shadow-2xl hover:border-purple-400/50 transition-all duration-300 flex flex-col gap-4 relative overflow-hidden group">
           
           {/* Ambient Glow in Background */}
           <div className="absolute top-0 right-0 w-36 h-36 bg-purple-500/20 rounded-full blur-3xl pointer-events-none -mr-10 -mt-10" />
