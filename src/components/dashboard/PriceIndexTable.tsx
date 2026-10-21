@@ -102,8 +102,13 @@ export const PriceIndexTable: React.FC = () => {
                 <img src={s.company === 'etihad' ? '/logos/etihad.png' : '/logos/sahara.png'} alt={t(`common:enum.company.${s.company}`)} className="max-h-full max-w-full object-contain" />
               </span>
               {/* الاسم كاملًا في كل المقاسات: ينزل لسطر ثانٍ بدل القص */}
-              {/* الاسم يأخذ عرض السطر كله (نسبة التغيّر انتقلت تحت السعر الحالي) فلا يضيق الاسم الطويل */}
+              {/* الاسم كاملًا (يلتف لسطر ثانٍ)، ونسبة التغيّر مقابله بحجم صغير حتى لا تضيّق الاسم */}
               <div className="min-w-0 flex-1 text-[14px] font-black leading-snug text-slate-900 dark:text-white break-words">{s.supplierName}</div>
+              {s.hasPrice && (
+                <span className={`shrink-0 self-start mt-0.5 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[11px] font-black ${chip}`} dir="ltr">
+                  {up ? <TrendingUp className="w-3 h-3" /> : down ? <TrendingDown className="w-3 h-3" /> : <Minus className="w-3 h-3" />}{up ? '+' : ''}{s.pct}%
+                </span>
+              )}
             </div>
             {/* سطر واحد بثلاث خانات: السعر السابق، السعر الحالي، الكثافة — والأرقام في الوسط */}
             <div className="mt-2 grid grid-cols-3 gap-1.5 text-center [&>div]:min-w-0">
@@ -114,11 +119,6 @@ export const PriceIndexTable: React.FC = () => {
               <div className={`rounded-xl px-1.5 py-1.5 ${s.hasPrice ? 'bg-blue-50 dark:bg-blue-950/40' : 'bg-slate-50 dark:bg-slate-800/60'}`}>
                 <div className={`text-[clamp(9.5px,2.9vw,10.5px)] font-bold whitespace-nowrap ${s.hasPrice ? 'text-blue-600 dark:text-blue-300' : 'text-slate-400'}`}>{t('dashboard:priceIndex.current')}</div>
                 <div className={`font-mono font-black text-[clamp(12px,3.6vw,14px)] tabular-nums break-words ${s.hasPrice ? 'text-blue-800 dark:text-blue-200' : 'text-slate-400'}`}>{s.hasPrice ? <>{fmtPrice(s.price)} <span className={iqd}>{t('common:units.iqd')}</span></> : '—'}</div>
-                {s.hasPrice && (
-                  <span className={`mt-1 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[11px] font-black ${chip}`} dir="ltr">
-                    {up ? <TrendingUp className="w-3 h-3" /> : down ? <TrendingDown className="w-3 h-3" /> : <Minus className="w-3 h-3" />}{up ? '+' : ''}{s.pct}%
-                  </span>
-                )}
               </div>
               <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 px-1.5 py-1.5">
                 <div className="text-[clamp(9.5px,2.9vw,10.5px)] font-bold text-slate-400 whitespace-nowrap">{t('dashboard:priceIndex.density')}</div>
