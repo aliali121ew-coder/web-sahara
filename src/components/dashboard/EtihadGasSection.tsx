@@ -369,12 +369,15 @@ export const EtihadGasSection: React.FC = () => {
             <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors min-w-0">
               <div className="flex items-center justify-between gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                 <span className="kpi-label">{t('dashboard:flow.dailyInbound')}</span>
-                <div className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/40 shrink-0">
-                  <ArrowDownLeft className="w-3.5 h-3.5" />
+                {/* القيمة مقابل العنوان في كل المقاسات */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
+                    {formatNumber(totalInbound)} <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
+                  </div>
+                  <div className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/40 shrink-0">
+                    <ArrowDownLeft className="w-3.5 h-3.5" />
+                  </div>
                 </div>
-              </div>
-              <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
-                {formatNumber(totalInbound)} <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </div>
               {latest ? (() => {
                 // شراء اليوم ونسبة التغير (معدل اليومين مقارنة بسعر اليوم السابق) — نفس كارت الصحاري
