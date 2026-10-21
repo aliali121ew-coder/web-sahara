@@ -96,7 +96,7 @@ export const PriceIndexTable: React.FC = () => {
           : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300';
         return (
           // خط جانبي بلون اتجاه السعر: يُفهم الاتجاه بنظرة قبل قراءة الأرقام
-          <div key={s.id} className={`rounded-2xl border border-slate-200/80 dark:border-slate-800 border-s-[4px] ${up ? 'border-s-rose-500' : down ? 'border-s-emerald-500' : 'border-s-slate-300 dark:border-s-slate-600'} bg-white dark:bg-slate-900 px-3 py-2.5`}>
+          <div key={s.id} className={`rounded-2xl border border-slate-200/80 dark:border-slate-800 border-s-2 ${up ? 'border-s-rose-500' : down ? 'border-s-emerald-500' : 'border-s-slate-300 dark:border-s-slate-600'} bg-white dark:bg-slate-900 px-3 py-2.5`}>
             <div className="flex items-center gap-2.5 min-w-0">
               {/* شعار الشركة المستلمة مكان دائرة الحرف */}
               <span className="w-8 h-8 shrink-0 rounded-lg bg-white ring-1 ring-slate-200 dark:ring-slate-700 flex items-center justify-center p-0.5 overflow-hidden">
