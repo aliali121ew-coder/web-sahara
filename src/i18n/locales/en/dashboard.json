@@ -17,6 +17,7 @@
   "flow": {
     "inboundColon": "Inbound:",
     "consumptionColon": "Consumption:",
+    "dailyInbound": "Daily inbound",
     "totalInbound": "Total inbound",
     "received": "Deliveries received",
     "consumption": "Consumption",
@@ -52,6 +53,7 @@
     "approved": "Approved",
     "lastInboundAvg": "Average price of last inbound",
     "buyAvg": "Average purchase price",
+    "buyPrice": "Purchase price",
     "todayBuy": "Today's purchase",
     "twoDayAvg": "Two-day average",
     "vsPrevBuy": "vs. the previous day's purchase price"

@@ -10,7 +10,6 @@ import {
   Cpu,
   Flame,
   Droplets,
-  Activity,
   ArrowDownLeft,
   Boxes,
   PieChart as PieIcon,
@@ -360,12 +359,12 @@ export const SaharaGasSection: React.FC = () => {
           </div>
 
           {/* 3 Enriched Executive Metrics: الوارد - الاستهلاك الكلي - الاستهلاك الفعلي */}
-          <div className="kpi-wrap pt-3 border-t border-slate-100 dark:border-slate-800"><div className="kpi-grid kpi-grid-3 gap-2.5">
+          <div className="kpi-wrap pt-3 border-t border-slate-100 dark:border-slate-800"><div className="kpi-grid kpi-grid-3 kpi-2col gap-2.5">
             
             {/* 1. الوارد */}
             <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors min-w-0">
               <div className="flex items-center justify-between gap-1.5 text-[10.5px] font-bold text-slate-500 dark:text-slate-400 mb-1">
-                <span className="kpi-label">{t('dashboard:flow.totalInbound')}</span>
+                <span className="kpi-label">{t('dashboard:flow.dailyInbound')}</span>
                 <div className="w-5 h-5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/40 shrink-0">
                   <ArrowDownLeft className="w-3 h-3" />
                 </div>
@@ -392,7 +391,7 @@ export const SaharaGasSection: React.FC = () => {
                           className="rounded-lg ring-1 min-w-0 bg-white dark:bg-slate-900/70 ring-slate-200 dark:ring-slate-700 px-1.5 py-1 text-center"
                           title={buy ? `${t('dashboard:price.buyAvg')} · ${buy.day}` : undefined}
                         >
-                          <div className="text-[9px] font-bold leading-tight text-slate-400">{t('dashboard:price.todayBuy')}</div>
+                          <div className="text-[9px] font-bold leading-tight text-slate-400">{t('dashboard:price.buyPrice')}</div>
                           <div className="mt-0.5 font-mono font-black kpi-sub tabular-nums text-slate-700 dark:text-slate-200">
                             {buy ? buy.price.toFixed(1) : '0.0'}<span className="text-[8.5px] font-bold text-slate-400"> {t('common:units.iqd')}</span>
                           </div>
@@ -414,20 +413,6 @@ export const SaharaGasSection: React.FC = () => {
               ) : (
                 <span className="text-[10px] text-slate-400 mt-0.5 block">{t('dashboard:flow.received')}</span>
               )}
-            </div>
-
-            {/* 3. الاستهلاك الفعلي */}
-            <div className="p-2.5 sm:p-3 rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/60 flex flex-col justify-between hover:border-blue-400 dark:hover:border-blue-600 transition-colors min-w-0">
-              <div className="flex items-center justify-between gap-1.5 text-[10.5px] font-bold text-blue-700 dark:text-blue-300 mb-1">
-                <span className="kpi-label" title={t('dashboard:flow.actual')}><span className="lbl-full">{t('dashboard:flow.actual')}</span><span className="lbl-short">{t('dashboard:flow.actualShort')}</span></span>
-                <div className="w-5 h-5 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 flex items-center justify-center border border-blue-300/60 dark:border-blue-700/50 shrink-0">
-                  <Activity className="w-3 h-3" />
-                </div>
-              </div>
-              <div className="kpi-num font-black text-blue-900 dark:text-blue-100 font-mono">
-                {formatNumber(actualConsumption)} <span className="text-[8.5px] font-normal text-blue-500">{t('common:units.liter')}</span>
-              </div>
-              <span className="text-[10px] text-blue-600 dark:text-blue-300 mt-0.5 block">{t('dashboard:flow.directOutflow')}</span>
             </div>
 
             {/* 2. فرق الاستهلاك الفعلي بين أمس واليوم */}
