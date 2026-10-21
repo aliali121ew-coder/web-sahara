@@ -26,6 +26,13 @@ import { usePermissions } from '../../lib/usePermission';
 
 
 /** layout="side": بدون ترويسة وفي عمودين (للعمود الجانبي في صفحة المشتريات) */
+/** ترتيب كروت الهاتف حسب نوع الوقود */
+const PHONE_GROUPS = [
+  { category: 'gas', label: 'dashboard:purchases.groupGas' },
+  { category: 'crude', label: 'dashboard:purchases.groupCrude' },
+  { category: 'gasoline', label: 'dashboard:purchases.groupGasoline' },
+] as const;
+
 export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout = 'row' }) => {
   const isSide = layout === 'side';
   const { fuelMetrics, priceOf: getLinkedSupplierData, savePrice, resetPrice, saveManual, saveStationSuppliers, stationGas } = usePurchasePrices();
@@ -171,49 +178,70 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
       } />
       )}
 
-      {/* الهاتف (الرئيسية فقط): كارتان مصغّران في كل صف (3 صفوف) بنفس البيانات (الأيقونة، الاسم، الشركة، السعر، التغيّر) */}
+      {/* الهاتف (الرئيسية فقط): كارت لكل نوع وقود (الكاز، النفط الأسود، البنزين) وداخله أسعار الشركات متجاورة للمقارنة،
+          وتحت كل سعر التغيّر وآخر وارد وتاريخه. الضغط المطوّل على أي سعر يفتح نافذته كالسابق */}
       {!isSide && (
-        <div className="sm:hidden grid grid-cols-2 gap-2">
-          {fuelMetrics.map(item => {
-            const config = getCardPastelConfig(item);
+        <div className="sm:hidden space-y-2.5">
+          {PHONE_GROUPS.map(group => {
+            const items = fuelMetrics.filter(m => (PHONE_GROUPS.some(g => g.category === m.category) ? m.category : 'gas') === group.category)
+              .sort((a, b) => Number(a.id === 'fuel-muhassan') - Number(b.id === 'fuel-muhassan'));
+            if (!items.length) return null;
+            const config = getCardPastelConfig(items[0]);
             const Icon = config.icon;
-            const { displayPrice, trendPercent, volume, priceUpdatedAt } = getLinkedSupplierData(item);
-            // النفط الأسود موجود للشركتين: الشركة تُلحق بالاسم بدل شارة الشركة
-            const name = item.category === 'crude'
-              ? `${enumText(item.name)} - ${t(item.company.includes('اتحاد') ? 'dashboard:purchases.coEtihad' : 'dashboard:purchases.coSahara')}`
-              : enumText(item.name);
-            const up = trendPercent > 0, down = trendPercent < 0;
             return (
-              <div
-                key={item.id}
-                onPointerDown={e => startPress(e, item.id)}
-                onPointerMove={movePress}
-                onPointerUp={cancelPress}
-                onPointerLeave={cancelPress}
-                onPointerCancel={cancelPress}
-                onContextMenu={e => e.preventDefault()}
-                className={`relative rounded-2xl p-2 ${config.cardBg} border ${config.border} flex flex-col items-center text-center gap-1 select-none touch-manipulation overflow-hidden ${pressing === item.id ? 'scale-[0.97] ring-2 ring-teal-500/30' : ''} ${openCard?.id === item.id ? 'opacity-0' : ''}`}
-              >
-                {pressing === item.id && (
-                  <span className="absolute bottom-0 inset-x-0 h-1 bg-teal-500 origin-right" style={{ animation: 'fmLongPress 520ms linear forwards' }} />
-                )}
-                <div className={`w-7 h-7 rounded-lg ${config.iconContainer} flex items-center justify-center`}><Icon className="w-3.5 h-3.5" /></div>
-                <div className="text-[11px] font-black leading-tight text-slate-900 dark:text-white break-words">{name}</div>
-                <div className="flex items-baseline gap-0.5 mt-0.5">
-                  <span className={`font-black font-mono text-[17px] leading-none tabular-nums ${config.priceColor}`}>{displayPrice > 0 ? displayPrice : 0}</span>
-                  <span className="text-[9px] font-bold text-slate-400">{t('common:units.iqd')}</span>
+              <div key={group.category} className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-2.5 shadow-soft-card">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={`w-7 h-7 rounded-lg ${config.iconContainer} flex items-center justify-center shrink-0`}><Icon className="w-3.5 h-3.5" /></div>
+                  <span className="text-[14px] font-black text-slate-900 dark:text-white">{t(group.label)}</span>
+                  <span className="ms-auto text-[10px] font-bold text-slate-400">{t('dashboard:purchases.perLiter')}</span>
                 </div>
-                <span dir="ltr" className={`inline-flex items-center gap-0.5 text-[10px] font-black ${up ? 'text-rose-600 dark:text-rose-400' : down ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
-                  {up ? <TrendingUp className="w-3 h-3" /> : down ? <TrendingDown className="w-3 h-3" /> : null}
-                  {up ? '+' : ''}{trendPercent}%
-                </span>
-                {/* آخر وارد وتاريخه */}
-                <div className="w-full mt-0.5 pt-1 border-t border-slate-200/70 dark:border-slate-700/60 text-[9.5px] leading-snug">
-                  <div className="font-bold text-slate-400">{t('dashboard:purchases.lastInbound')}</div>
-                  <div className="font-mono font-black text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                    {formatNumber(volume || 0)} <span className="font-normal text-slate-400">{t('common:units.liter')}</span>
-                  </div>
-                  <div className="font-mono text-slate-400 whitespace-nowrap" dir="ltr">{priceUpdatedAt}</div>
+                <div className="flex gap-1.5">
+                  {items.map(item => {
+                    const { displayPrice, trendPercent, volume, priceUpdatedAt } = getLinkedSupplierData(item);
+                    const up = trendPercent > 0, down = trendPercent < 0;
+                    const co = item.id === 'fuel-muhassan' ? 'dashboard:purchases.coStations'
+                      : item.company.includes('اتحاد') ? 'dashboard:purchases.coEtihad' : 'dashboard:purchases.coSahara';
+                    return (
+                      <div
+                        key={item.id}
+                        onPointerDown={e => startPress(e, item.id)}
+                        onPointerMove={movePress}
+                        onPointerUp={cancelPress}
+                        onPointerLeave={cancelPress}
+                        onPointerCancel={cancelPress}
+                        onContextMenu={e => e.preventDefault()}
+                        className={`relative flex-1 min-w-0 rounded-xl p-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 text-center select-none touch-manipulation overflow-hidden ${pressing === item.id ? 'scale-[0.97] ring-2 ring-teal-500/30' : ''} ${openCard?.id === item.id ? 'opacity-0' : ''}`}
+                      >
+                        {pressing === item.id && (
+                          <span className="absolute bottom-0 inset-x-0 h-1 bg-teal-500 origin-right" style={{ animation: 'fmLongPress 520ms linear forwards' }} />
+                        )}
+                        <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{t(co)}</div>
+                        <div className={`font-black font-mono text-[20px] leading-snug tabular-nums ${displayPrice > 0 ? 'text-slate-900 dark:text-white' : 'text-slate-300 dark:text-slate-600'}`}>
+                          {displayPrice > 0 ? displayPrice : '—'}
+                        </div>
+                        <div dir="ltr" className={`inline-flex items-center gap-0.5 text-[10.5px] font-black ${up ? 'text-rose-600 dark:text-rose-400' : down ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                          {up ? <TrendingUp className="w-3 h-3" /> : down ? <TrendingDown className="w-3 h-3" /> : null}
+                          {displayPrice > 0 ? `${up ? '+' : ''}${trendPercent}%` : ' '}
+                        </div>
+                        {/* آخر وارد وتاريخه */}
+                        <div className="mt-1 pt-1 border-t border-slate-200/80 dark:border-slate-700/60 text-[10px] leading-snug text-slate-400">
+                          {volume > 0 ? (
+                            <>
+                              <div className="font-mono font-black text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                                {formatNumber(volume)} <span className="font-normal text-slate-400">{t('common:units.liter')}</span>
+                              </div>
+                              <div className="font-mono whitespace-nowrap" dir="ltr">{priceUpdatedAt}</div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="font-bold">{t('dashboard:purchases.noInbound')}</div>
+                              <div>&nbsp;</div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );
