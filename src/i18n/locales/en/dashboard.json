@@ -107,6 +107,7 @@
     "tanks": "Tanks",
     "weeklyInbound": "Weekly inbound",
     "weeklyConsumption": "Weekly consumption",
+    "weeklyFlow": "Weekly inbound & consumption",
     "coverageTitle": "Etihad strategic coverage forecast",
     "surplus": "Strategic surplus",
     "operationalGas": "Operational gasoil",
@@ -134,7 +135,7 @@
     "targetColon": "Target:",
     "required": "Quantity needed",
     "boost": "Targeted strategic top-up",
-    "coverageFull": "Covers (overall)",
+    "coverageFull": "Covers after supply",
     "balanceColon": "Balance:",
     "analysis": "Inbound, consumption & flow analysis",
     "neon": "Curve",
@@ -144,7 +145,7 @@
     "toggleConsumption": "Click to show or hide consumption",
     "consumptionLegend": "Consumption",
     "requiredShort": "Needed",
-    "coverageFullShort": "Covers"
+    "coverageFullShort": "Covers after supply"
   },
   "range": {
     "d7": "7 days",

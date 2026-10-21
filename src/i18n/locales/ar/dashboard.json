@@ -119,6 +119,7 @@
     "tanks": "خزانات",
     "weeklyInbound": "مقارنة الوارد الأسبوعي",
     "weeklyConsumption": "مقارنة الاستهلاك الأسبوعي",
+    "weeklyFlow": "مقارنة الوارد والاستهلاك الأسبوعي",
     "coverageTitle": "تنبؤ التغطية الاستراتيجية لشركة الاتحاد",
     "surplus": "فائض استراتيجي",
     "operationalGas": "الكاز التشغيلي",
@@ -146,7 +147,7 @@
     "targetColon": "المستهدف:",
     "required": "الكمية المطلوب توفيرها",
     "boost": "تعزيز استراتيجي مستهدف",
-    "coverageFull": "يؤمّن لغاية (الشامل)",
+    "coverageFull": "يؤمّن لغاية بعد التوفير",
     "balanceColon": "الرصيد:",
     "analysis": "تحليل الوارد والاستهلاك والتدفق",
     "neon": "منحني",
@@ -156,7 +157,7 @@
     "toggleConsumption": "انقر لإظهار الاستهلاك أو إخفائه",
     "consumptionLegend": "الاستهلاك",
     "requiredShort": "المطلوب توفيره",
-    "coverageFullShort": "يؤمّن لغاية"
+    "coverageFullShort": "يؤمّن لغاية بعد التوفير"
   },
   "range": {
     "d7": "7 أيام",

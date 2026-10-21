@@ -422,12 +422,13 @@ export const PetrolStationsSection: React.FC = () => {
               <div className="kpi-label text-[#146f82] dark:text-teal-300 mb-0.5" title={t('dashboard:petrol.coverageFull')}>
                 <span className="lbl-full">{t('dashboard:petrol.coverageFull')}</span><span className="lbl-short">{t('dashboard:petrol.coverageFullShort')}</span>
               </div>
-              <div className="kpi-num !whitespace-normal font-black text-[#146f82] dark:text-[#2dd4bf] font-mono">
-                <span className="whitespace-nowrap">{t('common:units.days', { count: targetCoverageDays })}</span> <span className="text-[8.5px] font-normal text-slate-400 whitespace-nowrap">({targetCoverageDate})</span>
-              </div>
-              <span className="text-[8.5px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5 block">
+              <span className="text-[8.5px] text-slate-500 dark:text-slate-400 font-semibold block">
                 {t('dashboard:petrol.balanceColon')} {formatNumber(targetTotalBalance)} {t('common:units.liter')}
               </span>
+              {/* الأيام وتاريخها في أسفل الكارت */}
+              <div className="kpi-num !whitespace-normal font-black text-[#146f82] dark:text-[#2dd4bf] font-mono mt-auto pt-1">
+                <span className="whitespace-nowrap">{t('common:units.days', { count: targetCoverageDays })}</span> <span className="text-[8.5px] font-normal text-slate-400 whitespace-nowrap">({targetCoverageDate})</span>
+              </div>
             </div>
 
           </div></div>
