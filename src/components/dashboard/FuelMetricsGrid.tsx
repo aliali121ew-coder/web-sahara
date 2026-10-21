@@ -28,9 +28,9 @@ import { usePermissions } from '../../lib/usePermission';
 /** layout="side": بدون ترويسة وفي عمودين (للعمود الجانبي في صفحة المشتريات) */
 /** ترتيب كروت الهاتف حسب نوع الوقود */
 const PHONE_GROUPS = [
-  { category: 'gas', label: 'dashboard:purchases.groupGas' },
-  { category: 'crude', label: 'dashboard:purchases.groupCrude' },
-  { category: 'gasoline', label: 'dashboard:purchases.groupGasoline' },
+  { category: 'gas', label: 'dashboard:purchases.groupGas', head: 'bg-blue-50 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300 border-blue-500/70' },
+  { category: 'crude', label: 'dashboard:purchases.groupCrude', head: 'bg-purple-50 dark:bg-purple-950/50 text-purple-800 dark:text-purple-300 border-purple-500/70' },
+  { category: 'gasoline', label: 'dashboard:purchases.groupGasoline', head: 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border-amber-500/70' },
 ] as const;
 
 export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout = 'row' }) => {
@@ -210,13 +210,14 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
                         onPointerLeave={cancelPress}
                         onPointerCancel={cancelPress}
                         onContextMenu={e => e.preventDefault()}
-                        className={`relative flex-1 min-w-0 rounded-xl p-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 text-center select-none touch-manipulation overflow-hidden ${pressing === item.id ? 'scale-[0.97] ring-2 ring-teal-500/30' : ''} ${openCard?.id === item.id ? 'opacity-0' : ''}`}
+                        className={`relative flex-1 min-w-0 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 text-center select-none touch-manipulation overflow-hidden ${pressing === item.id ? 'scale-[0.97] ring-2 ring-teal-500/30' : ''} ${openCard?.id === item.id ? 'opacity-0' : ''}`}
                       >
                         {pressing === item.id && (
                           <span className="absolute bottom-0 inset-x-0 h-1 bg-teal-500 origin-right" style={{ animation: 'fmLongPress 520ms linear forwards' }} />
                         )}
-                        <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{t(co)}</div>
-                        <div className={`font-black font-mono text-[20px] leading-snug tabular-nums ${displayPrice > 0 ? 'text-slate-900 dark:text-white' : 'text-slate-300 dark:text-slate-600'}`}>
+                        {/* اسم الشركة عنوان للخانة بشريط وخط تحته يفصله عن السعر */}
+                        <div className={`px-1 py-1 text-[11px] font-black leading-tight border-b-2 ${group.head}`}>{t(co)}</div>
+                        <div className={`pt-1.5 font-black font-mono text-[20px] leading-snug tabular-nums ${displayPrice > 0 ? 'text-slate-900 dark:text-white' : 'text-slate-300 dark:text-slate-600'}`}>
                           {displayPrice > 0 ? displayPrice : '—'}
                         </div>
                         <div dir="ltr" className={`inline-flex items-center gap-0.5 text-[10.5px] font-black ${up ? 'text-rose-600 dark:text-rose-400' : down ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
@@ -224,13 +225,13 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
                           {displayPrice > 0 ? `${up ? '+' : ''}${trendPercent}%` : ' '}
                         </div>
                         {/* آخر وارد وتاريخه */}
-                        <div className="mt-1 pt-1 border-t border-slate-200/80 dark:border-slate-700/60 text-[10px] leading-snug text-slate-400">
+                        <div className="mx-2 mb-1.5 mt-1 pt-1 border-t border-slate-200/80 dark:border-slate-700/60 text-[10px] leading-snug text-slate-400">
                           {volume > 0 ? (
                             <>
-                              <div className="font-mono font-black text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                                {formatNumber(volume)} <span className="font-normal text-slate-400">{t('common:units.liter')}</span>
+                              <div className="font-mono font-black text-[13px] text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                                {formatNumber(volume)} <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
                               </div>
-                              <div className="font-mono whitespace-nowrap" dir="ltr">{priceUpdatedAt}</div>
+                              <div className="font-mono text-[9px] whitespace-nowrap" dir="ltr">{priceUpdatedAt}</div>
                             </>
                           ) : (
                             <>
