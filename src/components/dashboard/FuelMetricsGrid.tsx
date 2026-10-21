@@ -171,9 +171,9 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
       } />
       )}
 
-      {/* الهاتف (الرئيسية فقط): ثلاثة كروت مصغّرة في كل صف بنفس البيانات (الأيقونة، الاسم، الشركة، السعر، التغيّر) */}
+      {/* الهاتف (الرئيسية فقط): كارتان مصغّران في كل صف (3 صفوف) بنفس البيانات (الأيقونة، الاسم، الشركة، السعر، التغيّر) */}
       {!isSide && (
-        <div className="sm:hidden grid grid-cols-3 gap-2">
+        <div className="sm:hidden grid grid-cols-2 gap-2">
           {fuelMetrics.map(item => {
             const config = getCardPastelConfig(item);
             const Icon = config.icon;
