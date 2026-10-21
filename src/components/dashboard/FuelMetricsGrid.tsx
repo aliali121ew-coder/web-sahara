@@ -10,7 +10,9 @@ import {
   ArrowDownRight,
   Clock,
   Layers,
-  Sparkles
+  Sparkles,
+  TrendingUp,
+  TrendingDown
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { enumText } from '../../i18n/enums';
@@ -169,8 +171,47 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
       } />
       )}
 
-      {/* 6 Luxury Pastel Cards Grid (Adaptive on Open Sidebar) */}
-      <div className={isSide ? 'h-full grid grid-cols-2 gap-2.5 2xl:gap-3 items-stretch' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 2xl:gap-4 items-stretch'}>
+      {/* الهاتف (الرئيسية فقط): ثلاثة كروت مصغّرة في كل صف بنفس البيانات (الأيقونة، الاسم، الشركة، السعر، التغيّر) */}
+      {!isSide && (
+        <div className="sm:hidden grid grid-cols-3 gap-2">
+          {fuelMetrics.map(item => {
+            const config = getCardPastelConfig(item);
+            const Icon = config.icon;
+            const { displayPrice, trendPercent } = getLinkedSupplierData(item);
+            const up = trendPercent > 0, down = trendPercent < 0;
+            return (
+              <div
+                key={item.id}
+                onPointerDown={e => startPress(e, item.id)}
+                onPointerMove={movePress}
+                onPointerUp={cancelPress}
+                onPointerLeave={cancelPress}
+                onPointerCancel={cancelPress}
+                onContextMenu={e => e.preventDefault()}
+                className={`relative rounded-2xl p-2 ${config.cardBg} border ${config.border} flex flex-col items-center text-center gap-1 select-none touch-manipulation overflow-hidden ${pressing === item.id ? 'scale-[0.97] ring-2 ring-teal-500/30' : ''} ${openCard?.id === item.id ? 'opacity-0' : ''}`}
+              >
+                {pressing === item.id && (
+                  <span className="absolute bottom-0 inset-x-0 h-1 bg-teal-500 origin-right" style={{ animation: 'fmLongPress 520ms linear forwards' }} />
+                )}
+                <div className={`w-7 h-7 rounded-lg ${config.iconContainer} flex items-center justify-center`}><Icon className="w-3.5 h-3.5" /></div>
+                <div className="text-[11px] font-black leading-tight text-slate-900 dark:text-white break-words">{enumText(item.name)}</div>
+                <div className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${config.companyBadge} leading-tight`}>{enumText(item.company)}</div>
+                <div className="flex items-baseline gap-0.5 mt-0.5">
+                  <span className={`font-black font-mono text-[17px] leading-none tabular-nums ${config.priceColor}`}>{displayPrice > 0 ? displayPrice : 0}</span>
+                  <span className="text-[9px] font-bold text-slate-400">{t('common:units.iqd')}</span>
+                </div>
+                <span dir="ltr" className={`inline-flex items-center gap-0.5 text-[10px] font-black ${up ? 'text-rose-600 dark:text-rose-400' : down ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                  {up ? <TrendingUp className="w-3 h-3" /> : down ? <TrendingDown className="w-3 h-3" /> : null}
+                  {up ? '+' : ''}{trendPercent}%
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 6 Luxury Pastel Cards Grid (Adaptive on Open Sidebar) — الرئيسية: من التابلت وأكبر */}
+      <div className={isSide ? 'h-full grid grid-cols-2 gap-2.5 2xl:gap-3 items-stretch' : 'hidden sm:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 2xl:gap-4 items-stretch'}>
         {fuelMetrics.map((item) => {
           const config = getCardPastelConfig(item);
           const Icon = config.icon;
