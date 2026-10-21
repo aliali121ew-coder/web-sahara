@@ -479,7 +479,7 @@ export const BlackOilSection: React.FC = () => {
           {/* Middle: Twin KPI Badges - الوارد الكلي + الاستهلاك الكلي (Micro-Stack Responsive Architecture for Millions) */}
           <div className="grid grid-cols-2 gap-2 relative z-10">
             {/* Inbound Card */}
-            <div className="p-2.5 rounded-xl bg-white/10 dark:bg-white/5 border border-white/10 flex flex-col justify-between space-y-1 overflow-hidden min-w-0">
+            <div className="px-3 py-3.5 rounded-xl bg-white/10 dark:bg-white/5 border border-white/10 flex flex-col justify-between space-y-2 overflow-hidden min-w-0">
               <div className="flex items-center gap-1.5 text-emerald-300">
                 <ArrowDownLeft className="w-3.5 h-3.5 shrink-0" />
                 <span className="text-[10px] sm:text-[11px] font-bold whitespace-nowrap">{t('dashboard:flow.totalInboundAll')}</span>
@@ -496,7 +496,7 @@ export const BlackOilSection: React.FC = () => {
             </div>
 
             {/* Consumption Card */}
-            <div className="p-2.5 rounded-xl bg-white/10 dark:bg-white/5 border border-white/10 flex flex-col justify-between space-y-1 overflow-hidden min-w-0">
+            <div className="px-3 py-3.5 rounded-xl bg-white/10 dark:bg-white/5 border border-white/10 flex flex-col justify-between space-y-2 overflow-hidden min-w-0">
               <div className="flex items-center gap-1.5 text-cyan-300">
                 <Activity className="w-3.5 h-3.5 shrink-0" />
                 <span className="text-[10px] sm:text-[11px] font-bold whitespace-nowrap">{t('dashboard:flow.totalConsumption')}</span>
