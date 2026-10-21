@@ -210,13 +210,13 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
                         onPointerLeave={cancelPress}
                         onPointerCancel={cancelPress}
                         onContextMenu={e => e.preventDefault()}
-                        className={`relative flex-1 min-w-0 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 text-center select-none touch-manipulation overflow-hidden ${pressing === item.id ? 'scale-[0.97] ring-2 ring-teal-500/30' : ''} ${openCard?.id === item.id ? 'opacity-0' : ''}`}
+                        className={`relative flex-1 min-w-0 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-700/60 text-center select-none touch-manipulation overflow-hidden ${pressing === item.id ? 'scale-[0.97] ring-2 ring-teal-500/30' : ''} ${openCard?.id === item.id ? 'opacity-0' : ''}`}
                       >
                         {pressing === item.id && (
                           <span className="absolute bottom-0 inset-x-0 h-1 bg-teal-500 origin-right" style={{ animation: 'fmLongPress 520ms linear forwards' }} />
                         )}
-                        {/* اسم الشركة عنوان للخانة بشريط رصاصي (أغمق من الخانة) وخط تحته يفصله عن السعر */}
-                        <div className={`px-1 py-1 text-[11px] font-black leading-tight border-b-2 bg-slate-200/80 dark:bg-slate-700/70 text-slate-700 dark:text-slate-200 border-slate-400/70 dark:border-slate-500`}>{t(co)}</div>
+                        {/* اسم الشركة عنوان للخانة بشريط رمادي فاتح جدًا (الخانة بيضاء) وخط رفيع تحته يفصله عن السعر */}
+                        <div className={`px-1 py-1 text-[11px] font-black leading-tight border-b bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-400 dark:border-slate-600`}>{t(co)}</div>
                         <div className={`pt-1.5 font-black font-mono text-[20px] leading-snug tabular-nums ${displayPrice > 0 ? 'text-slate-900 dark:text-white' : 'text-slate-300 dark:text-slate-600'}`}>
                           {displayPrice > 0 ? displayPrice : '—'}
                         </div>
