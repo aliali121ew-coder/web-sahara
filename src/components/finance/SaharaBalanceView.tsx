@@ -55,6 +55,7 @@ import {
   SaharaExternalSource,
   SaharaLedgerRecord
 } from '../../lib/saharaLedger';
+import { cascadeSaharaRecords, laterDaysCount } from '../../lib/balanceCascade';
 import { useCentralTanks, resolveSaharaGasoilSectionKey, tankLiters } from '../../lib/centralTanks';
 import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
 import { usePermissions } from '../../lib/usePermission';
@@ -310,6 +311,7 @@ export const SaharaBalanceView: React.FC = () => {
   };
   // الأرصدة تُنقل لمنظومة الخزانات (والشاشة الرئيسية) فقط عند حفظ أحدث يوم
   const isLatestDate = !!form && !records.some(r => r.id !== form.id && r.date > form.date);
+  const laterDays = form ? laterDaysCount(records.filter(r => r.id !== form.id).map(r => r.date), form.date) : 0;
 
   const save = () => {
     if (!draft || !form || !canSave) return;
@@ -319,7 +321,10 @@ export const SaharaBalanceView: React.FC = () => {
       savedAt: new Date().toISOString()
     };
     // الحفظ يحدّث هذه الصفحة فقط؛ الواجهة الرئيسية والخزانات تنتظر "تأكيد البيانات"
-    update(prev => (form.id ? prev.map(r => (r.id === form.id ? record : r)) : [...prev, record]));
+    // الأيام اللاحقة تتصل بالسلسلة: يُزال منها الرصيد اليدوي ورصيد الكشف (من أقدم تاريخ تأثّر إن تغيّر تاريخ اليوم)
+    const oldDate = records.find(r => r.id === form.id)?.date ?? record.date;
+    const from = oldDate < record.date ? oldDate : record.date;
+    update(prev => cascadeSaharaRecords(form.id ? prev.map(r => (r.id === form.id ? record : r)) : [...prev, record], from));
     if (reportFile) reportAttach.attach(record.id, reportFile);
     if (reportFile && canFarms) void importFarmsFromReport(reportFile, record.date).catch(() => undefined);
     setReportFile(null);
@@ -1163,6 +1168,8 @@ onValue={v => setForm({ ...form, external: { ...form.external, [s.key]: v } })}
                   <p className="text-xs font-bold text-amber-600">{t('finance:ledger.form.noPrevious')}</p>
                 ) : overCapacity.length > 0 ? (
                   <p className="text-xs font-bold text-red-600">{t('finance:ledger.form.overCapacity')}</p>
+                ) : laterDays > 0 ? (
+                  <p className="text-xs font-bold text-amber-700 dark:text-amber-300">{t('finance:ledger.cascadeNote', { n: laterDays })}</p>
                 ) : null}
               </div>
               <div className="flex items-center gap-2 sm:gap-2.5 ms-auto">
