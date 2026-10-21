@@ -98,31 +98,31 @@ export const PriceIndexTable: React.FC = () => {
           <div key={s.id} className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5">
             <div className="flex items-center gap-2.5 min-w-0">
               {/* شعار الشركة المستلمة مكان دائرة الحرف */}
-              <span className="w-10 h-9 shrink-0 rounded-xl bg-white ring-1 ring-slate-200 dark:ring-slate-700 flex items-center justify-center p-1">
-                <img src={s.company === 'etihad' ? '/logos/etihad.png' : '/logos/sahara.png'} alt={t(`common:enum.company.${s.company}`)} className="max-h-full max-w-full object-contain" />
+              <span className="w-8 h-8 shrink-0 rounded-lg bg-white ring-1 ring-slate-200 dark:ring-slate-700 flex items-center justify-center p-0.5 overflow-hidden">
+                <img src={s.company === 'etihad' ? '/logos/etihad.png' : '/logos/sahara.png'} alt={t(`common:enum.company.${s.company}`)} className="w-full h-full object-contain" />
               </span>
               {/* الاسم كاملًا في كل المقاسات: ينزل لسطر ثانٍ بدل القص */}
               {/* الاسم كاملًا (يلتف لسطر ثانٍ)، ونسبة التغيّر مقابله بحجم صغير حتى لا تضيّق الاسم */}
               <div className="min-w-0 flex-1 text-[14px] font-black leading-snug text-slate-900 dark:text-white break-words">{s.supplierName}</div>
               {s.hasPrice && (
-                <span className={`shrink-0 self-start mt-0.5 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[11px] font-black ${chip}`} dir="ltr">
+                <span className={`shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[11px] font-black ${chip}`} dir="ltr">
                   {up ? <TrendingUp className="w-3 h-3" /> : down ? <TrendingDown className="w-3 h-3" /> : <Minus className="w-3 h-3" />}{up ? '+' : ''}{s.pct}%
                 </span>
               )}
             </div>
             {/* سطر واحد بثلاث خانات: السعر السابق، السعر الحالي، الكثافة — والأرقام في الوسط */}
             <div className="mt-2 grid grid-cols-3 gap-1.5 text-center [&>div]:min-w-0">
-              <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 px-1.5 py-1.5">
+              <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/70 px-1.5 py-1.5">
                 <div className="text-[clamp(9.5px,2.9vw,10.5px)] font-bold text-slate-400 whitespace-nowrap">{t('dashboard:priceIndex.previous')}</div>
                 <div className="font-mono font-bold text-[clamp(12px,3.6vw,14px)] text-slate-600 dark:text-slate-300 tabular-nums break-words">{s.previousPrice === null ? '—' : <>{fmtPrice(s.previousPrice)} <span className={iqd}>{t('common:units.iqd')}</span></>}</div>
               </div>
-              <div className={`rounded-xl px-1.5 py-1.5 ${s.hasPrice ? 'bg-blue-50 dark:bg-blue-950/40' : 'bg-slate-50 dark:bg-slate-800/60'}`}>
+              <div className={`rounded-xl border px-1.5 py-1.5 ${s.hasPrice ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-200/80 dark:border-blue-900/70' : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-700/70'}`}>
                 <div className={`text-[clamp(9.5px,2.9vw,10.5px)] font-bold whitespace-nowrap ${s.hasPrice ? 'text-blue-600 dark:text-blue-300' : 'text-slate-400'}`}>{t('dashboard:priceIndex.current')}</div>
                 <div className={`font-mono font-black text-[clamp(12px,3.6vw,14px)] tabular-nums break-words ${s.hasPrice ? 'text-blue-800 dark:text-blue-200' : 'text-slate-400'}`}>{s.hasPrice ? <>{fmtPrice(s.price)} <span className={iqd}>{t('common:units.iqd')}</span></> : '—'}</div>
               </div>
-              <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 px-1.5 py-1.5">
+              <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700/70 px-1.5 py-1.5">
                 <div className="text-[clamp(9.5px,2.9vw,10.5px)] font-bold text-slate-400 whitespace-nowrap">{t('dashboard:priceIndex.density')}</div>
-                <div className="font-mono font-bold text-[clamp(12px,3.6vw,14px)] text-slate-600 dark:text-slate-300 tabular-nums break-words">{s.density || '—'}</div>
+                <div className="font-mono font-medium text-[clamp(11px,3.2vw,12.5px)] text-slate-400 dark:text-slate-500 tabular-nums break-words">{s.density || '—'}</div>
               </div>
             </div>
           </div>
