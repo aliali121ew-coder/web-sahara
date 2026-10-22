@@ -171,6 +171,14 @@ export const applyStationGas = (suppliers: string[], live: StationGasLive | null
   return true;
 };
 
+/** يفرّغ سجل الكارت الخاص (قيم الكارت الحالية تبقى) */
+export const clearStationGasLog = () => {
+  try {
+    localStorage.setItem(STATION_GAS_LOG_KEY, '[]');
+  } catch { /* لا يتعطل العرض */ }
+  window.dispatchEvent(new Event(SYNC_EVENT));
+};
+
 /** قراءة حية لحالة الكارت وسجله (تبويبات وأجهزة أخرى) */
 export const useStationGas = () => {
   const [state, setState] = useState<StationGasState | null>(readStationGas);

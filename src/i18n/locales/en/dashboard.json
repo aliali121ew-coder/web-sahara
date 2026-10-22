@@ -80,8 +80,8 @@
   },
   "blackOil": {
     "details": "Black oil details",
-    "sahara": "Black oil – Sahara Karbala",
-    "etihad": "Black oil – Etihad Company",
+    "sahara": "Sahara Karbala",
+    "etihad": "Etihad Company",
     "both": "Sahara Karbala + Etihad",
     "combinedBalance": "Combined actual balance"
   },
@@ -103,7 +103,7 @@
   },
   "etihad": {
     "title": "Gasoil – Etihad Company",
-    "totalBalance": "Total Etihad gasoil balance",
+    "totalBalance": "Etihad gasoil",
     "tanks": "Tanks",
     "weeklyInbound": "Weekly inbound",
     "weeklyConsumption": "Weekly consumption",
@@ -137,7 +137,7 @@
   "petrol": {
     "surplusColon": "Surplus:",
     "title": "Gasoline – Sahara Karbala 2026",
-    "balance": "Approved actual gasoline balance",
+    "balance": "Sahara gasoline",
     "active": "Active",
     "readiness": "Operational coverage readiness",
     "actualColon": "Actual:",
@@ -214,7 +214,7 @@
       "farms": "Farms"
     },
     "title": "Gasoil – Sahara Karbala",
-    "balance": "Sahara gasoil balance",
+    "balance": "Sahara gasoil",
     "actual": "Actual",
     "consumptionSplit": "Consumption breakdown",
     "totalPercent": "100% total",

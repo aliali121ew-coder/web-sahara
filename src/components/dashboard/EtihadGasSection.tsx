@@ -145,9 +145,7 @@ export const EtihadGasSection: React.FC = () => {
                 <div className="w-6 h-6 rounded-lg bg-teal-50 dark:bg-teal-950/60 flex items-center justify-center text-teal-600 dark:text-teal-400 border border-teal-200/60 dark:border-teal-800/40">
                   <Boxes className="w-3.5 h-3.5" />
                 </div>
-                <span>
-                  {t('dashboard:etihad.totalBalance')}
-                </span>
+                <span>{t('dashboard:etihad.totalBalance')}</span>
               </div>
               <div className="flex items-baseline gap-2 mt-1.5">
                 <span className="text-[clamp(1.5rem,7.6vw,1.875rem)] sm:text-4xl lg:text-[36px] font-black font-mono tracking-tight text-slate-900 dark:text-white">

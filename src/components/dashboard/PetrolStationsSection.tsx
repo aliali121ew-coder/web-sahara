@@ -4,7 +4,6 @@ import {
   Fuel,
   ArrowDownLeft,
   ArrowUpRight,
-  Calendar,
   Activity,
   Boxes,
   BarChart3,
@@ -203,10 +202,6 @@ export const PetrolStationsSection: React.FC = () => {
                   <Fuel className="w-3.5 h-3.5" />
                 </div>
                 <span>{t('dashboard:petrol.balance')}</span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold border border-emerald-200/60 dark:border-emerald-800/40">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  {t('dashboard:petrol.active')}
-                </span>
               </div>
               <div className="flex items-baseline gap-2 mt-1">
                 <span className="text-3xl sm:text-4xl lg:text-[36px] font-black text-slate-900 dark:text-white font-mono tracking-tight">
@@ -317,7 +312,6 @@ export const PetrolStationsSection: React.FC = () => {
               <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
                 {formatNumber(totalInbound)} <span className="text-[8.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </div>
-              <span className="text-[10px] text-slate-400 mt-0.5 block">{t('dashboard:flow.received')}</span>
             </div>
 
             {/* 2. الاستهلاك */}
@@ -331,7 +325,6 @@ export const PetrolStationsSection: React.FC = () => {
               <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
                 {formatNumber(totalConsumption)} <span className="text-[8.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
               </div>
-              <span className="text-[10px] text-slate-400 mt-0.5 block">{t('dashboard:flow.directOutflow')}</span>
             </div>
 
           </div></div>
@@ -341,14 +334,6 @@ export const PetrolStationsSection: React.FC = () => {
         {/* 🌟 Card 2: Coverage Prediction Card (Narrower 3 cols matching Sahara) */}
         <div className="col-span-1 md:col-span-12 xl:col-span-3 rounded-[28px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-3.5 sm:p-4 shadow-soft-card hover:shadow-soft-hover transition-all flex flex-col justify-between space-y-2.5 h-full overflow-hidden">
           
-          {/* Header */}
-          <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 font-bold text-xs">
-              <Calendar className="w-4 h-4 text-[#146f82] dark:text-teal-400 shrink-0" />
-              <span className="truncate">{t('dashboard:coverage.smartTitle')}</span>
-            </div>
-          </div>
-
           {/* 1. Prediction Headline (الرصيد الفعلي الحالي) */}
           <div className="text-center py-1 space-y-1 my-auto">
             <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-none drop-shadow-2xs">

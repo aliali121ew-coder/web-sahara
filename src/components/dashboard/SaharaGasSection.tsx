@@ -3,13 +3,13 @@ import { SectionHeader } from './SectionHeader';
 import {
   TrendingUp,
   TrendingDown,
-  Calendar,
   Zap,
   Tractor,
   Cpu,
   Flame,
   Droplets,
   ArrowDownLeft,
+  Droplets,
   Boxes,
   PieChart as PieIcon
 } from 'lucide-react';
@@ -208,10 +208,6 @@ export const SaharaGasSection: React.FC = () => {
                   <Droplets className="w-3.5 h-3.5" />
                 </div>
                 <span>{t('dashboard:sahara.balance')}</span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold border border-emerald-200/60 dark:border-emerald-800/40">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  {t('dashboard:sahara.actual')}
-                </span>
               </div>
               <div className="flex items-baseline gap-2 mt-1.5">
                 <span className="text-3xl sm:text-4xl lg:text-[36px] font-black text-slate-900 dark:text-white font-mono tracking-tight">
@@ -448,14 +444,6 @@ export const SaharaGasSection: React.FC = () => {
         {/* Hero Card 2: Coverage Prediction (Mobile 1 col, Tablet 6 cols, Desktop 3 cols) */}
         <div className="col-span-1 md:col-span-6 xl:col-span-3 rounded-[28px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 sm:pb-[18px] shadow-soft-card hover:shadow-soft-hover transition-all flex flex-col justify-between gap-2.5 overflow-hidden">
           
-          {/* Header */}
-          <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 font-bold text-xs">
-              <Calendar className="w-4 h-4 text-amber-500 shrink-0" />
-              <span className="truncate">{t('dashboard:coverage.smartTitle')}</span>
-            </div>
-          </div>
-
           {/* 1. Prediction Headline (Enlarged) */}
           <div className="text-center py-1.5 space-y-1.5">
             <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-none drop-shadow-2xs">

@@ -60,6 +60,18 @@ export const logPrice = (e: Omit<PriceLogEntry, 'id' | 'at' | 'by'>) => {
   window.dispatchEvent(new Event(SYNC_EVENT));
 };
 
+/** يحذف من السجل العمليات المطابقة (تنظيف لمرة واحدة)؛ يعيد عدد المحذوف */
+export const removePriceLogEntries = (drop: (e: PriceLogEntry) => boolean): number => {
+  const all = read();
+  const keep = all.filter(e => !drop(e));
+  if (keep.length === all.length) return 0;
+  try {
+    localStorage.setItem(PRICE_LOG_KEY, JSON.stringify(keep));
+  } catch { return 0; }
+  window.dispatchEvent(new Event(SYNC_EVENT));
+  return all.length - keep.length;
+};
+
 export const usePriceLog = () => {
   const [log, setLog] = useState<PriceLogEntry[]>(read);
   useEffect(() => {

@@ -1053,6 +1053,11 @@
       "etihad": "Etihad",
       "saved": "saved"
     },
+    "company": {
+      "sahara": "Sahara",
+      "etihad": "Etihad",
+      "saved": "saved"
+    },
     "note": {
       "unmatched": "Saved — unmatched sites: {{list}}",
       "diff": "Saved — differs from the sheet balance by {{diff}}",

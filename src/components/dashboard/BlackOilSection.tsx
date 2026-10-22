@@ -204,6 +204,7 @@ export const BlackOilSection: React.FC = () => {
                   </span>
                 </div>
               </div>
+              <PriceCard records={saharaLedger.records} bg="to-sky-50/40" text="text-sky-700 dark:text-sky-300" />
             </div>
           </div>
 
@@ -342,6 +343,7 @@ export const BlackOilSection: React.FC = () => {
                   </span>
                 </div>
               </div>
+              <PriceCard records={etihadLedger.records} bg="to-teal-50/40" text="text-teal-700 dark:text-teal-300" />
             </div>
           </div>
 
