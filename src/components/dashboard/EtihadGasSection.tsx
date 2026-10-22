@@ -54,75 +54,6 @@ const buildWeeklyFlow = (records: EtihadBalanceRecord[], anchor?: string) => {
 };
 
 
-type WeeklyPoint = { day: string; date: string; val: number };
-
-/**
- * بطاقة التمرير على رسوم المقارنة الأسبوعية: اليوم وتاريخه، القيمة، الفرق عن اليوم السابق (لتر ونسبة)،
- * وحصة اليوم من مجموع الأيام السبعة. upIsGood: هل الزيادة إيجابية (الوارد) أم سلبية (الاستهلاك)
- */
-const WeeklyTooltip: React.FC<{
-  active?: boolean;
-  payload?: { payload: WeeklyPoint }[];
-  series: WeeklyPoint[];
-  title: string;
-  accent: string;
-  upIsGood: boolean;
-}> = ({ active, payload, series, title, accent, upIsGood }) => {
-  const { t } = useTranslation(['dashboard', 'common']);
-  if (!active || !payload?.length) return null;
-  const point = payload[0].payload;
-  const idx = series.findIndex(p => p.date === point.date);
-  const prev = idx > 0 ? series[idx - 1] : null;
-  const diff = prev ? point.val - prev.val : null;
-  const pct = prev && prev.val > 0 && diff !== null ? (diff / prev.val) * 100 : null;
-  const total = series.reduce((a, p) => a + p.val, 0);
-  const share = total > 0 ? (point.val / total) * 100 : 0;
-  const good = diff !== null && diff !== 0 && (diff > 0) === upIsGood;
-  const tone = diff === null || diff === 0 ? 'text-slate-300' : good ? 'text-emerald-400' : 'text-rose-400';
-  const liter = t('common:units.liter');
-  return (
-    <div className="min-w-[176px] rounded-2xl bg-slate-900/95 text-white shadow-2xl ring-1 ring-white/10 backdrop-blur-md overflow-hidden pointer-events-none select-none" dir="rtl">
-      <div className="h-0.5" style={{ background: accent }} />
-      <div className="px-3 pt-2 pb-1.5 flex items-center justify-between gap-3 border-b border-white/10">
-        <span className="text-[11px] font-black text-slate-100">{enumText(point.day)}</span>
-        <span className="text-[9.5px] font-mono text-slate-400" dir="ltr">{point.date}</span>
-      </div>
-      <div className="px-3 py-2 space-y-1.5">
-        <div className="flex items-center gap-1.5 text-[9.5px] font-bold text-slate-400">
-          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: accent }} />
-          <span>{title}</span>
-        </div>
-        <div className="font-mono font-black text-[17px] leading-none tabular-nums" style={{ color: accent }}>
-          {formatNumber(point.val)} <span className="text-[9.5px] font-bold text-slate-400">{liter}</span>
-        </div>
-        <div className="pt-1.5 mt-0.5 border-t border-white/10 space-y-1 text-[9.5px]">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-slate-400 font-bold">{t('dashboard:compare.prevDay')}</span>
-            {diff === null ? (
-              <span className="text-slate-500 font-bold">—</span>
-            ) : diff === 0 ? (
-              <span className="text-slate-300 font-bold">{t('dashboard:compare.noChange')}</span>
-            ) : (
-              <span className={`flex items-center gap-1 font-mono font-black tabular-nums ${tone}`} dir="ltr">
-                {diff > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                {diff > 0 ? '+' : '−'}{formatNumber(Math.abs(diff))}
-                {pct !== null && <span className="opacity-80">({diff > 0 ? '+' : '−'}{Math.abs(pct).toFixed(1)}%)</span>}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-slate-400 font-bold">{t('dashboard:compare.share7')}</span>
-            <span className="font-mono font-black tabular-nums text-slate-200" dir="ltr">{share.toFixed(1)}%</span>
-          </div>
-          <div className="h-1 rounded-full bg-white/10 overflow-hidden">
-            <div className="h-full rounded-full" style={{ width: `${Math.min(100, share)}%`, background: accent }} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const recordSales = (r?: EtihadBalanceRecord) =>
   r ? (r.saharaSales || 0) + (r.cablesSales || 0) + (r.specialSales || 0) + (r.otherSales || 0) : 0;
 
@@ -168,8 +99,9 @@ export const EtihadGasSection: React.FC = () => {
   const prevOutflow = prev ? (prev.etihadExpense || 0) + recordSales(prev) : null;
   const outflowDiff = prevOutflow === null ? null : totalOutflow - prevOutflow;
   const weeklyFlow = React.useMemo(() => buildWeeklyFlow(records, latest?.date), [records, latest?.date]);
-  const inboundWeekly = weeklyFlow.map(w => ({ day: w.day, date: w.date, val: w.inbound }));
-  const consumptionWeekly = weeklyFlow.map(w => ({ day: w.day, date: w.date, val: w.consumption }));
+  // متوسط الصرف اليومي للأسبوع (استهلاك + مبيعات) من الأيام التي فيها صرف مسجّل
+  const weekOutDays = weeklyFlow.filter(w => w.consumption > 0);
+  const weekAvgOutflow = weekOutDays.length ? weekOutDays.reduce((a, w) => a + w.consumption, 0) / weekOutDays.length : 0;
 
   // السعة = سعة خزان "موقع الاستخلاص" في منظومة الخزانات (تتحدث فورًا عند تغييرها)
   const [centralTanks] = useCentralTanks(OFFICIAL_TABLE_TANK_UNITS);
@@ -396,7 +328,7 @@ export const EtihadGasSection: React.FC = () => {
             {/* 2. الاستهلاك + المبيعات */}
             <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-blue-300 dark:hover:border-blue-700 transition-colors min-w-0">
               <div className="flex items-center justify-between gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
-                <span className="kpi-label" title={t('dashboard:flow.actual')}><span className="lbl-full">{t('dashboard:flow.actual')}</span><span className="lbl-short">{t('dashboard:flow.actualShort')}</span></span>
+                <span className="kpi-label">{t('dashboard:flow.consumptionDetails')}</span>
                 <div className="flex items-center gap-2 shrink-0">
                   {/* القيمة مقابل العنوان في كل المقاسات */}
                   <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
@@ -474,15 +406,15 @@ export const EtihadGasSection: React.FC = () => {
         {/* Side Weekly Comparison Charts & Coverage (Mobile/Tablet 12 Cols, Desktop 5 Cols) */}
         <div className="col-span-1 md:col-span-12 xl:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-3 h-full">
           
-          {/* الهاتف: كارت واحد يجمع الوارد والاستهلاك الأسبوعي (رقما آخر يوم ورسم واحد بمنحنيين) */}
-          <div className="sm:hidden relative p-4 rounded-[26px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-soft-card flex flex-col space-y-2">
+          {/* كارت واحد يجمع الوارد والاستهلاك الأسبوعي: رقما آخر يوم، ومتوسط الاستهلاك الأسبوعي ومقارنة اليوم به، ورسم واحد بمنحنيين */}
+          <div className="sm:col-span-2 relative p-4 rounded-[26px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-soft-card flex flex-col space-y-2">
             <div className="flex items-center justify-between gap-2 text-slate-400 text-xs font-bold">
               <span className="min-w-0">{t('dashboard:etihad.weeklyFlow')}</span>
               <span className="shrink-0 text-[9px] text-slate-600 dark:text-slate-300 font-bold bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200/70 dark:border-slate-700">
                 {t('dashboard:compare.sevenDays')}
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <div className="rounded-xl border border-emerald-200/70 dark:border-emerald-800/40 bg-emerald-50/50 dark:bg-emerald-950/30 px-2.5 py-1.5 min-w-0">
                 <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />{t('dashboard:flow.inbound')}
@@ -498,6 +430,23 @@ export const EtihadGasSection: React.FC = () => {
                 <div className="font-mono font-black text-[15px] text-blue-600 dark:text-blue-400 whitespace-nowrap">
                   {formatNumber(totalOutflow)} <span className="text-[9px] font-normal text-slate-400">{t('common:units.liter')}</span>
                 </div>
+              </div>
+              {/* متوسط الاستهلاك الأسبوعي (أيام الأسبوع التي فيها صرف مسجّل) ونسبة اليوم مقارنة به */}
+              <div className="rounded-xl border border-slate-200/80 dark:border-slate-700/60 bg-slate-50/80 dark:bg-slate-800/50 px-2.5 py-1.5 min-w-0">
+                <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 truncate">{t('dashboard:sahara.weekAvg')}</div>
+                <div className="font-mono font-black text-[15px] text-slate-900 dark:text-white whitespace-nowrap">
+                  {weekAvgOutflow > 0 ? formatNumber(Math.round(weekAvgOutflow)) : '—'}
+                </div>
+                {weekAvgOutflow > 0 && totalOutflow > 0 && (() => {
+                  const pct = ((totalOutflow - weekAvgOutflow) / weekAvgOutflow) * 100;
+                  const up = pct > 0.05, down = pct < -0.05;
+                  return (
+                    <div dir="ltr" className={`inline-flex items-center gap-0.5 text-[9.5px] font-black ${up ? 'text-rose-600 dark:text-rose-400' : down ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                      {up ? <TrendingUp className="w-3 h-3" /> : down ? <TrendingDown className="w-3 h-3" /> : null}
+                      {up ? '+' : ''}{pct.toFixed(1)}% <span className="font-bold text-slate-400">{t('dashboard:sahara.today')}</span>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
             <div className="h-28 w-full -mx-1 pt-1">
@@ -541,142 +490,6 @@ export const EtihadGasSection: React.FC = () => {
                   />
                   <Area type="monotone" dataKey="consumption" stroke="#3B82F6" strokeWidth={2} fillOpacity={1} fill="url(#consumptionGradientM)" dot={{ fill: '#3B82F6', r: 2 }} activeDot={{ r: 3.5, stroke: '#fff', strokeWidth: 2 }} />
                   <Area type="monotone" dataKey="inbound" stroke="#10B981" strokeWidth={2} fillOpacity={1} fill="url(#inboundGradientM)" dot={{ fill: '#10B981', r: 2 }} activeDot={{ r: 3.5, stroke: '#fff', strokeWidth: 2 }} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Card 1: Inbound Weekly Chart (مقارنة الوارد الأسبوعي) — بلا قص حتى تظهر بطاقة التمرير كاملة فوق الرسم */}
-          <div className="hidden sm:flex relative hover:z-30 p-4 rounded-[26px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-soft-card hover:shadow-soft-hover transition-all flex-col justify-between space-y-2">
-            <div className="flex items-center justify-between text-slate-400 text-xs font-bold">
-              <span className="truncate">{t('dashboard:etihad.weeklyInbound')}</span>
-              <div className="w-5 h-5 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                <TrendingUp className="w-3.5 h-3.5" />
-              </div>
-            </div>
-            
-            <div className="flex items-baseline justify-between gap-2">
-              <div className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono">
-                {formatNumber(totalInbound)} <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
-              </div>
-              <span className="text-[9px] text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/40">
-                {t('dashboard:compare.sevenDays')}
-              </span>
-            </div>
-
-            {/* Inbound Weekly Area Chart with X-Axis and Interactive Tooltip */}
-            <div className="h-20 w-full -mx-1 pt-1">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={inboundWeekly} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="inboundGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#10B981" stopOpacity={0.0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis
-                    dataKey="day"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#94a3b8', fontSize: 8, fontWeight: 700 }}
-                    interval={0}
-                    tickFormatter={(val) => enumText(val, 'short')}
-                    padding={{ left: 12, right: 12 }}
-                  />
-                  <Tooltip
-                    cursor={{ stroke: '#10B981', strokeWidth: 1, strokeDasharray: '3 3' }}
-                    allowEscapeViewBox={{ x: false, y: true }}
-                    position={{ y: -112 }}
-                    wrapperStyle={{ zIndex: 60, pointerEvents: 'none', outline: 'none' }}
-                    content={(props) => (
-                      <WeeklyTooltip
-                        active={props.active}
-                        payload={props.payload as { payload: WeeklyPoint }[] | undefined}
-                        series={inboundWeekly}
-                        title={t('dashboard:flow.inbound')}
-                        accent="#10B981"
-                        upIsGood={true}
-                      />
-                    )}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="val"
-                    stroke="#10B981"
-                    strokeWidth={2.2}
-                    fillOpacity={1}
-                    fill="url(#inboundGradient)"
-                    dot={{ fill: '#10B981', r: 2 }}
-                    activeDot={{ r: 3.5, stroke: '#fff', strokeWidth: 2 }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Card 2: Consumption Weekly Chart (مقارنة الاستهلاك الأسبوعي) */}
-          <div className="hidden sm:flex relative hover:z-30 p-4 rounded-[26px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-soft-card hover:shadow-soft-hover transition-all flex-col justify-between space-y-2">
-            <div className="flex items-center justify-between text-slate-400 text-xs font-bold">
-              <span className="truncate">{t('dashboard:etihad.weeklyConsumption')}</span>
-              <div className="w-5 h-5 rounded-md bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-                <TrendingDown className="w-3.5 h-3.5" />
-              </div>
-            </div>
-            
-            <div className="flex items-baseline justify-between gap-2">
-              <div className="text-base sm:text-lg font-black text-blue-600 dark:text-blue-400 font-mono">
-                {formatNumber(totalOutflow)} <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
-              </div>
-              <span className="text-[9px] text-blue-700 dark:text-blue-300 font-bold bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-md border border-blue-200/60 dark:border-blue-800/40">
-                {t('dashboard:compare.sevenDays')}
-              </span>
-            </div>
-
-            {/* Consumption Weekly Area Chart with X-Axis and Interactive Tooltip */}
-            <div className="h-20 w-full -mx-1 pt-1">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={consumptionWeekly} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="consumptionGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis
-                    dataKey="day"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#94a3b8', fontSize: 8, fontWeight: 700 }}
-                    interval={0}
-                    tickFormatter={(val) => enumText(val, 'short')}
-                    padding={{ left: 12, right: 12 }}
-                  />
-                  <Tooltip
-                    cursor={{ stroke: '#3B82F6', strokeWidth: 1, strokeDasharray: '3 3' }}
-                    allowEscapeViewBox={{ x: false, y: true }}
-                    position={{ y: -112 }}
-                    wrapperStyle={{ zIndex: 60, pointerEvents: 'none', outline: 'none' }}
-                    content={(props) => (
-                      <WeeklyTooltip
-                        active={props.active}
-                        payload={props.payload as { payload: WeeklyPoint }[] | undefined}
-                        series={consumptionWeekly}
-                        title={t('dashboard:flow.consumption')}
-                        accent="#3B82F6"
-                        upIsGood={false}
-                      />
-                    )}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="val"
-                    stroke="#3B82F6"
-                    strokeWidth={2.2}
-                    fillOpacity={1}
-                    fill="url(#consumptionGradient)"
-                    dot={{ fill: '#3B82F6', r: 2 }}
-                    activeDot={{ r: 3.5, stroke: '#fff', strokeWidth: 2 }}
-                  />
                 </AreaChart>
               </ResponsiveContainer>
             </div>

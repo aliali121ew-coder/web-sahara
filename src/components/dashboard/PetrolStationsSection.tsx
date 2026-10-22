@@ -300,28 +300,6 @@ export const PetrolStationsSection: React.FC = () => {
 
               </div>
 
-              {/* Smart HUD Badges */}
-              <div className="flex items-center justify-between text-xs gap-2 pt-0.5">
-                
-                {/* Badge 2: السعة المتبقية */}
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-[#1d576a]/10 dark:bg-[#1d576a]/30 border border-[#2ea0be]/30 dark:border-[#2ea0be]/50 min-w-0 shadow-2xs">
-                  <span className="relative flex h-1.5 w-1.5 shrink-0">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#2ea0be] opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#2ea0be]"></span>
-                  </span>
-                  <span className="font-bold text-[9.5px] sm:text-[10.5px] text-slate-700 dark:text-slate-200 truncate">
-                    {t('dashboard:capacity.remaining')}
-                  </span>
-                  <span className="font-mono font-black text-[11px] sm:text-xs text-[#1d576a] dark:text-teal-300">
-                    {remainLabel}
-                  </span>
-                  <span className="text-[9px] font-mono text-slate-400 hidden sm:inline">
-                    ({formatNumber(remainingCapacity)} {t('common:units.liter')})
-                  </span>
-                </div>
-
-              </div>
-
             </div>
           </div>
 
@@ -401,37 +379,24 @@ export const PetrolStationsSection: React.FC = () => {
             </div>
           </div>
 
-          {/* 3. كروت الإمداد والتغطية الشاملة المستهدفة (الكمية المطلوب توفرها + يؤمن لغاية بعد التعزيز) */}
-          <div className="kpi-wrap pt-2.5 border-t border-slate-100 dark:border-slate-800"><div className="kpi-grid kpi-grid-2 gap-2.5">
-            
-            {/* كارت 1: الكمية المطلوب توفرها */}
-            <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-teal-300 dark:hover:border-teal-700 transition-colors min-w-0">
-              <div className="kpi-label text-slate-500 dark:text-slate-400 mb-0.5" title={t('dashboard:petrol.required')}>
-                <span className="lbl-full">{t('dashboard:petrol.required')}</span><span className="lbl-short">{t('dashboard:petrol.requiredShort')}</span>
+          {/* 3. كارت واحد مختصر: الكمية المطلوب توفيرها، وإلى متى يؤمّن الرصيد بعد توفيرها */}
+          <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800">
+            <div className="rounded-2xl bg-[#146f82]/5 dark:bg-[#146f82]/20 border border-[#146f82]/25 dark:border-[#146f82]/40 divide-y divide-[#146f82]/15 dark:divide-[#146f82]/30">
+              <div className="flex items-center justify-between gap-2 px-3 py-2">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{t('dashboard:petrol.requiredShort')}</span>
+                <span className="font-mono font-black text-[14px] text-slate-900 dark:text-white whitespace-nowrap">
+                  {formatNumber(requiredQuantity)} <span className="text-[8.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
+                </span>
               </div>
-              <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
-                {formatNumber(requiredQuantity)} <span className="text-[8.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
-              </div>
-              <span className="text-[8.5px] text-[#146f82] dark:text-teal-400 font-bold mt-0.5 block">
-                {t('dashboard:petrol.boost')}
-              </span>
-            </div>
-
-            {/* كارت 2: يؤمن لغاية (المتوفر + المطلوب توفرها) */}
-            <div className="p-2.5 sm:p-3 rounded-2xl bg-[#146f82]/5 dark:bg-[#146f82]/20 border border-[#146f82]/25 dark:border-[#146f82]/40 flex flex-col justify-between hover:border-[#146f82] transition-colors min-w-0">
-              <div className="kpi-label text-[#146f82] dark:text-teal-300 mb-0.5" title={t('dashboard:petrol.coverageFull')}>
-                <span className="lbl-full">{t('dashboard:petrol.coverageFull')}</span><span className="lbl-short">{t('dashboard:petrol.coverageFullShort')}</span>
-              </div>
-              <span className="text-[8.5px] text-slate-500 dark:text-slate-400 font-semibold block">
-                {t('dashboard:petrol.balanceColon')} {formatNumber(targetTotalBalance)} {t('common:units.liter')}
-              </span>
-              {/* الأيام وتاريخها في أسفل الكارت */}
-              <div className="kpi-num !whitespace-normal font-black text-[#146f82] dark:text-[#2dd4bf] font-mono mt-auto pt-1">
-                <span className="whitespace-nowrap">{t('common:units.days', { count: targetCoverageDays })}</span> <span className="text-[8.5px] font-normal text-slate-400 whitespace-nowrap">({targetCoverageDate})</span>
+              <div className="flex items-center justify-between gap-2 px-3 py-2">
+                <span className="text-[11px] font-bold text-[#146f82] dark:text-teal-300">{t('dashboard:petrol.coverageFullShort')}</span>
+                <span className="text-end whitespace-nowrap">
+                  <span className="font-mono font-black text-[14px] text-[#146f82] dark:text-[#2dd4bf]">{t('common:units.days', { count: targetCoverageDays })}</span>
+                  <span className="ms-1 text-[9px] font-mono text-slate-400" dir="ltr">({targetCoverageDate})</span>
+                </span>
               </div>
             </div>
-
-          </div></div>
+          </div>
 
 
         </div>
