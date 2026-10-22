@@ -601,7 +601,7 @@ export const SaharaGasSection: React.FC = () => {
               
               {/* Donut Chart Visual - Futuristic Glass Halo & Curved Segments */}
               <div 
-                className="w-32 h-32 sm:w-36 sm:h-36 shrink-0 relative flex items-center justify-center"
+                className="w-24 h-24 sm:w-28 sm:h-28 shrink-0 relative flex items-center justify-center"
                 onMouseLeave={() => setActiveIndex(null)}
               >
                 <ResponsiveContainer width="100%" height="100%">
@@ -629,8 +629,8 @@ export const SaharaGasSection: React.FC = () => {
                       data={[{ value: 100 }]}
                       cx="50%"
                       cy="50%"
-                      innerRadius={38}
-                      outerRadius={59}
+                      innerRadius={30}
+                      outerRadius={46}
                       dataKey="value"
                       fill="currentColor"
                       className="text-slate-100 dark:text-slate-800/60 outline-none focus:outline-none"
@@ -643,8 +643,8 @@ export const SaharaGasSection: React.FC = () => {
                       data={sectorData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={38}
-                      outerRadius={59}
+                      innerRadius={30}
+                      outerRadius={46}
                       paddingAngle={2}
                       cornerRadius={0}
                       dataKey="value"
@@ -680,12 +680,12 @@ export const SaharaGasSection: React.FC = () => {
 
                 {/* Futuristic Glassmorphism Center Halo */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="w-[66px] h-[66px] sm:w-[74px] sm:h-[74px] rounded-full bg-gradient-to-b from-white/95 via-slate-50/90 to-slate-100/90 dark:from-slate-800/95 dark:via-slate-800/90 dark:to-slate-900/95 border border-slate-200/90 dark:border-slate-700/80 shadow-md backdrop-blur-md flex flex-col items-center justify-center p-1 transition-all duration-300">
+                  <div className="w-[52px] h-[52px] sm:w-[58px] sm:h-[58px] rounded-full bg-gradient-to-b from-white/95 via-slate-50/90 to-slate-100/90 dark:from-slate-800/95 dark:via-slate-800/90 dark:to-slate-900/95 border border-slate-200/90 dark:border-slate-700/80 shadow-md backdrop-blur-md flex flex-col items-center justify-center p-1 transition-all duration-300">
                     <span 
                       className="font-mono font-black leading-none transition-all duration-300 tracking-tight text-center tabular-nums"
                       style={{ 
                         color: activeIndex !== null ? sectorData[activeIndex].textColor : undefined,
-                        fontSize: activeIndex !== null ? '1.15rem' : '0.8rem',
+                        fontSize: activeIndex !== null ? '0.95rem' : '0.68rem',
                         transform: activeIndex !== null ? 'scale(1.08)' : 'scale(1)'
                       }}
                     >
@@ -694,7 +694,7 @@ export const SaharaGasSection: React.FC = () => {
                     {activeIndex === null && (
                       <span className="text-[7px] font-bold text-blue-600 dark:text-blue-400 leading-none mt-0.5">{t('common:units.liter')}</span>
                     )}
-                    <span className="text-[8px] font-extrabold text-slate-500 dark:text-slate-400 mt-0.5 max-w-[65px] truncate text-center leading-tight">
+                    <span className="text-[8px] font-extrabold text-slate-500 dark:text-slate-400 mt-0.5 max-w-[52px] truncate text-center leading-tight">
                       {activeIndex !== null ? sectorData[activeIndex].name : t('dashboard:sahara.actual')}
                     </span>
                   </div>
@@ -702,7 +702,7 @@ export const SaharaGasSection: React.FC = () => {
               </div>
 
               {/* Rectangular Weekly Comparison Dual-Bar Chart Card */}
-              <div className="w-full p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2 relative">
+              <div className="w-full p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1.5 relative">
                 
                 {/* Header with Legend Badges */}
                 <div className="flex items-center justify-between text-[10px] pb-1.5 border-b border-slate-200/60 dark:border-slate-700/50">
@@ -722,7 +722,7 @@ export const SaharaGasSection: React.FC = () => {
                 </div>
 
                 {/* Recharts Weekly Dual-Bar Chart */}
-                <div className="h-24 w-full -mx-1 pt-0.5 relative">
+                <div className="h-16 w-full -mx-1 pt-0.5 relative">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={weeklyFlow}
@@ -790,6 +790,29 @@ export const SaharaGasSection: React.FC = () => {
                   </ResponsiveContainer>
                 </div>
 
+              </div>
+
+              {/* متوسط الاستهلاك الأسبوعي (نفس بيانات الرسم، وعليه يُحسب «يؤمّن لغاية») ومقارنة اليوم به */}
+              <div className="w-full px-2.5 py-2 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/70 dark:border-blue-800/50 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-[11px] font-black text-blue-800 dark:text-blue-300 leading-tight">{t('dashboard:sahara.weekAvg')}</div>
+                  <div className="text-[9.5px] font-bold text-slate-400 leading-tight mt-0.5">{t('dashboard:sahara.weekAvgSub', { n: weekUsedDays.length })}</div>
+                </div>
+                <div className="text-end shrink-0">
+                  <div className="font-mono font-black text-[15px] leading-tight tabular-nums text-blue-700 dark:text-blue-300">
+                    {weekAvgConsumption > 0 ? formatNumber(Math.round(weekAvgConsumption)) : '—'}
+                  </div>
+                  {weekAvgConsumption > 0 && actualConsumption > 0 && (() => {
+                    const pct = ((actualConsumption - weekAvgConsumption) / weekAvgConsumption) * 100;
+                    const up = pct > 0.05, down = pct < -0.05;
+                    return (
+                      <div dir="ltr" className={`inline-flex items-center gap-0.5 text-[9.5px] font-black ${up ? 'text-rose-600 dark:text-rose-400' : down ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                        {up ? <TrendingUp className="w-3 h-3" /> : down ? <TrendingDown className="w-3 h-3" /> : null}
+                        {up ? '+' : ''}{pct.toFixed(1)}% <span className="font-bold text-slate-400">{t('dashboard:sahara.today')}</span>
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
 
             </div>

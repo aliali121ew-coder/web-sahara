@@ -229,6 +229,9 @@
     "actual": "الفعلي",
     "consumptionSplit": "توزيع نسب الاستهلاك",
     "totalPercent": "100% الإجمالي",
+    "weekAvg": "متوسط الاستهلاك الأسبوعي",
+    "weekAvgSub": "{{n}} أيام · لتر/يوم",
+    "today": "اليوم",
     "weekData": "بيانات الأسبوع",
     "consumedQty": "الكمية المستهلكة:"
   }
