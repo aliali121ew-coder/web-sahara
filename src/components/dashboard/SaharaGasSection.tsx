@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { SectionHeader } from './SectionHeader';
-import { createPortal } from 'react-dom';
 import {
   TrendingUp,
   TrendingDown,
@@ -12,10 +11,7 @@ import {
   Droplets,
   ArrowDownLeft,
   Boxes,
-  PieChart as PieIcon,
-  X,
-  MapPin,
-  ChevronLeft
+  PieChart as PieIcon
 } from 'lucide-react';
 import {
   PieChart,
@@ -162,13 +158,12 @@ export const SaharaGasSection: React.FC = () => {
   }, [centralTanks]);
 
   // السعة = مجموع سعات خزانات المواقع
-  // الكارت ثابت على 8 خانات: إذا زادت المواقع تظهر أعلى 8 رصيدًا، والباقي من زر "عرض الكل" أسفلها
+  // الكارت ثابت على 8 خانات: إذا زادت المواقع تظهر أعلى 8 رصيدًا
   const MAX_SLOTS = 8;
   const hasOverflow = coveredStations.length > MAX_SLOTS;
   const gridStations = hasOverflow
     ? [...coveredStations].sort((a, b) => b.balance - a.balance).slice(0, MAX_SLOTS)
     : coveredStations;
-  const [showAllStations, setShowAllStations] = useState(false);
 
   // الرصيد الفعلي = الرصيد الحالي لآخر يوم في رصيد شركة الصحاري (وإن لم يوجد سجل: مجموع أرصدة المواقع)
   const actualBalance = latestDay ? latestDay.current : coveredStations.reduce((a, st) => a + st.balance, 0);
@@ -476,19 +471,14 @@ export const SaharaGasSection: React.FC = () => {
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-slate-200/80 dark:border-slate-800" />
             </div>
-            <button
-              type="button"
-              onClick={() => setShowAllStations(true)}
-              className="relative px-3 bg-white dark:bg-slate-900 flex items-center gap-2 z-10 cursor-pointer group/st"
-              title={t('dashboard:stations.showAll')}
-            >
-              <span className="text-[11px] font-extrabold text-slate-700 dark:text-slate-200 group-hover/st:text-blue-600 dark:group-hover/st:text-blue-400 transition-colors">
+            <div className="relative px-3 bg-white dark:bg-slate-900 flex items-center gap-2 z-10">
+              <span className="text-[11px] font-extrabold text-slate-700 dark:text-slate-200">
                 {t('dashboard:stations.title')}
               </span>
               <span className="font-mono text-emerald-600 dark:text-emerald-400 font-extrabold text-[9px] bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200/60 dark:border-emerald-800/40">
                 {t('dashboard:stations.secured', { count: coveredStations.length })}
               </span>
-            </button>
+            </div>
           </div>
 
           {/* 3. Stations Grid with Proportional Vertical Stature */}
@@ -516,74 +506,10 @@ export const SaharaGasSection: React.FC = () => {
               ))}
             </div>
 
-            {/* زر عرض كل المواقع: يظهر فقط إذا زادت المواقع الظاهرة على 8 (الخزانات المخفية لا تُحتسب) */}
-            {hasOverflow && (
-            <div className="shrink-0 flex justify-center pt-2.5">
-              <button
-                type="button"
-                onClick={() => setShowAllStations(true)}
-                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-950/50 text-blue-700 dark:text-blue-300 text-[9.5px] font-extrabold cursor-pointer transition-colors shadow-2xs"
-              >
-                {t('dashboard:stations.viewAll')}
-                <span className="font-mono px-1 rounded-full bg-blue-600 text-white text-[9px]">+{coveredStations.length - gridStations.length}</span>
-                <ChevronLeft className="w-3 h-3" />
-              </button>
-            </div>
-            )}
           </div>
 
         </div>
 
-        {/* نافذة كل المواقع */}
-        {showAllStations && createPortal(
-          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm animate-in fade-in duration-150" dir="rtl" onClick={() => setShowAllStations(false)}>
-            <div onClick={e => e.stopPropagation()} className="w-full max-w-lg max-h-[85vh] flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
-              <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-800 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-                    <MapPin className="w-4.5 h-4.5" />
-                  </div>
-                  <div>
-                    <div className="font-black text-slate-900 dark:text-white">{t('dashboard:stations.title')}</div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400">{t('dashboard:stations.sites', { count: coveredStations.length })} · {t('dashboard:stations.fromTanks')}</div>
-                  </div>
-                </div>
-                <button type="button" onClick={() => setShowAllStations(false)} aria-label={t('common:actions.close')} className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700 cursor-pointer">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                {[...coveredStations].sort((a, b) => b.balance - a.balance).map(st => {
-                  const pct = st.capacity ? (st.balance / st.capacity) * 100 : 0;
-                  return (
-                    <div key={st.id} className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 px-3.5 py-2.5">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm font-extrabold text-slate-800 dark:text-slate-100">{siteName(st.name)}</span>
-                        <span className="font-mono font-black text-sm text-slate-900 dark:text-white">
-                          {formatNumber(st.balance)} <span className="text-[10px] font-bold text-slate-400">{t('common:units.liter')}</span>
-                        </span>
-                      </div>
-                      <div className="mt-1.5 flex items-center gap-2">
-                        <div className="flex-1 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                          <div className="h-full rounded-full bg-blue-600" style={{ width: `${Math.min(100, pct)}%` }} />
-                        </div>
-                        <span className="font-mono text-[11px] font-black text-slate-600 dark:text-slate-300 w-12 text-left">{pct.toFixed(1)}%</span>
-                      </div>
-                      <div className="mt-0.5 text-[10px] text-slate-400 font-mono">{t('dashboard:capacity.label')}: {formatNumber(st.capacity)} {t('common:units.liter')}</div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="px-5 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-center justify-between text-xs">
-                <span className="font-bold text-slate-500">{t('dashboard:stations.total')}</span>
-                <span className="font-mono font-black text-slate-900 dark:text-white">
-                  {formatNumber(actualBalance)} / {formatNumber(totalCapacity)} {t('common:units.liter')} <span className="text-blue-600 dark:text-blue-400">({fillLabel})</span>
-                </span>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
 
         {/* Hero Card 3: Sector Breakdown with Donut Chart (Mobile 1 col, Tablet 6 cols, Desktop 4 cols) */}
         <div 
@@ -813,7 +739,7 @@ export const SaharaGasSection: React.FC = () => {
                 </div>
                 {/* المتوسط يمينًا ونسبة اليوم مقارنة به يسارًا */}
                 <div className="flex items-center justify-between gap-2">
-                  <div className="font-mono font-black text-[15px] leading-tight tabular-nums text-slate-900 dark:text-white">
+                  <div className="font-mono font-semibold text-[13px] leading-tight tabular-nums text-slate-900 dark:text-white">
                     {weekAvgConsumption > 0 ? formatNumber(Math.round(weekAvgConsumption)) : '—'}
                     <span className="ms-1 text-[9px] font-normal text-slate-400">{t('common:units.liter')}</span>
                   </div>

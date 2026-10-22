@@ -407,49 +407,48 @@ export const EtihadGasSection: React.FC = () => {
         <div className="col-span-1 md:col-span-12 xl:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-3 h-full">
           
           {/* كارت واحد يجمع الوارد والاستهلاك الأسبوعي: رقما آخر يوم، ومتوسط الاستهلاك الأسبوعي ومقارنة اليوم به، ورسم واحد بمنحنيين */}
-          <div className="sm:col-span-2 relative p-4 rounded-[26px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-soft-card flex flex-col space-y-2">
+          <div className="sm:col-span-2 relative p-3 rounded-[26px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-soft-card flex flex-col space-y-1.5">
             <div className="flex items-center justify-between gap-2 text-slate-400 text-xs font-bold">
               <span className="min-w-0">{t('dashboard:etihad.weeklyFlow')}</span>
               <span className="shrink-0 text-[9px] text-slate-600 dark:text-slate-300 font-bold bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200/70 dark:border-slate-700">
                 {t('dashboard:compare.sevenDays')}
               </span>
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-xl border border-emerald-200/70 dark:border-emerald-800/40 bg-emerald-50/50 dark:bg-emerald-950/30 px-2.5 py-1.5 min-w-0">
-                <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />{t('dashboard:flow.inbound')}
-                </div>
-                <div className="font-mono font-black text-[15px] text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
-                  {formatNumber(totalInbound)} <span className="text-[9px] font-normal text-slate-400">{t('common:units.liter')}</span>
-                </div>
+            {/* خانات مختصرة بسطر واحد: العنوان والرقم متقابلان */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+              <div className="rounded-lg border border-emerald-200/70 dark:border-emerald-800/40 bg-emerald-50/50 dark:bg-emerald-950/30 px-2 py-1 min-w-0 flex items-center justify-between gap-1.5">
+                <span className="flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 min-w-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" /><span className="truncate">{t('dashboard:flow.inbound')}</span>
+                </span>
+                <span className="font-mono font-black text-[12.5px] text-emerald-600 dark:text-emerald-400 whitespace-nowrap">{formatNumber(totalInbound)}</span>
               </div>
-              <div className="rounded-xl border border-blue-200/70 dark:border-blue-800/40 bg-blue-50/50 dark:bg-blue-950/30 px-2.5 py-1.5 min-w-0">
-                <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                  <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />{t('dashboard:flow.consumption')}
-                </div>
-                <div className="font-mono font-black text-[15px] text-blue-600 dark:text-blue-400 whitespace-nowrap">
-                  {formatNumber(totalOutflow)} <span className="text-[9px] font-normal text-slate-400">{t('common:units.liter')}</span>
-                </div>
+              <div className="rounded-lg border border-blue-200/70 dark:border-blue-800/40 bg-blue-50/50 dark:bg-blue-950/30 px-2 py-1 min-w-0 flex items-center justify-between gap-1.5">
+                <span className="flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 min-w-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" /><span className="truncate">{t('dashboard:flow.consumption')}</span>
+                </span>
+                <span className="font-mono font-black text-[12.5px] text-blue-600 dark:text-blue-400 whitespace-nowrap">{formatNumber(totalOutflow)}</span>
               </div>
               {/* متوسط الاستهلاك الأسبوعي (أيام الأسبوع التي فيها صرف مسجّل) ونسبة اليوم مقارنة به */}
-              <div className="rounded-xl border border-slate-200/80 dark:border-slate-700/60 bg-slate-50/80 dark:bg-slate-800/50 px-2.5 py-1.5 min-w-0">
-                <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 truncate">{t('dashboard:sahara.weekAvg')}</div>
-                <div className="font-mono font-black text-[15px] text-slate-900 dark:text-white whitespace-nowrap">
-                  {weekAvgOutflow > 0 ? formatNumber(Math.round(weekAvgOutflow)) : '—'}
-                </div>
-                {weekAvgOutflow > 0 && totalOutflow > 0 && (() => {
-                  const pct = ((totalOutflow - weekAvgOutflow) / weekAvgOutflow) * 100;
-                  const up = pct > 0.05, down = pct < -0.05;
-                  return (
-                    <div dir="ltr" className={`inline-flex items-center gap-0.5 text-[9.5px] font-black ${up ? 'text-rose-600 dark:text-rose-400' : down ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
-                      {up ? <TrendingUp className="w-3 h-3" /> : down ? <TrendingDown className="w-3 h-3" /> : null}
-                      {up ? '+' : ''}{pct.toFixed(1)}% <span className="font-bold text-slate-400">{t('dashboard:sahara.today')}</span>
-                    </div>
-                  );
-                })()}
+              <div className="rounded-lg border border-slate-200/80 dark:border-slate-700/60 bg-slate-50/80 dark:bg-slate-800/50 px-2 py-1 min-w-0 flex items-center justify-between gap-1.5">
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 truncate min-w-0">{t('dashboard:sahara.weekAvg')}</span>
+                <span className="flex items-center gap-1 shrink-0">
+                  <span className="font-mono font-black text-[12.5px] text-slate-900 dark:text-white whitespace-nowrap">
+                    {weekAvgOutflow > 0 ? formatNumber(Math.round(weekAvgOutflow)) : '—'}
+                  </span>
+                  {weekAvgOutflow > 0 && totalOutflow > 0 && (() => {
+                    const pct = ((totalOutflow - weekAvgOutflow) / weekAvgOutflow) * 100;
+                    const up = pct > 0.05, down = pct < -0.05;
+                    return (
+                      <span dir="ltr" title={t('dashboard:sahara.today')} className={`inline-flex items-center text-[9px] font-black ${up ? 'text-rose-600 dark:text-rose-400' : down ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                        {up ? <TrendingUp className="w-2.5 h-2.5" /> : down ? <TrendingDown className="w-2.5 h-2.5" /> : null}
+                        {up ? '+' : ''}{pct.toFixed(1)}%
+                      </span>
+                    );
+                  })()}
+                </span>
               </div>
             </div>
-            <div className="h-28 w-full -mx-1 pt-1">
+            <div className="h-20 w-full -mx-1">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={weeklyFlow} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
                   <defs>
