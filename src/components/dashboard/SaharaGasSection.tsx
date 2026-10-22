@@ -9,7 +9,6 @@ import {
   Flame,
   Droplets,
   ArrowDownLeft,
-  Droplets,
   Boxes,
   PieChart as PieIcon
 } from 'lucide-react';
