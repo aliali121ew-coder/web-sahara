@@ -793,20 +793,21 @@ export const SaharaGasSection: React.FC = () => {
               </div>
 
               {/* متوسط الاستهلاك الأسبوعي (نفس بيانات الرسم، وعليه يُحسب «يؤمّن لغاية») ومقارنة اليوم به */}
-              <div className="w-full px-2.5 py-2 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/70 dark:border-blue-800/50 flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="text-[11px] font-black text-blue-800 dark:text-blue-300 leading-tight">{t('dashboard:sahara.weekAvg')}</div>
-                  <div className="text-[9.5px] font-bold text-slate-400 leading-tight mt-0.5">{t('dashboard:sahara.weekAvgSub', { n: weekUsedDays.length })}</div>
+              <div className="w-full px-2.5 py-2 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1">
+                <div className="pb-1 leading-tight border-b border-slate-200/60 dark:border-slate-700/50 font-black text-[11.5px] text-slate-800 dark:text-white">
+                  {t('dashboard:sahara.weekAvg')}
                 </div>
-                <div className="text-end shrink-0">
-                  <div className="font-mono font-black text-[15px] leading-tight tabular-nums text-blue-700 dark:text-blue-300">
+                {/* المتوسط يمينًا ونسبة اليوم مقارنة به يسارًا */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="font-mono font-black text-[15px] leading-tight tabular-nums text-slate-900 dark:text-white">
                     {weekAvgConsumption > 0 ? formatNumber(Math.round(weekAvgConsumption)) : '—'}
+                    <span className="ms-1 text-[9px] font-normal text-slate-400">{t('common:units.liter')}</span>
                   </div>
                   {weekAvgConsumption > 0 && actualConsumption > 0 && (() => {
                     const pct = ((actualConsumption - weekAvgConsumption) / weekAvgConsumption) * 100;
                     const up = pct > 0.05, down = pct < -0.05;
                     return (
-                      <div dir="ltr" className={`inline-flex items-center gap-0.5 text-[9.5px] font-black ${up ? 'text-rose-600 dark:text-rose-400' : down ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                      <div dir="ltr" className={`inline-flex items-center gap-0.5 text-[10px] font-black ${up ? 'text-rose-600 dark:text-rose-400' : down ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
                         {up ? <TrendingUp className="w-3 h-3" /> : down ? <TrendingDown className="w-3 h-3" /> : null}
                         {up ? '+' : ''}{pct.toFixed(1)}% <span className="font-bold text-slate-400">{t('dashboard:sahara.today')}</span>
                       </div>
