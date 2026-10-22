@@ -218,8 +218,7 @@
     "actual": "Actual",
     "consumptionSplit": "Consumption breakdown",
     "totalPercent": "100% total",
-    "weekAvg": "Average consumption",
-    "weekAvgSub": "{{n}} days · L/day",
+    "weekAvg": "Weekly average consumption",
     "today": "today",
     "weekData": "Weekly data",
     "consumedQty": "Consumed:"
