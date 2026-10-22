@@ -1,8 +1,10 @@
 import { OFFICIAL_TABLE_TANK_UNITS } from '../components/tanks/TanksOverview';
 import { readCentralTanks, resolveSaharaGasoilSectionKey, resolveSaharaPetrolSectionKey, setSectionTankLiters, tankLiters } from './centralTanks';
 import { readTanksReportFile, slotLabel, TANKS_FILE_SLOTS } from './tanksReportFile';
-import { attachDayReport } from './saharaFiles';
+import { attachDayReport, siteAnnualRecord } from './saharaFiles';
 import { readSaharaReportFile } from './saharaReportFile';
+import { importFarmsFromReport, readAnnualFarmsFile } from './siteFarmsFile';
+import { importAnnual, type AnnualImport } from './siteFarms';
 import { readPetrolReportFile } from './petrolReportFile';
 import { parseBlackOilReport } from './blackOilReportFile';
 import { computeSahara, readSaharaRecords, updateSaharaRecords } from './saharaLedger';
@@ -18,7 +20,7 @@ import type { BulkKind } from './bulkUpload';
  * ثم يُحفظ ويُرفق بالأرشيف — بلا فتح النوافذ. اليوم المحفوظ يبقى بانتظار "تأكيد البيانات" كالمعتاد.
  * لا يُستبدل يوم موجود، ولا يُحفظ ملف بلا تاريخ (في النافذة كان المستخدم يرى التاريخ ويصححه).
  */
-export type BulkSkipReason = 'noDate' | 'dateTaken' | 'noPrevious' | 'overCapacity' | 'noConsumption' | 'noAverage' | 'negative' | 'noStations' | 'noTanks' | 'noSites' | 'readFailed';
+export type BulkSkipReason = 'noDate' | 'dateTaken' | 'noPrevious' | 'overCapacity' | 'noConsumption' | 'noAverage' | 'negative' | 'noStations' | 'noTanks' | 'noSites' | 'noSite' | 'duplicate' | 'readFailed';
 
 /** نتيجة شركة واحدة من ملف يخص الشركتين (تقرير النفط الأسود) */
 export interface BulkCompanyOutcome { saved: boolean; reasons?: BulkSkipReason[] }
@@ -28,7 +30,7 @@ export interface BulkResult {
   date?: string;
   reasons?: BulkSkipReason[];
   /** ملاحظات لا تمنع الحفظ: مواقع غير مطابقة، فرق عن رصيد الكشف، فشل إرفاق الملف، ونتيجة كل شركة */
-  notes?: { unmatched?: string[]; diff?: number; attachFailed?: boolean; tanksMissing?: string[]; tanksOver?: string[]; companies?: Partial<Record<BlackOilCompany, BulkCompanyOutcome>> };
+  notes?: { unmatched?: string[]; diff?: number; attachFailed?: boolean; tanksMissing?: string[]; tanksOver?: string[]; farmsFailed?: boolean; site?: string; annual?: AnnualImport[]; companies?: Partial<Record<BlackOilCompany, BulkCompanyOutcome>> };
   error?: string;
 }
 
@@ -81,9 +83,11 @@ export const processBulkFile = async (kind: BulkKind, file: File, progress: (p: 
       updateSaharaRecords(prev => [...prev, record]);
       progress(80);
       const attached = await attach(record.id, file);
+      // مزارع الموقع من نفس الكشف (لمن يملك تعديلها)؛ فشلها لا يلغي حفظ اليوم
+      const farms = canEdit('sahara.reserves') ? await importFarmsFromReport(file, record.date).then(() => true, () => false) : true;
       return {
         status: 'saved', date: record.date,
-        notes: { unmatched: applied.unmatched.map(u => u.name), diff: applied.check?.diff || undefined, attachFailed: !attached }
+        notes: { unmatched: applied.unmatched.map(u => u.name), diff: applied.check?.diff || undefined, attachFailed: !attached, farmsFailed: !farms || undefined }
       };
     }
 
@@ -102,6 +106,19 @@ export const processBulkFile = async (kind: BulkKind, file: File, progress: (p: 
       progress(80);
       const attached = await attach(record.id, file);
       return { status: 'saved', date: record.date, notes: { unmatched: applied.unmatched, attachFailed: !attached } };
+    }
+
+    if (kind === 'site-annual') {
+      // الملف السنوي لموقع (يُعاد رفعه يوميًا): يُدمج مع المحفوظ، والملف الذي لا جديد فيه مكرر
+      const res = await readAnnualFarmsFile(file);
+      progress(45);
+      if (!res.site) return { status: 'skipped', reasons: ['noSite'] };
+      const done = importAnnual(res.site, res.years);
+      progress(80);
+      if (!done.length) return { status: 'skipped', reasons: ['duplicate'] };
+      // الملف نفسه يُحفظ في أرشيف تقرير مزارع الموقع (آخر ملف لكل موقع)
+      const attached = await attach(siteAnnualRecord(res.site), file);
+      return { status: 'saved', notes: { annual: done, site: res.site, attachFailed: !attached } };
     }
 
     if (kind === 'tanks') {

@@ -20,6 +20,9 @@ import { NoAccess } from './components/auth/NoAccess';
 import { useCanOpenTab, usePermissions, TAB_SECTION } from './lib/usePermission';
 import type { NavTabId } from './types';
 
+// أرشفة PDF شهر مزارع المواقع (تُحمَّل في الخلفية فلا تثقل التحميل الأول)
+const SiteFarmsAutoArchive = React.lazy(() => import('./components/finance/SiteFarmsAutoArchive'));
+
 // كل صفحة في ملف مستقل يُحمَّل عند أول زيارة، ويُجلب مسبقاً وقت الخمول بعد ظهور الصفحة الأولى
 const MainDashboard = lazyPage(() => import('./components/dashboard/MainDashboard'), 'MainDashboard');
 const TanksOverview = lazyPage(() => import('./components/tanks/TanksOverview'), 'TanksOverview');
@@ -53,6 +56,11 @@ const AppContent: React.FC = () => {
     if (!canOpenTab(activeTab) && firstAllowed) setActiveTab(firstAllowed);
   }, [activeTab, firstAllowed]); // eslint-disable-line react-hooks/exhaustive-deps
   const { direction } = useLanguage();
+
+  // شريط عنوان نافذة التطبيق المثبّت (theme-color) بلون خلفية الصفحة نفسه، ويتبع الوضع الداكن وخلفية الإعدادات
+  useEffect(() => {
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', getAmbientBgColor(bgGradient, themeMode, shadeLevel));
+  }, [bgGradient, themeMode, shadeLevel]);
 
   // جلب باقي الصفحات في الخلفية وقت الخمول (صفحة المستخدم الحالية أولاً) فيصبح التنقل فورياً
   useEffect(() => {
@@ -194,6 +202,9 @@ const AppContent: React.FC = () => {
       style={{
         backgroundColor: getAmbientBgColor(bgGradient, themeMode, shadeLevel),
         backgroundImage: getAmbientGradientStyle(bgGradient, gradientIntensity, themeMode, shadeLevel),
+        // لون خلفية الصفحة لإطارها (الشريط العلوي والشريط الجانبي المطوي) فيبدو جزءًا منها
+        ['--app-bg' as string]: getAmbientBgColor(bgGradient, themeMode, shadeLevel),
+        ['--app-bg-image' as string]: getAmbientGradientStyle(bgGradient, gradientIntensity, themeMode, shadeLevel),
         backgroundAttachment: 'fixed',
         backgroundRepeat: 'no-repeat',
         backgroundSize: 'cover',
@@ -252,6 +263,9 @@ const AppContent: React.FC = () => {
       </div>
 
 
+
+      {/* أرشفة PDF شهر مزارع المواقع تلقائيًا بعد انتهائه (في الخلفية، لمن يملك تعديل الاحتياطي) */}
+      <Suspense fallback={null}><SiteFarmsAutoArchive /></Suspense>
 
       {/* Quick Action Modal */}
       <QuickActionModal

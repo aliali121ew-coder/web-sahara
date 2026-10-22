@@ -51,7 +51,10 @@ describe('site groups (farm balances added to their station)', () => {
     const file = new File([XLSX.write(wb, { type: 'array', bookType: 'xlsx' })], 'report.xlsx');
     const r = await readSaharaReportFile(file, NAMES);
     const bal = Object.fromEntries(r.stations.map(s => [s.matchedStation ?? s.nameInImage, s.balance]));
-    expect(bal['الطاقة']).toBe(1248261 + 106383);
+    // خزان الطاقة منفصل عن محطة النقل (الطاقة)
+    expect(bal['الطاقة']).toBe(1248261);
+    expect(r.powerTank).toBe(106383);
+    expect(r.stations.some(s => s.nameInImage === 'خزان الطاقة')).toBe(false);
     expect(bal['البياض']).toBe(119491 + 3002);
     expect(bal['التسمين']).toBe(238588 + 48108 + 42599);
     expect(bal['البوادي']).toBe(119844 + 67865 + 96402 + 52615);
@@ -59,6 +62,9 @@ describe('site groups (farm balances added to their station)', () => {
     const stations = [{ id: 'tasmeen', name: 'التسمين', balance: 0, capacity: 100_000 }, { id: 'asphalt', name: 'الاسفلت', balance: 0, capacity: 100_000 }];
     const applied = applySaharaReport(newSaharaBalanceForm(null, stations), { ...r, date: '2026/10/10', previousCarried: 1 }, stations, []);
     expect(applied.form.stations.tasmeen).toBe('329,295');
+    expect(applied.form.powerTank).toBe('106,383');
+    // الرصيد الكلي = أرصدة المحطات + خزان الطاقة
+    expect(applied.form.currentOverride).toBe((329295 + 106383).toLocaleString('en-US'));
     expect(isGroupedStation('التسمين')).toBe(true);
     expect(saharaSaveBlockers(applied.form, [], [], stations)).not.toContain('overCapacity');
     // المحطات غير المجمّعة ما زالت تُمنع فوق سعتها

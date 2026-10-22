@@ -27,6 +27,7 @@ export interface SaharaBalanceForm {
   external: Partial<Record<SaharaExternalSource, string>>; // المصادر المختارة فقط
   sales: string;
   stations: Record<string, string>; // { tankId: لتر }
+  powerTank: string; // رصيد خزان الطاقة (منفصل عن محطة الطاقة)
   currentOverride: string; // الرصيد الحالي من ملف الكشف ('' = يُحسب تلقائيًا)
   /** مجاميع الحقول لحظة تحميل رصيد الكشف: أي زيادة أو نقص بعدها ينعكس على الرصيد الحالي */
   overrideBase: { stations: number; inbound: number; consumption: number } | null;
@@ -36,7 +37,9 @@ export interface SaharaBalanceForm {
 export interface SaharaStation { id: string; name: string; balance: number; capacity: number }
 
 /** مجاميع حقول النموذج المرتبطة بالرصيد الحالي */
-export const formStationsSum = (f: Pick<SaharaBalanceForm, 'stations'>) => Object.values(f.stations).reduce((a, v) => a + num(v || ''), 0);
+/** أرصدة المحطات + خزان الطاقة (= الرصيد الكلي من الكشف) */
+export const formStationsSum = (f: Pick<SaharaBalanceForm, 'stations' | 'powerTank'>) =>
+  Object.values(f.stations).reduce((a, v) => a + num(v || ''), 0) + num(f.powerTank || '');
 export const formInbound = (f: Pick<SaharaBalanceForm, 'external'>) => Object.values(f.external).reduce((a, v) => a + num(v || ''), 0);
 export const formConsumption = (f: Pick<SaharaBalanceForm, 'vehicles' | 'farms' | 'generators' | 'sales'>) =>
   num(f.vehicles) + num(f.farms) + num(f.generators) + num(f.sales);
@@ -65,6 +68,7 @@ export const newSaharaBalanceForm = (latest: { date: string } | null | undefined
     external: {},
     sales: '',
     stations: Object.fromEntries(stations.map(s => [s.id, ''])), // اليوم الجديد يبدأ بخانات فارغة
+    powerTank: '',
     currentOverride: '',
     overrideBase: null
   };
@@ -124,7 +128,12 @@ export const applySaharaReport = (
       : { editPrevious: true, prevEditing: false, previous: withCommas(String(Math.round(carried))) })
     : {};
   if (carried !== undefined) filled++;
-  const fileCurrent = r.tableTotal ?? r.currentInFile;
+  const powerTank = r.powerTank !== undefined ? withCommas(String(Math.round(r.powerTank))) : form.powerTank;
+  if (r.powerTank !== undefined) filled++;
+  // الرصيد الكلي = أرصدة المواقع (المحطات) + خزان الطاقة من الكشف؛ بلا جدول مواقع: إجمالي الكشف
+  const fileCurrent = r.stations.length || r.powerTank !== undefined
+    ? formStationsSum({ stations, powerTank })
+    : r.tableTotal ?? r.currentInFile;
   const next: SaharaBalanceForm = {
     ...form,
     date,
@@ -132,7 +141,7 @@ export const applySaharaReport = (
     currentOverride: fileCurrent !== undefined ? withCommas(String(Math.round(fileCurrent))) : form.currentOverride,
     overrideBase: fileCurrent !== undefined
       ? {
-          stations: Object.values(stations).reduce((a, v) => a + num(v || ''), 0),
+          stations: formStationsSum({ stations, powerTank }),
           inbound: r.inboundExternal + r.inboundEtihad,
           consumption: r.vehicles + r.farms + r.generators + r.sentToFarms
         }
@@ -142,7 +151,8 @@ export const applySaharaReport = (
     generators: val(r.generators),
     sales: val(r.sentToFarms),
     external,
-    stations
+    stations,
+    powerTank
   };
   // التحقق: السابق + الوارد − الاستهلاك يجب أن يساوي "الرصيد الحالي" في الكشف
   let check: SaharaReportApplied['check'] = null;
@@ -167,6 +177,7 @@ export const saharaDraft = (form: SaharaBalanceForm): SaharaLedgerRecord => ({
   ) as SaharaLedgerRecord['inboundExternal'],
   sales: num(form.sales),
   stationBalances: Object.fromEntries(Object.entries(form.stations).map(([id, val]) => [id, num(val)])),
+  powerTank: form.powerTank.trim() !== '' ? num(form.powerTank) : null,
   currentOverride: form.currentOverride.trim() !== ''
     ? num(form.currentOverride)
       + (form.overrideBase

@@ -48,6 +48,10 @@ export interface Env {
   BACKUPS: R2Bucket;
   APP_TOKEN?: string;
   ANTHROPIC_API_KEY?: string;
+  /** اشتراك Open-Meteo التجاري (اختياري): بدونه تُستخدم الواجهة المجانية لغير الأغراض التجارية */
+  OPEN_METEO_API_KEY?: string;
+  /** مفتاح WeatherAPI.com (المصدر الأساسي للطقس إن وُجد؛ الغبار يبقى من Open-Meteo) */
+  WEATHERAPI_KEY?: string;
   /** "1" في النسخة التجريبية (wrangler env demo): حسابات بمدة، وإعادة البيانات الوهمية كل ليلة */
   DEMO_MODE?: string;
   ASSETS: { fetch(request: Request): Promise<Response> };

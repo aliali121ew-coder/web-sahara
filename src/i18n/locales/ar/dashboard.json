@@ -1,9 +1,11 @@
 {
+  "sectionUpdated": "آخر تحديث",
   "capacity": {
     "remaining": "السعة المتبقية",
     "fill": "نسبة الامتلاء",
     "title": "توزيع السعة الاستيعابية للمخزون",
     "titleShort": "السعة الاستيعابية للمخزون",
+    "currentPhone": "السعة",
     "remainingShort": "المتبقي",
     "centralTanks": "الخزانات المركزية",
     "totalColon": "السعة الكلية:",
@@ -15,6 +17,7 @@
   "flow": {
     "inboundColon": "الوارد:",
     "consumptionColon": "الاستهلاك:",
+    "dailyInbound": "الوارد اليومي",
     "totalInbound": "إجمالي الوارد",
     "received": "توريدات مستلمة",
     "consumption": "استهلاك",
@@ -50,6 +53,7 @@
     "approved": "معتمد",
     "lastInboundAvg": "معدل سعر آخر وارد",
     "buyAvg": "معدل سعر الشراء",
+    "buyPrice": "سعر الشراء",
     "todayBuy": "شراء اليوم",
     "twoDayAvg": "معدل اليومين",
     "vsPrevBuy": "مقارنة بسعر شراء اليوم السابق"
@@ -83,7 +87,7 @@
     "sites_other": "{{count}} موقع"
   },
   "blackOil": {
-    "details": "تفاصيل النفط الأسود",
+    "details": "النفط الأسود",
     "sahara": "صحاري كربلاء",
     "etihad": "شركة الاتحاد",
     "both": "صحاري كربلاء + الاتحاد",
@@ -113,14 +117,24 @@
     "title": "كاز - شركة الاتحاد",
     "totalBalance": "كاز الاتحاد",
     "tanks": "خزانات",
-    "weeklyInbound": "مقارنة الوارد الأسبوعي",
-    "weeklyConsumption": "مقارنة الاستهلاك الأسبوعي",
+    "weeklyInbound": "الوارد الأسبوعي",
+    "weeklyConsumption": "الاستهلاك الأسبوعي",
+    "weeklyFlow": "البيانات الأسبوعية",
     "coverageTitle": "تنبؤ التغطية الاستراتيجية لشركة الاتحاد",
     "surplus": "فائض استراتيجي",
     "operationalGas": "الكاز التشغيلي",
     "cleanGas": "كاز نظيف"
   },
   "purchases": {
+    "groupGas": "الكاز",
+    "groupCrude": "النفط الأسود",
+    "groupGasoline": "البنزين",
+    "coStations": "محطات",
+    "noInbound": "لا يوجد وارد",
+    "perLiter": "د.ع / لتر",
+    "lastInbound": "آخر وارد",
+    "coSahara": "شركة الصحاري",
+    "coEtihad": "شركة الاتحاد",
     "title": "مشتريات الوقود والمشتقات",
     "longPress": "اضغط مطوّلًا لعرض السعر",
     "previous": "السابق:",
@@ -142,7 +156,7 @@
     "targetColon": "المستهدف:",
     "required": "الكمية المطلوب توفيرها",
     "boost": "تعزيز استراتيجي مستهدف",
-    "coverageFull": "يؤمّن لغاية (الشامل)",
+    "coverageFull": "يؤمّن لغاية بعد التوفير",
     "balanceColon": "الرصيد:",
     "analysis": "تحليل الوارد والاستهلاك والتدفق",
     "neon": "منحني",
@@ -152,7 +166,7 @@
     "toggleConsumption": "انقر لإظهار الاستهلاك أو إخفائه",
     "consumptionLegend": "الاستهلاك",
     "requiredShort": "المطلوب توفيره",
-    "coverageFullShort": "يؤمّن لغاية"
+    "coverageFullShort": "يؤمّن لغاية بعد التوفير"
   },
   "range": {
     "d7": "7 أيام",
@@ -185,6 +199,7 @@
     "backToAuto": "الرجوع إلى السعر التلقائي"
   },
   "priceIndex": {
+    "awaitingCurrent": "بانتظار السعر الحالي",
     "title": "مؤشرات أسعار الشركات والموردين",
     "supplier": "المجهز",
     "lastInbound": "آخر وارد",
@@ -215,6 +230,8 @@
     "actual": "الفعلي",
     "consumptionSplit": "توزيع نسب الاستهلاك",
     "totalPercent": "100% الإجمالي",
+    "weekAvg": "متوسط الاستهلاك الأسبوعي",
+    "today": "اليوم",
     "weekData": "بيانات الأسبوع",
     "consumedQty": "الكمية المستهلكة:"
   }

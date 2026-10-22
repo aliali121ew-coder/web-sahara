@@ -39,6 +39,7 @@ import { computeDailyBuys, ownSaharaDeliveries } from '../../lib/inboundPrice';
 import { isGroupedStation, isSpreadsheetOrPdf, readSaharaReportFile } from '../../lib/saharaReportFile';
 import { formatNumber } from '../../lib/utils';
 import { useReportAttach } from '../../lib/saharaFiles';
+import { importFarmsFromReport } from '../../lib/siteFarmsFile';
 import {
   withCommas, num, formStationsSum, formInbound, formConsumption, newSaharaBalanceForm, applySaharaReport, saharaDraft, saharaSaveBlockers,
   type SaharaBalanceForm
@@ -54,6 +55,7 @@ import {
   SaharaExternalSource,
   SaharaLedgerRecord
 } from '../../lib/saharaLedger';
+import { cascadeSaharaRecords, laterDaysCount } from '../../lib/balanceCascade';
 import { useCentralTanks, resolveSaharaGasoilSectionKey, tankLiters } from '../../lib/centralTanks';
 import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
 import { usePermissions } from '../../lib/usePermission';
@@ -152,7 +154,10 @@ const MAX_STATION_SLOTS = 8;
 export const SaharaBalanceView: React.FC = () => {
   const { t } = useTranslation(['finance', 'common']);
   // صلاحية العرض فقط: أزرار الإضافة والتعديل والحذف مخفية
-  const editable = usePermissions().canEdit('sahara.balance');
+  const perms = usePermissions();
+  const editable = perms.canEdit('sahara.balance');
+  // مزارع الموقع تُؤخذ من نفس الكشف عند الحفظ (لمن يملك تعديلها)
+  const canFarms = perms.canEdit('sahara.reserves');
   const { records, computed, latest, update, hasPending, publish, discard } = useSaharaLedger();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
@@ -258,6 +263,7 @@ export const SaharaBalanceView: React.FC = () => {
       external,
       sales: s(r.sales),
       stations: Object.fromEntries(liveStations.map(st => [st.id, withCommas(String(r.stationBalances?.[st.id] ?? st.balance))])),
+      powerTank: r.powerTank != null ? withCommas(String(r.powerTank)) : '',
       currentOverride: r.currentOverride != null ? withCommas(String(r.currentOverride)) : '',
       overrideBase: null
     });
@@ -305,6 +311,7 @@ export const SaharaBalanceView: React.FC = () => {
   };
   // الأرصدة تُنقل لمنظومة الخزانات (والشاشة الرئيسية) فقط عند حفظ أحدث يوم
   const isLatestDate = !!form && !records.some(r => r.id !== form.id && r.date > form.date);
+  const laterDays = form ? laterDaysCount(records.filter(r => r.id !== form.id).map(r => r.date), form.date) : 0;
 
   const save = () => {
     if (!draft || !form || !canSave) return;
@@ -314,8 +321,12 @@ export const SaharaBalanceView: React.FC = () => {
       savedAt: new Date().toISOString()
     };
     // الحفظ يحدّث هذه الصفحة فقط؛ الواجهة الرئيسية والخزانات تنتظر "تأكيد البيانات"
-    update(prev => (form.id ? prev.map(r => (r.id === form.id ? record : r)) : [...prev, record]));
+    // الأيام اللاحقة تتصل بالسلسلة: يُزال منها الرصيد اليدوي ورصيد الكشف (من أقدم تاريخ تأثّر إن تغيّر تاريخ اليوم)
+    const oldDate = records.find(r => r.id === form.id)?.date ?? record.date;
+    const from = oldDate < record.date ? oldDate : record.date;
+    update(prev => cascadeSaharaRecords(form.id ? prev.map(r => (r.id === form.id ? record : r)) : [...prev, record], from));
     if (reportFile) reportAttach.attach(record.id, reportFile);
+    if (reportFile && canFarms) void importFarmsFromReport(reportFile, record.date).catch(() => undefined);
     setReportFile(null);
     setViewId(null);
     setForm(null);
@@ -353,6 +364,7 @@ export const SaharaBalanceView: React.FC = () => {
       external: {},
       sales: '',
       stations: Object.fromEntries(liveStations.map(s => [s.id, ''])),
+      powerTank: '',
       currentOverride: '',
       overrideBase: null
     });
@@ -758,7 +770,7 @@ onValue={v => setForm({ ...form!, [key]: v })}
             {stationSlots.length === 0 ? (
               <div className="flex-1 flex items-center justify-center text-xs text-slate-400 py-4">{t('finance:ledger.noStations')}</div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-4 sm:grid-rows-2 gap-2.5 flex-1">
+              <div className={`grid grid-cols-2 gap-2.5 flex-1 ${v?.powerTank != null ? 'sm:grid-cols-3' : 'sm:grid-cols-4 sm:grid-rows-2'}`}>
                 {stationSlots.map(st => {
                   const p = pct(st.balance, st.capacity);
                   const tone = stationTone(p);
@@ -777,6 +789,16 @@ onValue={v => setForm({ ...form!, [key]: v })}
                     </div>
                   );
                 })}
+                {/* خزان الطاقة: رصيد منفصل من الكشف (ليس خزانًا في المنظومة، فلا نسبة امتلاء) */}
+                {v?.powerTank != null && (
+                  <div title={t('finance:ledger.powerTankHint')} className={`${tileCard} justify-between gap-1.5 !p-2.5`}>
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-[11px] font-extrabold text-[#1d576a] dark:text-sky-300 truncate">{t('finance:ledger.powerTank')}</span>
+                    </div>
+                    <div className="font-mono font-black text-sm sm:text-[15px] text-slate-900 dark:text-white tabular-nums">{formatNumber(v.powerTank)}</div>
+                    {shareBar(0, 'bg-slate-300')}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1093,6 +1115,16 @@ onValue={v => setForm({ ...form, stations: { ...form.stations, [st.id]: v } })}
                         </label>
                       );
                     })}
+                    <label className="space-y-1">
+                      <div className="min-h-5 flex items-center"><span className={`${fieldLabel} truncate`}>{t('finance:ledger.powerTank')}</span></div>
+                      <NumberInput
+                        className={field}
+                        value={form.powerTank}
+                        placeholder="0"
+                        title={t('finance:ledger.powerTankHint')}
+                        onValue={v => setForm({ ...form, powerTank: v })}
+                      />
+                    </label>
                   </div>
                 )}
                 {overCapacity.length > 0 && (
@@ -1136,6 +1168,8 @@ onValue={v => setForm({ ...form, external: { ...form.external, [s.key]: v } })}
                   <p className="text-xs font-bold text-amber-600">{t('finance:ledger.form.noPrevious')}</p>
                 ) : overCapacity.length > 0 ? (
                   <p className="text-xs font-bold text-red-600">{t('finance:ledger.form.overCapacity')}</p>
+                ) : laterDays > 0 ? (
+                  <p className="text-xs font-bold text-amber-700 dark:text-amber-300">{t('finance:ledger.cascadeNote', { n: laterDays })}</p>
                 ) : null}
               </div>
               <div className="flex items-center gap-2 sm:gap-2.5 ms-auto">

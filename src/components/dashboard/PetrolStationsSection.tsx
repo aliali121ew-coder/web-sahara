@@ -22,8 +22,8 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
-  ReferenceLine
+  Cell,
+  ResponsiveContainer
 } from 'recharts';
 
 type ChartMode = 'neon-waves' | 'cyber-bars';
@@ -76,6 +76,8 @@ export const PetrolStationsSection: React.FC = () => {
   const [timeRange, setTimeRange] = useState<TimeRange>('7d');
   const [showInbound, setShowInbound] = useState(true);
   const [showConsumption, setShowConsumption] = useState(true);
+  // عمود اليوم المحدد (المرور عليه) بلونه الكامل وحلقة في أعلاه، والبقية فاتحة؛ بلا مرور = آخر يوم (نفس أعمدة الاتحاد)
+  const [barHover, setBarHover] = useState<number | null>(null);
 
   // بيانات الرسم من أرشيف بنزين الصحاري (الأيام المعتمدة): آخر 7 / 14 / 30 يومًا مسجلًا
   const activeChartData = useMemo(() => {
@@ -100,12 +102,6 @@ export const PetrolStationsSection: React.FC = () => {
     });
   }, [petrolDays, timeRange]);
 
-  // Dynamic Average Daily Consumption
-  const avgConsumption = useMemo(() => {
-    if (!activeChartData.length) return 0;
-    const sum = activeChartData.reduce((acc, curr) => acc + curr.consumption, 0);
-    return Math.round(sum / activeChartData.length);
-  }, [activeChartData]);
 
 
 
@@ -178,7 +174,7 @@ export const PetrolStationsSection: React.FC = () => {
     <div className="space-y-4 animate-in fade-in duration-300">
       
       {/* 🌟 Section Header */}
-      <SectionHeader title={t('dashboard:petrol.title')} icon={
+      <SectionHeader updatedAt={latestPetrol?.date} title={t('dashboard:petrol.title')} icon={
         <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-600 via-orange-500 to-amber-400 text-white shadow-md shadow-amber-500/20">
           <Fuel className="w-4 h-4 text-amber-50" />
           <span className="absolute -top-1 -right-1 flex h-2 w-2">
@@ -189,7 +185,7 @@ export const PetrolStationsSection: React.FC = () => {
       } />
 
       {/* 🌟 3 Main Columns Container */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-stretch">
         
         {/* 🌟 Hero Card 1: Actual Balance & Metrics (Wider 5 cols matching Sahara) */}
         <div className="col-span-1 md:col-span-12 xl:col-span-5 rounded-[28px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-soft-card hover:shadow-soft-hover transition-all flex flex-col justify-between space-y-3 h-full overflow-hidden">
@@ -212,9 +208,9 @@ export const PetrolStationsSection: React.FC = () => {
             </div>
 
             {/* Average Price Pill */}
-            <div className="p-3 rounded-2xl bg-gradient-to-br from-slate-50/90 to-teal-50/30 dark:from-slate-800/80 dark:to-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 text-right shrink-0 shadow-xs">
+            <div className="px-2.5 py-1.5 rounded-xl bg-gradient-to-br from-slate-50/90 to-teal-50/30 dark:from-slate-800/80 dark:to-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 text-right shrink-0 shadow-xs">
               <span className="text-[10px] font-bold text-slate-400 dark:text-slate-400 block">{t('dashboard:price.average')}</span>
-              <div className="text-base sm:text-xl font-black text-[#146f82] dark:text-teal-300 font-mono tracking-tight">
+              <div className="text-sm sm:text-lg font-black text-[#146f82] dark:text-teal-300 font-mono tracking-tight">
                 {avgPrice} <span className="text-[10px] font-bold text-slate-500">{t('common:units.iqd')}</span>
               </div>
               <div className="flex items-center gap-1 mt-0.5 justify-end">
@@ -295,28 +291,6 @@ export const PetrolStationsSection: React.FC = () => {
 
               </div>
 
-              {/* Smart HUD Badges */}
-              <div className="flex items-center justify-between text-xs gap-2 pt-0.5">
-                
-                {/* Badge 2: السعة المتبقية */}
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-[#1d576a]/10 dark:bg-[#1d576a]/30 border border-[#2ea0be]/30 dark:border-[#2ea0be]/50 min-w-0 shadow-2xs">
-                  <span className="relative flex h-1.5 w-1.5 shrink-0">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#2ea0be] opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#2ea0be]"></span>
-                  </span>
-                  <span className="font-bold text-[9.5px] sm:text-[10.5px] text-slate-700 dark:text-slate-200 truncate">
-                    {t('dashboard:capacity.remaining')}
-                  </span>
-                  <span className="font-mono font-black text-[11px] sm:text-xs text-[#1d576a] dark:text-teal-300">
-                    {remainLabel}
-                  </span>
-                  <span className="text-[9px] font-mono text-slate-400 hidden sm:inline">
-                    ({formatNumber(remainingCapacity)} {t('common:units.liter')})
-                  </span>
-                </div>
-
-              </div>
-
             </div>
           </div>
 
@@ -326,7 +300,7 @@ export const PetrolStationsSection: React.FC = () => {
             {/* 1. الوارد */}
             <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors min-w-0">
               <div className="flex items-center justify-between gap-1.5 text-[10.5px] font-bold text-slate-500 dark:text-slate-400 mb-1">
-                <span className="kpi-label">{t('dashboard:flow.totalInbound')}</span>
+                <span className="kpi-label">{t('dashboard:flow.dailyInbound')}</span>
                 <div className="w-5 h-5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/40 shrink-0">
                   <ArrowDownLeft className="w-3 h-3" />
                 </div>
@@ -386,33 +360,24 @@ export const PetrolStationsSection: React.FC = () => {
             </div>
           </div>
 
-          {/* 3. كروت الإمداد والتغطية الشاملة المستهدفة (الكمية المطلوب توفرها + يؤمن لغاية بعد التعزيز) */}
-          <div className="kpi-wrap pt-2.5 border-t border-slate-100 dark:border-slate-800"><div className="kpi-grid kpi-grid-2 gap-2.5">
-            
-            {/* كارت 1: الكمية المطلوب توفرها */}
-            <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-teal-300 dark:hover:border-teal-700 transition-colors min-w-0">
-              <div className="kpi-label text-slate-500 dark:text-slate-400 mb-0.5" title={t('dashboard:petrol.required')}>
-                <span className="lbl-full">{t('dashboard:petrol.required')}</span><span className="lbl-short">{t('dashboard:petrol.requiredShort')}</span>
+          {/* 3. كارت واحد مختصر: الكمية المطلوب توفيرها، وإلى متى يؤمّن الرصيد بعد توفيرها */}
+          <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800">
+            <div className="rounded-2xl bg-[#146f82]/5 dark:bg-[#146f82]/20 border border-[#146f82]/25 dark:border-[#146f82]/40 divide-y divide-[#146f82]/15 dark:divide-[#146f82]/30">
+              <div className="flex items-center justify-between gap-2 px-3 py-2">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{t('dashboard:petrol.requiredShort')}</span>
+                <span className="font-mono font-black text-[14px] text-slate-900 dark:text-white whitespace-nowrap">
+                  {formatNumber(requiredQuantity)} <span className="text-[8.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
+                </span>
               </div>
-              <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
-                {formatNumber(requiredQuantity)} <span className="text-[8.5px] font-normal text-slate-400">{t('common:units.liter')}</span>
+              <div className="flex items-center justify-between gap-2 px-3 py-2">
+                <span className="text-[11px] font-bold text-[#146f82] dark:text-teal-300">{t('dashboard:petrol.coverageFullShort')}</span>
+                <span className="text-end whitespace-nowrap">
+                  <span className="font-mono font-black text-[14px] text-[#146f82] dark:text-[#2dd4bf]">{t('common:units.days', { count: targetCoverageDays })}</span>
+                  <span className="ms-1 text-[9px] font-mono text-slate-400" dir="ltr">({targetCoverageDate})</span>
+                </span>
               </div>
             </div>
-
-            {/* كارت 2: يؤمن لغاية (المتوفر + المطلوب توفرها) */}
-            <div className="p-2.5 sm:p-3 rounded-2xl bg-[#146f82]/5 dark:bg-[#146f82]/20 border border-[#146f82]/25 dark:border-[#146f82]/40 flex flex-col justify-between hover:border-[#146f82] transition-colors min-w-0">
-              <div className="kpi-label text-[#146f82] dark:text-teal-300 mb-0.5" title={t('dashboard:petrol.coverageFull')}>
-                <span className="lbl-full">{t('dashboard:petrol.coverageFull')}</span><span className="lbl-short">{t('dashboard:petrol.coverageFullShort')}</span>
-              </div>
-              <div className="kpi-num !whitespace-normal font-black text-[#146f82] dark:text-[#2dd4bf] font-mono">
-                <span className="whitespace-nowrap">{t('common:units.days', { count: targetCoverageDays })}</span> <span className="text-[8.5px] font-normal text-slate-400 whitespace-nowrap">({targetCoverageDate})</span>
-              </div>
-              <span className="text-[8.5px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5 block">
-                {t('dashboard:petrol.balanceColon')} {formatNumber(targetTotalBalance)} {t('common:units.liter')}
-              </span>
-            </div>
-
-          </div></div>
+          </div>
 
 
         </div>
@@ -426,12 +391,13 @@ export const PetrolStationsSection: React.FC = () => {
 
           {/* Top Header: Title, Live Ping & Mode Controls */}
           <div className="flex flex-col gap-2.5 pb-2 border-b border-slate-100 dark:border-slate-800/80">
-            <div className="flex items-center justify-between gap-2">
+            {/* الهاتف: العنوان كاملًا وأزرار المدة تحته عند ضيق العرض بدل قص العنوان */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-slate-800 dark:text-slate-100 font-extrabold text-xs sm:text-[13px] min-w-0">
                 <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-cyan-600 to-teal-500 text-white flex items-center justify-center shadow-xs shrink-0">
                   <Activity className="w-3.5 h-3.5 animate-pulse" />
                 </div>
-                <span className="truncate">{t('dashboard:petrol.analysis')}</span>
+                <span className="leading-snug">{t('dashboard:petrol.analysis')}</span>
               </div>
               
               {/* Timeframe Selector Pills */}
@@ -623,93 +589,36 @@ export const PetrolStationsSection: React.FC = () => {
                     />
                   )}
 
-                  {/* Smart Average Consumption Baseline - Clean Line without Text */}
-                  <ReferenceLine
-                    y={avgConsumption}
-                    stroke="#94a3b8"
-                    strokeDasharray="4 4"
-                    strokeWidth={1.5}
-                    strokeOpacity={0.85}
-                  />
                 </AreaChart>
               ) : (
-                <BarChart
-                  data={activeChartData}
-                  margin={{ top: 14, right: 10, left: -14, bottom: 2 }}
-                  barGap={4}
-                >
+                <BarChart data={activeChartData} margin={{ top: 14, right: 10, left: -14, bottom: 2 }} barGap={3} barCategoryGap="22%"
+                  onMouseMove={(st: { activeTooltipIndex?: number | string | null }) => setBarHover(st?.activeTooltipIndex != null ? Number(st.activeTooltipIndex) : null)}
+                  onMouseLeave={() => setBarHover(null)}>
                   <defs>
-                    <linearGradient id="barInboundGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.95} />
-                      <stop offset="50%" stopColor="#10b981" stopOpacity={0.8} />
-                      <stop offset="100%" stopColor="#059669" stopOpacity={0.4} />
-                    </linearGradient>
-                    <linearGradient id="barConsumptionGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#fdba74" stopOpacity={0.95} />
-                      <stop offset="50%" stopColor="#f97316" stopOpacity={0.8} />
-                      <stop offset="100%" stopColor="#c2410c" stopOpacity={0.4} />
-                    </linearGradient>
+                    {/* المحدد: لون كامل؛ البقية: فاتح يتلاشى للأسفل */}
+                    <linearGradient id="ptBarInOn" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10b981" /><stop offset="100%" stopColor="#10b981" stopOpacity={0.7} /></linearGradient>
+                    <linearGradient id="ptBarInOff" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10b981" stopOpacity={0.3} /><stop offset="100%" stopColor="#10b981" stopOpacity={0.07} /></linearGradient>
+                    <linearGradient id="ptBarOutOn" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#f97316" /><stop offset="100%" stopColor="#f97316" stopOpacity={0.7} /></linearGradient>
+                    <linearGradient id="ptBarOutOff" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#f97316" stopOpacity={0.3} /><stop offset="100%" stopColor="#f97316" stopOpacity={0.07} /></linearGradient>
                   </defs>
-
-                  <CartesianGrid
-                    strokeDasharray="4 4"
-                    vertical={false}
-                    stroke="#94a3b8"
-                    strokeOpacity={0.09}
-                  />
-
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false}
-                    tickLine={false}
-                    interval={timeRange === '30d' ? 4 : timeRange === '14d' ? 1 : 0}
-                    tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
-                    dy={6}
-                    tickFormatter={(val) => enumText(val, 'short')}
-                  />
-                  <YAxis 
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700, fontFamily: 'monospace' }}
-                    tickFormatter={formatAxis}
-                  />
-                  
-                  <Tooltip 
-                    content={<CustomHologramTooltip />} 
-                    cursor={{ fill: 'rgba(148, 163, 184, 0.08)' }}
-                    wrapperStyle={{
-                      pointerEvents: 'none',
-                      zIndex: 100
-                    }}
-                    isAnimationActive={false}
-                  />
-
-                  {showInbound && (
-                    <Bar
-                      dataKey="inbound"
-                      name={t('dashboard:flow.inbound')}
-                      fill="url(#barInboundGrad)"
-                      radius={[6, 6, 0, 0]}
-                    />
-                  )}
-
-                  {showConsumption && (
-                    <Bar
-                      dataKey="consumption"
-                      name={t('dashboard:flow.consumption')}
-                      fill="url(#barConsumptionGrad)"
-                      radius={[6, 6, 0, 0]}
-                    />
-                  )}
-
-                  {/* Smart Average Consumption Baseline - Clean Line without Text */}
-                  <ReferenceLine
-                    y={avgConsumption}
-                    stroke="#94a3b8"
-                    strokeDasharray="4 4"
-                    strokeWidth={1.5}
-                    strokeOpacity={0.85}
-                  />
+                  <CartesianGrid strokeDasharray="3 4" vertical={false} stroke="#94a3b8" strokeOpacity={0.14} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} interval={timeRange === '30d' ? 4 : timeRange === '14d' ? 1 : 0} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }} dy={6} tickFormatter={(val) => enumText(val, 'short')} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} tickFormatter={formatAxis} />
+                  <Tooltip content={<CustomHologramTooltip />} cursor={false} wrapperStyle={{ pointerEvents: 'none', zIndex: 100 }} isAnimationActive={false} />
+                  {(['inbound', 'consumption'] as const).filter(k => (k === 'inbound' ? showInbound : showConsumption)).map(k => {
+                    const on = barHover ?? activeChartData.length - 1;
+                    const color = k === 'inbound' ? '#10b981' : '#f97316';
+                    const id = k === 'inbound' ? 'ptBarIn' : 'ptBarOut';
+                    return (
+                      <Bar key={k} dataKey={k} name={t(k === 'inbound' ? 'dashboard:flow.inbound' : 'dashboard:flow.consumption')} radius={[6, 6, 6, 6]} maxBarSize={timeRange === '7d' ? 22 : 14} isAnimationActive={false}
+                        label={({ x, y, width, index }: { x?: number | string; y?: number | string; width?: number | string; index?: number }) =>
+                          index === on && (activeChartData[on]?.[k] ?? 0) > 0
+                            ? <circle cx={Number(x) + Number(width) / 2} cy={Number(y)} r={4} fill="#fff" stroke={color} strokeWidth={2.5} />
+                            : <g />}>
+                        {activeChartData.map((_, i) => <Cell key={i} fill={`url(#${id}${i === on ? 'On' : 'Off'})`} />)}
+                      </Bar>
+                    );
+                  })}
                 </BarChart>
               )}
             </ResponsiveContainer>

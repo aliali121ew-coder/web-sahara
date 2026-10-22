@@ -53,3 +53,13 @@ const subscribe = (l: () => void) => {
 export const useAppUpdateAvailable = () => useSyncExternalStore(subscribe, () => available, () => false);
 
 export const applyAppUpdate = () => window.location.reload();
+
+/** شاشة الدخول بلا اتصال لحظي (لا جلسة): فحص أقرب حتى تُلتقط النسخة الجديدة خلال دقائق */
+const LOGIN_CHECK_EVERY_MS = 2 * 60 * 1000;
+
+/** فحص دوري أثناء عرض شاشة الدخول، يُرجع دالة الإيقاف */
+export const watchAppUpdateOnLogin = () => {
+  start();
+  const id = window.setInterval(check, LOGIN_CHECK_EVERY_MS);
+  return () => window.clearInterval(id);
+};

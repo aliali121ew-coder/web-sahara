@@ -47,9 +47,19 @@ export const PERM_GROUPS: SectionGroup[] = [
       { id: 'sahara.reports', label: 'التقارير' },
       // زر "رفع متعدد" في صفحة الصحاري (يعرض الزر فقط؛ حفظ كل ملف يتطلب صلاحية تعديل قسمه)
       { id: 'sahara.bulk-upload', label: 'الرفع المتعدد' },
+      // حساب كل موقع من مواقع المزارع: يدخل موقعه فقط (الاحتياطي يفتح كل المواقع)
+      { id: 'sahara.site.taqa', label: 'موقع الطاقة' },
+      { id: 'sahara.site.tasmeen', label: 'موقع التسمين' },
+      { id: 'sahara.site.bayadh', label: 'موقع البياض' },
+      { id: 'sahara.site.bawadi', label: 'موقع البوادي' },
+      { id: 'sahara.site.ummahat', label: 'موقع امهات البياض' },
+      { id: 'sahara.site.ajdad', label: 'موقع الاجداد' },
     ],
   },
 ];
+
+/** صلاحيات حسابات المواقع الستة (انظر src/lib/siteAccess.ts) */
+const SITE_SECTIONS = ['sahara.site.taqa', 'sahara.site.tasmeen', 'sahara.site.bayadh', 'sahara.site.bawadi', 'sahara.site.ummahat', 'sahara.site.ajdad'];
 
 export const ALL_SECTIONS = PERM_GROUPS.flatMap(g => g.sections.map(s => s.id));
 
@@ -104,6 +114,10 @@ const KEY_RULES: Rule[] = [
   { match: pre('sahara_company_balance_'), read: ['sahara.balance', 'sahara.reports', 'dashboard'], write: ['sahara.balance'] },
   { match: eq('sahara_gas_avg_price_v1'), read: ['sahara.balance', 'dashboard'], write: ['sahara.balance'] },
   { match: pre('sahara_petrol_'), read: ['sahara.petrol', 'sahara.reports', 'tanks', 'dashboard'], write: ['sahara.petrol'] },
+  // مزارع الموقع (الصحاري): بيانات معزولة عن بقية الصفحات
+  { match: eq('sahara_site_farms_v1'), read: ['sahara.reserves', 'sahara.reports', ...SITE_SECTIONS], write: ['sahara.reserves'] },
+  // الطلبات بين المواقع: كل حساب موقع يطلب ويوافق ويستلم (الواجهة تحصر كل حساب في موقعه)
+  { match: eq('sahara_site_requests_v1'), read: ['sahara.reserves', 'sahara.reports', ...SITE_SECTIONS], write: ['sahara.reserves', ...SITE_SECTIONS] },
   // الواجهة الرئيسية تعرض "تفاصيل النفط الأسود" من هذين السجلين: يقرؤهما من يرى الرئيسية أيضًا
   // (بدونها لا يصل اليوم الجديد إلا لمن يملك صلاحية القسم، فتبقى الرئيسية عند الآخرين على مناسيب الخزانات)
   { match: pre('sahara_black_oil_'), read: ['sahara.black-oil', 'sahara.reports', 'dashboard'], write: ['sahara.black-oil'] },
@@ -115,6 +129,9 @@ const KEY_RULES: Rule[] = [
   },
   { match: eq('sahara_inbound_deliveries', 'sahara_deliveries', 'sahara_inbound_visible_columns', 'sahara_print_visible_columns'), read: ['deliveries-sahara', 'dashboard', 'reports'], write: ['deliveries-sahara'] },
   { match: eq('etihad_inbound_deliveries'), read: ['deliveries-etihad', 'dashboard', 'reports'], write: ['deliveries-etihad'] },
+  // فترة احتساب متوسط السعر لكل شركة (تُختار من صفحة الوارد، وتقرؤها الرئيسية)
+  { match: eq('sahara_avg_price_period_v1'), read: ['deliveries-sahara', 'dashboard', 'reports'], write: ['deliveries-sahara'] },
+  { match: eq('etihad_avg_price_period_v1'), read: ['deliveries-etihad', 'dashboard', 'reports'], write: ['deliveries-etihad'] },
   { match: eq('fuel_price_overrides_v1'), read: ['prices', 'dashboard'], write: ['prices'] },
   // كارت كاز محطات: المجهزون المختارون وقيمه، وسجله الخاص
   { match: eq('sahara_station_gas_v1', 'sahara_station_gas_log_v1', 'sahara_station_gas_log_reset_v1'), read: ['prices', 'dashboard'], write: ['prices'] },
@@ -158,6 +175,7 @@ export const COLLECTION_KEYS = [
   'sahara_petrol_ledger_v1', 'sahara_petrol_published_v1',
   'sahara_black_oil_daily_ledger_v1', 'etihad_black_oil_daily_ledger_v1',
   'sahara_etihad_balance_records_v2',
+  'sahara_site_farms_v1',
   // التشغيل
   'sahara_tanks', 'sahara_fuel_metrics', 'sahara_supplier_prices', 'sahara_price_log_v1',
   'sahara_tasks', 'sahara_supply_requests', 'sahara_messages',

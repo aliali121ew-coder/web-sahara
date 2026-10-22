@@ -4,6 +4,7 @@
  * كل الطلبات محمية بجلسة حساب معتمد (اسم مستخدم + كلمة مرور)، و APP_TOKEN يُستخدم فقط لتفعيل النظام أول مرة.
  */
 
+import { handleWeather } from './weather';
 import { extractSaharaReport } from './extractSaharaReport';
 import { readInboundNames, type InboundNameRow } from './inboundNames';
 import { audit, handleChat, verifySession, type Session } from './chat';
@@ -107,12 +108,13 @@ const ensureFilesTables = async (db: D1Database) => {
   filesTableReady = true;
 };
 
-// القسم المسؤول عن مرفقات السجل من بادئة رقمه (sah- رصيد الصحاري، pet- البنزين، rec- رصيد الاتحاد، bo- النفط الأسود للشركتين)
-const FILE_SECTIONS = ['sahara.balance', 'sahara.petrol', 'sahara.black-oil', 'etihad.balance', 'etihad.black-oil', 'sahara.reports', 'etihad.reports', 'etihad.archive'];
+// القسم المسؤول عن مرفقات السجل من بادئة رقمه (sah- رصيد الصحاري، pet- البنزين، rec- رصيد الاتحاد، bo- النفط الأسود للشركتين، sfa- الملف السنوي لموقع، sfm- PDF شهر مزارع المواقع)
+const FILE_SECTIONS = ['sahara.balance', 'sahara.petrol', 'sahara.black-oil', 'etihad.balance', 'etihad.black-oil', 'sahara.reports', 'etihad.reports', 'etihad.archive', 'sahara.reserves'];
 const fileSectionsFor = (recordId: string): string[] =>
   recordId.startsWith('pet-') ? ['sahara.petrol']
   : recordId.startsWith('rec-') ? ['etihad.balance']
   : recordId.startsWith('bo-') ? ['sahara.black-oil', 'etihad.black-oil']
+  : recordId.startsWith('sfa-') || recordId.startsWith('sfm-') ? ['sahara.reserves']
   : ['sahara.balance'];
 const fileLevel = (session: Session, sections: string[]) =>
   Math.max(0, ...sections.map(s => levelOf(session.perms, session.admin, s)));
@@ -202,6 +204,9 @@ export default {
     if (url.pathname.startsWith('/api/chat/auth/') && ['/api/chat/auth/status', '/api/chat/auth/login', '/api/chat/auth/setup', '/api/chat/auth/support', '/api/chat/auth/webauthn/login-options', '/api/chat/auth/webauthn/login', '/api/chat/auth/resume', '/api/chat/auth/resume/forget'].includes(url.pathname)) {
       return handleChat(request, url, env.DB, env.APP_TOKEN, env.FILES, isDemo(env));
     }
+
+    // طقس كربلاء لخريطة مزارع الموقع: قبل التحقق من الجلسة عمدًا (التحقق يقرأ D1)، بيانات عامة بإحداثيات ثابتة
+    if (url.pathname === '/api/weather' && request.method === 'GET') return handleWeather({ weatherApi: env.WEATHERAPI_KEY, openMeteo: env.OPEN_METEO_API_KEY }, ctx);
 
     // كل ما عدا ذلك يتطلب جلسة حساب معتمد (اسم مستخدم + كلمة مرور)
     // WebSocket لا يرسل ترويسات مخصّصة: معرّف الحساب من الرابط (?u=) ويُطابق مع كوكي الجلسة كالمعتاد

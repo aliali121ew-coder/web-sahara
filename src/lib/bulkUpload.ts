@@ -6,16 +6,17 @@ import { withPdf } from './pdfDoc';
  * هنا: تحديد نوع كل ملف وتاريخه من محتواه، وترتيب التنفيذ. المعالجة نفسها في bulkProcess.ts
  * (بنفس دوال نافذة كل قسم).
  */
-export type BulkKind = 'balance' | 'petrol' | 'tanks' | 'black-oil';
+export type BulkKind = 'balance' | 'petrol' | 'tanks' | 'black-oil' | 'site-annual';
 /** القسم في صفحة الصحاري وصلاحية تعديله */
-export const BULK_KINDS: Record<BulkKind, { subtab: BulkKind; perm: string }> = {
+export const BULK_KINDS: Record<BulkKind, { subtab: string; perm: string }> = {
   balance: { subtab: 'balance', perm: 'sahara.balance' },
   petrol: { subtab: 'petrol', perm: 'sahara.petrol' },
   tanks: { subtab: 'tanks', perm: 'sahara.tanks' },
   'black-oil': { subtab: 'black-oil', perm: 'sahara.black-oil' },
+  'site-annual': { subtab: 'reserves', perm: 'sahara.reserves' },
 };
 /** ترتيب المعالجة لنفس التاريخ: الخزانات قبل النفط الأسود فتُحفظ مناسيبها الجديدة مع سجل اليوم */
-const KIND_ORDER: BulkKind[] = ['balance', 'petrol', 'tanks', 'black-oil'];
+const KIND_ORDER: BulkKind[] = ['balance', 'petrol', 'tanks', 'black-oil', 'site-annual'];
 
 export const MAX_BULK_FILES = 5;
 export const BULK_ACCEPT = '.pdf,.xlsx,.xlsm,.xls,.csv';
@@ -76,6 +77,9 @@ export const detectKind = (allText: string): { kind: BulkKind | null; problem?: 
   if (has(t, 'موقف') && has(t, 'الرصيد الحقيقي', 'مستوى الفارغ')) return { kind: 'black-oil' };
   if (has(t, 'بنزين', 'بانزين') && has(t, 'المدور السابق', 'المصروف الفعلي')) return { kind: 'petrol' };
   if (has(t, 'المرسل الى المزارع', 'الرصيد التراكمي') || (has(t, 'المدور السابق') && has(t, 'المصروف اليومي للمولدات'))) return { kind: 'balance' };
+  // الملف السنوي لموقع (مزارع الموقع): صفوف "مصروف المزارع" و"مصروف المولدات + الاليات" لكل أيام السنة،
+  // وملف محطة النقل (الطاقة) فيه "مصروف الاليات" فقط. كشف الرصيد فيه "المصروف اليومي للمزارع" فلا يتطابق معه
+  if (has(t, 'مصروف المزارع', 'مصروف المولدات', 'مصروف الاليات') && !has(t, 'موقع الخزان', 'المدور السابق')) return { kind: 'site-annual' };
   // ملف الخزانات: تُقرأ منه كميات خزانات النفط الأسود فقط
   // ("الرئيسي" في PDF تأتي مقسومة "الخزان الرئيس" + "ي" فلا يُعتمد عليها)
   if (has(t, 'مستوى الخزانات الرئيسية') && has(t, 'نسبة امتلاء')) return { kind: 'tanks' };
@@ -89,7 +93,8 @@ export const inspectFile = async (file: File, canEdit: (perm: string) => boolean
   try {
     const lines = await readLines(file);
     const { kind, problem } = detectKind(lines.map(l => l.join(' ')).join('\n'));
-    const date = findReportDate(lines);
+    // الملف السنوي يغطي السنة كلها: لا تاريخ واحد له
+    const date = kind === 'site-annual' ? null : findReportDate(lines);
     if (!kind) return { ...base, kind: null, date, problem };
     // تقرير النفط الأسود يخص الشركتين: تكفي صلاحية إحداهما (يُحفظ لكل شركة حسب صلاحيتها)
     const allowed = kind === 'black-oil' ? canEdit('sahara.black-oil') || canEdit('etihad.black-oil') : canEdit(BULK_KINDS[kind].perm);

@@ -88,7 +88,9 @@ export const BulkUploadButton: React.FC = () => {
       n.diff ? t('finance:bulk.note.diff', { diff: n.diff.toLocaleString('en-US') }) : '',
       n.attachFailed ? t('finance:bulk.note.attachFailed') : '',
       n.tanksMissing?.length ? t('finance:bulk.note.tanksMissing', { list: n.tanksMissing.join('، ') }) : '',
-      n.tanksOver?.length ? t('finance:bulk.note.tanksOver', { list: n.tanksOver.join('، ') }) : ''
+      n.tanksOver?.length ? t('finance:bulk.note.tanksOver', { list: n.tanksOver.join('، ') }) : '',
+      n.farmsFailed ? t('finance:bulk.note.farmsFailed') : '',
+      ...(n.annual || []).map(a => t('finance:bulk.note.annual', { site: n.site, year: a.year, added: a.added, changed: a.changed }))
     ].filter(Boolean).join(' — ');
   };
 

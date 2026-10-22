@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { notifySyncedStorage } from '../../lib/useSyncedStorage';
 import { usePermissions } from '../../lib/usePermission';
+import { canViewAnySite } from '../../lib/siteAccess';
 import { useSessionState } from '../../lib/useSessionState';
 import { Wallet } from 'lucide-react';
 import { useFuelData } from '../../context/FuelDataContext';
@@ -10,6 +11,7 @@ import { EtihadBalanceCards } from './EtihadBalanceCards';
 import { EtihadBalanceTable } from './EtihadBalanceTable';
 import { DateFilterRange } from '../../types/finance';
 import { EtihadTransactionModal } from './EtihadTransactionModal';
+import { cascadeEtihadBalances } from '../../lib/balanceCascade';
 import { EtihadQuickActions } from './EtihadQuickActions';
 import { EtihadSubtabKey } from './EtihadBalanceHubTabs';
 import { EtihadPortalHub } from './EtihadPortalHub';
@@ -26,7 +28,7 @@ import { SaharaReportsCenter } from './SaharaReportsCenter';
 import { SaharaTanksView } from './SaharaTanksView';
 import { SaharaPetrolView } from './SaharaPetrolView';
 import { SaharaBlackOilView } from './SaharaBlackOilView';
-import { SaharaSiteFarmsView } from './SaharaSiteFarmsView';
+import { SiteFarmsHub } from './SiteFarmsHub';
 import { getBusinessDate } from '../../lib/utils';
 import { CLOUD_APPLIED_EVENT } from '../../lib/cloudSync';
 import { readEtihadLatestBalance, syncEtihadExtractionTank, useCentralTanks, resolveGasoilSectionKey } from '../../lib/centralTanks';
@@ -63,7 +65,7 @@ export const FinanceBalance: React.FC = () => {
   const perms = usePermissions();
   useEffect(() => {
     if (activeSubtab && !perms.canView(`etihad.${activeSubtab}`)) setActiveSubtabState(null);
-    if (saharaSubtab && !perms.canView(`sahara.${saharaSubtab}`)) setSaharaSubtab(null);
+    if (saharaSubtab && !(saharaSubtab === 'reserves' ? canViewAnySite(perms.canView) : perms.canView(`sahara.${saharaSubtab}`))) setSaharaSubtab(null);
   }, [activeSubtab, saharaSubtab]); // eslint-disable-line react-hooks/exhaustive-deps
   const saharaTitles: Record<SaharaSubtab, string> = {
     balance: t('finance:hub.saharaBalance'),
@@ -432,16 +434,21 @@ export const FinanceBalance: React.FC = () => {
   };
 
   // يعيد رقم السجل حتى يُرفق به ملف الكشف في الأرشيف
+  // بعد الحفظ يُعاد حساب رصيد كل الأيام اللاحقة من يوم إلى يوم (من أقدم تاريخ تأثّر إن تغيّر تاريخ اليوم)
   const handleSaveRecord = (recordPayload: Omit<EtihadBalanceRecord, 'id'>, id?: string): string => {
     if (id) {
-      setRecords(prev => prev.map(r => r.id === id ? { ...recordPayload, id } : r));
+      setRecords(prev => {
+        const oldDate = prev.find(r => r.id === id)?.date ?? recordPayload.date;
+        const from = [oldDate, recordPayload.date].map(d => d.replace(/-/g, '/')).sort()[0];
+        return cascadeEtihadBalances(prev.map(r => r.id === id ? { ...recordPayload, id } : r), from);
+      });
       return id;
     }
     const newRecord: EtihadBalanceRecord = {
       ...recordPayload,
       id: `rec-${Date.now()}`
     };
-    setRecords(prev => [newRecord, ...prev]);
+    setRecords(prev => cascadeEtihadBalances([newRecord, ...prev], newRecord.date));
     return newRecord.id;
   };
 
@@ -646,7 +653,7 @@ export const FinanceBalance: React.FC = () => {
             {saharaSubtab === 'balance' ? <SaharaBalanceView />
               : saharaSubtab === 'tanks' ? <SaharaTanksView onBack={handleBackToSaharaHub} />
               : saharaSubtab === 'black-oil' ? <SaharaBlackOilView />
-              : saharaSubtab === 'reserves' ? <SaharaSiteFarmsView />
+              : saharaSubtab === 'reserves' ? <SiteFarmsHub />
               : saharaSubtab === 'petrol' ? <SaharaPetrolView />
               : <SaharaReportsCenter />}
           </div>
@@ -665,6 +672,7 @@ export const FinanceBalance: React.FC = () => {
         editRecord={editingRecord}
         lastRecordedPrice={metrics?.averagePrice || 0}
         defaultPreviousBalance={metrics?.currentBalance || 0}
+        otherDates={records.filter(r => r.id !== editingRecord?.id).map(r => r.date)}
       />
 
       {/* Global Print & PDF Modal */}

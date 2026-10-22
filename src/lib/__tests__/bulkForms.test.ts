@@ -9,7 +9,8 @@ import { computeSahara } from '../saharaLedger';
 const saharaSheet = {
   generators: 10134, vehicles: 34346, farms: 41623, sentToFarms: 378932, inboundInternal: 378932, inboundEtihad: 10800, inboundExternal: 179941,
   previousCarried: 8979065, currentInFile: 9083703, tableTotal: 9083703, date: '2026/10/07', notes: '',
-  stations: [{ nameInImage: 'محطة النقل', matchedStation: null, balance: 1784170 }, { nameInImage: 'محطة التسمين', matchedStation: 'التسمين', balance: 340241 }]
+  stations: [{ nameInImage: 'محطة النقل', matchedStation: null, balance: 1784170 }, { nameInImage: 'محطة التسمين', matchedStation: 'التسمين', balance: 340241 }],
+  powerTank: 106383
 };
 const saharaStations = [
   { id: 'taqa', name: 'الطاقة', balance: 0, capacity: 5_000_000 },
@@ -17,12 +18,12 @@ const saharaStations = [
 ];
 
 describe('sahara balance form (shared by window and bulk upload)', () => {
-  it('fills from the sheet: date, previous, override, sites (النقل → الطاقة)', () => {
+  it('fills from the sheet: date, previous, sites (النقل → الطاقة), power tank, total = sites + power tank', () => {
     const res = applySaharaReport(newSaharaBalanceForm(null, saharaStations), saharaSheet, saharaStations, []);
     expect(res.form.date).toBe('2026/10/07');
     expect(res.form.stations).toEqual({ taqa: '1,784,170', tasmeen: '340,241' });
     const draft = saharaDraft(res.form);
-    expect(draft).toMatchObject({ vehicles: 34346, farms: 41623, generators: 10134, sales: 378932, previousOverride: 8979065, currentOverride: 9083703 });
+    expect(draft).toMatchObject({ vehicles: 34346, farms: 41623, generators: 10134, sales: 378932, previousOverride: 8979065, powerTank: 106383, currentOverride: 1784170 + 340241 + 106383 });
     expect(draft.inboundExternal).toEqual({ government: 179941, etihad: 10800 });
   });
   it('refuses an existing day', () => {

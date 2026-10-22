@@ -20,6 +20,8 @@ export interface SaharaReportExtraction {
   /** تاريخ الكشف YYYY/MM/DD إن وُجد في الملف */
   date?: string;
   stations: { nameInImage: string; matchedStation: string | null; balance: number }[];
+  /** رصيد "خزان الطاقة" في الكشف (منفصل عن محطة النقل، من ملف Excel/PDF فقط) */
+  powerTank?: number;
   notes: string;
 }
 

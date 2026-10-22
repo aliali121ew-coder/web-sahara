@@ -1,9 +1,11 @@
 {
+  "sectionUpdated": "Updated",
   "capacity": {
     "remaining": "Remaining capacity",
     "fill": "Fill level",
     "title": "Storage capacity breakdown",
     "titleShort": "Storage capacity",
+    "currentPhone": "Level",
     "remainingShort": "Remaining",
     "centralTanks": "Central tanks",
     "totalColon": "Total capacity:",
@@ -15,6 +17,7 @@
   "flow": {
     "inboundColon": "Inbound:",
     "consumptionColon": "Consumption:",
+    "dailyInbound": "Daily inbound",
     "totalInbound": "Total inbound",
     "received": "Deliveries received",
     "consumption": "Consumption",
@@ -50,6 +53,7 @@
     "approved": "Approved",
     "lastInboundAvg": "Average price of last inbound",
     "buyAvg": "Average purchase price",
+    "buyPrice": "Purchase price",
     "todayBuy": "Today's purchase",
     "twoDayAvg": "Two-day average",
     "vsPrevBuy": "vs. the previous day's purchase price"
@@ -75,7 +79,7 @@
     "sites_other": "{{count}} sites"
   },
   "blackOil": {
-    "details": "Black oil details",
+    "details": "Black oil",
     "sahara": "Sahara Karbala",
     "etihad": "Etihad Company",
     "both": "Sahara Karbala + Etihad",
@@ -103,12 +107,22 @@
     "tanks": "Tanks",
     "weeklyInbound": "Weekly inbound",
     "weeklyConsumption": "Weekly consumption",
+    "weeklyFlow": "Weekly data",
     "coverageTitle": "Etihad strategic coverage forecast",
     "surplus": "Strategic surplus",
     "operationalGas": "Operational gasoil",
     "cleanGas": "Clean gasoil"
   },
   "purchases": {
+    "groupGas": "Gas oil",
+    "groupCrude": "Black oil",
+    "groupGasoline": "Gasoline",
+    "coStations": "Stations",
+    "noInbound": "No inbound",
+    "perLiter": "IQD / liter",
+    "lastInbound": "Last inbound",
+    "coSahara": "Sahara Co.",
+    "coEtihad": "Etihad Co.",
     "title": "Fuel & product purchases",
     "longPress": "Press and hold to view the price",
     "previous": "Previous:",
@@ -130,7 +144,7 @@
     "targetColon": "Target:",
     "required": "Quantity needed",
     "boost": "Targeted strategic top-up",
-    "coverageFull": "Covers (overall)",
+    "coverageFull": "Covers after supply",
     "balanceColon": "Balance:",
     "analysis": "Inbound, consumption & flow analysis",
     "neon": "Curve",
@@ -140,7 +154,7 @@
     "toggleConsumption": "Click to show or hide consumption",
     "consumptionLegend": "Consumption",
     "requiredShort": "Needed",
-    "coverageFullShort": "Covers"
+    "coverageFullShort": "Covers after supply"
   },
   "range": {
     "d7": "7 days",
@@ -173,6 +187,7 @@
     "backToAuto": "Back to the automatic price"
   },
   "priceIndex": {
+    "awaitingCurrent": "Awaiting current price",
     "title": "Company & supplier price index",
     "supplier": "Equipper",
     "lastInbound": "Last inbound",
@@ -203,6 +218,8 @@
     "actual": "Actual",
     "consumptionSplit": "Consumption breakdown",
     "totalPercent": "100% total",
+    "weekAvg": "Weekly average consumption",
+    "today": "today",
     "weekData": "Weekly data",
     "consumedQty": "Consumed:"
   }

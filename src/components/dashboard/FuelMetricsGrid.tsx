@@ -10,7 +10,9 @@ import {
   ArrowDownRight,
   Clock,
   Layers,
-  Sparkles
+  Sparkles,
+  TrendingUp,
+  TrendingDown
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { enumText } from '../../i18n/enums';
@@ -23,7 +25,35 @@ import { useFuelStore } from '../../context/FuelDataContext';
 import { usePermissions } from '../../lib/usePermission';
 
 
+/** قطرة لوسيد نفسها (وسطها 12,12.5) */
+const DROP = 'M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z';
+/** مواضع القطرات وحجمها: قطرة للبنزين، قطرتان للكاز، ثلاث للنفط الأسود */
+const DROP_LAYOUT: Record<1 | 2 | 3, { x: number; y: number; s: number }[]> = {
+  1: [{ x: 12, y: 12.5, s: 1 }],
+  2: [{ x: 7.5, y: 8.5, s: 0.6 }, { x: 16.5, y: 15.5, s: 0.6 }],
+  3: [{ x: 12, y: 7, s: 0.5 }, { x: 6.5, y: 16.5, s: 0.5 }, { x: 17.5, y: 16.5, s: 0.5 }],
+};
+type IconProps = { className?: string; style?: React.CSSProperties };
+const DropsIcon: React.FC<IconProps & { count: 1 | 2 | 3 }> = ({ count, className, style }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" className={className} style={style} aria-hidden>
+    {DROP_LAYOUT[count].map((d, i) => (
+      <path key={i} d={DROP} strokeWidth={2 / d.s} transform={`translate(${d.x} ${d.y}) scale(${d.s}) translate(-12 -12.5)`} />
+    ))}
+  </svg>
+);
+const OneDrop: React.FC<IconProps> = p => <DropsIcon count={1} {...p} />;
+const TwoDrops: React.FC<IconProps> = p => <DropsIcon count={2} {...p} />;
+const ThreeDrops: React.FC<IconProps> = p => <DropsIcon count={3} {...p} />;
+const productIcon = (category?: string) => (category === 'gasoline' ? OneDrop : category === 'crude' ? ThreeDrops : TwoDrops);
+
 /** layout="side": بدون ترويسة وفي عمودين (للعمود الجانبي في صفحة المشتريات) */
+/** ترتيب كروت الهاتف حسب نوع الوقود */
+const PHONE_GROUPS = [
+  { category: 'gas', label: 'dashboard:purchases.groupGas' },
+  { category: 'crude', label: 'dashboard:purchases.groupCrude' },
+  { category: 'gasoline', label: 'dashboard:purchases.groupGasoline' },
+] as const;
+
 export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout = 'row' }) => {
   const isSide = layout === 'side';
   const { fuelMetrics, priceOf: getLinkedSupplierData, savePrice, resetPrice, saveManual, saveStationSuppliers, stationGas } = usePurchasePrices();
@@ -67,12 +97,30 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
 
 
   const getCardPastelConfig = (metric: FuelProductMetric) => {
+    // النفط الأسود بلون النفط نفسه (بني داكن كما في خزاناته) للأيقونة والشريط، وتدرج مختلف لكل شركة يميّز الكارتين
+    if (metric.category === 'crude') {
+      const etihad = metric.company.includes('اتحاد');
+      const grad = etihad ? 'from-[#5b4a3f] to-[#a08876]' : 'from-[#6b4329] to-[#b9814f]';
+      return {
+        icon: Droplets,
+        cardBg: 'bg-gradient-to-t from-stone-100/45 via-white to-white dark:from-stone-900/25 dark:via-slate-900 dark:to-slate-900',
+        border: 'border-stone-200/70 dark:border-stone-700/35',
+        hoverBorder: 'hover:border-stone-400 dark:hover:border-stone-500/60',
+        glowShadow: 'hover:shadow-stone-700/10',
+        iconContainer: `bg-gradient-to-tr ${grad} text-white shadow-lg shadow-stone-700/35`,
+        circleBadge: 'border-stone-300 dark:border-stone-700/60 text-stone-700 dark:text-stone-300',
+        priceColor: 'text-slate-900 dark:text-white',
+        companyBadge: 'bg-stone-200/70 dark:bg-stone-800/60 text-stone-800 dark:text-stone-200',
+        progressBar: `bg-gradient-to-r ${grad}`,
+        statusColor: etihad ? 'text-stone-500 dark:text-stone-400' : 'text-[#9a6640] dark:text-[#c58a5c]',
+      };
+    }
     switch (metric.badgeColor) {
       case 'amber':
         return {
           icon: Flame,
-          cardBg: 'bg-gradient-to-b from-amber-50/90 via-white to-amber-50/40 dark:from-amber-950/20 dark:via-slate-900 dark:to-amber-950/10',
-          border: 'border-amber-200/90 dark:border-amber-900/40',
+          cardBg: 'bg-gradient-to-t from-amber-50/45 via-white to-white dark:from-amber-950/15 dark:via-slate-900 dark:to-slate-900',
+          border: 'border-amber-200/55 dark:border-amber-900/30',
           hoverBorder: 'hover:border-amber-400 dark:hover:border-amber-500/60',
           glowShadow: 'hover:shadow-amber-500/10',
           iconContainer: 'bg-gradient-to-tr from-amber-500 to-amber-400 text-white shadow-lg shadow-amber-500/35',
@@ -85,8 +133,8 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
       case 'blue':
         return {
           icon: Fuel,
-          cardBg: 'bg-gradient-to-b from-blue-50/90 via-white to-blue-50/40 dark:from-blue-950/20 dark:via-slate-900 dark:to-blue-950/10',
-          border: 'border-blue-200/90 dark:border-blue-900/40',
+          cardBg: 'bg-gradient-to-t from-blue-50/45 via-white to-white dark:from-blue-950/15 dark:via-slate-900 dark:to-slate-900',
+          border: 'border-blue-200/55 dark:border-blue-900/30',
           hoverBorder: 'hover:border-blue-400 dark:hover:border-blue-500/60',
           glowShadow: 'hover:shadow-blue-500/10',
           iconContainer: 'bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-lg shadow-blue-500/35',
@@ -99,8 +147,8 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
       case 'cyan':
         return {
           icon: Sparkles,
-          cardBg: 'bg-gradient-to-b from-cyan-50/90 via-white to-cyan-50/40 dark:from-cyan-950/20 dark:via-slate-900 dark:to-cyan-950/10',
-          border: 'border-cyan-200/90 dark:border-cyan-900/40',
+          cardBg: 'bg-gradient-to-t from-cyan-50/45 via-white to-white dark:from-cyan-950/15 dark:via-slate-900 dark:to-slate-900',
+          border: 'border-cyan-200/55 dark:border-cyan-900/30',
           hoverBorder: 'hover:border-cyan-400 dark:hover:border-cyan-500/60',
           glowShadow: 'hover:shadow-cyan-500/10',
           iconContainer: 'bg-gradient-to-tr from-cyan-600 to-sky-500 text-white shadow-lg shadow-cyan-500/35',
@@ -114,8 +162,8 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
       case 'emerald':
         return {
           icon: Gauge,
-          cardBg: 'bg-gradient-to-b from-emerald-50/90 via-white to-emerald-50/40 dark:from-emerald-950/20 dark:via-slate-900 dark:to-emerald-950/10',
-          border: 'border-emerald-200/90 dark:border-emerald-900/40',
+          cardBg: 'bg-gradient-to-t from-emerald-50/45 via-white to-white dark:from-emerald-950/15 dark:via-slate-900 dark:to-slate-900',
+          border: 'border-emerald-200/55 dark:border-emerald-900/30',
           hoverBorder: 'hover:border-emerald-400 dark:hover:border-emerald-500/60',
           glowShadow: 'hover:shadow-emerald-500/10',
           iconContainer: 'bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-lg shadow-emerald-500/35',
@@ -128,8 +176,8 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
       case 'purple':
         return {
           icon: Droplets,
-          cardBg: 'bg-gradient-to-b from-purple-50/90 via-white to-purple-50/40 dark:from-purple-950/20 dark:via-slate-900 dark:to-purple-950/10',
-          border: 'border-purple-200/90 dark:border-purple-900/40',
+          cardBg: 'bg-gradient-to-t from-purple-50/45 via-white to-white dark:from-purple-950/15 dark:via-slate-900 dark:to-slate-900',
+          border: 'border-purple-200/55 dark:border-purple-900/30',
           hoverBorder: 'hover:border-purple-400 dark:hover:border-purple-500/60',
           glowShadow: 'hover:shadow-purple-500/10',
           iconContainer: 'bg-gradient-to-tr from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/35',
@@ -143,8 +191,8 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
       default:
         return {
           icon: Boxes,
-          cardBg: 'bg-gradient-to-b from-rose-50/90 via-white to-rose-50/40 dark:from-rose-950/20 dark:via-slate-900 dark:to-rose-950/10',
-          border: 'border-rose-200/90 dark:border-rose-900/40',
+          cardBg: 'bg-gradient-to-t from-rose-50/45 via-white to-white dark:from-rose-950/15 dark:via-slate-900 dark:to-slate-900',
+          border: 'border-rose-200/55 dark:border-rose-900/30',
           hoverBorder: 'hover:border-rose-400 dark:hover:border-rose-500/60',
           glowShadow: 'hover:shadow-rose-500/10',
           iconContainer: 'bg-gradient-to-tr from-rose-500 to-pink-500 text-white shadow-lg shadow-rose-500/35',
@@ -157,23 +205,98 @@ export const FuelMetricsGrid: React.FC<{ layout?: 'row' | 'side' }> = ({ layout 
     }
   };
 
+  // آخر تحديث للقسم = أحدث تاريخ سعر بين كروته
+  const latestPriceDate = fuelMetrics.map(m => getLinkedSupplierData(m).priceUpdatedAt).filter(d => d && d !== '—').sort().pop();
+
   return (
     <div className={isSide ? 'h-full' : 'space-y-4'}>
       
       {/* Section Header */}
       {!isSide && (
-      <SectionHeader title={t('dashboard:purchases.title')} icon={
+      <SectionHeader updatedAt={latestPriceDate} title={t('dashboard:purchases.title')} icon={
         <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-700 via-indigo-600 to-blue-600 text-white shadow-md shadow-blue-500/20">
           <Layers className="w-4 h-4 text-blue-100" />
         </div>
       } />
       )}
 
-      {/* 6 Luxury Pastel Cards Grid (Adaptive on Open Sidebar) */}
-      <div className={isSide ? 'h-full grid grid-cols-2 gap-2.5 2xl:gap-3 items-stretch' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 2xl:gap-4 items-stretch'}>
+      {/* الهاتف (الرئيسية فقط): كارت لكل نوع وقود (الكاز، النفط الأسود، البنزين) وداخله أسعار الشركات متجاورة للمقارنة،
+          وتحت كل سعر التغيّر وآخر وارد وتاريخه. الضغط المطوّل على أي سعر يفتح نافذته كالسابق */}
+      {!isSide && (
+        <div className="sm:hidden space-y-2.5">
+          {PHONE_GROUPS.map(group => {
+            const items = fuelMetrics.filter(m => (PHONE_GROUPS.some(g => g.category === m.category) ? m.category : 'gas') === group.category)
+              .sort((a, b) => Number(a.id === 'fuel-muhassan') - Number(b.id === 'fuel-muhassan'));
+            if (!items.length) return null;
+            const config = getCardPastelConfig(items[0]);
+            const Icon = productIcon(group.category);
+            return (
+              <div key={group.category} className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-2.5 shadow-soft-card">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={`w-7 h-7 rounded-lg ${config.iconContainer} flex items-center justify-center shrink-0`}><Icon className="w-3.5 h-3.5" /></div>
+                  <span className="text-[14px] font-black text-slate-900 dark:text-white">{t(group.label)}</span>
+                  <span className="ms-auto text-[10px] font-bold text-slate-400">{t('dashboard:purchases.perLiter')}</span>
+                </div>
+                <div className="flex gap-1.5">
+                  {items.map(item => {
+                    const { displayPrice, trendPercent, volume, priceUpdatedAt } = getLinkedSupplierData(item);
+                    const up = trendPercent > 0, down = trendPercent < 0;
+                    const co = item.id === 'fuel-muhassan' ? 'dashboard:purchases.coStations'
+                      : item.company.includes('اتحاد') ? 'dashboard:purchases.coEtihad' : 'dashboard:purchases.coSahara';
+                    return (
+                      <div
+                        key={item.id}
+                        onPointerDown={e => startPress(e, item.id)}
+                        onPointerMove={movePress}
+                        onPointerUp={cancelPress}
+                        onPointerLeave={cancelPress}
+                        onPointerCancel={cancelPress}
+                        onContextMenu={e => e.preventDefault()}
+                        className={`relative flex-1 min-w-0 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-700/60 text-center select-none touch-manipulation overflow-hidden ${pressing === item.id ? 'scale-[0.97] ring-2 ring-teal-500/30' : ''} ${openCard?.id === item.id ? 'opacity-0' : ''}`}
+                      >
+                        {pressing === item.id && (
+                          <span className="absolute bottom-0 inset-x-0 h-1 bg-teal-500 origin-right" style={{ animation: 'fmLongPress 520ms linear forwards' }} />
+                        )}
+                        {/* اسم الشركة عنوان للخانة بشريط رمادي فاتح جدًا (الخانة بيضاء) وخط رفيع تحته يفصله عن السعر */}
+                        <div className={`px-1 py-1 text-[11px] font-black leading-tight border-b bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-400 dark:border-slate-600`}>{t(co)}</div>
+                        <div className={`pt-1.5 font-black font-mono text-[20px] leading-snug tabular-nums ${displayPrice > 0 ? 'text-slate-900 dark:text-white' : 'text-slate-300 dark:text-slate-600'}`}>
+                          {displayPrice > 0 ? displayPrice : '—'}
+                        </div>
+                        <div dir="ltr" className={`inline-flex items-center gap-0.5 text-[10.5px] font-black ${up ? 'text-rose-600 dark:text-rose-400' : down ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                          {up ? <TrendingUp className="w-3 h-3" /> : down ? <TrendingDown className="w-3 h-3" /> : null}
+                          {displayPrice > 0 ? `${up ? '+' : ''}${trendPercent}%` : ' '}
+                        </div>
+                        {/* آخر وارد وتاريخه */}
+                        <div className="mx-2 mb-1.5 mt-1 pt-1 border-t border-slate-200/80 dark:border-slate-700/60 text-[10px] leading-snug text-slate-400">
+                          {volume > 0 ? (
+                            <>
+                              <div className="font-mono font-black text-[13px] text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                                {formatNumber(volume)} <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
+                              </div>
+                              <div className="font-mono text-[9px] whitespace-nowrap" dir="ltr">{priceUpdatedAt}</div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="font-bold">{t('dashboard:purchases.noInbound')}</div>
+                              <div>&nbsp;</div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 6 Luxury Pastel Cards Grid (Adaptive on Open Sidebar) — الرئيسية: من التابلت وأكبر */}
+      <div className={isSide ? 'h-full grid grid-cols-2 gap-2.5 2xl:gap-3 items-stretch' : 'hidden sm:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 2xl:gap-4 items-stretch'}>
         {fuelMetrics.map((item) => {
           const config = getCardPastelConfig(item);
-          const Icon = config.icon;
+          const Icon = productIcon(item.category);
           const { displayPrice, previousPrice, trendPercent, priceUpdatedAt, volume, source } = getLinkedSupplierData(item);
           const percentage = Math.min(Math.round((volume / maxBenchmarkVolume) * 100), 100);
 

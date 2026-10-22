@@ -1,7 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { SectionHeader } from './SectionHeader';
 import { Waves, Building2, Fuel } from 'lucide-react';
-import { formatNumber } from '../../lib/utils';
 import { useTranslation } from 'react-i18next';
 import { TankGlobalSvgDefs } from '../tanks/TankGlobalSvgDefs';
 import { Tank3DCard, type CalculatedTankUnit } from '../tanks/Tank3DCard';
@@ -19,6 +18,41 @@ import { usePetrolLedger, PETROL_TOTAL_CAPACITY } from '../../lib/petrolLedger';
 
 /** ارتفاع افتراضي للخزان المجمّع (المنسوب يُحسب منه كنسبة امتلاء) */
 const VIRTUAL_HEIGHT = 10;
+
+/** العرض الطبيعي لكارت الخزان قبل التصغير (يتسع للمساطر والمقاييس كما في صفحة الخزانات) */
+const NATURAL_WIDTH = 330;
+
+/**
+ * كارت الخزان الحقيقي نفسه (المساطر، جهاز القياس، الأمواج، البيانات) مصغّرًا بالكامل ليتسع لعمود الهاتف:
+ * يُرسم بعرضه الطبيعي ثم يُصغَّر بنسبة عرض العمود، ويأخذ الغلاف الارتفاع بعد التصغير حتى لا يترك فراغًا
+ */
+export const ScaledTank: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const boxRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0.5);
+  const [height, setHeight] = useState<number | undefined>(undefined);
+  useLayoutEffect(() => {
+    const box = boxRef.current, inner = innerRef.current;
+    if (!box || !inner) return;
+    const fit = () => {
+      const s = Math.min(1, box.clientWidth / NATURAL_WIDTH);
+      setScale(s);
+      setHeight(inner.offsetHeight * s);
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(box);
+    ro.observe(inner);
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <div ref={boxRef} className="relative min-w-0" style={{ height }}>
+      <div ref={innerRef} className="absolute top-0 start-0 origin-top-right ltr:origin-top-left" style={{ width: NATURAL_WIDTH, transform: `scale(${scale})` }}>
+        {children}
+      </div>
+    </div>
+  );
+};
 
 /**
  * تفاصيل خزانات الشركة (الشاشة الرئيسية) بتصميم خزانات المنظومة:
@@ -97,6 +131,9 @@ export const CompanyTanksSection: React.FC = () => {
     ].filter(g => g.tanks.length);
   }, [centralTanks, saharaDays, petrolDays, saharaBlackOil.latest, saharaBlackOil.balance, etihadBlackOil.latest, etihadBlackOil.balance, t]);
 
+  // آخر تحديث للقسم = أحدث يوم مسجّل بين السجلات التي تُبنى منها أرصدة الخزانات
+  const latestDate = [saharaDays[saharaDays.length - 1]?.date, petrolDays[petrolDays.length - 1]?.date, saharaBlackOil.latest?.date, etihadBlackOil.latest?.date]
+    .filter((d): d is string => !!d).map(d => d.replace(/-/g, '/')).sort().pop();
   // الخزانات المجمّعة للعرض فقط (تعديل المنسوب من منظومة الخزانات)
   const noop = () => {};
 
@@ -105,17 +142,16 @@ export const CompanyTanksSection: React.FC = () => {
       <TankGlobalSvgDefs />
 
       {/* ترويسة القسم */}
-      <SectionHeader title={t('dashboard:companyTanks.details')} icon={
+      <SectionHeader updatedAt={latestDate} title={t('dashboard:companyTanks.details')} icon={
         <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-700 via-indigo-600 to-teal-600 text-white shadow-md shadow-blue-500/20">
           <Waves className="w-4 h-4 text-teal-200 animate-pulse" />
         </div>
       } />
 
-      {/* الكروت الأم: الاتحاد (خزانان)، الصحاري (خزانان)، البنزين (خزان) */}
+      {/* الكروت الأم: الاتحاد (خزانان)، الصحاري (خزانان)، البنزين (خزان) — في كل المقاسات (كما في الحاسبة) */}
       <div className="grid grid-cols-1 xl:grid-cols-[2fr_2fr_1fr] gap-4 items-stretch">
         {groups.map(g => {
           const Icon = g.icon;
-          const cap = g.tanks.reduce((a, t) => a + t.capacityLiters, 0);
           return (
             <div
               key={g.key}
@@ -129,16 +165,22 @@ export const CompanyTanksSection: React.FC = () => {
                   </div>
                   <div className="min-w-0">
                     <div className="font-black text-slate-900 dark:text-white truncate">{g.title}</div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                      {t('dashboard:companyTanks.sections', { count: g.tanks.length })} · {t('dashboard:capacity.label')} <span className="font-mono">{formatNumber(cap)}</span> {t('common:units.liter')}
-                    </div>
                   </div>
                 </div>
 
               </div>
 
-              {/* الخزانات بتصميم المنظومة */}
-              <div className={`grid gap-3 ${g.tanks.length > 1 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+              {/* الهاتف: كارت الخزان الحقيقي مصغّرًا، خزانان في الصف، والخزان الوحيد (البنزين) في الوسط */}
+              <div className="sm:hidden flex flex-wrap justify-center gap-2.5">
+                {g.tanks.map(t => (
+                  <div key={t.id} className="w-[calc(50%-0.3125rem)]">
+                    <ScaledTank><Tank3DCard tank={t} onLevelChange={noop} isEditable={false} summary /></ScaledTank>
+                  </div>
+                ))}
+              </div>
+
+              {/* الخزانات بتصميم المنظومة (التابلت وأكبر) */}
+              <div className={`hidden sm:grid gap-3 ${g.tanks.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 {g.tanks.map(t => (
                   <Tank3DCard key={t.id} tank={t} onLevelChange={noop} isEditable={false} summary />
                 ))}

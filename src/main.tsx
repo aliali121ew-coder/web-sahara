@@ -15,6 +15,7 @@ import { getProfile, refreshProfile } from './lib/session';
 import { SyncBadge } from './components/auth/SyncBadge';
 // يلتقط طلب التثبيت (أندرويد) مبكرًا قبل عرض الواجهة
 import { InstallCard } from './components/layout/InstallCard';
+import { LoginAutoUpdate } from './components/layout/AppUpdate';
 
 // طلب تخزين دائم حتى لا يمسح المتصفح بيانات التطبيق تلقائيًا عند امتلاء المساحة أو إغلاقه
 navigator.storage?.persist?.().catch(() => {});
@@ -26,7 +27,7 @@ const start = async () => {
   // الترجمات الأساسية تُحمَّل قبل أول عرض حتى لا تظهر نصوص بلغة أخرى للحظة
   await i18nReady;
   if ((await initCloudSync()) === 'need-login') {
-    root.render(<><AppLogin onSuccess={start} /><InstallCard /></>);
+    root.render(<><AppLogin onSuccess={start} /><InstallCard /><LoginAutoUpdate /></>);
     return;
   }
   // الصلاحيات: بنسخة محفوظة يُعرض التطبيق فورًا وتُحدَّث في الخلفية (الصفحات تتبع حدث session-profile)،

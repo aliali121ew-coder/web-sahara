@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { ArrowUp, ArrowDown, Minus, TrendingUp, TrendingDown, BadgeDollarSign } from 'lucide-react';
 import { useFuelData } from '../../context/FuelDataContext';
 import { useTranslation } from 'react-i18next';
-import { Avatar, CompanyBadges, fmtPrice } from '../suppliers/supplierUi';
+import { fmtPrice } from '../suppliers/supplierUi';
 import { SectionHeader } from './SectionHeader';
 import { sameSupplier } from '../../lib/archiveSuppliers';
 import { isOnDashboard, useDashboardSuppliers } from '../../lib/dashboardSuppliers';
@@ -69,6 +69,12 @@ export const PriceIndexTable: React.FC = () => {
     return seen;
   }, [supplierPrices, searchQuery, shown]);
 
+  // آخر تحديث للقسم = أحدث تاريخ سعر بين المجهزين المعروضين في الرئيسية
+  const latestDate = useMemo(() => supplierPrices
+    .filter(rec => isOnDashboard(shown, rec.supplierName, rec.company) && rec.lastUpdated)
+    .map(rec => rec.lastUpdated.slice(0, 10).replace(/-/g, '/'))
+    .sort().pop(), [supplierPrices, shown]);
+
   // كل العناوين في الوسط؛ خلية المجهز (الشعار والاسم) بمحاذاة البداية
   const th = 'px-3 xl:px-4 pt-3 pb-1 text-center text-[13px] font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap';
   // كل صف كارت مستقل: خلفية وحدود أعلى/أسفل للخلايا، والطرفان بحد جانبي وزوايا دائرية
@@ -78,12 +84,81 @@ export const PriceIndexTable: React.FC = () => {
 
   return (
     <div className="space-y-3.5">
-      <SectionHeader title={t('dashboard:priceIndex.title')} icon={
+      <SectionHeader updatedAt={latestDate} title={t('dashboard:priceIndex.title')} icon={
         <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-700 via-blue-600 to-sky-500 text-white shadow-md shadow-blue-500/20">
           <BadgeDollarSign className="w-4 h-4 text-blue-100" />
         </div>
       } />
-    <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-soft-card overflow-hidden">
+    {/* الهاتف: كارت أم بداخله كارت مستطيل لكل مجهز (شعار الشركة، الاسم، الكثافة، السعر السابق والحالي، التغيّر) */}
+    <div className="sm:hidden rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-soft-card p-2.5 space-y-2">
+      {rows.length === 0 && (
+        <div className="py-8 text-center text-sm text-slate-400">{t(shown.length ? 'dashboard:priceIndex.empty' : 'dashboard:priceIndex.noneSelected')}</div>
+      )}
+      {rows.filter(s => s.hasPrice).map(s => {
+        const up = s.hasPrice && s.pct > 0, down = s.hasPrice && s.pct < 0;
+        const chip = !s.hasPrice ? 'bg-slate-100 text-slate-400 dark:bg-slate-800'
+          : up ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300'
+          : down ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300'
+          : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300';
+        return (
+          // خط جانبي بلون اتجاه السعر: يُفهم الاتجاه بنظرة قبل قراءة الأرقام
+          <div key={s.id} className={`rounded-2xl border border-slate-200/80 dark:border-slate-800 border-s-2 ${up ? 'border-s-rose-500' : down ? 'border-s-emerald-500' : 'border-s-slate-300 dark:border-s-slate-600'} bg-white dark:bg-slate-900 px-3 py-2.5`}>
+            <div className="flex items-center gap-2.5 min-w-0">
+              {/* شعار الشركة المستلمة مكان دائرة الحرف */}
+              <span className="w-8 h-8 shrink-0 rounded-lg bg-white ring-1 ring-slate-200 dark:ring-slate-700 flex items-center justify-center p-0.5 overflow-hidden">
+                <img src={s.company === 'etihad' ? '/logos/etihad.png' : '/logos/sahara.png'} alt={t(`common:enum.company.${s.company}`)} className="w-full h-full object-contain" />
+              </span>
+              {/* الاسم كاملًا في كل المقاسات: ينزل لسطر ثانٍ بدل القص */}
+              {/* الاسم كاملًا (يلتف لسطر ثانٍ)، ونسبة التغيّر مقابله بحجم صغير حتى لا تضيّق الاسم */}
+              <div className="min-w-0 flex-1 text-[14px] font-black leading-snug text-slate-900 dark:text-white break-words">{s.supplierName}</div>
+              {s.hasPrice && (
+                <span className={`shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[11px] font-black ${chip}`} dir="ltr">
+                  {up ? <TrendingUp className="w-3 h-3" /> : down ? <TrendingDown className="w-3 h-3" /> : <Minus className="w-3 h-3" />}{up ? '+' : ''}{s.pct}%
+                </span>
+              )}
+            </div>
+            {/* سطر واحد بثلاث خانات: السعر السابق، السعر الحالي، الكثافة — والأرقام في الوسط */}
+            <div className="mt-2 grid grid-cols-3 gap-1.5 text-center [&>div]:min-w-0">
+              <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/70 px-1.5 py-1.5">
+                <div className="text-[clamp(9.5px,2.9vw,10.5px)] font-bold text-slate-400 whitespace-nowrap">{t('dashboard:priceIndex.previous')}</div>
+                <div className="font-mono font-bold text-[clamp(12px,3.6vw,14px)] text-slate-600 dark:text-slate-300 tabular-nums break-words">{s.previousPrice === null ? '—' : <>{fmtPrice(s.previousPrice)} <span className={iqd}>{t('common:units.iqd')}</span></>}</div>
+              </div>
+              <div className={`rounded-xl border px-1.5 py-1.5 ${s.hasPrice ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-200/80 dark:border-blue-900/70' : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-700/70'}`}>
+                <div className={`text-[clamp(9.5px,2.9vw,10.5px)] font-bold whitespace-nowrap ${s.hasPrice ? 'text-blue-600 dark:text-blue-300' : 'text-slate-400'}`}>{t('dashboard:priceIndex.current')}</div>
+                <div className={`font-mono font-black text-[clamp(12px,3.6vw,14px)] tabular-nums break-words ${s.hasPrice ? 'text-blue-800 dark:text-blue-200' : 'text-slate-400'}`}>{s.hasPrice ? <>{fmtPrice(s.price)} <span className={iqd}>{t('common:units.iqd')}</span></> : '—'}</div>
+              </div>
+              <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700/70 px-1.5 py-1.5">
+                <div className="text-[clamp(9.5px,2.9vw,10.5px)] font-bold text-slate-400 whitespace-nowrap">{t('dashboard:priceIndex.density')}</div>
+                <div className="font-mono font-medium text-[clamp(11px,3.2vw,12.5px)] text-slate-400 dark:text-slate-500 tabular-nums break-words">{s.density || '—'}</div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+      {/* بلا سعر حالي: تحت عنوان صغير وبسطر مختصر لكل مجهز (الشعار، الاسم، السعر السابق) حتى لا تزاحم الكارتات الكاملة */}
+      {rows.some(s => !s.hasPrice) && (
+        <div className="pt-1">
+          <div className="flex items-center gap-2 px-1 pb-1.5 text-[11px] font-bold text-slate-400">
+            <span>{t('dashboard:priceIndex.awaitingCurrent')}</span>
+            <span className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+          </div>
+          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
+            {rows.filter(s => !s.hasPrice).map(s => (
+              <div key={s.id} className="flex items-center gap-2.5 px-3 py-2 bg-slate-50/60 dark:bg-slate-900">
+                <span className="w-7 h-7 shrink-0 rounded-md bg-white ring-1 ring-slate-200 dark:ring-slate-700 flex items-center justify-center p-0.5 overflow-hidden">
+                  <img src={s.company === 'etihad' ? '/logos/etihad.png' : '/logos/sahara.png'} alt={t(`common:enum.company.${s.company}`)} className="w-full h-full object-contain" />
+                </span>
+                <span className="min-w-0 flex-1 text-[13px] font-bold leading-snug text-slate-700 dark:text-slate-200 break-words">{s.supplierName}</span>
+                <span className="shrink-0 text-[11px] text-slate-400">{t('dashboard:priceIndex.previous')}</span>
+                <span className="shrink-0 font-mono font-bold text-[13px] text-slate-600 dark:text-slate-300 tabular-nums">{s.previousPrice === null ? '—' : <>{fmtPrice(s.previousPrice)} <span className={iqd}>{t('common:units.iqd')}</span></>}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+
+    <div className="hidden sm:block rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-soft-card overflow-hidden">
       <div className="overflow-x-auto px-3 sm:px-4 pb-4 bg-slate-50/70 dark:bg-slate-950/30">
         <table className="w-full border-separate border-spacing-y-1.5">
           <thead>
@@ -106,9 +181,11 @@ export const PriceIndexTable: React.FC = () => {
               <tr key={s.id}>
                 <td className={`${td} ${plain} !text-start`}>
                   <div className="flex items-center gap-2.5">
-                    <Avatar s={s} size="w-8 h-8" text="text-xs" />
-                    <span className="text-[14.5px] font-bold text-slate-900 dark:text-white truncate max-w-[200px] xl:max-w-[260px]">{s.supplierName}</span>
-                    <CompanyBadges companies={[s.company]} />
+                    {/* شعار الشركة المستلمة مكان دائرة الحرف (كما في الهاتف) */}
+                    <span className="w-8 h-8 shrink-0 rounded-lg bg-white ring-1 ring-slate-200 dark:ring-slate-700 flex items-center justify-center p-0.5 overflow-hidden">
+                      <img src={s.company === 'etihad' ? '/logos/etihad.png' : '/logos/sahara.png'} alt={t(`common:enum.company.${s.company}`)} className="w-full h-full object-contain" />
+                    </span>
+                    <span className="text-[14.5px] font-bold leading-snug text-slate-900 dark:text-white whitespace-normal break-words min-w-[120px] max-w-[260px]">{s.supplierName}</span>
                   </div>
                 </td>
                 <td className={`${td} font-extrabold text-slate-900 dark:text-white tabular-nums`}>{s.hasPrice ? <>{fmtPrice(s.price)} <span className={iqd}>{t('common:units.iqd')}</span></> : '—'}</td>

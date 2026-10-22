@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { applyAppUpdate, useAppUpdateAvailable } from '../../lib/appUpdate';
+import { applyAppUpdate, useAppUpdateAvailable, watchAppUpdateOnLogin } from '../../lib/appUpdate';
 
 const MOBILE_QUERY = '(max-width: 767px)';
 const COUNTDOWN_SECONDS = 10;
@@ -85,4 +85,35 @@ export const AppUpdateButton: React.FC = () => {
       )}
     </>
   );
+};
+
+/** مهلة بلا لمس أو كتابة قبل التحديث في شاشة الدخول، حتى لا يُمسح ما يُكتب */
+const LOGIN_IDLE_MS = 15 * 1000;
+
+/**
+ * شاشة الدخول (الحاسبة والهاتف): بلا جلسة لا شيء يضيع، فتُحدَّث تلقائيًا بلا زر بعد نشر نسخة جديدة،
+ * لكن ليس أثناء الكتابة: تنتظر خروج المؤشر من الحقل أو 15 ثانية بلا نشاط
+ */
+export const LoginAutoUpdate: React.FC = () => {
+  const available = useAppUpdateAvailable();
+
+  useEffect(() => watchAppUpdateOnLogin(), []);
+
+  useEffect(() => {
+    if (!available) return;
+    let lastActive = Date.now();
+    const active = () => { lastActive = Date.now(); };
+    const events = ['keydown', 'pointerdown', 'input'] as const;
+    events.forEach(e => window.addEventListener(e, active, true));
+    const id = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      if (!typing() || Date.now() - lastActive >= LOGIN_IDLE_MS) applyAppUpdate();
+    }, 1000);
+    return () => {
+      window.clearInterval(id);
+      events.forEach(e => window.removeEventListener(e, active, true));
+    };
+  }, [available]);
+
+  return null;
 };
