@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { ArrowUp, ArrowDown, Minus, TrendingUp, TrendingDown, BadgeDollarSign } from 'lucide-react';
 import { useFuelData } from '../../context/FuelDataContext';
 import { useTranslation } from 'react-i18next';
-import { Avatar, CompanyBadges, fmtPrice } from '../suppliers/supplierUi';
+import { fmtPrice } from '../suppliers/supplierUi';
 import { SectionHeader } from './SectionHeader';
 import { sameSupplier } from '../../lib/archiveSuppliers';
 import { isOnDashboard, useDashboardSuppliers } from '../../lib/dashboardSuppliers';
@@ -69,6 +69,12 @@ export const PriceIndexTable: React.FC = () => {
     return seen;
   }, [supplierPrices, searchQuery, shown]);
 
+  // آخر تحديث للقسم = أحدث تاريخ سعر بين المجهزين المعروضين في الرئيسية
+  const latestDate = useMemo(() => supplierPrices
+    .filter(rec => isOnDashboard(shown, rec.supplierName, rec.company) && rec.lastUpdated)
+    .map(rec => rec.lastUpdated.slice(0, 10).replace(/-/g, '/'))
+    .sort().pop(), [supplierPrices, shown]);
+
   // كل العناوين في الوسط؛ خلية المجهز (الشعار والاسم) بمحاذاة البداية
   const th = 'px-3 xl:px-4 pt-3 pb-1 text-center text-[13px] font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap';
   // كل صف كارت مستقل: خلفية وحدود أعلى/أسفل للخلايا، والطرفان بحد جانبي وزوايا دائرية
@@ -78,7 +84,7 @@ export const PriceIndexTable: React.FC = () => {
 
   return (
     <div className="space-y-3.5">
-      <SectionHeader title={t('dashboard:priceIndex.title')} icon={
+      <SectionHeader updatedAt={latestDate} title={t('dashboard:priceIndex.title')} icon={
         <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-700 via-blue-600 to-sky-500 text-white shadow-md shadow-blue-500/20">
           <BadgeDollarSign className="w-4 h-4 text-blue-100" />
         </div>
@@ -175,9 +181,11 @@ export const PriceIndexTable: React.FC = () => {
               <tr key={s.id}>
                 <td className={`${td} ${plain} !text-start`}>
                   <div className="flex items-center gap-2.5">
-                    <Avatar s={s} size="w-8 h-8" text="text-xs" />
+                    {/* شعار الشركة المستلمة مكان دائرة الحرف (كما في الهاتف) */}
+                    <span className="w-8 h-8 shrink-0 rounded-lg bg-white ring-1 ring-slate-200 dark:ring-slate-700 flex items-center justify-center p-0.5 overflow-hidden">
+                      <img src={s.company === 'etihad' ? '/logos/etihad.png' : '/logos/sahara.png'} alt={t(`common:enum.company.${s.company}`)} className="w-full h-full object-contain" />
+                    </span>
                     <span className="text-[14.5px] font-bold leading-snug text-slate-900 dark:text-white whitespace-normal break-words min-w-[120px] max-w-[260px]">{s.supplierName}</span>
-                    <CompanyBadges companies={[s.company]} />
                   </div>
                 </td>
                 <td className={`${td} font-extrabold text-slate-900 dark:text-white tabular-nums`}>{s.hasPrice ? <>{fmtPrice(s.price)} <span className={iqd}>{t('common:units.iqd')}</span></> : '—'}</td>

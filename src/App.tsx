@@ -57,6 +57,11 @@ const AppContent: React.FC = () => {
   }, [activeTab, firstAllowed]); // eslint-disable-line react-hooks/exhaustive-deps
   const { direction } = useLanguage();
 
+  // شريط عنوان نافذة التطبيق المثبّت (theme-color) بلون خلفية الصفحة نفسه، ويتبع الوضع الداكن وخلفية الإعدادات
+  useEffect(() => {
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', getAmbientBgColor(bgGradient, themeMode, shadeLevel));
+  }, [bgGradient, themeMode, shadeLevel]);
+
   // جلب باقي الصفحات في الخلفية وقت الخمول (صفحة المستخدم الحالية أولاً) فيصبح التنقل فورياً
   useEffect(() => {
     const ric: (cb: () => void) => any = (window as any).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 400));
@@ -197,6 +202,9 @@ const AppContent: React.FC = () => {
       style={{
         backgroundColor: getAmbientBgColor(bgGradient, themeMode, shadeLevel),
         backgroundImage: getAmbientGradientStyle(bgGradient, gradientIntensity, themeMode, shadeLevel),
+        // لون خلفية الصفحة لإطارها (الشريط العلوي والشريط الجانبي المطوي) فيبدو جزءًا منها
+        ['--app-bg' as string]: getAmbientBgColor(bgGradient, themeMode, shadeLevel),
+        ['--app-bg-image' as string]: getAmbientGradientStyle(bgGradient, gradientIntensity, themeMode, shadeLevel),
         backgroundAttachment: 'fixed',
         backgroundRepeat: 'no-repeat',
         backgroundSize: 'cover',

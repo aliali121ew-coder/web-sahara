@@ -189,7 +189,7 @@ export const PetrolStationsSection: React.FC = () => {
       } />
 
       {/* 🌟 3 Main Columns Container */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-stretch">
         
         {/* 🌟 Hero Card 1: Actual Balance & Metrics (Wider 5 cols matching Sahara) */}
         <div className="col-span-1 md:col-span-12 xl:col-span-5 rounded-[28px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-soft-card hover:shadow-soft-hover transition-all flex flex-col justify-between space-y-3 h-full overflow-hidden">
@@ -212,9 +212,9 @@ export const PetrolStationsSection: React.FC = () => {
             </div>
 
             {/* Average Price Pill */}
-            <div className="p-3 rounded-2xl bg-gradient-to-br from-slate-50/90 to-teal-50/30 dark:from-slate-800/80 dark:to-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 text-right shrink-0 shadow-xs">
+            <div className="px-2.5 py-1.5 rounded-xl bg-gradient-to-br from-slate-50/90 to-teal-50/30 dark:from-slate-800/80 dark:to-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 text-right shrink-0 shadow-xs">
               <span className="text-[10px] font-bold text-slate-400 dark:text-slate-400 block">{t('dashboard:price.average')}</span>
-              <div className="text-base sm:text-xl font-black text-[#146f82] dark:text-teal-300 font-mono tracking-tight">
+              <div className="text-sm sm:text-lg font-black text-[#146f82] dark:text-teal-300 font-mono tracking-tight">
                 {avgPrice} <span className="text-[10px] font-bold text-slate-500">{t('common:units.iqd')}</span>
               </div>
               <div className="flex items-center gap-1 mt-0.5 justify-end">

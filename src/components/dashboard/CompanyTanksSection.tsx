@@ -131,6 +131,9 @@ export const CompanyTanksSection: React.FC = () => {
     ].filter(g => g.tanks.length);
   }, [centralTanks, saharaDays, petrolDays, saharaBlackOil.latest, saharaBlackOil.balance, etihadBlackOil.latest, etihadBlackOil.balance, t]);
 
+  // آخر تحديث للقسم = أحدث يوم مسجّل بين السجلات التي تُبنى منها أرصدة الخزانات
+  const latestDate = [saharaDays[saharaDays.length - 1]?.date, petrolDays[petrolDays.length - 1]?.date, saharaBlackOil.latest?.date, etihadBlackOil.latest?.date]
+    .filter((d): d is string => !!d).map(d => d.replace(/-/g, '/')).sort().pop();
   // الخزانات المجمّعة للعرض فقط (تعديل المنسوب من منظومة الخزانات)
   const noop = () => {};
 
@@ -139,7 +142,7 @@ export const CompanyTanksSection: React.FC = () => {
       <TankGlobalSvgDefs />
 
       {/* ترويسة القسم */}
-      <SectionHeader title={t('dashboard:companyTanks.details')} icon={
+      <SectionHeader updatedAt={latestDate} title={t('dashboard:companyTanks.details')} icon={
         <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-700 via-indigo-600 to-teal-600 text-white shadow-md shadow-blue-500/20">
           <Waves className="w-4 h-4 text-teal-200 animate-pulse" />
         </div>

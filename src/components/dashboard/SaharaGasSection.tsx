@@ -194,7 +194,7 @@ export const SaharaGasSection: React.FC = () => {
       } />
 
       {/* Hero Cards Grid (Responsive: Mobile 1 Col, Tablet 2 Rows/Split, Desktop 3 Cards in 1 Row 5+3+4) */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-stretch">
         
         {/* Hero Card 1: Actual Balance & Metrics (12 cols on mobile/tablet, 5 cols on desktop) */}
         <div className="col-span-1 md:col-span-12 xl:col-span-5 rounded-[28px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-soft-card hover:shadow-soft-hover transition-all flex flex-col justify-between space-y-3.5 h-full overflow-hidden">
@@ -218,11 +218,11 @@ export const SaharaGasSection: React.FC = () => {
 
             {/* Average Price Pill with Modern Glass & Glow */}
             {/* كارت السعر: الرقم في المنتصف، وتحته شريط سفلي ملوّن مستقل لنسبة التغير */}
-            <div className="min-w-[128px] rounded-2xl overflow-hidden bg-gradient-to-br from-white to-blue-50/40 dark:from-slate-800/90 dark:to-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 shrink-0 shadow-xs">
-              <div className="px-3 pt-2.5 pb-2 text-center">
+            <div className="min-w-[96px] rounded-xl overflow-hidden bg-gradient-to-br from-white to-blue-50/40 dark:from-slate-800/90 dark:to-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 shrink-0 shadow-xs">
+              <div className="px-2.5 pt-1.5 pb-1 text-center">
                 <span className="text-[10px] font-bold text-slate-400 dark:text-slate-400 block">{t('dashboard:price.average')}</span>
                 <div className="mt-0.5 flex items-baseline justify-center gap-1">
-                  <span className="text-lg sm:text-2xl font-black text-blue-700 dark:text-blue-300 font-mono tracking-tight leading-none tabular-nums">
+                  <span className="text-base sm:text-lg font-black text-blue-700 dark:text-blue-300 font-mono tracking-tight leading-none tabular-nums">
                     {avgPrice.toFixed(1)}
                   </span>
                   <span className="text-[10px] font-bold text-slate-400">{t('common:units.iqd')}</span>
@@ -239,19 +239,19 @@ export const SaharaGasSection: React.FC = () => {
                   : 'bg-slate-50 border-slate-200 text-slate-500 dark:bg-slate-800 dark:border-slate-700';
                 return (
                   <div
-                    className={`px-2 py-1.5 border-t flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 text-center ${tone}`}
+                    className={`px-2 py-1 border-t flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5 text-center ${tone}`}
                     title={`${t('dashboard:price.lastInboundAvg')}: ${priceChange.lastPrice.toFixed(1)} ${t('common:units.iqd')} · ${priceChange.lastDay}`}
                   >
                     {down && <TrendingDown className="w-3.5 h-3.5 shrink-0" />}
                     {up && <TrendingUp className="w-3.5 h-3.5 shrink-0" />}
-                    <span dir="ltr" className="text-[11px] font-black font-mono tabular-nums leading-none">
+                    <span dir="ltr" className="text-[10px] font-black font-mono tabular-nums leading-none">
                       {up ? '+' : down ? '−' : ''}{Math.abs(priceChange.pct).toFixed(2)}%
                     </span>
                     <span className="text-[9px] font-bold opacity-70 leading-tight">{t('dashboard:price.change')}</span>
                   </div>
                 );
               })() : (
-                <div className="px-3 py-1.5 border-t border-slate-200/80 dark:border-slate-700/60 flex items-center justify-center gap-1">
+                <div className="px-2.5 py-1 border-t border-slate-200/80 dark:border-slate-700/60 flex items-center justify-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                   <span className="text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400">{t('dashboard:price.approved')}</span>
                 </div>

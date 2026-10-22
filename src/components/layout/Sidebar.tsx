@@ -354,7 +354,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       // التلقائي: الشريط المطوي سطح سادة، والمفتوح سطح نظيف بتوهّج أزرق خافت جدًا من زاوية الشعار
       // ولمسة نيلية باهتة أسفله، مع ظل ناعم على حافته يفصله عن الصفحة دون خطوط حادة
       const dark = themeMode === 'dark';
-      if (isCollapsed) return { backgroundColor: dark ? '#0d1526' : '#ffffff', backgroundImage: 'none' };
+      // المطوي بلون خلفية الصفحة نفسه، فيصير جزءًا من إطارها مع الشريط العلوي
+      if (isCollapsed) return { backgroundColor: getAmbientBgColor(bgGradient, themeMode, shadeLevel), backgroundImage: getAmbientGradientStyle(bgGradient, gradientIntensity, themeMode, shadeLevel), backgroundAttachment: 'fixed', backgroundRepeat: 'no-repeat', backgroundSize: 'cover' };
       const corner = isRtl ? '100% 0%' : '0% 0%';
       const far = isRtl ? '0% 100%' : '100% 100%';
       const spread = isRtl ? '-10px' : '10px';

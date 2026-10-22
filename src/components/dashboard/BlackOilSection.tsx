@@ -59,11 +59,11 @@ const PriceCard: React.FC<{ records: BlackOilRecord[]; bg: string; text: string 
     ? 'bg-emerald-50 border-emerald-200/80 text-emerald-600 dark:bg-emerald-950/40 dark:border-emerald-900/60 dark:text-emerald-400'
     : 'bg-slate-50 border-slate-200 text-slate-500 dark:bg-slate-800 dark:border-slate-700';
   return (
-    <div className={`min-w-[104px] sm:min-w-[118px] rounded-2xl overflow-hidden bg-gradient-to-br from-white ${bg} dark:from-slate-800/90 dark:to-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 shrink-0 shadow-xs`}>
-      <div className="px-2 sm:px-3 pt-2.5 pb-2 text-center">
+    <div className={`min-w-[92px] rounded-xl overflow-hidden bg-gradient-to-br from-white ${bg} dark:from-slate-800/90 dark:to-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 shrink-0 shadow-xs`}>
+      <div className="px-2.5 pt-1.5 pb-1 text-center">
         <span className="text-[10px] font-bold text-slate-400 dark:text-slate-400 block">{t('dashboard:price.average')}</span>
         <div className="mt-0.5 flex items-baseline justify-center gap-1">
-          <span className={`text-lg sm:text-2xl font-black font-mono tracking-tight leading-none tabular-nums ${text}`}>
+          <span className={`text-base sm:text-lg font-black font-mono tracking-tight leading-none tabular-nums ${text}`}>
             {avgPrice > 0 ? avgPrice.toFixed(1) : '—'}
           </span>
           <span className="text-[10px] font-bold text-slate-400">{t('common:units.iqd')}</span>
@@ -71,18 +71,18 @@ const PriceCard: React.FC<{ records: BlackOilRecord[]; bg: string; text: string 
       </div>
       {change ? (
         <div
-          className={`px-2 py-1.5 border-t flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 text-center ${tone}`}
+          className={`px-2 py-1 border-t flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5 text-center ${tone}`}
           title={`${t('dashboard:price.lastInboundAvg')}: ${change.lastPrice.toFixed(1)} ${t('common:units.iqd')} · ${change.lastDay}`}
         >
           {down && <TrendingDown className="w-3.5 h-3.5 shrink-0" />}
           {up && <TrendingUp className="w-3.5 h-3.5 shrink-0" />}
-          <span dir="ltr" className="text-[11px] font-black font-mono tabular-nums leading-none">
+          <span dir="ltr" className="text-[10px] font-black font-mono tabular-nums leading-none">
             {up ? '+' : down ? '−' : ''}{Math.abs(change.pct).toFixed(2)}%
           </span>
           <span className="text-[9px] font-bold opacity-70 leading-tight">{t('dashboard:price.change')}</span>
         </div>
       ) : (
-        <div className="px-3 py-1.5 border-t border-slate-200/80 dark:border-slate-700/60 flex items-center justify-center gap-1">
+        <div className="px-2.5 py-1 border-t border-slate-200/80 dark:border-slate-700/60 flex items-center justify-center gap-1">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
           <span className="text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400">{t('dashboard:price.approved')}</span>
         </div>
@@ -158,7 +158,7 @@ export const BlackOilSection: React.FC = () => {
       } />
 
       {/* الشاشات الكبيرة: كارتا الصحاري والاتحاد بنفس العرض، والكارت الكلي أصغر منهما (وأجزاؤه موزعة بمسافات متساوية على ارتفاعه) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.75fr)] gap-4 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.75fr)] gap-3 items-stretch">
         
         {/* ========================================================================= */}
         {/* CARD 1: Sahara Black Oil (5 Cols - صحاري كربلاء) - Light Luminous Sky Cyan */}
@@ -184,7 +184,7 @@ export const BlackOilSection: React.FC = () => {
                 </div>
               </div>
 
-              {/* متوسط السعر في رأس الكارت (مكان «يؤمّن» سابقًا) */}
+              {/* متوسط السعر في رأس الكارت مقابل العنوان */}
               <PriceCard records={saharaLedger.records} bg="to-sky-50/40" text="text-sky-700 dark:text-sky-300" />
 
             </div>
@@ -204,7 +204,6 @@ export const BlackOilSection: React.FC = () => {
                   </span>
                 </div>
               </div>
-              <PriceCard records={saharaLedger.records} bg="to-sky-50/40" text="text-sky-700 dark:text-sky-300" />
             </div>
           </div>
 
@@ -234,19 +233,13 @@ export const BlackOilSection: React.FC = () => {
 
             {/* Dual Data Metric Breakdown */}
             <div className="grid grid-cols-2 gap-2 pt-0.5">
-              {/* الرصيد الفعلي، ومقابله المتبقي من السعة */}
-              <div className="p-2.5 rounded-xl bg-sky-50/60 dark:bg-sky-950/30 border border-sky-200/60 dark:border-sky-900/40 flex items-end justify-between gap-2 min-w-0">
-                <div className="min-w-0 flex flex-col gap-1.5">
-                  <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 block leading-tight">{t('dashboard:balance.actual')}</span>
-                  <span className="flex items-baseline gap-1 min-w-0">
-                    <span className="font-mono font-black text-[15px] leading-none tabular-nums text-sky-900 dark:text-sky-200 truncate">{formatNumber(saharaTotalBalance)}</span>
-                    <span className="text-[10.5px] font-bold text-slate-400 shrink-0">{t('common:units.liter')}</span>
-                  </span>
-                </div>
-                <div className="text-end shrink-0">
-                  <span className="text-[10px] font-bold text-slate-400 block leading-tight">{t('dashboard:capacity.remainingOfCapacity')}</span>
-                  <span className="font-mono font-black text-[12px] tabular-nums text-slate-600 dark:text-slate-300">{formatNumber(saharaRemainingCapacity)}</span>
-                </div>
+              {/* المتبقي من السعة (الرصيد الفعلي معروض في رأس الكارت) */}
+              <div className="p-2.5 rounded-xl bg-sky-50/60 dark:bg-sky-950/30 border border-sky-200/60 dark:border-sky-900/40 flex flex-col justify-between gap-1.5 min-w-0">
+                <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 block leading-tight">{t('dashboard:capacity.remainingOfCapacity')}</span>
+                <span className="flex items-baseline gap-1 min-w-0">
+                  <span className="font-mono font-black text-[15px] leading-none tabular-nums text-sky-900 dark:text-sky-200 truncate">{formatNumber(saharaRemainingCapacity)}</span>
+                  <span className="text-[10.5px] font-bold text-slate-400 shrink-0">{t('common:units.liter')}</span>
+                </span>
               </div>
 
               {/* يؤمّن لغاية (مكان المتبقي من السعة سابقًا) */}
@@ -323,7 +316,7 @@ export const BlackOilSection: React.FC = () => {
                 </div>
               </div>
 
-              {/* متوسط السعر في رأس الكارت (مكان «يؤمّن» سابقًا) */}
+              {/* متوسط السعر في رأس الكارت مقابل العنوان */}
               <PriceCard records={etihadLedger.records} bg="to-teal-50/40" text="text-teal-700 dark:text-teal-300" />
 
             </div>
@@ -343,7 +336,6 @@ export const BlackOilSection: React.FC = () => {
                   </span>
                 </div>
               </div>
-              <PriceCard records={etihadLedger.records} bg="to-teal-50/40" text="text-teal-700 dark:text-teal-300" />
             </div>
           </div>
 
@@ -373,19 +365,13 @@ export const BlackOilSection: React.FC = () => {
 
             {/* Dual Data Metric Breakdown */}
             <div className="grid grid-cols-2 gap-2 pt-0.5">
-              {/* الرصيد الفعلي، ومقابله المتبقي من السعة */}
-              <div className="p-2.5 rounded-xl bg-teal-50/60 dark:bg-teal-950/30 border border-teal-200/60 dark:border-teal-900/40 flex items-end justify-between gap-2 min-w-0">
-                <div className="min-w-0 flex flex-col gap-1.5">
-                  <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 block leading-tight">{t('dashboard:balance.actual')}</span>
-                  <span className="flex items-baseline gap-1 min-w-0">
-                    <span className="font-mono font-black text-[15px] leading-none tabular-nums text-teal-900 dark:text-teal-200 truncate">{formatNumber(etihadTotalBalance)}</span>
-                    <span className="text-[10.5px] font-bold text-slate-400 shrink-0">{t('common:units.liter')}</span>
-                  </span>
-                </div>
-                <div className="text-end shrink-0">
-                  <span className="text-[10px] font-bold text-slate-400 block leading-tight">{t('dashboard:capacity.remainingOfCapacity')}</span>
-                  <span className="font-mono font-black text-[12px] tabular-nums text-slate-600 dark:text-slate-300">{formatNumber(etihadRemainingCapacity)}</span>
-                </div>
+              {/* المتبقي من السعة (الرصيد الفعلي معروض في رأس الكارت) */}
+              <div className="p-2.5 rounded-xl bg-teal-50/60 dark:bg-teal-950/30 border border-teal-200/60 dark:border-teal-900/40 flex flex-col justify-between gap-1.5 min-w-0">
+                <span className="text-[11.5px] font-bold text-slate-500 dark:text-slate-400 block leading-tight">{t('dashboard:capacity.remainingOfCapacity')}</span>
+                <span className="flex items-baseline gap-1 min-w-0">
+                  <span className="font-mono font-black text-[15px] leading-none tabular-nums text-teal-900 dark:text-teal-200 truncate">{formatNumber(etihadRemainingCapacity)}</span>
+                  <span className="text-[10.5px] font-bold text-slate-400 shrink-0">{t('common:units.liter')}</span>
+                </span>
               </div>
 
               {/* يؤمّن لغاية (مكان المتبقي من السعة سابقًا) */}

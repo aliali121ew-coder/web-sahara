@@ -561,15 +561,37 @@ body[data-glassmorphism="true"] .shadow-soft-card {
 /* كروت الكاز عمودان (الصحاري: الوارد اليومي + فرق الاستهلاك) متى اتسع الكارت */
 @container (min-width: 26rem) { .kpi-grid-3.kpi-2col { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
-/* ── كارتات الرئيسية بمظهر مؤسساتي: شريط رفيع بلون القسم في أعلى كل كارت، وحدّ أوضح يفصلها عن الخلفية ── */
+/* إطار الصفحة (الشريط العلوي): نفس لون وتدرج خلفية الصفحة مثبّتين على النافذة، فيظهر بالضبط ما خلفه */
+.app-frame-bg { background-color: var(--app-bg, #fff); background-image: var(--app-bg-image, none); background-attachment: fixed; background-repeat: no-repeat; background-size: cover; }
+
+/* ── كارتات الرئيسية بمظهر مؤسساتي: حدّ رفيع متساوٍ من كل الجهات يفصلها عن الخلفية ── */
 .dash-root [data-co="sahara"] { --dash-accent: #2563eb; }
 .dash-root [data-co="etihad"] { --dash-accent: #059669; }
-.dash-root [data-co="black-oil"] { --dash-accent: #475569; }
-.dash-root [data-co="petrol"] { --dash-accent: #d97706; }
-.dash-root [data-co] .shadow-soft-card { border-top: 3px solid var(--dash-accent); }
+.dash-root [data-co="black-oil"] { --dash-accent: #7c3aed; }
+/* الأصفر يبدو أقوى من بقية الألوان بنفس النسبة، فتدرجه أخف */
+.dash-root [data-co="petrol"] { --dash-accent: #d97706; --dash-tint: 1.5%; --dash-tint-dark: 4%; }
+.dash-root [data-co="tanks"] { --dash-accent: #4f46e5; }
+.dash-root [data-co="purchases"] { --dash-accent: #0891b2; }
+.dash-root [data-co="prices"] { --dash-accent: #0d9488; }
+/* الكارت الأم لكل قسم من الأقسام الأربعة: إطار يضم عنوان القسم وكروته بلمسة خفيفة من لون القسم */
+.dash-root [data-co] {
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--dash-accent) 16%, rgb(222 228 237));
+  /* أرضية بيضاء شبه معتمة تميّزه قليلًا عن خلفية الشاشة، مع تدرج خفيف من لون القسم من الأسفل */
+  background: linear-gradient(0deg, color-mix(in srgb, var(--dash-accent) var(--dash-tint, 5%), transparent) 0%, transparent 70%), rgb(255 255 255 / 0.88);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 12px 32px -18px rgb(15 23 42 / 0.22);
+}
+@media (min-width: 640px) { .dash-root [data-co] { padding: 16px; } }
+/* داخل الكارت الأم يكفي إطاره فاصلًا، فلا حاجة للخط الممتد بجانب عنوان القسم */
+.dash-root [data-co] .sec-rule { background: none; }
+.dark .dash-root [data-co] {
+  border-color: color-mix(in srgb, var(--dash-accent) 22%, rgb(45 55 72));
+  background: linear-gradient(0deg, color-mix(in srgb, var(--dash-accent) var(--dash-tint-dark, 8%), transparent) 0%, transparent 70%), rgb(15 23 42 / 0.85);
+  box-shadow: 0 12px 32px -18px rgb(0 0 0 / 0.7);
+}
+@media print { .dash-root [data-co] { background: none; box-shadow: none; } }
 .dash-root .shadow-soft-card { border-color: rgb(203 213 225 / 0.9); }
 .dark .dash-root .shadow-soft-card { border-color: rgb(51 65 85 / 0.9); }
-.dark .dash-root [data-co] .shadow-soft-card { border-top-color: var(--dash-accent); }
 /* زجاج سائل: خلفية شفافة مع ضبابية وتشبّع لما خلفها، ولمعة علوية خفيفة وحافة داخلية فاتحة
    (الأرقام تبقى على أرضية فاتحة كافية للقراءة؛ الطباعة تعود للأبيض) */
 .dash-root .shadow-soft-card {
@@ -593,6 +615,28 @@ body[data-glassmorphism="true"] .shadow-soft-card {
 @media print {
   .dash-root .shadow-soft-card { background: #fff !important; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; }
 }
+/* داخل الكارت الأم: هو السطح الوحيد، وكروت القسم ألواح مسطحة عليه (بلا خلفية ولا ظل ولا زجاج ولا رفع عند المرور)
+   بحدّ رفيع فقط، فلا تتراكب كروت فوق كروت. الكارت الداكن (إجمالي النفط الأسود) وكروت المشتريات الملوّنة (لون كل منتج هويته) تبقى كما هي */
+.dash-root [data-co]:not([data-co="purchases"]) :is([class*="rounded-[26px]"], [class*="rounded-[28px]"]):not(.text-white) {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  transform: none !important;
+  border-color: rgb(215 222 233) !important; /* slate-250: بين slate-200 و slate-300 */
+}
+.dark .dash-root [data-co]:not([data-co="purchases"]) :is([class*="rounded-[26px]"], [class*="rounded-[28px]"]):not(.text-white) { border-color: rgb(71 85 105 / 0.85) !important; }
+/* جدول مؤشرات الأسعار داخل الكارت الأم: إطاره الخارجي مسطح بحدّ خفيف (صفوفه كروت بذاتها) فلا يتنافس مع حد الكارت الأم */
+.dash-root [data-co="prices"] .shadow-soft-card {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-color: rgb(226 232 240 / 0.6) !important;
+}
+.dark .dash-root [data-co="prices"] .shadow-soft-card { border-color: rgb(51 65 85 / 0.5) !important; }
 @container (max-width: 38rem) { .dash-root .kpi-grid-3 .lbl-full { display: none; } .dash-root .kpi-grid-3 .lbl-short { display: inline; } }
 @container (max-width: 22rem) { .dash-root .kpi-grid-2 .lbl-full { display: none; } .dash-root .kpi-grid-2 .lbl-short { display: inline; } }
 

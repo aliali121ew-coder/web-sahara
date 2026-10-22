@@ -84,7 +84,7 @@ export const Header: React.FC<HeaderProps> = ({
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <header className="sticky top-0 z-30 bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 transition-colors duration-200 px-3 sm:px-4 py-2">
+    <header className="sticky top-0 z-30 app-frame-bg border-b border-slate-200/80 dark:border-slate-800 transition-colors duration-200 px-3 sm:px-4 py-2">
       <div className="flex items-center justify-between gap-2 sm:gap-3">
         
         {/* Toggle Sidebar Button & Search Bar */}
