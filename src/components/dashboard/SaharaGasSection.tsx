@@ -172,8 +172,11 @@ export const SaharaGasSection: React.FC = () => {
 
   // الرصيد الفعلي = الرصيد الحالي لآخر يوم في رصيد شركة الصحاري (وإن لم يوجد سجل: مجموع أرصدة المواقع)
   const actualBalance = latestDay ? latestDay.current : coveredStations.reduce((a, st) => a + st.balance, 0);
-  // يؤمن لغاية = الرصيد الفعلي ÷ الاستهلاك الفعلي اليومي، وتاريخ النفاد = تاريخ آخر يوم + عدد الأيام
-  const coverageDays = actualConsumption > 0 ? Math.floor(actualBalance / actualConsumption) : null;
+  // يؤمن لغاية = الرصيد الفعلي ÷ متوسط الاستهلاك اليومي للأسبوع (أيام الأسبوع التي فيها استهلاك مسجّل،
+  // نفس بيانات «بيانات الأسبوع»)، فلا يتقلب العدد مع يوم استهلاكه شاذ؛ وتاريخ النفاد = تاريخ آخر يوم + عدد الأيام
+  const weekUsedDays = weeklyFlow.filter(w => w.consumption > 0);
+  const weekAvgConsumption = weekUsedDays.length ? weekUsedDays.reduce((a, w) => a + w.consumption, 0) / weekUsedDays.length : 0;
+  const coverageDays = weekAvgConsumption > 0 ? Math.floor(actualBalance / weekAvgConsumption) : null;
   const coverageDate = (() => {
     if (coverageDays === null || !latestDay) return '—';
     const d = new Date(latestDay.date.replace(/\//g, '-') + 'T12:00:00');
@@ -487,6 +490,11 @@ export const SaharaGasSection: React.FC = () => {
             <p className="text-xs sm:text-[12.5px] text-slate-500 dark:text-slate-400 font-semibold leading-none">
               {t('dashboard:coverage.runOutDate')} <strong className="font-mono text-slate-800 dark:text-slate-100 font-black">{coverageDate}</strong>
             </p>
+            {weekAvgConsumption > 0 && (
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold leading-none">
+                {t('dashboard:coverage.weekAvgBasis')} <strong className="font-mono text-slate-600 dark:text-slate-300 font-black">{formatNumber(Math.round(weekAvgConsumption))}</strong> {t('dashboard:coverage.perDay')}
+              </p>
+            )}
           </div>
 
           {/* 2. Stations Divider with Centered Label (بنص الخط كما في المحطات) */}

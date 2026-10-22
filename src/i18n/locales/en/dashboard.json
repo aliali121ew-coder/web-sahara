@@ -44,6 +44,8 @@
     "covers": "Covers",
     "secured": "Covered",
     "dueDate": "Expected due date:",
+    "weekAvgBasis": "Weekly average consumption:",
+    "perDay": "L/day",
     "runOutDate": "Expected run-out date:",
     "smartTitle": "Smart coverage forecast"
   },
