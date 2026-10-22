@@ -5,7 +5,6 @@ import {
   Building2,
   Boxes,
   ArrowDownLeft,
-  Activity,
   TrendingDown,
   TrendingUp
 } from 'lucide-react';
@@ -274,7 +273,7 @@ export const EtihadGasSection: React.FC = () => {
 
           {/* 3 Internal Metrics: الوارد - الاستهلاك - المبيعات */}
           {/* 3 Internal Metrics: الوارد - الاستهلاك - المبيعات */}
-          <div className="kpi-wrap pt-3.5 border-t border-slate-100 dark:border-slate-800"><div className="kpi-grid kpi-grid-3 gap-3">
+          <div className="kpi-wrap pt-3.5 border-t border-slate-100 dark:border-slate-800"><div className="kpi-grid kpi-grid-2 gap-3">
             
             {/* 1. الوارد */}
             <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors min-w-0">
@@ -325,37 +324,7 @@ export const EtihadGasSection: React.FC = () => {
               )}
             </div>
 
-            {/* 2. الاستهلاك + المبيعات */}
-            <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-blue-300 dark:hover:border-blue-700 transition-colors min-w-0">
-              <div className="flex items-center justify-between gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
-                <span className="kpi-label">{t('dashboard:flow.consumptionDetails')}</span>
-                <div className="flex items-center gap-2 shrink-0">
-                  {/* القيمة مقابل العنوان في كل المقاسات */}
-                  <div className="kpi-num font-black text-slate-900 dark:text-white font-mono">
-                    {formatNumber(totalOutflow)} <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
-                  </div>
-                  <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-200/60 dark:border-blue-800/40 shrink-0">
-                    <Activity className="w-3.5 h-3.5" />
-                  </div>
-                </div>
-              </div>
-              <div className="hidden kpi-num font-black text-slate-900 dark:text-white font-mono">
-                {formatNumber(totalOutflow)} <span className="text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
-              </div>
-              {/* داخل الاستهلاك الفعلي: المبيعات والاستهلاك بخانتين (مثل أمس / اليوم) */}
-              <div className="mt-1.5 grid grid-cols-2 gap-1.5">
-                <div className="rounded-lg bg-white dark:bg-slate-900/70 ring-1 ring-slate-200 dark:ring-slate-700 px-1.5 py-1 text-center min-w-0">
-                  <div className="text-[9px] font-bold text-slate-400 leading-none">{t('dashboard:flow.sales')}</div>
-                  <div className="mt-0.5 font-mono font-black kpi-sub text-slate-600 dark:text-slate-300 tabular-nums">{formatNumber(totalSales)}</div>
-                </div>
-                <div className="rounded-lg bg-white dark:bg-slate-900/70 ring-1 ring-slate-200 dark:ring-slate-700 px-1.5 py-1 text-center min-w-0">
-                  <div className="text-[9px] font-bold text-slate-400 leading-none">{t('dashboard:flow.consumption')}</div>
-                  <div className="mt-0.5 font-mono font-black kpi-sub text-slate-600 dark:text-slate-300 tabular-nums">{formatNumber(totalConsumption)}</div>
-                </div>
-              </div>
-            </div>
-
-            {/* 3. فرق الاستهلاك الفعلي بين أمس واليوم (الاستهلاك + المبيعات) */}
+            {/* 2. فرق الاستهلاك الفعلي بين أمس واليوم (الاستهلاك + المبيعات) */}
             <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-teal-300 dark:hover:border-teal-700 transition-colors min-w-0">
               <div className="flex items-center justify-between gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                 <span className="kpi-label">{t('dashboard:flow.actualDiffShort')}</span>
