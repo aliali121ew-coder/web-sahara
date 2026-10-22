@@ -136,7 +136,7 @@ export const EtihadGasSection: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
         
         {/* Main Strategic Card (Mobile/Tablet 12 Cols, Desktop 7 Cols) */}
-        <div className="col-span-1 md:col-span-12 xl:col-span-7 rounded-[28px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-4 sm:p-6 shadow-soft-card hover:shadow-soft-hover transition-all flex flex-col justify-between space-y-4 h-full overflow-hidden">
+        <div className="col-span-1 md:col-span-12 xl:col-span-6 rounded-[28px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-4 sm:p-6 shadow-soft-card hover:shadow-soft-hover transition-all flex flex-col justify-between space-y-4 h-full overflow-hidden">
           
           {/* Header Row: Title & Average Price Pill — على الهاتف بنفس مقاسات الصحاري حتى يظهر كارت السعر كاملًا */}
           <div className="flex items-start justify-between gap-3">
@@ -373,7 +373,7 @@ export const EtihadGasSection: React.FC = () => {
         </div>
 
         {/* Side Weekly Comparison Charts & Coverage (Mobile/Tablet 12 Cols, Desktop 5 Cols) */}
-        <div className="col-span-1 md:col-span-12 xl:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-3 h-full">
+        <div className="col-span-1 md:col-span-12 xl:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-3 h-full">
           
           {/* كارت واحد يجمع الوارد والاستهلاك الأسبوعي: رقما آخر يوم، ومتوسط الاستهلاك الأسبوعي ومقارنة اليوم به، ورسم واحد بمنحنيين */}
           <div className="sm:col-span-2 relative p-3 rounded-[26px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-soft-card flex flex-col space-y-1.5">
@@ -417,7 +417,8 @@ export const EtihadGasSection: React.FC = () => {
                 </span>
               </div>
             </div>
-            <div className="h-20 w-full -mx-1">
+            {/* الرسم يملأ ارتفاع الكارت المتبقي */}
+            <div className="flex-1 min-h-20 w-full -mx-1">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={weeklyFlow} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
                   <defs>
@@ -463,40 +464,30 @@ export const EtihadGasSection: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 3: Smart Coverage Prediction (يؤمن لغاية - Spans across 2 columns) */}
-          <div className="sm:col-span-2 p-4 sm:p-5 rounded-[26px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-soft-card hover:shadow-soft-hover transition-all flex flex-col justify-between space-y-3 overflow-hidden">
-            
-            <div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+          {/* Card 3: يؤمن لغاية بارتفاع قليل: شريط علوي فيه الأيام (كبيرة) وتاريخ الاستحقاق، وتحته سطر واحد بالأرصدة الثلاثة */}
+          <div className="sm:col-span-2 rounded-[26px] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-soft-card hover:shadow-soft-hover transition-all overflow-hidden">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 px-4 py-2.5 bg-teal-50/70 dark:bg-teal-950/30 border-b border-teal-100 dark:border-teal-900/50">
+              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-tight">
                 {t('dashboard:coverage.until')} <span className="text-teal-600 dark:text-teal-400 font-mono">{coverageDays === null ? '—' : `${t('common:units.days', { count: coverageDays })}`}</span>
               </div>
-              <p className="text-xs text-slate-400 mt-1">
-                {t('dashboard:coverage.dueDate')} <strong className="font-mono text-slate-700 dark:text-slate-300">{coverageDate}</strong>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {t('dashboard:coverage.dueDate')} <strong className="font-mono text-slate-700 dark:text-slate-200">{coverageDate}</strong>
               </p>
             </div>
-
-            {/* 3 Metrics Chips: كاز التشغيلي - كاز نظيف - الرصيد الكلي */}
-            <div className="kpi-wrap pt-3 border-t border-slate-100 dark:border-slate-800 text-center"><div className="kpi-grid kpi-grid-chips gap-2 sm:gap-2.5">
-              <div className="p-2 sm:p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between overflow-hidden min-w-0">
-                <span className="kpi-label font-bold text-slate-500 dark:text-slate-400 block mb-1">{t('dashboard:etihad.operationalGas')}</span>
-                <div className="kpi-num font-mono font-black text-slate-900 dark:text-white tracking-tight">
-                  {formatNumber(latest?.operationalGas ?? 0)} <span className="text-[9px] sm:text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x sm:rtl:divide-x-reverse divide-slate-100 dark:divide-slate-800 text-[11.5px]">
+              <div className="flex items-center justify-between gap-2 px-3.5 py-2">
+                <span className="font-bold text-slate-500 dark:text-slate-400 truncate">{t('dashboard:etihad.operationalGas')}</span>
+                <span className="font-mono font-black text-slate-900 dark:text-white whitespace-nowrap">{formatNumber(latest?.operationalGas ?? 0)}</span>
               </div>
-              <div className="p-2 sm:p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between overflow-hidden min-w-0">
-                <span className="kpi-label font-bold text-slate-500 dark:text-slate-400 block mb-1">{t('dashboard:etihad.cleanGas')}</span>
-                <div className="kpi-num font-mono font-black text-slate-900 dark:text-white tracking-tight">
-                  {formatNumber(latest?.cleanGas ?? 0)} <span className="text-[9px] sm:text-[10px] font-normal text-slate-400">{t('common:units.liter')}</span>
-                </div>
+              <div className="flex items-center justify-between gap-2 px-3.5 py-2">
+                <span className="font-bold text-slate-500 dark:text-slate-400 truncate">{t('dashboard:etihad.cleanGas')}</span>
+                <span className="font-mono font-black text-slate-900 dark:text-white whitespace-nowrap">{formatNumber(latest?.cleanGas ?? 0)}</span>
               </div>
-              <div className="p-2 sm:p-2.5 rounded-2xl bg-teal-50/90 dark:bg-teal-950/50 border border-teal-200/90 dark:border-teal-800/70 flex flex-col justify-between shadow-2xs overflow-hidden min-w-0">
-                <span className="kpi-label font-bold text-teal-700 dark:text-teal-300 block mb-1">{t('dashboard:balance.total')}</span>
-                <div className="kpi-num font-mono font-black text-teal-900 dark:text-teal-100 tracking-tight">
-                  {formatNumber(etihadTotalBalance)} <span className="text-[9px] sm:text-[10px] font-normal text-teal-600 dark:text-teal-400">{t('common:units.liter')}</span>
-                </div>
+              <div className="flex items-center justify-between gap-2 px-3.5 py-2 bg-teal-50/40 dark:bg-teal-950/20">
+                <span className="font-bold text-teal-700 dark:text-teal-300 truncate">{t('dashboard:balance.total')}</span>
+                <span className="font-mono font-black text-teal-900 dark:text-teal-100 whitespace-nowrap">{formatNumber(etihadTotalBalance)}</span>
               </div>
-            </div></div>
-
+            </div>
           </div>
 
         </div>
