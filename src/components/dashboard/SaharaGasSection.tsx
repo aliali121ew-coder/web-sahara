@@ -628,7 +628,7 @@ export const SaharaGasSection: React.FC = () => {
               </div>
 
               {/* Rectangular Weekly Comparison Dual-Bar Chart Card */}
-              <div className="w-full flex-1 flex flex-col p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 shadow-xs gap-1.5 relative">
+              <div className="w-full flex-1 flex flex-col px-2.5 pt-2.5 pb-1 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 shadow-xs gap-1.5 relative">
                 
                 {/* Header with Legend Badges */}
                 <div className="flex items-center justify-between text-[10px] pb-1.5 border-b border-slate-200/60 dark:border-slate-700/50">
@@ -673,6 +673,9 @@ export const SaharaGasSection: React.FC = () => {
                         tickLine={false}
                         tick={{ fill: '#94a3b8', fontSize: 8, fontWeight: 700 }}
                         interval={0}
+                        // ارتفاع محور الأيام بقدر سطر الخط (الافتراضي 30) فتنزل الأيام لأسفل الكارت وتأخذ الأعمدة المساحة
+                        height={16}
+                        tickMargin={3}
                       />
                       <Tooltip
                         cursor={{ fill: 'rgba(255,255,255,0.06)' }}
@@ -726,9 +729,9 @@ export const SaharaGasSection: React.FC = () => {
                 </div>
                 {/* المتوسط يمينًا ونسبة اليوم مقارنة به يسارًا */}
                 <div className="flex items-center justify-between gap-2">
-                  <div className="font-mono font-semibold text-[13px] leading-tight tabular-nums text-slate-900 dark:text-white">
+                  <div className="font-mono font-black text-[11px] leading-tight tabular-nums text-slate-900 dark:text-white">
                     {weekAvgConsumption > 0 ? formatNumber(Math.round(weekAvgConsumption)) : '—'}
-                    <span className="ms-1 text-[9px] font-normal text-slate-400">{t('common:units.liter')}</span>
+                    <span className="ms-1 text-[9px] font-semibold text-slate-400">{t('common:units.liter')}</span>
                   </div>
                   {weekAvgConsumption > 0 && actualConsumption > 0 && (() => {
                     const pct = ((actualConsumption - weekAvgConsumption) / weekAvgConsumption) * 100;
@@ -736,7 +739,7 @@ export const SaharaGasSection: React.FC = () => {
                     return (
                       <div dir="ltr" className={`inline-flex items-center gap-0.5 text-[10px] font-black ${up ? 'text-rose-600 dark:text-rose-400' : down ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
                         {up ? <TrendingUp className="w-3 h-3" /> : down ? <TrendingDown className="w-3 h-3" /> : null}
-                        {up ? '+' : ''}{pct.toFixed(1)}% <span className="font-bold text-slate-400">{t('dashboard:sahara.today')}</span>
+                        {up ? '+' : ''}{pct.toFixed(1)}%<span className="ms-1.5 font-bold text-slate-400">{t('dashboard:sahara.today')}</span>
                       </div>
                     );
                   })()}

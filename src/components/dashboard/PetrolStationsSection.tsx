@@ -22,8 +22,8 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
-  ReferenceLine
+  Cell,
+  ResponsiveContainer
 } from 'recharts';
 
 type ChartMode = 'neon-waves' | 'cyber-bars';
@@ -76,6 +76,8 @@ export const PetrolStationsSection: React.FC = () => {
   const [timeRange, setTimeRange] = useState<TimeRange>('7d');
   const [showInbound, setShowInbound] = useState(true);
   const [showConsumption, setShowConsumption] = useState(true);
+  // عمود اليوم المحدد (المرور عليه) بلونه الكامل وحلقة في أعلاه، والبقية فاتحة؛ بلا مرور = آخر يوم (نفس أعمدة الاتحاد)
+  const [barHover, setBarHover] = useState<number | null>(null);
 
   // بيانات الرسم من أرشيف بنزين الصحاري (الأيام المعتمدة): آخر 7 / 14 / 30 يومًا مسجلًا
   const activeChartData = useMemo(() => {
@@ -100,12 +102,6 @@ export const PetrolStationsSection: React.FC = () => {
     });
   }, [petrolDays, timeRange]);
 
-  // Dynamic Average Daily Consumption
-  const avgConsumption = useMemo(() => {
-    if (!activeChartData.length) return 0;
-    const sum = activeChartData.reduce((acc, curr) => acc + curr.consumption, 0);
-    return Math.round(sum / activeChartData.length);
-  }, [activeChartData]);
 
 
 
@@ -593,93 +589,36 @@ export const PetrolStationsSection: React.FC = () => {
                     />
                   )}
 
-                  {/* Smart Average Consumption Baseline - Clean Line without Text */}
-                  <ReferenceLine
-                    y={avgConsumption}
-                    stroke="#94a3b8"
-                    strokeDasharray="4 4"
-                    strokeWidth={1.5}
-                    strokeOpacity={0.85}
-                  />
                 </AreaChart>
               ) : (
-                <BarChart
-                  data={activeChartData}
-                  margin={{ top: 14, right: 10, left: -14, bottom: 2 }}
-                  barGap={4}
-                >
+                <BarChart data={activeChartData} margin={{ top: 14, right: 10, left: -14, bottom: 2 }} barGap={3} barCategoryGap="22%"
+                  onMouseMove={(st: { activeTooltipIndex?: number | string | null }) => setBarHover(st?.activeTooltipIndex != null ? Number(st.activeTooltipIndex) : null)}
+                  onMouseLeave={() => setBarHover(null)}>
                   <defs>
-                    <linearGradient id="barInboundGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.95} />
-                      <stop offset="50%" stopColor="#10b981" stopOpacity={0.8} />
-                      <stop offset="100%" stopColor="#059669" stopOpacity={0.4} />
-                    </linearGradient>
-                    <linearGradient id="barConsumptionGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#fdba74" stopOpacity={0.95} />
-                      <stop offset="50%" stopColor="#f97316" stopOpacity={0.8} />
-                      <stop offset="100%" stopColor="#c2410c" stopOpacity={0.4} />
-                    </linearGradient>
+                    {/* المحدد: لون كامل؛ البقية: فاتح يتلاشى للأسفل */}
+                    <linearGradient id="ptBarInOn" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10b981" /><stop offset="100%" stopColor="#10b981" stopOpacity={0.7} /></linearGradient>
+                    <linearGradient id="ptBarInOff" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10b981" stopOpacity={0.3} /><stop offset="100%" stopColor="#10b981" stopOpacity={0.07} /></linearGradient>
+                    <linearGradient id="ptBarOutOn" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#f97316" /><stop offset="100%" stopColor="#f97316" stopOpacity={0.7} /></linearGradient>
+                    <linearGradient id="ptBarOutOff" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#f97316" stopOpacity={0.3} /><stop offset="100%" stopColor="#f97316" stopOpacity={0.07} /></linearGradient>
                   </defs>
-
-                  <CartesianGrid
-                    strokeDasharray="4 4"
-                    vertical={false}
-                    stroke="#94a3b8"
-                    strokeOpacity={0.09}
-                  />
-
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false}
-                    tickLine={false}
-                    interval={timeRange === '30d' ? 4 : timeRange === '14d' ? 1 : 0}
-                    tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
-                    dy={6}
-                    tickFormatter={(val) => enumText(val, 'short')}
-                  />
-                  <YAxis 
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700, fontFamily: 'monospace' }}
-                    tickFormatter={formatAxis}
-                  />
-                  
-                  <Tooltip 
-                    content={<CustomHologramTooltip />} 
-                    cursor={{ fill: 'rgba(148, 163, 184, 0.08)' }}
-                    wrapperStyle={{
-                      pointerEvents: 'none',
-                      zIndex: 100
-                    }}
-                    isAnimationActive={false}
-                  />
-
-                  {showInbound && (
-                    <Bar
-                      dataKey="inbound"
-                      name={t('dashboard:flow.inbound')}
-                      fill="url(#barInboundGrad)"
-                      radius={[6, 6, 0, 0]}
-                    />
-                  )}
-
-                  {showConsumption && (
-                    <Bar
-                      dataKey="consumption"
-                      name={t('dashboard:flow.consumption')}
-                      fill="url(#barConsumptionGrad)"
-                      radius={[6, 6, 0, 0]}
-                    />
-                  )}
-
-                  {/* Smart Average Consumption Baseline - Clean Line without Text */}
-                  <ReferenceLine
-                    y={avgConsumption}
-                    stroke="#94a3b8"
-                    strokeDasharray="4 4"
-                    strokeWidth={1.5}
-                    strokeOpacity={0.85}
-                  />
+                  <CartesianGrid strokeDasharray="3 4" vertical={false} stroke="#94a3b8" strokeOpacity={0.14} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} interval={timeRange === '30d' ? 4 : timeRange === '14d' ? 1 : 0} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }} dy={6} tickFormatter={(val) => enumText(val, 'short')} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} tickFormatter={formatAxis} />
+                  <Tooltip content={<CustomHologramTooltip />} cursor={false} wrapperStyle={{ pointerEvents: 'none', zIndex: 100 }} isAnimationActive={false} />
+                  {(['inbound', 'consumption'] as const).filter(k => (k === 'inbound' ? showInbound : showConsumption)).map(k => {
+                    const on = barHover ?? activeChartData.length - 1;
+                    const color = k === 'inbound' ? '#10b981' : '#f97316';
+                    const id = k === 'inbound' ? 'ptBarIn' : 'ptBarOut';
+                    return (
+                      <Bar key={k} dataKey={k} name={t(k === 'inbound' ? 'dashboard:flow.inbound' : 'dashboard:flow.consumption')} radius={[6, 6, 6, 6]} maxBarSize={timeRange === '7d' ? 22 : 14} isAnimationActive={false}
+                        label={({ x, y, width, index }: { x?: number | string; y?: number | string; width?: number | string; index?: number }) =>
+                          index === on && (activeChartData[on]?.[k] ?? 0) > 0
+                            ? <circle cx={Number(x) + Number(width) / 2} cy={Number(y)} r={4} fill="#fff" stroke={color} strokeWidth={2.5} />
+                            : <g />}>
+                        {activeChartData.map((_, i) => <Cell key={i} fill={`url(#${id}${i === on ? 'On' : 'Off'})`} />)}
+                      </Bar>
+                    );
+                  })}
                 </BarChart>
               )}
             </ResponsiveContainer>

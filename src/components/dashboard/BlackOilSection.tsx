@@ -172,6 +172,8 @@ export const BlackOilSection: React.FC = () => {
           <div className="space-y-3 relative z-10">
             <div className="flex items-start justify-between gap-2.5">
               
+              {/* العنوان والرصيد الفعلي تحته مباشرة، والسعر بجانبهما */}
+              <div className="min-w-0 space-y-3">
               {/* Avatar + Title */}
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-sky-500 to-cyan-400 text-white shadow-md shadow-sky-500/25 flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-108 group-hover:rotate-3">
@@ -184,26 +186,25 @@ export const BlackOilSection: React.FC = () => {
                 </div>
               </div>
 
+                {/* Actual Balance Big Display */}
+                <div className="min-w-0">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                    {t('dashboard:balance.actualCurrent')}
+                  </span>
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <span className="text-[clamp(22px,7vw,30px)] sm:text-4xl lg:text-[36px] font-black font-mono text-slate-900 dark:text-white tracking-tight leading-none">
+                      {formatNumber(saharaTotalBalance)}
+                    </span>
+                    <span className="text-sm font-black text-sky-600 dark:text-sky-400">
+                      {t('common:units.liter')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               {/* متوسط السعر في رأس الكارت مقابل العنوان */}
               <PriceCard records={saharaLedger.records} bg="to-sky-50/40" text="text-sky-700 dark:text-sky-300" />
 
-            </div>
-
-            {/* Actual Balance Big Display */}
-            <div className="pt-0.5 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
-                  {t('dashboard:balance.actualCurrent')}
-                </span>
-                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <span className="text-[clamp(22px,7vw,30px)] sm:text-4xl lg:text-[36px] font-black font-mono text-slate-900 dark:text-white tracking-tight leading-none">
-                    {formatNumber(saharaTotalBalance)}
-                  </span>
-                  <span className="text-sm font-black text-sky-600 dark:text-sky-400">
-                    {t('common:units.liter')}
-                  </span>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -304,6 +305,8 @@ export const BlackOilSection: React.FC = () => {
           <div className="space-y-3 relative z-10">
             <div className="flex items-start justify-between gap-2">
               
+              {/* العنوان والرصيد الفعلي تحته مباشرة، والسعر بجانبهما */}
+              <div className="min-w-0 space-y-3">
               {/* Avatar + Title */}
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-400 text-white shadow-md shadow-teal-500/25 flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-108 group-hover:rotate-3">
@@ -316,26 +319,25 @@ export const BlackOilSection: React.FC = () => {
                 </div>
               </div>
 
+                {/* Actual Balance Big Display */}
+                <div className="min-w-0">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                    {t('dashboard:balance.actualCurrent')}
+                  </span>
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <span className="text-[clamp(22px,7vw,30px)] sm:text-4xl lg:text-[36px] font-black font-mono text-slate-900 dark:text-white tracking-tight leading-none">
+                      {formatNumber(etihadTotalBalance)}
+                    </span>
+                    <span className="text-sm font-black text-teal-600 dark:text-teal-400">
+                      {t('common:units.liter')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               {/* متوسط السعر في رأس الكارت مقابل العنوان */}
               <PriceCard records={etihadLedger.records} bg="to-teal-50/40" text="text-teal-700 dark:text-teal-300" />
 
-            </div>
-
-            {/* Actual Balance Big Display */}
-            <div className="pt-0.5 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
-                  {t('dashboard:balance.actualCurrent')}
-                </span>
-                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <span className="text-[clamp(22px,7vw,30px)] sm:text-4xl lg:text-[36px] font-black font-mono text-slate-900 dark:text-white tracking-tight leading-none">
-                    {formatNumber(etihadTotalBalance)}
-                  </span>
-                  <span className="text-sm font-black text-teal-600 dark:text-teal-400">
-                    {t('common:units.liter')}
-                  </span>
-                </div>
-              </div>
             </div>
           </div>
 
