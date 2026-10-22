@@ -339,27 +339,6 @@ export const SaharaGasSection: React.FC = () => {
 
               </div>
 
-              {/* Smart HUD Badges */}
-              <div className="flex items-center justify-between text-xs gap-2 pt-0.5">
-                
-                {/* Badge 2: السعة المتبقية */}
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-cyan-50/80 dark:bg-cyan-950/50 border border-cyan-200/60 dark:border-cyan-800/40 min-w-0 shadow-2xs">
-                  <span className="relative flex h-1.5 w-1.5 shrink-0">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-500"></span>
-                  </span>
-                  <span className="font-bold text-[9.5px] sm:text-[10.5px] text-slate-700 dark:text-slate-200 truncate">
-                    {t('dashboard:capacity.remaining')}
-                  </span>
-                  <span className="font-mono font-black text-[11px] sm:text-xs text-cyan-700 dark:text-cyan-300">
-                    {remainLabel}
-                  </span>
-                  <span className="text-[9px] font-mono text-slate-400 hidden sm:inline">
-                    ({formatNumber(remainingCapacity)} {t('common:units.liter')})
-                  </span>
-                </div>
-
-              </div>
 
             </div>
           </div>
@@ -490,11 +469,6 @@ export const SaharaGasSection: React.FC = () => {
             <p className="text-xs sm:text-[12.5px] text-slate-500 dark:text-slate-400 font-semibold leading-none">
               {t('dashboard:coverage.runOutDate')} <strong className="font-mono text-slate-800 dark:text-slate-100 font-black">{coverageDate}</strong>
             </p>
-            {weekAvgConsumption > 0 && (
-              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold leading-none">
-                {t('dashboard:coverage.weekAvgBasis')} <strong className="font-mono text-slate-600 dark:text-slate-300 font-black">{formatNumber(Math.round(weekAvgConsumption))}</strong> {t('dashboard:coverage.perDay')}
-              </p>
-            )}
           </div>
 
           {/* 2. Stations Divider with Centered Label (بنص الخط كما في المحطات) */}
