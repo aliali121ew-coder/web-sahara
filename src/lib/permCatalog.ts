@@ -115,6 +115,9 @@ const KEY_RULES: Rule[] = [
   },
   { match: eq('sahara_inbound_deliveries', 'sahara_deliveries', 'sahara_inbound_visible_columns', 'sahara_print_visible_columns'), read: ['deliveries-sahara', 'dashboard', 'reports'], write: ['deliveries-sahara'] },
   { match: eq('etihad_inbound_deliveries'), read: ['deliveries-etihad', 'dashboard', 'reports'], write: ['deliveries-etihad'] },
+  // فترة احتساب متوسط السعر لكل شركة (تُختار من صفحة الوارد، وتقرؤها الرئيسية)
+  { match: eq('sahara_avg_price_period_v1'), read: ['deliveries-sahara', 'dashboard', 'reports'], write: ['deliveries-sahara'] },
+  { match: eq('etihad_avg_price_period_v1'), read: ['deliveries-etihad', 'dashboard', 'reports'], write: ['deliveries-etihad'] },
   { match: eq('fuel_price_overrides_v1'), read: ['prices', 'dashboard'], write: ['prices'] },
   // كارت كاز محطات: المجهزون المختارون وقيمه، وسجله الخاص
   { match: eq('sahara_station_gas_v1', 'sahara_station_gas_log_v1', 'sahara_station_gas_log_reset_v1'), read: ['prices', 'dashboard'], write: ['prices'] },

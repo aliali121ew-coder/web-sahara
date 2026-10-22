@@ -31,6 +31,7 @@ import {
   Sparkles,
   TrendingUp,
   TrendingDown,
+  Calculator,
 } from 'lucide-react';
 import { useFuelData } from '../../context/FuelDataContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -44,6 +45,9 @@ import { computeInboundPriceStats, deliveryDay } from '../../lib/inboundPrice';
 import { takeInboundFocus, FOCUS_EVENT, type InboundFocus } from '../../lib/inboundFocus';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
 import { DateField } from '../ui/DateField';
+import { AvgPricePeriodModal } from './AvgPricePeriodModal';
+import { useAvgPricePeriod, inAvgPeriod } from '../../lib/avgPricePeriod';
+import { ownSaharaDeliveries } from '../../lib/inboundPrice';
 import { supplierKey } from '../../lib/archiveSuppliers';
 import {
   InboundPrintReport,
@@ -122,6 +126,16 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
   const isEtihadScoped = scope ? scope === 'etihad' : activeTab === 'deliveries-etihad';
   const isArchive = variant === 'archive';
   const lockedCompanyName = isSaharaScoped ? 'صحاري كربلاء' : isEtihadScoped ? 'شركة الاتحاد' : null;
+
+  // متوسط السعر: فترة الوارد التي يُحسب منها متوسط السعر في الرئيسية (لكل شركة فترتها)
+  const [saharaAvgPeriod, setSaharaAvgPeriod] = useAvgPricePeriod('sahara');
+  const [etihadAvgPeriod, setEtihadAvgPeriod] = useAvgPricePeriod('etihad');
+  const avgPeriod = isSaharaScoped ? saharaAvgPeriod : etihadAvgPeriod;
+  const setAvgPeriod = isSaharaScoped ? setSaharaAvgPeriod : setEtihadAvgPeriod;
+  // نفس نطاق الرئيسية: الصحاري = شحنات شركة صحاري كربلاء فقط
+  const avgBase = useMemo(() => (isSaharaScoped ? ownSaharaDeliveries(saharaDeliveries) : etihadDeliveries), [isSaharaScoped, saharaDeliveries, etihadDeliveries]);
+  const periodAvg = useMemo(() => computeInboundPriceStats(inAvgPeriod(avgBase, avgPeriod)).avgPrice, [avgBase, avgPeriod]);
+  const [avgModalOpen, setAvgModalOpen] = useState(false);
 
   // 🔒 Isolated Data Source:
   // - In Sahara section: strictly saharaDeliveries
@@ -633,6 +647,21 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
             >
               {editMode ? <Check className="w-4 h-4" /> : <Edit className="w-4 h-4" />}
               <span>{editMode ? t('deliveries:finishEditing') : t('common:actions.edit')}</span>
+            </button>
+            )}
+
+            {!isArchive && editable && (isSaharaScoped || isEtihadScoped) && (
+            <button
+              type="button"
+              onClick={() => setAvgModalOpen(true)}
+              className="flex items-center gap-2 ps-3.5 pe-1.5 py-1.5 rounded-xl border border-teal-500/40 bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/50 dark:hover:bg-teal-900/50 text-teal-700 dark:text-teal-300 text-xs font-bold active:scale-95 transition-all shadow-2xs cursor-pointer"
+              title={t('deliveries:avgPeriod.buttonHint')}
+            >
+              <Calculator className="w-4 h-4" />
+              <span>{t('deliveries:avgPeriod.button')}</span>
+              <span className="px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-teal-200/80 dark:border-teal-800/60 font-mono font-black text-[12px] tabular-nums">
+                {periodAvg > 0 ? periodAvg.toFixed(1) : '—'}
+              </span>
             </button>
             )}
 
@@ -2017,6 +2046,17 @@ export const InboundDeliveries: React.FC<InboundDeliveriesProps> = ({ onOpenModa
         document.body
       )}
       </div>
+
+      {/* متوسط السعر: نافذة اختيار الفترة */}
+      {avgModalOpen && (
+        <AvgPricePeriodModal
+          deliveries={avgBase}
+          period={avgPeriod}
+          companyLabel={isSaharaScoped ? t('deliveries:titleSahara') : t('deliveries:titleEtihad')}
+          onApply={setAvgPeriod}
+          onClose={() => setAvgModalOpen(false)}
+        />
+      )}
 
       {/* 🖨️ Fullscreen Official Print Preview Modal */}
       {showPrintReportModal && typeof document !== 'undefined' && createPortal(
