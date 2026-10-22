@@ -98,6 +98,8 @@
     "from": "From",
     "to": "To",
     "fromStart": "From first inbound",
+    "ongoing": "Ongoing",
+    "ongoingHint": "Calculated from the chosen date onward; every new inbound joins it automatically with no end date",
     "toLatest": "To latest inbound",
     "newAvg": "Average price for the period",
     "perLiter": "IQD / liter",

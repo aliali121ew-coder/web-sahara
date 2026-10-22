@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Calculator, Info, RotateCcw, TrendingDown, TrendingUp, X } from 'lucide-react';
+import { Calculator, Infinity as InfinityIcon, Info, RotateCcw, TrendingDown, TrendingUp, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { InboundDelivery } from '../../types';
 import { computeInboundPriceStats, deliveryDay } from '../../lib/inboundPrice';
@@ -64,6 +64,12 @@ export const AvgPricePeriodModal: React.FC<{
     setDraft(nextP.from || nextP.to ? nextP : null);
   };
   const invalid = !!draft?.from && !!draft?.to && draft.from > draft.to;
+  // مستمر: من تاريخ معيّن بلا نهاية، فيدخل كل وارد جديد في المتوسط تلقائيًا
+  const ongoing = !!draft?.from && !draft.to;
+  const toggleOngoing = () => {
+    if (ongoing) setDraft({ from: draft!.from, to: lastDay || fmt(new Date()) });
+    else setDraft({ from: draft?.from || fmt(new Date()), to: '' });
+  };
 
   return createPortal(
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-6" dir={i18n.dir()}>
@@ -103,9 +109,17 @@ export const AvgPricePeriodModal: React.FC<{
             })}
           </div>
 
-          {/* من / إلى بتقويم البرنامج */}
-          <div className="grid grid-cols-2 gap-2.5">
-            {(['from', 'to'] as const).map(edge => (
+          {/* من / إلى بتقويم البرنامج، و«مستمر» = من تاريخ معيّن حتى آخر وارد دائمًا */}
+          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2.5">
+            {(['from', 'to'] as const).map(edge => edge === 'to' && ongoing ? (
+              <div key={edge} className="rounded-xl border border-dashed border-teal-300 dark:border-teal-800 bg-teal-50/50 dark:bg-teal-950/20 px-3 py-2">
+                <div className="text-[11px] font-bold text-slate-400 mb-0.5">{t('deliveries:avgPeriod.to')}</div>
+                <div className="flex items-center gap-1.5 text-sm font-black text-teal-700 dark:text-teal-300">
+                  <InfinityIcon className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{t('deliveries:avgPeriod.toLatest')}</span>
+                </div>
+              </div>
+            ) : (
               <div key={edge} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/50 px-3 py-2">
                 <div className="text-[11px] font-bold text-slate-400 mb-0.5">{t(`deliveries:avgPeriod.${edge}`)}</div>
                 <DateField
@@ -119,7 +133,25 @@ export const AvgPricePeriodModal: React.FC<{
                 />
               </div>
             ))}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={ongoing}
+              onClick={toggleOngoing}
+              title={t('deliveries:avgPeriod.ongoingHint')}
+              className={`rounded-xl border px-3 py-2 flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${ongoing
+                ? 'border-teal-500 bg-teal-600 text-white shadow-sm shadow-teal-600/25'
+                : 'border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/50 text-slate-500 dark:text-slate-300 hover:border-teal-400'}`}
+            >
+              <span className={`relative w-8 h-[18px] rounded-full transition-colors ${ongoing ? 'bg-white/35' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow transition-all ${ongoing ? 'start-[16px]' : 'start-[2px]'}`} />
+              </span>
+              <span className="text-[11px] font-black whitespace-nowrap">{t('deliveries:avgPeriod.ongoing')}</span>
+            </button>
           </div>
+          {ongoing && (
+            <div className="-mt-2 text-[11px] font-bold text-teal-700 dark:text-teal-300">{t('deliveries:avgPeriod.ongoingHint')}</div>
+          )}
 
           {/* المعاينة */}
           <div className="rounded-2xl border border-teal-200/70 dark:border-teal-800/50 bg-gradient-to-br from-teal-50/80 to-white dark:from-teal-950/30 dark:to-slate-900 p-3.5 flex flex-wrap items-end justify-between gap-3">
