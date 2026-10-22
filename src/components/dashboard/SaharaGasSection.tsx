@@ -702,7 +702,7 @@ export const SaharaGasSection: React.FC = () => {
               </div>
 
               {/* Rectangular Weekly Comparison Dual-Bar Chart Card */}
-              <div className="w-full p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1.5 relative">
+              <div className="w-full flex-1 flex flex-col p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 shadow-xs gap-1.5 relative">
                 
                 {/* Header with Legend Badges */}
                 <div className="flex items-center justify-between text-[10px] pb-1.5 border-b border-slate-200/60 dark:border-slate-700/50">
@@ -722,7 +722,8 @@ export const SaharaGasSection: React.FC = () => {
                 </div>
 
                 {/* Recharts Weekly Dual-Bar Chart */}
-                <div className="h-16 w-full -mx-1 pt-0.5 relative">
+                {/* الرسم يمتد لأسفل الكارت ليأخذ المساحة الفارغة فتظهر الأعمدة أوضح */}
+                <div className="flex-1 min-h-16 w-full -mx-1 pt-0.5 relative">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={weeklyFlow}
