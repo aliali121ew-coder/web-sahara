@@ -336,27 +336,6 @@ export const EtihadGasSection: React.FC = () => {
 
               </div>
 
-              {/* Smart HUD Badges */}
-              <div className="flex items-center justify-between text-xs gap-2 pt-0.5">
-                
-                {/* Badge 2: السعة المتبقية */}
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-200/60 dark:border-emerald-800/40 min-w-0 shadow-2xs">
-                  <span className="relative flex h-1.5 w-1.5 shrink-0">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
-                  </span>
-                  <span className="font-bold text-[9.5px] sm:text-[10.5px] text-slate-700 dark:text-slate-200 truncate">
-                    {t('dashboard:capacity.remaining')}
-                  </span>
-                  <span className="font-mono font-black text-[11px] sm:text-xs text-emerald-700 dark:text-emerald-300">
-                    {remainLabel}
-                  </span>
-                  <span className="text-[9px] font-mono text-slate-400 hidden sm:inline">
-                    ({formatNumber(remainingCapacity)} {t('common:units.liter')})
-                  </span>
-                </div>
-
-              </div>
 
             </div>
           </div>
