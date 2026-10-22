@@ -807,7 +807,7 @@ export const SaharaGasSection: React.FC = () => {
 
               {/* متوسط الاستهلاك الأسبوعي (نفس بيانات الرسم، وعليه يُحسب «يؤمّن لغاية») ومقارنة اليوم به */}
               <div className="w-full px-2.5 py-2 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1">
-                <div className="pb-1 leading-tight border-b border-slate-200/60 dark:border-slate-700/50 font-black text-[11.5px] text-slate-800 dark:text-white">
+                <div className="pb-1 leading-tight border-b border-slate-200/60 dark:border-slate-700/50 font-bold text-[11px] text-slate-500 dark:text-slate-400">
                   {t('dashboard:sahara.weekAvg')}
                 </div>
                 {/* المتوسط يمينًا ونسبة اليوم مقارنة به يسارًا */}
