@@ -35,6 +35,7 @@ import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
 import { useSaharaLedger } from '../../lib/saharaLedger';
 import { useFuelStore } from '../../context/FuelDataContext';
 import { computeInboundPriceStats, computeDailyBuys, ownSaharaDeliveries } from '../../lib/inboundPrice';
+import { useAvgPricePeriod, inAvgPeriod } from '../../lib/avgPricePeriod';
 
 const WEEK_DAYS = [
   { day: 'SAT', fullName: 'السبت' },
@@ -74,16 +75,18 @@ export const SaharaGasSection: React.FC = () => {
   // النسخة المعتمدة فقط: تتحدث بعد "تأكيد البيانات" في صفحة رصيد الشركة
   const { publishedComputed: saharaDays } = useSaharaLedger();
   const latestDay = saharaDays[saharaDays.length - 1];
+  // فترة احتساب متوسط السعر المختارة من صفحة الوارد (بلا فترة = كل الوارد)
+  const [avgPeriod] = useAvgPricePeriod('sahara');
   const { avgPrice, change: priceChange, dailyBuys } = React.useMemo(() => {
     // نفس نطاق صفحة وارد الصحاري: شحنات شركة صحاري كربلاء فقط
     const own = ownSaharaDeliveries(saharaDeliveries);
-    const stats = computeInboundPriceStats(own);
+    const stats = computeInboundPriceStats(inAvgPeriod(own, avgPeriod));
     // شراء اليوم = وارد اليوم المعروض في الكارت (آخر يوم مسجّل)؛ بلا وارد فيه = صفر.
     // نسبة التغير: معدل اليومين مقارنة بسعر يوم الوارد السابق
     const buys = computeDailyBuys(own, latestDay?.date);
     const today = buys.today ? { day: buys.today.day, price: buys.today.price, twoDayAvg: buys.twoDayAvg, pct: buys.pct } : null;
     return { ...stats, dailyBuys: { today } };
-  }, [saharaDeliveries, latestDay?.date]);
+  }, [saharaDeliveries, latestDay?.date, avgPeriod]);
   const prevDay = saharaDays[saharaDays.length - 2];  const weeklyFlow = React.useMemo(() => buildWeeklyFlow(saharaDays, latestDay?.date), [saharaDays, latestDay?.date]);
   const totalInbound = latestDay?.inbound ?? 0;
   const actualConsumption = latestDay?.actualConsumption ?? 0;

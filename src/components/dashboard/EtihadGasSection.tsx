@@ -24,6 +24,7 @@ import { EtihadBalanceRecord } from '../../types/finance';
 import { useFuelStore } from '../../context/FuelDataContext';
 import { InboundDelivery } from '../../types';
 import { computeInboundPriceStats, computeDailyBuys } from '../../lib/inboundPrice';
+import { useAvgPricePeriod, inAvgPeriod } from '../../lib/avgPricePeriod';
 import { useCentralTanks, resolveEtihadExtractionTank, syncEtihadExtractionTank } from '../../lib/centralTanks';
 import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
 
@@ -154,7 +155,9 @@ export const EtihadGasSection: React.FC = () => {
         productCost: r.purchases * r.currentPrice,
       }) as InboundDelivery);
   }, [etihadDeliveries, records]);
-  const { avgPrice, change: priceChange } = React.useMemo(() => computeInboundPriceStats(priceSource), [priceSource]);
+  // فترة احتساب متوسط السعر المختارة من صفحة وارد الاتحاد (بلا فترة = كل الوارد)
+  const [avgPeriod] = useAvgPricePeriod('etihad');
+  const { avgPrice, change: priceChange } = React.useMemo(() => computeInboundPriceStats(inAvgPeriod(priceSource, avgPeriod)), [priceSource, avgPeriod]);
   // شراء اليوم = وارد آخر يوم مسجّل (اليوم المعروض في الكارت)؛ بلا وارد فيه = صفر
   const buys = React.useMemo(() => computeDailyBuys(priceSource, latest?.date), [priceSource, latest?.date]);
   const totalInbound = latest?.purchases ?? 0;
