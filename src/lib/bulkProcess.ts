@@ -13,6 +13,14 @@ import { BLACK_OIL_SECTION_KEYS, BLACK_OIL_SITES, computeBlackOil, getBlackOilAv
 import { applySaharaReport, newSaharaBalanceForm, saharaDraft, saharaSaveBlockers, type SaharaStation } from './saharaBalanceForm';
 import { applyPetrolReport, newPetrolForm, petrolRecord, petrolSaveBlockers, type PetrolStation } from './petrolForm';
 import { applyBlackOilReport, blackOilDerived, blackOilRecord, blackOilSaveBlockers, newBlackOilForm } from './blackOilForm';
+import { readEtihadReportFile } from './etihadReportFile';
+import { cascadeEtihadBalances } from './balanceCascade';
+import { readEtihadLatestBalance, syncEtihadExtractionTank } from './centralTanks';
+import { notifySyncedStorage } from './useSyncedStorage';
+import { archiveKeyCounts, inboundRowDelivery, parseInboundFile, pickUnrecorded } from './inboundImport';
+import { applyNameIndex, readNameIndex } from './nameIndex';
+import type { EtihadBalanceRecord } from '../types/finance';
+import type { InboundDelivery } from '../types';
 import type { BulkKind } from './bulkUpload';
 
 /**
@@ -20,7 +28,7 @@ import type { BulkKind } from './bulkUpload';
  * ثم يُحفظ ويُرفق بالأرشيف — بلا فتح النوافذ. اليوم المحفوظ يبقى بانتظار "تأكيد البيانات" كالمعتاد.
  * لا يُستبدل يوم موجود، ولا يُحفظ ملف بلا تاريخ (في النافذة كان المستخدم يرى التاريخ ويصححه).
  */
-export type BulkSkipReason = 'noDate' | 'dateTaken' | 'noPrevious' | 'overCapacity' | 'noConsumption' | 'noAverage' | 'negative' | 'noStations' | 'noTanks' | 'noSites' | 'noSite' | 'duplicate' | 'readFailed';
+export type BulkSkipReason = 'noDate' | 'dateTaken' | 'noPrevious' | 'overCapacity' | 'noConsumption' | 'noAverage' | 'negative' | 'noStations' | 'noTanks' | 'noSites' | 'noSite' | 'duplicate' | 'noRows' | 'readFailed';
 
 /** نتيجة شركة واحدة من ملف يخص الشركتين (تقرير النفط الأسود) */
 export interface BulkCompanyOutcome { saved: boolean; reasons?: BulkSkipReason[] }
@@ -30,9 +38,27 @@ export interface BulkResult {
   date?: string;
   reasons?: BulkSkipReason[];
   /** ملاحظات لا تمنع الحفظ: مواقع غير مطابقة، فرق عن رصيد الكشف، فشل إرفاق الملف، ونتيجة كل شركة */
-  notes?: { unmatched?: string[]; diff?: number; attachFailed?: boolean; tanksMissing?: string[]; tanksOver?: string[]; farmsFailed?: boolean; site?: string; annual?: AnnualImport[]; companies?: Partial<Record<BlackOilCompany, BulkCompanyOutcome>> };
+  notes?: { unmatched?: string[]; diff?: number; attachFailed?: boolean; tanksMissing?: string[]; tanksOver?: string[]; farmsFailed?: boolean; site?: string; annual?: AnnualImport[]; companies?: Partial<Record<BlackOilCompany, BulkCompanyOutcome>>; inbound?: { added: number; recorded: number } };
   error?: string;
 }
+
+/** وارد الاتحاد: الشحنات الموجودة (مع ما أُضيف في نفس الرفع) والإضافة عبر مخزن التطبيق */
+export interface BulkInboundStore {
+  existing: () => Pick<InboundDelivery, 'company' | 'receiptUnloadDate' | 'date' | 'voucherNumber' | 'receiptNumber' | 'receivedQuantity' | 'volumeLiters'>[];
+  add: (d: Omit<InboundDelivery, 'id'>) => void;
+}
+export interface BulkContext {
+  /** تاريخ الملف (من فحصه): للشحنات التي بلا تاريخ في صفها */
+  fileDate?: string | null;
+  inbound?: BulkInboundStore;
+}
+
+const ETIHAD_KEY = 'sahara_etihad_balance_records_v2';
+const ETIHAD_COMPANY = 'شركة الاتحاد' as const;
+const dayOf = (d: string) => (d || '').trim().split(' ')[0].replace(/-/g, '/');
+const readEtihadRecords = (): EtihadBalanceRecord[] => {
+  try { const v = JSON.parse(localStorage.getItem(ETIHAD_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
+};
 
 const tanks = () => readCentralTanks(OFFICIAL_TABLE_TANK_UNITS).filter(t => !t.hidden);
 
@@ -64,9 +90,76 @@ const attach = async (recordId: string, file: File) => {
   try { await attachDayReport(recordId, file); return true; } catch { return false; }
 };
 
-export const processBulkFile = async (kind: BulkKind, file: File, progress: (p: number) => void, canEdit: (perm: string) => boolean): Promise<BulkResult> => {
+export const processBulkFile = async (kind: BulkKind, file: File, progress: (p: number) => void, canEdit: (perm: string) => boolean, ctx: BulkContext = {}): Promise<BulkResult> => {
   progress(8);
   try {
+    if (kind === 'etihad-balance') {
+      // كشف وقود الاتحاد: نفس حساب نافذة "تسجيل حركة رصيد" (الوارد ← المشتريات، الاستهلاك، المبيعات)
+      const r = await readEtihadReportFile(file);
+      progress(45);
+      if (!r.date) return { status: 'skipped', reasons: ['noDate'] };
+      const date = dayOf(r.date);
+      const records = readEtihadRecords();
+      if (records.some(x => dayOf(x.date) === date)) return { status: 'skipped', date, reasons: ['dateTaken'] };
+      const before = records.filter(x => dayOf(x.date) < date).sort((a, b) => dayOf(b.date).localeCompare(dayOf(a.date)));
+      const previous = before[0]?.currentBalance ?? r.previous;
+      if (previous === null || previous === undefined) return { status: 'skipped', date, reasons: ['noPrevious'] };
+      const purchases = r.inbound ?? 0, etihadExpense = r.consumption ?? 0, sales = r.sales ?? 0;
+      const totalDeductions = etihadExpense + sales;
+      if (totalDeductions > previous + purchases) return { status: 'skipped', date, reasons: ['negative'] };
+      const currentBalance = previous + purchases - totalDeductions;
+      const newest = [...records].sort((a, b) => dayOf(b.date).localeCompare(dayOf(a.date)))[0];
+      const record: EtihadBalanceRecord = {
+        id: `rec-${Date.now()}`,
+        date,
+        previousBalance: previous,
+        purchases,
+        etihadExpense,
+        saharaSales: 0,
+        cablesSales: 0,
+        specialSales: 0,
+        otherSales: sales,
+        operationalGas: r.operationalGas ?? 0,
+        cleanGas: r.cleanGas ?? 0,
+        totalDeductions,
+        currentBalance,
+        oilPreviousBalance: 0,
+        oilInbound: 0,
+        oilSales: 0,
+        oilCurrentBalance: 0,
+        currentPrice: r.price ?? before[0]?.currentPrice ?? newest?.currentPrice ?? 0,
+        averageCost: 535,
+        notes: '',
+        createdAt: new Date().toISOString(),
+      };
+      // الأيام اللاحقة يُعاد حساب رصيدها من هذا اليوم (كالحفظ من النافذة)
+      localStorage.setItem(ETIHAD_KEY, JSON.stringify(cascadeEtihadBalances([record, ...records], date)));
+      notifySyncedStorage(ETIHAD_KEY);
+      const latest = readEtihadLatestBalance();
+      if (latest !== null) syncEtihadExtractionTank(latest);
+      progress(80);
+      const attached = await attach(record.id, file);
+      const diff = r.current !== null ? Math.round(currentBalance - r.current) : 0;
+      return { status: 'saved', date, notes: { diff: diff || undefined, attachFailed: !attached } };
+    }
+
+    if (kind === 'etihad-inbound') {
+      // وارد الاتحاد: كل شحنة غير مسجّلة (بصمة التاريخ + الفوجر + الكمية) تُضاف، والمسجّل يُتجاوز
+      if (!ctx.inbound) return { status: 'skipped', reasons: ['readFailed'] };
+      const rows = applyNameIndex(await parseInboundFile(file), readNameIndex()).rows
+        .map(row => ({ ...row, receiptUnloadDate: row.receiptUnloadDate || ctx.fileDate || '' }));
+      progress(45);
+      const dated = rows.filter(row => row.receiptUnloadDate);
+      if (!rows.length) return { status: 'skipped', reasons: ['noRows'] };
+      if (!dated.length) return { status: 'skipped', reasons: ['noDate'] };
+      const picked = pickUnrecorded(dated, archiveKeyCounts(ctx.inbound.existing().filter(d => d.company === ETIHAD_COMPANY)));
+      if (!picked.rows.length) return { status: 'skipped', reasons: ['duplicate'] };
+      for (const row of picked.rows) ctx.inbound.add(inboundRowDelivery(row, row.receiptUnloadDate, ETIHAD_COMPANY));
+      progress(80);
+      const dates = picked.rows.map(row => row.receiptUnloadDate).sort();
+      return { status: 'saved', date: dates[0] === dates[dates.length - 1] ? dates[0] : `${dates[0]} – ${dates[dates.length - 1]}`, notes: { inbound: { added: picked.rows.length, recorded: dated.length - picked.rows.length } } };
+    }
+
     if (kind === 'balance') {
       const stations = saharaStations();
       if (!stations.length) return { status: 'skipped', reasons: ['noStations'] };

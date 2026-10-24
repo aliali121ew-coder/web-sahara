@@ -1,5 +1,6 @@
 import i18n from '../i18n';
 import { withPdf } from './pdfDoc';
+import type { InboundDelivery } from '../types';
 /**
  * استيراد ملف الوارد اليومي (Excel أو PDF) الذي يحمل نفس عناوين نافذة الوارد:
  * اسم المجهز، الشركة المجهزة، اسم السائق، رقم العجلة، رقم الفوجر، الكمية المستلمة،
@@ -372,3 +373,45 @@ export const pickUnrecorded = (rows: InboundImportRow[], archive: ArchiveKeys) =
   });
   return { rows: kept, recordedIdx };
 };
+
+/** لون من ملف أو سجل قديم → أقرب الألوان الأربعة ("عسل ي" المقطوع من PDF = عسلي)؛ غير المعروف يبقى كما هو */
+export const canonicalColor = (v?: string): string => {
+  const t = (v || '').normalize('NFKC').replace(/[أإآ]/g, 'ا').replace(/\s+/g, '');
+  if (!t) return '';
+  if (t.includes('عسل')) return 'عسلي';
+  if (t.includes('احمر')) return 'احمر';
+  if (t.includes('ابيض') || t.includes('نفط')) return 'نفط ابيض';
+  if (t.includes('اصفر')) return 'اصفر';
+  return (v || '').trim();
+};
+
+/** كشف الوارد خاص بالكاز: كل شحنة (رفع ملف أو إدخال يدوي) كاز مهما كان لونها، ومنها "نفط ابيض".
+ *  النفط الأسود يُسجَّل من قسمه الخاص وليس من هنا. */
+export const productFromColor = (_color: string) => 'كاز ممتاز';
+
+/** صف من ملف الوارد → شحنة مستلمة (نافذة الوارد والرفع المتعدد) */
+export const inboundRowDelivery = (r: InboundImportRow, date: string, company: 'صحاري كربلاء' | 'شركة الاتحاد'): Omit<InboundDelivery, 'id'> => ({
+  company,
+  supplierCompany: r.supplierCompany,
+  supplierName: r.supplierName,
+  driverName: r.driverName,
+  truckNumber: r.truckNumber,
+  voucherNumber: r.voucherNumber || `VCH-${Date.now().toString().slice(-4)}`,
+  receivedQuantity: r.receivedQuantity,
+  productDensity: r.productDensity,
+  productColor: canonicalColor(r.productColor),
+  productPrice: r.productPrice,
+  productCost: r.productCost,
+  receiptUnloadDate: date,
+  stationName: '',
+  tankCode: '',
+  product: productFromColor(canonicalColor(r.productColor)),
+  volumeLiters: r.receivedQuantity,
+  pricePerLiter: r.productPrice,
+  totalCostIqd: r.productCost,
+  receiptNumber: r.voucherNumber,
+  status: 'تم الاستلام' as const,
+  date,
+  time: new Date().toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' }),
+  attachments: []
+});

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { notifySyncedStorage } from '../../lib/useSyncedStorage';
+import { notifySyncedStorage, SYNCED_STORAGE_EVENT } from '../../lib/useSyncedStorage';
 import { usePermissions } from '../../lib/usePermission';
 import { canViewAnySite } from '../../lib/siteAccess';
 import { useSessionState } from '../../lib/useSessionState';
@@ -178,9 +178,12 @@ export const FinanceBalance: React.FC = () => {
       if (keys.includes('sahara_etihad_balance_records_v2')) reload();
     };
     // الصفحة المخفية (Activity) لا تسمع الأحداث: تُعاد القراءة عند ظهورها، حتى لا يُحفظ تعديل فوق نسخة قديمة
+    // حفظ من خارج الصفحة على نفس الجهاز (الرفع المتعدد): حتى لا يكتب تعديل لاحق فوق اليوم الجديد
+    const onLocal = (e: Event) => { if ((e as CustomEvent<string>).detail === 'sahara_etihad_balance_records_v2') reload(); };
     reload();
     window.addEventListener(CLOUD_APPLIED_EVENT, onCloud);
-    return () => window.removeEventListener(CLOUD_APPLIED_EVENT, onCloud);
+    window.addEventListener(SYNCED_STORAGE_EVENT, onLocal);
+    return () => { window.removeEventListener(CLOUD_APPLIED_EVENT, onCloud); window.removeEventListener(SYNCED_STORAGE_EVENT, onLocal); };
   }, []);
 
   useEffect(() => {

@@ -2,28 +2,30 @@ import { findReportDate } from './reportDate';
 import { withPdf } from './pdfDoc';
 
 /**
- * الرفع المتعدد (صفحة شركة الصحاري): حتى 5 ملفات مرة واحدة.
+ * الرفع المتعدد (صفحة شركة الصحاري): حتى 5 ملفات مرة واحدة، ومنها كشف وقود الاتحاد وملف وارد الاتحاد.
  * هنا: تحديد نوع كل ملف وتاريخه من محتواه، وترتيب التنفيذ. المعالجة نفسها في bulkProcess.ts
  * (بنفس دوال نافذة كل قسم).
  */
-export type BulkKind = 'balance' | 'petrol' | 'tanks' | 'black-oil' | 'site-annual';
-/** القسم في صفحة الصحاري وصلاحية تعديله */
+export type BulkKind = 'balance' | 'petrol' | 'tanks' | 'black-oil' | 'site-annual' | 'etihad-balance' | 'etihad-inbound';
+/** القسم وصلاحية تعديله (subtab لأقسام الصحاري؛ أنواع الاتحاد للصلاحية فقط) */
 export const BULK_KINDS: Record<BulkKind, { subtab: string; perm: string }> = {
   balance: { subtab: 'balance', perm: 'sahara.balance' },
   petrol: { subtab: 'petrol', perm: 'sahara.petrol' },
   tanks: { subtab: 'tanks', perm: 'sahara.tanks' },
   'black-oil': { subtab: 'black-oil', perm: 'sahara.black-oil' },
   'site-annual': { subtab: 'reserves', perm: 'sahara.reserves' },
+  'etihad-balance': { subtab: 'balance', perm: 'etihad.balance' },
+  'etihad-inbound': { subtab: 'inbound', perm: 'deliveries-etihad' },
 };
 /** ترتيب المعالجة لنفس التاريخ: الخزانات قبل النفط الأسود فتُحفظ مناسيبها الجديدة مع سجل اليوم */
-const KIND_ORDER: BulkKind[] = ['balance', 'petrol', 'tanks', 'black-oil', 'site-annual'];
+const KIND_ORDER: BulkKind[] = ['balance', 'petrol', 'tanks', 'black-oil', 'site-annual', 'etihad-inbound', 'etihad-balance'];
 
 export const MAX_BULK_FILES = 5;
 export const BULK_ACCEPT = '.pdf,.xlsx,.xlsm,.xls,.csv';
 
 export type BulkStatus = 'ready' | 'active' | 'saved' | 'skipped';
-/** ملف لا يُعالج: نوع غير معروف، ملف الاتحاد، أو بلا صلاحية تعديل قسمه */
-export type BulkProblem = 'unknown' | 'etihad' | 'inbound' | 'no-permission' | 'unreadable';
+/** ملف لا يُعالج: نوع غير معروف، وارد الصحاري (من صفحة الوارد)، أو بلا صلاحية تعديل قسمه */
+export type BulkProblem = 'unknown' | 'inbound' | 'no-permission' | 'unreadable';
 
 export interface BulkItem {
   id: string;
@@ -72,11 +74,14 @@ const has = (text: string, ...words: string[]) => words.some(w => text.includes(
 /** النوع من علامات مميزة لكل كشف (الترتيب مهم: البنزين قبل الكاز لأن كليهما فيه "المدور السابق") */
 export const detectKind = (allText: string): { kind: BulkKind | null; problem?: BulkProblem } => {
   const t = skel(allText);
+  // وارد الاتحاد (الأرشيف واليومي): فيه عمود "التعامل" الذي لا يوجد في وارد الصحاري
+  if (norm(allText).includes('التعامل') && has(t, 'اسم المجهز') && has(t, 'اسم السائق')) return { kind: 'etihad-inbound' };
   if (has(t, 'رقم الفوجر') && has(t, 'اسم السائق', 'رقم العجلة')) return { kind: null, problem: 'inbound' };
-  if (has(t, 'last updated') && has(t, 'معدل السعر')) return { kind: null, problem: 'etihad' };
+  if (has(t, 'last updated') && has(t, 'معدل السعر')) return { kind: 'etihad-balance' };
   if (has(t, 'موقف') && has(t, 'الرصيد الحقيقي', 'مستوى الفارغ')) return { kind: 'black-oil' };
   if (has(t, 'بنزين', 'بانزين') && has(t, 'المدور السابق', 'المصروف الفعلي')) return { kind: 'petrol' };
-  if (has(t, 'المرسل الى المزارع', 'الرصيد التراكمي') || (has(t, 'المدور السابق') && has(t, 'المصروف اليومي للمولدات'))) return { kind: 'balance' };
+  // "للمولدات" وحدها: بعض ملفات PDF تخرج "المصروف" مقلوبة الحروف ("المرصوف")
+  if (has(t, 'المرسل الى المزارع', 'الرصيد التراكمي') || (has(t, 'المدور السابق') && has(t, 'المصروف اليومي للمولدات', 'للمولدات'))) return { kind: 'balance' };
   // الملف السنوي لموقع (مزارع الموقع): صفوف "مصروف المزارع" و"مصروف المولدات + الاليات" لكل أيام السنة،
   // وملف محطة النقل (الطاقة) فيه "مصروف الاليات" فقط. كشف الرصيد فيه "المصروف اليومي للمزارع" فلا يتطابق معه
   if (has(t, 'مصروف المزارع', 'مصروف المولدات', 'مصروف الاليات') && !has(t, 'موقع الخزان', 'المدور السابق')) return { kind: 'site-annual' };
