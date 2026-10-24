@@ -1,6 +1,5 @@
 {
   "title": "Alerts log",
-  "subtitle": "Daily report check: the «carried forward» balance in every saved report must match the previous day's current balance, for Sahara gas, Etihad gas, petrol and black oil.",
   "reviewAll": "Review all ({{count}})",
   "kpi": {
     "total": "Checks",

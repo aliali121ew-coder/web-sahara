@@ -101,7 +101,6 @@ export const ReportAlertsView: React.FC = () => {
             </div>
             <div>
               <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">{t('alerts:title')}</h2>
-              <p className="text-xs text-slate-500 mt-0.5 max-w-xl leading-relaxed">{t('alerts:subtitle')}</p>
             </div>
           </div>
           {openIds.length > 0 && (
