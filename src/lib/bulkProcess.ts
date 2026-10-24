@@ -55,6 +55,7 @@ export interface BulkContext {
 
 const ETIHAD_KEY = 'sahara_etihad_balance_records_v2';
 const ETIHAD_COMPANY = 'شركة الاتحاد' as const;
+const SAHARA_COMPANY = 'صحاري كربلاء' as const;
 const dayOf = (d: string) => (d || '').trim().split(' ')[0].replace(/-/g, '/');
 const readEtihadRecords = (): EtihadBalanceRecord[] => {
   try { const v = JSON.parse(localStorage.getItem(ETIHAD_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
@@ -143,8 +144,9 @@ export const processBulkFile = async (kind: BulkKind, file: File, progress: (p: 
       return { status: 'saved', date, notes: { diff: diff || undefined, attachFailed: !attached } };
     }
 
-    if (kind === 'etihad-inbound') {
-      // وارد الاتحاد: كل شحنة غير مسجّلة (بصمة التاريخ + الفوجر + الكمية) تُضاف، والمسجّل يُتجاوز
+    if (kind === 'etihad-inbound' || kind === 'sahara-inbound') {
+      // ملف الوارد (الصحاري أو الاتحاد): كل شحنة غير مسجّلة (بصمة التاريخ + الفوجر + الكمية) تُضاف، والمسجّل يُتجاوز
+      const company = kind === 'sahara-inbound' ? SAHARA_COMPANY : ETIHAD_COMPANY;
       if (!ctx.inbound) return { status: 'skipped', reasons: ['readFailed'] };
       const rows = applyNameIndex(await parseInboundFile(file), readNameIndex()).rows
         .map(row => ({ ...row, receiptUnloadDate: row.receiptUnloadDate || ctx.fileDate || '' }));
@@ -152,9 +154,9 @@ export const processBulkFile = async (kind: BulkKind, file: File, progress: (p: 
       const dated = rows.filter(row => row.receiptUnloadDate);
       if (!rows.length) return { status: 'skipped', reasons: ['noRows'] };
       if (!dated.length) return { status: 'skipped', reasons: ['noDate'] };
-      const picked = pickUnrecorded(dated, archiveKeyCounts(ctx.inbound.existing().filter(d => d.company === ETIHAD_COMPANY)));
+      const picked = pickUnrecorded(dated, archiveKeyCounts(ctx.inbound.existing().filter(d => d.company === company)));
       if (!picked.rows.length) return { status: 'skipped', reasons: ['duplicate'] };
-      for (const row of picked.rows) ctx.inbound.add(inboundRowDelivery(row, row.receiptUnloadDate, ETIHAD_COMPANY));
+      for (const row of picked.rows) ctx.inbound.add(inboundRowDelivery(row, row.receiptUnloadDate, company));
       progress(80);
       const dates = picked.rows.map(row => row.receiptUnloadDate).sort();
       return { status: 'saved', date: dates[0] === dates[dates.length - 1] ? dates[0] : `${dates[0]} – ${dates[dates.length - 1]}`, notes: { inbound: { added: picked.rows.length, recorded: dated.length - picked.rows.length } } };

@@ -35,6 +35,8 @@ export const PERM_GROUPS: SectionGroup[] = [
       { id: 'etihad.reserves', label: 'الاحتياطي' },
       { id: 'etihad.reports', label: 'التقارير' },
       { id: 'etihad.archive', label: 'الأرشيف' },
+      // زر "رفع متعدد" في صفحة الاتحاد (حفظ كل ملف يتطلب صلاحية تعديل قسمه)
+      { id: 'etihad.bulk-upload', label: 'الرفع المتعدد' },
     ],
   },
   {

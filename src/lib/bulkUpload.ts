@@ -6,7 +6,7 @@ import { withPdf } from './pdfDoc';
  * هنا: تحديد نوع كل ملف وتاريخه من محتواه، وترتيب التنفيذ. المعالجة نفسها في bulkProcess.ts
  * (بنفس دوال نافذة كل قسم).
  */
-export type BulkKind = 'balance' | 'petrol' | 'tanks' | 'black-oil' | 'site-annual' | 'etihad-balance' | 'etihad-inbound';
+export type BulkKind = 'balance' | 'petrol' | 'tanks' | 'black-oil' | 'site-annual' | 'sahara-inbound' | 'etihad-balance' | 'etihad-inbound';
 /** القسم وصلاحية تعديله (subtab لأقسام الصحاري؛ أنواع الاتحاد للصلاحية فقط) */
 export const BULK_KINDS: Record<BulkKind, { subtab: string; perm: string }> = {
   balance: { subtab: 'balance', perm: 'sahara.balance' },
@@ -14,18 +14,19 @@ export const BULK_KINDS: Record<BulkKind, { subtab: string; perm: string }> = {
   tanks: { subtab: 'tanks', perm: 'sahara.tanks' },
   'black-oil': { subtab: 'black-oil', perm: 'sahara.black-oil' },
   'site-annual': { subtab: 'reserves', perm: 'sahara.reserves' },
+  'sahara-inbound': { subtab: 'inbound', perm: 'deliveries-sahara' },
   'etihad-balance': { subtab: 'balance', perm: 'etihad.balance' },
   'etihad-inbound': { subtab: 'inbound', perm: 'deliveries-etihad' },
 };
 /** ترتيب المعالجة لنفس التاريخ: الخزانات قبل النفط الأسود فتُحفظ مناسيبها الجديدة مع سجل اليوم */
-const KIND_ORDER: BulkKind[] = ['balance', 'petrol', 'tanks', 'black-oil', 'site-annual', 'etihad-inbound', 'etihad-balance'];
+const KIND_ORDER: BulkKind[] = ['sahara-inbound', 'balance', 'petrol', 'tanks', 'black-oil', 'site-annual', 'etihad-inbound', 'etihad-balance'];
 
 export const MAX_BULK_FILES = 5;
 export const BULK_ACCEPT = '.pdf,.xlsx,.xlsm,.xls,.csv';
 
 export type BulkStatus = 'ready' | 'active' | 'saved' | 'skipped';
-/** ملف لا يُعالج: نوع غير معروف، وارد الصحاري (من صفحة الوارد)، أو بلا صلاحية تعديل قسمه */
-export type BulkProblem = 'unknown' | 'inbound' | 'no-permission' | 'unreadable';
+/** ملف لا يُعالج: نوع غير معروف، أو بلا صلاحية تعديل قسمه */
+export type BulkProblem = 'unknown' | 'no-permission' | 'unreadable';
 
 export interface BulkItem {
   id: string;
@@ -76,7 +77,7 @@ export const detectKind = (allText: string): { kind: BulkKind | null; problem?: 
   const t = skel(allText);
   // وارد الاتحاد (الأرشيف واليومي): فيه عمود "التعامل" الذي لا يوجد في وارد الصحاري
   if (norm(allText).includes('التعامل') && has(t, 'اسم المجهز') && has(t, 'اسم السائق')) return { kind: 'etihad-inbound' };
-  if (has(t, 'رقم الفوجر') && has(t, 'اسم السائق', 'رقم العجلة')) return { kind: null, problem: 'inbound' };
+  if (has(t, 'رقم الفوجر') && has(t, 'اسم السائق', 'رقم العجلة')) return { kind: 'sahara-inbound' };
   if (has(t, 'last updated') && has(t, 'معدل السعر')) return { kind: 'etihad-balance' };
   if (has(t, 'موقف') && has(t, 'الرصيد الحقيقي', 'مستوى الفارغ')) return { kind: 'black-oil' };
   if (has(t, 'بنزين', 'بانزين') && has(t, 'المدور السابق', 'المصروف الفعلي')) return { kind: 'petrol' };

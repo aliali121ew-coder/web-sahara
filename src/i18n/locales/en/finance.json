@@ -1008,7 +1008,7 @@
   "bulk": {
     "button": "Bulk upload",
     "title": "Upload several sheets at once",
-    "hint": "Up to 5 files, including the Etihad fuel report and Etihad inbound. Each file is read, saved in its section and attached to the archive, with the same rules as saving by hand.",
+    "hint": "Up to 5 files, including the Etihad fuel report and Sahara and Etihad inbound. Each file is read, saved in its section and attached to the archive, with the same rules as saving by hand.",
     "dropTitle": "Drag and drop files here, or click to choose",
     "dropHint": "Up to {{max}} PDF or Excel files",
     "dropReplace": "Drop the files to replace the list",
@@ -1020,12 +1020,12 @@
       "black-oil": "Black oil report (Sahara and Etihad)",
       "none": "Unknown type",
       "site-annual": "Site annual file (site farms)",
+      "sahara-inbound": "Sahara inbound",
       "etihad-balance": "Etihad fuel report",
       "etihad-inbound": "Etihad inbound"
     },
     "problem": {
       "unknown": "File type not recognised — upload it from its tab",
-      "inbound": "Sahara inbound — upload it from the inbound page",
       "no-permission": "You cannot edit this section",
       "unreadable": "Could not read the file"
     },

@@ -12,12 +12,12 @@ import { SaharaFilePreview } from './SaharaFilePreview';
 type RunState = { progress: number; result?: BulkResult };
 
 /**
- * زر "رفع متعدد" في صفحة شركة الصحاري (يظهر لمن لديه صلاحية "الرفع المتعدد"):
+ * زر "رفع متعدد" في صفحتي الصحاري والاتحاد (يظهر لمن لديه صلاحية "الرفع المتعدد" للشركة):
  * يفتح نافذة تقبل سحب الملفات وإفلاتها أو اختيارها (ويقبل الإفلات على الزر نفسه)، حتى 5 ملفات،
  * ومنها كشف وقود الاتحاد ووارد الاتحاد. يعرض نوع كل ملف وتاريخه (مع معاينة)، ثم يعالجها بالترتيب
  * مباشرة بشريط تقدم لكل ملف — بنفس منطق نافذة كل قسم (lib/bulkProcess.ts).
  */
-export const BulkUploadButton: React.FC = () => {
+export const BulkUploadButton: React.FC<{ company?: 'sahara' | 'etihad' }> = ({ company = 'sahara' }) => {
   const { t, i18n } = useTranslation(['finance', 'common']);
   const { level, canEdit } = usePermissions();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -38,7 +38,7 @@ export const BulkUploadButton: React.FC = () => {
   deliveriesRef.current = deliveries;
   const addedRef = useRef<Parameters<BulkInboundStore['add']>[0][]>([]);
 
-  const allowed = level('sahara.bulk-upload') >= 1;
+  const allowed = level(`${company}.bulk-upload`) >= 1;
   // تجهيز مكتبات القراءة في الخلفية قبل أن يضغط المستخدم (أول ضغطة كانت تجمّد الهاتف)
   useEffect(() => { if (allowed) warmFileReaders(); }, [allowed]);
 
