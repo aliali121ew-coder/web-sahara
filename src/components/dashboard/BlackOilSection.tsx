@@ -105,7 +105,7 @@ export const BlackOilSection: React.FC = () => {
   const saharaOutbound = saharaLedger.latest?.consumption ?? 0;
   // اليوم السابق في السجل (لنسبة التغيّر بجانب الوارد والاستهلاك)
   const saharaPrevDay = saharaLedger.computed.length > 1 ? saharaLedger.computed[saharaLedger.computed.length - 2] : null;
-  const saharaCoverageDays = saharaLedger.avgDaily > 0 ? Math.floor(saharaTotalBalance / saharaLedger.avgDaily) : 0;
+  const saharaCoverageDays = saharaLedger.weekAvg > 0 ? Math.floor(saharaTotalBalance / saharaLedger.weekAvg) : 0;
   const saharaCoverageDate = (() => {
     const d = saharaLedger.latest ? new Date(saharaLedger.latest.date.replace(/\//g, '-') + 'T12:00:00') : new Date();
     d.setDate(d.getDate() + saharaCoverageDays);
@@ -123,7 +123,7 @@ export const BlackOilSection: React.FC = () => {
   const etihadInbound = etihadLedger.latest?.inbound ?? 0;
   const etihadOutbound = etihadLedger.latest?.consumption ?? 0;
   const etihadPrevDay = etihadLedger.computed.length > 1 ? etihadLedger.computed[etihadLedger.computed.length - 2] : null;
-  const etihadCoverageDays = etihadLedger.avgDaily > 0 ? Math.floor(etihadTotalBalance / etihadLedger.avgDaily) : 0;
+  const etihadCoverageDays = etihadLedger.weekAvg > 0 ? Math.floor(etihadTotalBalance / etihadLedger.weekAvg) : 0;
   const etihadCoverageDate = (() => {
     const d = etihadLedger.latest ? new Date(etihadLedger.latest.date.replace(/\//g, '-') + 'T12:00:00') : new Date();
     d.setDate(d.getDate() + etihadCoverageDays);
@@ -136,9 +136,9 @@ export const BlackOilSection: React.FC = () => {
   const grandTotalBalance = saharaTotalBalance + etihadTotalBalance;
   const grandTotalInbound = saharaInbound + etihadInbound;
   const grandTotalOutbound = saharaOutbound + etihadOutbound;
-  // أيام التغطية المشتركة = الرصيد الكلي ÷ الاستهلاك الكلي الفعلي لآخر يوم (الظاهر في البطاقة)،
-  // فتتحدث مع كل يوم يُسجَّل؛ بلا استهلاك مسجّل بعد: مجموع المتوسط المعتمد للشركتين
-  const combinedDaily = grandTotalOutbound > 0 ? grandTotalOutbound : saharaLedger.avgDaily + etihadLedger.avgDaily;
+  // أيام التغطية المشتركة = الرصيد الكلي ÷ مجموع متوسط الاستهلاك الأسبوعي للشركتين
+  // (يوم استهلاكه شاذ لا يقلب العدد)؛ بلا استهلاك مسجّل بعد: المتوسط المعتمد
+  const combinedDaily = saharaLedger.weekAvg + etihadLedger.weekAvg;
   const grandTotalDays = combinedDaily > 0 ? Math.floor(grandTotalBalance / combinedDaily) : 0;
   const grandTotalCoverageDate = (() => {
     const d = new Date();

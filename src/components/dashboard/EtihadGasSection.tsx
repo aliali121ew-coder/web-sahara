@@ -172,8 +172,9 @@ export const EtihadGasSection: React.FC = () => {
   const remainingCapacity = Math.max(0, totalCapacity - etihadTotalBalance);
   const fillLabel = `${fillPct.toFixed(1)}%`;
   const remainLabel = `${(100 - fillPct).toFixed(1)}%`;
-  // يؤمن لغاية = الرصيد الحالي ÷ الاستهلاك الفعلي (المصروف + المبيعات) لآخر يوم، وتاريخ النفاد = تاريخ آخر يوم + عدد الأيام
-  const coverageDays = totalOutflow > 0 ? Math.floor(etihadTotalBalance / totalOutflow) : null;
+  // يؤمن لغاية = الرصيد الحالي ÷ متوسط الاستهلاك الأسبوعي (المصروف + المبيعات، أيام الاستهلاك في آخر 7 أيام)
+  // مثل كاز الصحاري، فلا يتقلب العدد مع يوم استهلاكه شاذ؛ وتاريخ النفاد = تاريخ آخر يوم + عدد الأيام
+  const coverageDays = weekAvgOutflow > 0 ? Math.floor(etihadTotalBalance / weekAvgOutflow) : null;
   const coverageDate = (() => {
     if (coverageDays === null || !latest) return '—';
     const d = new Date(latest.date.replace(/\//g, '-') + 'T12:00:00');

@@ -145,6 +145,22 @@ export const computeBlackOil = (records: BlackOilRecord[]): ComputedBlackOilReco
   });
 };
 
+/**
+ * متوسط الاستهلاك الأسبوعي: آخر 7 أيام تقويمية حتى آخر يوم مسجّل، على الأيام التي فيها استهلاك فقط
+ * (0 = لا استهلاك مسجّل في الأسبوع)
+ */
+export const weeklyAvgConsumption = (computed: { date: string; consumption: number }[]): number => {
+  const last = computed[computed.length - 1];
+  if (!last) return 0;
+  const end = new Date(last.date.replace(/\//g, '-') + 'T12:00:00');
+  const start = new Date(end);
+  start.setDate(end.getDate() - 6);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const from = `${start.getFullYear()}/${pad(start.getMonth() + 1)}/${pad(start.getDate())}`;
+  const days = computed.filter(r => r.date >= from && r.date <= last.date && r.consumption > 0);
+  return days.length ? days.reduce((a, r) => a + r.consumption, 0) / days.length : 0;
+};
+
 /** متوسط الاستهلاك المعتمد = آخر قيمة أُدخلت في السجل */
 export const getBlackOilAvgDaily = (company: BlackOilCompany = 'etihad'): number => {
   const last = computeBlackOil(readBlackOilRecords(company)).pop();
@@ -192,7 +208,9 @@ export const useBlackOilLedger = (company: BlackOilCompany = 'etihad') => {
   const latest = computed.length ? computed[computed.length - 1] : null;
   const avgDaily = latest?.avgDaily ?? getBlackOilAvgDaily(company);
   const balance = latest?.current ?? 0;
-  const coverageDays = avgDaily > 0 ? Math.floor(balance / avgDaily) : 0;
+  // أيام التغطية من متوسط الأسبوع (مثل كاز الصحاري والاتحاد): لا يتقلب العدد مع يوم استهلاكه شاذ
+  const weekAvg = useMemo(() => weeklyAvgConsumption(computed) || avgDaily, [computed, avgDaily]);
+  const coverageDays = weekAvg > 0 ? Math.floor(balance / weekAvg) : 0;
 
-  return { records, computed, latest, balance, avgDaily, coverageDays, update };
+  return { records, computed, latest, balance, avgDaily, weekAvg, coverageDays, update };
 };

@@ -37,3 +37,18 @@ describe('report continuity check', () => {
     expect(bad.parts?.find(p => p.key === 'rayan')?.diff).toBe(5);
   });
 });
+
+import { weeklyAvgConsumption } from '../blackOilLedger';
+describe('black oil weekly average', () => {
+  it('averages the last 7 calendar days that had consumption', () => {
+    const days = [
+      { date: '2026/10/10', consumption: 999 },
+      { date: '2026/10/18', consumption: 100 },
+      { date: '2026/10/20', consumption: 0 },
+      { date: '2026/10/23', consumption: 300 },
+      { date: '2026/10/24', consumption: 200 },
+    ];
+    expect(weeklyAvgConsumption(days)).toBe(200);
+    expect(weeklyAvgConsumption([])).toBe(0);
+  });
+});
