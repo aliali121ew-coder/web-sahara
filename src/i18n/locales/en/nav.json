@@ -66,7 +66,10 @@
     "newPw": "New password",
     "confirmPw": "Confirm new password",
     "pwMin": "The new password must be at least 8 characters",
-    "pwMismatch": "The new passwords do not match"
+    "pwMismatch": "The new passwords do not match",
+    "forgot": "Forgot your password?",
+    "forgotSent": "Your request was sent to the system admin to reset your password",
+    "forgotAlready": "Your request is already with the system admin"
   },
   "breadcrumb": {
     "label": "Breadcrumb",

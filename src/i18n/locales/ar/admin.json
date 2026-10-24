@@ -244,7 +244,8 @@
     "createAccount": "إنشاء الحساب",
     "resetFor": "إعادة تعيين كلمة مرور @{{username}}",
     "markDone": "تمت المعالجة",
-    "reopen": "إعادة فتح الطلب"
+    "reopen": "إعادة فتح الطلب",
+    "fromAccount": "من داخل الحساب"
   },
   "audit": {
     "actions": {
@@ -253,6 +254,7 @@
       "auth.failed": "محاولة دخول فاشلة",
       "auth.locked": "إبطاء الدخول بعد محاولات خاطئة",
       "auth.password": "تغيير كلمة المرور",
+      "auth.password_request": "طلب إعادة تعيين كلمة المرور",
       "auth.passkey_add": "إضافة بصمة دخول",
       "auth.passkey_remove": "حذف بصمة دخول",
       "admin.create": "إنشاء حساب",

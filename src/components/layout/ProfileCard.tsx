@@ -65,6 +65,16 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, below, n
   const [pwCur, setPwCur] = useState('');
   const [pwNew, setPwNew] = useState('');
   const [pwConfirm, setPwConfirm] = useState('');
+  const [forgot, setForgot] = useState<{ busy?: boolean; text?: string; ok?: boolean }>({});
+  const askReset = async () => {
+    setForgot({ busy: true });
+    try {
+      const r = await chatApi.requestPasswordReset();
+      setForgot({ ok: true, text: t(r.already ? 'nav:profile.forgotAlready' : 'nav:profile.forgotSent') });
+    } catch (e) {
+      setForgot({ ok: false, text: errorText(e, 'server') });
+    }
+  };
   const startEdit = () => { setDraftName(profile?.name || ''); setDraftAvatar(profile?.avatar || ''); setPwCur(''); setPwNew(''); setPwConfirm(''); setEditError(''); setEditing(true); };
   // حسابي فقط: الغلاف يتلوّن بالثيم، ودائرة الثيم تفتح زهرة الألوان
   const self = !!onSaveSelf;
@@ -305,7 +315,11 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, below, n
           {editing ? (
             <>
               <div className="mt-4 space-y-2">
-                <div className="flex items-center gap-1.5 text-[11.5px] font-bold text-slate-500 dark:text-slate-400"><KeyRound className="w-3.5 h-3.5" />{t('nav:profile.changePw')}</div>
+                <div className="flex items-center justify-between gap-2 text-[11.5px] font-bold">
+                  <span className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400"><KeyRound className="w-3.5 h-3.5" />{t('nav:profile.changePw')}</span>
+                  <button type="button" onClick={askReset} disabled={forgot.busy} className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer disabled:opacity-60">{t('nav:profile.forgot')}</button>
+                </div>
+                {forgot.text && <p className={`text-[11.5px] font-bold ${forgot.ok ? 'text-emerald-600' : 'text-rose-600'}`}>{forgot.text}</p>}
                 {([[pwCur, setPwCur, 'currentPw', 'current-password'], [pwNew, setPwNew, 'newPw', 'new-password'], [pwConfirm, setPwConfirm, 'confirmPw', 'new-password']] as const).map(([v, set, k, ac]) => (
                   <input key={k} type="password" dir="ltr" value={v} onChange={e => set(e.target.value)} placeholder={t(`nav:profile.${k}`)} aria-label={t(`nav:profile.${k}`)} autoComplete={ac}
                     className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-blue-500 bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white outline-none placeholder:text-slate-400 text-start" />

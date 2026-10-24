@@ -87,6 +87,18 @@ export const PasswordCard: React.FC = () => {
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const askReset = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const r = await chatApi.requestPasswordReset();
+      setMsg({ ok: true, text: t(r.already ? 'password.forgotAlready' : 'password.forgotSent') });
+    } catch (err) {
+      setMsg({ ok: false, text: errorText(err, 'server') });
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,6 +139,7 @@ export const PasswordCard: React.FC = () => {
         <button type="submit" disabled={busy || !cur || !next || !confirm} className={`${btnCls} bg-blue-600 hover:bg-blue-700 text-white`}>
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} {t('password.submit')}
         </button>
+        <button type="button" onClick={askReset} disabled={busy} className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-60">{t('password.forgot')}</button>
         {msg && <p className={`text-xs font-bold ${msg.ok ? 'text-emerald-600' : 'text-rose-500'}`}>{msg.text}</p>}
       </div>
     </form>

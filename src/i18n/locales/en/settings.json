@@ -3,6 +3,7 @@
   "subtitle": "Choose the section you want to manage",
   "back": "Back to settings",
   "adminOnly": "System administrator only",
+  "pendingRequests": "Staff requests waiting: {{count}}",
   "sections": {
     "profile": { "title": "My account & password", "desc": "Your account details and password change" },
     "users": { "title": "User management", "desc": "Accounts, permissions, staff requests and the activity log" },
@@ -33,7 +34,10 @@
     "submit": "Update password",
     "min": "The new password must be at least 8 characters",
     "mismatch": "The new passwords do not match",
-    "changed": "Password changed, and your account was signed out of other devices"
+    "changed": "Password changed, and your account was signed out of other devices",
+    "forgot": "Forgot your password?",
+    "forgotSent": "Your request was sent to the system admin to reset your password",
+    "forgotAlready": "Your request is already with the system admin"
   },
   "preview": {
     "title": "Live preview",

@@ -79,9 +79,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return (saved as UiDensity) || 'standard';
   });
 
-  // بدون صلاحية «ضبط المظهر» أو «الإعدادات»: تُعرض القيم الافتراضية دون مسح اختيارات الجهاز (تعود إن مُنحت الصلاحية)
+  // بدون صلاحية «ضبط المظهر» (عرض أو تعديل) أو «الإعدادات»: تُعرض القيم الافتراضية دون مسح اختيارات الجهاز (تعود إن مُنحت الصلاحية)
   const profile = useSessionProfile();
-  const canCustomize = !profile || levelOf(profile.perms || {}, !!profile.is_admin, 'appearance') >= 2
+  const canCustomize = !profile || levelOf(profile.perms || {}, !!profile.is_admin, 'appearance') >= 1
     || levelOf(profile.perms || {}, !!profile.is_admin, 'settings') >= 1;
   const eff = canCustomize
     ? { sidebarStyle, bgGradient, bgType, gradientIntensity, shadeLevel, glassmorphism, uiDensity }

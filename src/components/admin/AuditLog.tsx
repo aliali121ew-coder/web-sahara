@@ -18,6 +18,7 @@ export const ACTIONS: Record<string, { icon: React.ComponentType<{ className?: s
   'auth.failed': { icon: ShieldAlert, sev: 'warn' },
   'auth.locked': { icon: Lock, sev: 'danger' },
   'auth.password': { icon: KeyRound, sev: 'info' },
+  'auth.password_request': { icon: KeyRound, sev: 'warn' },
   'auth.passkey_add': { icon: Fingerprint, sev: 'warn' },
   'auth.passkey_remove': { icon: Fingerprint, sev: 'info' },
   'admin.create': { icon: UserPlus, sev: 'success' },

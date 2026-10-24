@@ -548,6 +548,21 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     return json({ ok: true });
   }
 
+  // نسيت كلمة المرور (من داخل الحساب): طلب لمدير النظام في «طلبات الموظفين» ليعيد تعيينها
+  if (path === '/auth/password-request' && method === 'POST') {
+    await readBody(request);
+    const { results: me } = await db.prepare('SELECT name, username FROM chat_users WHERE id = ?').bind(authId).all<{ name: string; username: string }>();
+    const u = me[0];
+    if (!u) return unauthorized();
+    // طلب مفتوح واحد لكل حساب: الضغط المتكرر لا يكرر الطلب
+    const { results: open } = await db.prepare("SELECT id FROM support_requests WHERE username = ? AND kind = 'password' AND status = 'open' LIMIT 1").bind(u.username).all();
+    if (open.length) return json({ ok: true, already: true });
+    await db.prepare('INSERT INTO support_requests (id, name, phone, username, kind, message, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .bind(uid(), u.name, '', u.username, 'password', 'طلب من داخل الحساب: نسيت كلمة المرور', now).run();
+    await audit(db, request, authId, 'auth.password_request');
+    return json({ ok: true });
+  }
+
   // تسجيل بصمة هذا الجهاز لحسابي
   if (path === '/auth/webauthn/register-options' && method === 'POST') {
     // تحقق إضافي (step-up): دخول بكلمة المرور خلال آخر 10 دقائق في هذه الجلسة، أو إعادة إدخالها الآن

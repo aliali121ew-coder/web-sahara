@@ -34,6 +34,7 @@ import { UsersAdmin } from '../admin/UsersAdmin';
 import { SystemConsole } from '../system/SystemConsole';
 import { usePermissions } from '../../lib/usePermission';
 import { ProfileInfoCard, PasswordCard } from './ProfileCards';
+import { useSupportCount } from '../admin/useSupportCount';
 
 type SectionId = 'profile' | 'users' | 'system' | 'appearance' | 'data';
 
@@ -79,6 +80,7 @@ export const SettingsView: React.FC = () => {
   };
 
   const { canCustomize } = useTheme();
+  const supportCount = useSupportCount();
   const visible = SECTIONS.filter(s => (!s.adminOnly || isAdmin) && (s.id !== 'appearance' || canCustomize));
   const current = visible.find(s => s.id === section) || null;
 
@@ -127,6 +129,9 @@ export const SettingsView: React.FC = () => {
                     <div className="flex items-center gap-1.5">
                       <span className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white">{t(`sections.${s.id}.title`)}</span>
                       {s.adminOnly && <ShieldCheck className="w-3.5 h-3.5 text-amber-500" aria-label={t('adminOnly')} />}
+                      {s.id === 'users' && supportCount > 0 && (
+                        <span className="min-w-5 text-center text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-rose-500 text-white" title={t('pendingRequests', { count: supportCount })}>{supportCount}</span>
+                      )}
                     </div>
                     <p className="text-xs text-slate-500 mt-1 leading-relaxed">{t(`sections.${s.id}.desc`)}</p>
                   </div>
