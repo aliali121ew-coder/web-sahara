@@ -1,11 +1,16 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Briefcase, AtSign, ShieldCheck, Settings, X, LayoutGrid, Clock, Camera, PenLine, Check, Loader2, Trash2 } from 'lucide-react';
+import { Briefcase, AtSign, ShieldCheck, Settings, X, LayoutGrid, Clock, Camera, PenLine, Check, Loader2, Trash2, Palette, KeyRound } from 'lucide-react';
 import { resizeAvatar } from '../admin/adminUi';
 import { initials, getSessionStarted, type SessionProfile } from '../../lib/session';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { useConnection } from '../../lib/useConnection';
+import { useTheme } from '../../context/ThemeContext';
+import { getShadePalette } from '../../lib/themeGradients';
+import { chatApi } from '../chat/chatApi';
+import { errorText } from '../../i18n/errors';
+import { ThemeFlower, swatchOf } from './ThemeFlower';
 
 type CardProfile = Pick<SessionProfile, 'name' | 'username' | 'role' | 'avatar' | 'color' | 'is_admin'>;
 
@@ -54,7 +59,17 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
-  const startEdit = () => { setDraftName(profile?.name || ''); setDraftAvatar(profile?.avatar || ''); setEditError(''); setEditing(true); };
+  // تغيير كلمة المرور من وضع التعديل (اختياري: الحقول الفارغة تعني بلا تغيير)
+  const [pwCur, setPwCur] = useState('');
+  const [pwNew, setPwNew] = useState('');
+  const [pwConfirm, setPwConfirm] = useState('');
+  const startEdit = () => { setDraftName(profile?.name || ''); setDraftAvatar(profile?.avatar || ''); setPwCur(''); setPwNew(''); setPwConfirm(''); setEditError(''); setEditing(true); };
+  // حسابي فقط: الغلاف يتلوّن بالثيم، ودائرة الثيم تفتح زهرة الألوان
+  const self = !!onSaveSelf;
+  const { bgGradient, themeMode, canCustomize } = useTheme();
+  const [flower, setFlower] = useState(false);
+  const swatch = swatchOf(canCustomize ? bgGradient : 'titanium-slate');
+  const skyBottom = self ? getShadePalette(canCustomize ? bgGradient : 'none', themeMode)[1]?.bgHex : '';
   const pickPhoto = async (file?: File) => {
     if (!file) return;
     setEditError('');
@@ -63,13 +78,18 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
   const saveSelf = async () => {
     if (!onSaveSelf) return;
     if (!draftName.trim()) return setEditError(t('nav:profile.nameRequired'));
+    const changePw = !!(pwCur || pwNew || pwConfirm);
+    if (changePw && pwNew.length < 8) return setEditError(t('nav:profile.pwMin'));
+    if (changePw && pwNew !== pwConfirm) return setEditError(t('nav:profile.pwMismatch'));
     setSaving(true);
     setEditError('');
     try {
+      // كلمة المرور أولًا: إن كانت الحالية خاطئة لا يُحفظ شيء (والتغيير يُسجَّل في سجل العمليات)
+      if (changePw) await chatApi.changePassword(pwCur, pwNew);
       await onSaveSelf({ name: draftName.trim(), avatar: draftAvatar });
       setEditing(false);
     } catch (e) {
-      setEditError((e as Error).message);
+      setEditError(errorText(e, 'server'));
     } finally {
       setSaving(false);
     }
@@ -87,8 +107,10 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
 
   const editingRef = useRef(false);
   editingRef.current = editing;
+  const flowerRef = useRef(false);
+  flowerRef.current = flower;
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); if (editingRef.current) setEditing(false); else close(); } };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); if (flowerRef.current) setFlower(false); else if (editingRef.current) setEditing(false); else close(); } };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -152,6 +174,7 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
           style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.06), 0 8px 16px -4px rgba(15,23,42,0.10), 0 24px 48px -12px rgba(15,23,42,0.28), 0 48px 96px -24px rgba(15,23,42,0.30)' }}
         >
         <div className="relative rounded-[25px] bg-white dark:bg-slate-900 overflow-hidden">
+          {self && <ThemeFlower open={flower} onClose={() => setFlower(false)} />}
           {/* لمعة خفيفة أعلى البطاقة */}
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-80 z-10" />
         {/* الغلاف: سماء وجبال بطبقات، تتلاشى للأبيض من الأسفل */}
@@ -159,14 +182,14 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
           <svg className="absolute inset-0 w-full h-full" viewBox="0 0 330 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <defs>
               <linearGradient id="pc-sky" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stopColor="#b9c7c4" />
-                <stop offset="1" stopColor="#e6ece9" />
+                <stop offset="0" stopColor={self ? swatch.color : '#b9c7c4'} stopOpacity={self ? 0.45 : 1} />
+                <stop offset="1" stopColor={self ? skyBottom || '#f1f5f9' : '#e6ece9'} />
               </linearGradient>
             </defs>
             <rect width="330" height="150" fill="url(#pc-sky)" />
-            <path d="M0 92 L48 58 L82 74 L130 30 L172 70 L214 44 L262 78 L300 52 L330 66 V150 H0Z" fill="#9fb3a8" opacity="0.55" />
-            <path d="M0 104 L40 84 L92 98 L150 62 L196 92 L238 72 L290 96 L330 84 V150 H0Z" fill="#6f8f7c" opacity="0.7" />
-            <path d="M0 122 L60 100 L118 116 L176 92 L230 114 L282 100 L330 112 V150 H0Z" fill="#4c6f5b" opacity="0.8" />
+            <path d="M0 92 L48 58 L82 74 L130 30 L172 70 L214 44 L262 78 L300 52 L330 66 V150 H0Z" fill={self ? swatch.color : '#9fb3a8'} opacity={self ? 0.3 : 0.55} />
+            <path d="M0 104 L40 84 L92 98 L150 62 L196 92 L238 72 L290 96 L330 84 V150 H0Z" fill={self ? swatch.color : '#6f8f7c'} opacity={self ? 0.45 : 0.7} />
+            <path d="M0 122 L60 100 L118 116 L176 92 L230 114 L282 100 L330 112 V150 H0Z" fill={self ? swatch.color : '#4c6f5b'} opacity={self ? 0.6 : 0.8} />
           </svg>
           <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-b from-transparent to-white dark:to-slate-900" />
           <button
@@ -232,9 +255,20 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
             })()}
           </div>
 
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-slate-500 dark:text-slate-400">
-            <span className="inline-flex items-center gap-1"><Briefcase className="w-3.5 h-3.5" />{t('common:brand.company')}</span>
-            <span className="inline-flex items-center gap-1" dir="ltr"><AtSign className="w-3.5 h-3.5" />{profile?.username || 'user'}</span>
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[11.5px] font-bold text-slate-600 dark:text-slate-300">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800" dir="ltr"><AtSign className="w-3.5 h-3.5 text-slate-400" />{profile?.username || 'user'}</span>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800"><Briefcase className="w-3.5 h-3.5 text-slate-400" />{t('common:brand.company')}</span>
+            {self && (
+              <button type="button" onClick={() => setFlower(true)} aria-label={t('nav:profile.changeTheme')} aria-expanded={flower}
+                className="group inline-flex items-center gap-1.5 ps-1.5 pe-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer">
+                {/* دائرة الثيم الحالي بجانب أيقونته: تفتح زهرة الألوان */}
+                <span className="relative w-4 h-4 rounded-full ring-2 ring-white dark:ring-slate-900 shadow-sm transition-transform group-hover:scale-110" style={{ background: swatch.color }}>
+                  <span className="absolute -inset-1 rounded-full border animate-ping opacity-40" style={{ borderColor: swatch.color }} />
+                </span>
+                <Palette className="w-3.5 h-3.5 text-slate-400" />
+                {canCustomize ? t(`settings:gradients.${bgGradient}.short`) : t(themeMode === 'dark' ? 'nav:profile.dark' : 'nav:profile.light')}
+              </button>
+            )}
           </div>
 
           {/* الإحصاءات + الزر */}
@@ -264,6 +298,13 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
 
           {editing ? (
             <>
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center gap-1.5 text-[11.5px] font-bold text-slate-500 dark:text-slate-400"><KeyRound className="w-3.5 h-3.5" />{t('nav:profile.changePw')}</div>
+                {([[pwCur, setPwCur, 'currentPw', 'current-password'], [pwNew, setPwNew, 'newPw', 'new-password'], [pwConfirm, setPwConfirm, 'confirmPw', 'new-password']] as const).map(([v, set, k, ac]) => (
+                  <input key={k} type="password" dir="ltr" value={v} onChange={e => set(e.target.value)} placeholder={t(`nav:profile.${k}`)} aria-label={t(`nav:profile.${k}`)} autoComplete={ac}
+                    className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-blue-500 bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white outline-none placeholder:text-slate-400 text-start" />
+                ))}
+              </div>
               {editError && <p className="mt-3 text-xs font-bold text-rose-600">{editError}</p>}
               <div className="mt-4 flex items-center gap-2">
                 <button type="button" onClick={() => setEditing(false)} disabled={saving} className="h-11 px-5 rounded-full text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
