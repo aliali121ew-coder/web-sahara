@@ -543,7 +543,8 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
       db.prepare('DELETE FROM chat_sessions WHERE user_id = ? AND token_hash != ?').bind(authId, session.tokenHash),
       db.prepare('DELETE FROM chat_resume WHERE user_id = ?').bind(authId),
     ]);
-    await audit(db, request, authId, 'auth.password');
+    // من غيّرها ولأي حساب: الحساب نفسه (إعادة التعيين من مدير النظام تُسجَّل admin.password)
+    await audit(db, request, authId, 'auth.password', 'غيّر كلمة مرور حسابه');
     return json({ ok: true });
   }
 
@@ -752,11 +753,14 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
         const { results: target } = await db.prepare('SELECT username FROM chat_users WHERE id = ?').bind(id).all<{ username: string }>();
         const changes = [
           b.name !== undefined && 'الاسم', b.role !== undefined && 'الوظيفة', b.avatar !== undefined && 'الصورة', b.perms !== undefined && 'الصلاحيات', b.single_page !== undefined && 'صفحة واحدة فقط',
-          b.is_admin !== undefined && (b.is_admin ? 'منح الإدارة' : 'سحب الإدارة'), b.password !== undefined && 'إعادة تعيين كلمة المرور',
+          b.is_admin !== undefined && (b.is_admin ? 'منح الإدارة' : 'سحب الإدارة'),
           b.disabled !== undefined && (b.disabled ? 'إيقاف الحساب' : 'تفعيل الحساب'),
           b.expires_at !== undefined && demo && 'مدة التجربة',
         ].filter(Boolean).join('، ');
-        await audit(db, request, authId, 'admin.update', `@${target[0]?.username || id}: ${changes}`);
+        const who = `@${target[0]?.username || id}`;
+        // كلمة المرور سطر مستقل في السجل: من أعاد تعيينها ولأي حساب ومتى (القيمة نفسها لا تُحفظ إلا مشفّرة)
+        if (b.password !== undefined) await audit(db, request, authId, 'admin.password', `${who}: إعادة تعيين كلمة المرور`);
+        if (changes) await audit(db, request, authId, 'admin.update', `${who}: ${changes}`);
       }
       return json({ ok: true });
     }

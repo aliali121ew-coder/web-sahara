@@ -249,6 +249,7 @@
       "auth.passkey_remove": "Passkey removed",
       "admin.create": "Account created",
       "admin.update": "Account updated",
+      "admin.password": "Password reset",
       "admin.support": "Support request handled",
       "profile.update": "Profile updated",
       "data.save": "Data saved",

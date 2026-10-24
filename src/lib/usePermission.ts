@@ -41,6 +41,8 @@ export const TAB_SECTION: Record<string, { section?: string; group?: string }> =
   reports: { section: 'reports' },
   chat: { section: 'chat' },
   settings: { section: 'settings' },
+  // الملف الشخصي لكل حساب بلا صلاحية (آخر القائمة: صفحة البداية لحساب بلا أقسام)
+  profile: {},
 };
 
 /** هل يستطيع الحساب فتح هذه الصفحة؟ */
@@ -49,6 +51,7 @@ export const useCanOpenTab = () => {
   return useCallback((tab: string) => {
     // حساب مقيَّد بصفحة واحدة: لا يفتح غيرها (الباقي يتبع الصلاحيات كالمعتاد)
     if (p.singlePage && tab !== p.singlePage) return false;
+    if (tab === 'profile') return true;
     const t = TAB_SECTION[tab];
     if (!t) return p.isAdmin;
     if (t.group === 'deliveries') return p.canView('deliveries-sahara') || p.canView('deliveries-etihad');

@@ -5,6 +5,7 @@ import {
   Database,
   MessageSquare,
   Settings,
+  UserCircle,
   Menu,
   X,
   ShieldCheck,
@@ -295,6 +296,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       groupTitle: t('nav:groups.analytics'),
       items: [
         { id: 'chat', label: t('nav:items.chat'), icon: MessageSquare },
+        { id: 'profile', label: t('nav:items.profile'), icon: UserCircle },
         { id: 'settings', label: t('nav:items.settings'), icon: Settings },
       ]
     }
@@ -945,7 +947,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               isRtl={isRtl}
               sectionsCount={permittedGroups.reduce((n, g) => n + g.items.length, 0)}
               onSaveSelf={async v => { await chatApi.saveProfile(v); await refreshProfile(); }}
-              onOpenProfile={() => handleItemClick('settings')}
+              onOpenProfile={() => handleItemClick('profile')}
               onClose={() => setShowProfileMenu(false)}
             />
           )}

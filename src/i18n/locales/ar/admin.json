@@ -257,6 +257,7 @@
       "auth.passkey_remove": "حذف بصمة دخول",
       "admin.create": "إنشاء حساب",
       "admin.update": "تعديل حساب",
+      "admin.password": "إعادة تعيين كلمة مرور",
       "admin.support": "معالجة طلب دعم",
       "profile.update": "تحديث الملف الشخصي",
       "data.save": "حفظ بيانات",

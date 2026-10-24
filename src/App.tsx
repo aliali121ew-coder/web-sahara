@@ -35,12 +35,13 @@ const TasksLogistics = lazyPage(() => import('./components/tasks/TasksLogistics'
 const ReportsAnalytics = lazyPage(() => import('./components/reports/ReportsAnalytics'), 'ReportsAnalytics');
 const ChatApp = lazyPage(() => import('./components/chat/ChatApp'), 'ChatApp');
 const SettingsView = lazyPage(() => import('./components/settings/SettingsView'), 'SettingsView');
+const ProfileView = lazyPage(() => import('./components/settings/ProfileView'), 'ProfileView');
 
 const PAGE_PRELOADERS: Record<string, { preload: () => void }> = {
   dashboard: MainDashboard, tanks: TanksOverview, prices: PricesView, suppliers: SuppliersView,
   deliveries: InboundDeliveries, 'deliveries-sahara': InboundDeliveries, 'deliveries-etihad': InboundDeliveries,
   finance: FinanceBalance, 'finance-etihad': FinanceBalance, 'finance-sahara': FinanceBalance,
-  managers: SiteManagers, tasks: TasksLogistics, reports: ReportsAnalytics, chat: ChatApp, settings: SettingsView,
+  managers: SiteManagers, tasks: TasksLogistics, reports: ReportsAnalytics, chat: ChatApp, settings: SettingsView, profile: ProfileView,
 };
 
 const AppContent: React.FC = () => {
@@ -190,6 +191,8 @@ const AppContent: React.FC = () => {
         return CHAT_ENABLED ? <ChatApp /> : <ComingSoonPage title={i18n.t('nav:items.chat')} />;
       case 'settings':
         return <SettingsView />;
+      case 'profile':
+        return <ProfileView />;
       default:
         return <MainDashboard />;
     }
