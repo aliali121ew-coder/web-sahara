@@ -132,13 +132,17 @@ export const SupportRequests: React.FC<{
                       </blockquote>
                     )}
 
-                    {/* التواصل */}
+                    {/* التواصل (الطلب من داخل الحساب بلا هاتف) */}
+                    {r.phone ? (
                     <div className="mt-3 flex items-center gap-1.5 flex-wrap">
                       <span dir="ltr" className="font-mono text-sm font-bold text-slate-800 dark:text-slate-100 me-1">{r.phone}</span>
                       <a href={`tel:${r.phone}`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200"><Phone className="w-3.5 h-3.5" />{t('support.call')}</a>
                       <a href={`https://wa.me/${waNumber(r.phone)}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100"><MessageCircle className="w-3.5 h-3.5" />{t('support.whatsapp')}</a>
                       <CopyButton text={r.phone} className="w-8 h-8 bg-slate-100 dark:bg-slate-800 text-slate-500" />
                     </div>
+                    ) : (
+                      <div className="mt-3"><span className={`${chipCls} bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300`}><UserCheck className="w-3 h-3" />{t('support.fromAccount')}</span></div>
+                    )}
 
                     {/* الإجراءات */}
                     <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row gap-2">

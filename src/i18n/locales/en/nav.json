@@ -13,6 +13,7 @@
     "financeSahara": "Sahara Company",
     "chat": "Chat & operations",
     "settings": "Settings",
+    "profile": "Profile",
     "suppliers": "Suppliers"
   },
   "sidebar": {
@@ -55,7 +56,20 @@
     "sections": "Sections",
     "sectionsAll": "All",
     "session": "Session",
-    "biometric": "Biometric sign-in"
+    "biometric": "Biometric sign-in",
+    "theme": "Theme",
+    "changeTheme": "Change theme",
+    "light": "Light",
+    "dark": "Dark",
+    "changePw": "Change password (optional)",
+    "currentPw": "Current password",
+    "newPw": "New password",
+    "confirmPw": "Confirm new password",
+    "pwMin": "The new password must be at least 8 characters",
+    "pwMismatch": "The new passwords do not match",
+    "forgot": "Forgot your password?",
+    "forgotSent": "Your request was sent to the system admin to reset your password",
+    "forgotAlready": "Your request is already with the system admin"
   },
   "breadcrumb": {
     "label": "Breadcrumb",

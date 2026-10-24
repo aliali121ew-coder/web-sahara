@@ -15,9 +15,11 @@ import {
   Check,
   Fingerprint
 } from 'lucide-react';
-import { initials, logout, useSessionProfile } from '../../lib/session';
+import { initials, logout, refreshProfile, useSessionProfile } from '../../lib/session';
+import { ProfileCard } from './ProfileCard';
+import { chatApi } from '../chat/chatApi';
 import { useTheme } from '../../context/ThemeContext';
-import { useFuelStore } from '../../context/FuelDataContext';
+import { useFuelStore, useFuelNav } from '../../context/FuelDataContext';
 import { useLanguage, ACTIVE_LANGUAGES } from '../../context/LanguageContext';
 import { useTranslation } from 'react-i18next';
 import { BiometricSettings } from '../auth/BiometricSettings';
@@ -43,7 +45,9 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const { themeMode, toggleThemeMode } = useTheme();
   const { currentLanguage, currentLangInfo, setLanguage } = useLanguage();
-  const { t } = useTranslation(['nav', 'common']);
+  const { t, i18n } = useTranslation(['nav', 'common']);
+  const isRtl = i18n.dir() === 'rtl';
+  const { setActiveTab } = useFuelNav();
   // اسم كل لغة بلغة الواجهة الحالية (Arabic / العربية) عبر Intl
   const langName = (code: string) => {
     try { return new Intl.DisplayNames([currentLanguage], { type: 'language' }).of(code) || code; } catch { return code; }
@@ -59,6 +63,9 @@ export const Header: React.FC<HeaderProps> = ({
   const [showProfileMenu, setShowProfileMenu] = useState<boolean>(false);
   const [showLangMenu, setShowLangMenu] = useState<boolean>(false);
   const [showBio, setShowBio] = useState<boolean>(false);
+  // «الملف الشخصي» من قائمة الصورة: بطاقة الحساب (الاسم والصورة وكلمة المرور والثيم)
+  const [showCard, setShowCard] = useState<boolean>(false);
+  const [cardAnchor, setCardAnchor] = useState<DOMRect | null>(null);
 
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -297,7 +304,7 @@ export const Header: React.FC<HeaderProps> = ({
 
                 <div className="pt-2">
                   <button
-                    onClick={() => setShowProfileMenu(false)}
+                    onClick={() => { setCardAnchor(profileRef.current?.getBoundingClientRect() ?? null); setShowProfileMenu(false); setShowCard(true); }}
                     className="w-full text-right px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors flex items-center gap-2"
                   >
                     <User className="w-3.5 h-3.5 text-slate-400" />
@@ -325,6 +332,18 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
       </div>
+      {showCard && (
+        <ProfileCard
+          profile={profile}
+          anchor={cardAnchor}
+          below
+          isRtl={isRtl}
+          sectionsCount={null}
+          onSaveSelf={async v => { await chatApi.saveProfile(v); await refreshProfile(); }}
+          onOpenProfile={() => setActiveTab('profile')}
+          onClose={() => setShowCard(false)}
+        />
+      )}
       {showBio && <BiometricSettings username={profile?.username || ''} onClose={() => setShowBio(false)} />}
     </header>
   );

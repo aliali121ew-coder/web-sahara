@@ -162,6 +162,8 @@ export const chatApi = {
   // ───── الحساب (الدخول نفسه في src/lib/session.ts) ─────
   account: () => call<{ user: Account }>('/auth/me'),
   changePassword: (current: string, next: string) => call('/auth/password', send('POST', { current, next })),
+  /** نسيت كلمة المرور: طلب لمدير النظام يظهر في «طلبات الموظفين» */
+  requestPasswordReset: () => call<{ ok: boolean; already?: boolean }>('/auth/password-request', send('POST', {})),
   // ───── إدارة الحسابات (للمدير) ─────
   adminUsers: () => call<{ items: Account[]; max: number }>('/admin/users'),
   /** الحسابات المتصلة الآن (من اتصالات قناة التحديث اللحظي) */

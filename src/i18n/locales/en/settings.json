@@ -3,11 +3,41 @@
   "subtitle": "Choose the section you want to manage",
   "back": "Back to settings",
   "adminOnly": "System administrator only",
+  "pendingRequests": "Staff requests waiting: {{count}}",
   "sections": {
+    "profile": { "title": "My account & password", "desc": "Your account details and password change" },
     "users": { "title": "User management", "desc": "Accounts, permissions, staff requests and the activity log" },
     "system": { "title": "System management", "desc": "Database and files, backups and restore, and maintenance" },
     "appearance": { "title": "Appearance & navigation", "desc": "Light or dark mode, and the side menu's style and colors" },
     "data": { "title": "Data management", "desc": "Reset data and clear the cache" }
+  },
+  "profile": {
+    "title": "Profile",
+    "subtitle": "Your account details, password, appearance and lighting",
+    "username": "Username",
+    "role": "Role",
+    "accountType": "Account type",
+    "admin": "System admin",
+    "user": "User",
+    "editName": "Edit name",
+    "save": "Save",
+    "cancel": "Cancel",
+    "nameRequired": "Name is required",
+    "hint": "Username, role and permissions are set by the system admin"
+  },
+  "password": {
+    "title": "Change password",
+    "text": "The change is recorded in the audit log and signs your account out of other devices",
+    "current": "Current password",
+    "new": "New password",
+    "confirm": "Confirm new password",
+    "submit": "Update password",
+    "min": "The new password must be at least 8 characters",
+    "mismatch": "The new passwords do not match",
+    "changed": "Password changed, and your account was signed out of other devices",
+    "forgot": "Forgot your password?",
+    "forgotSent": "Your request was sent to the system admin to reset your password",
+    "forgotAlready": "Your request is already with the system admin"
   },
   "preview": {
     "title": "Live preview",

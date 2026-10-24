@@ -20,6 +20,7 @@ import {
   Activity,
   SlidersHorizontal,
   Maximize2,
+  UserCircle,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
@@ -32,8 +33,10 @@ import { getShadePalette } from '../../lib/themeGradients';
 import { UsersAdmin } from '../admin/UsersAdmin';
 import { SystemConsole } from '../system/SystemConsole';
 import { usePermissions } from '../../lib/usePermission';
+import { ProfileInfoCard, PasswordCard } from './ProfileCards';
+import { useSupportCount } from '../admin/useSupportCount';
 
-type SectionId = 'users' | 'system' | 'appearance' | 'data';
+type SectionId = 'profile' | 'users' | 'system' | 'appearance' | 'data';
 
 // العنوان والوصف في settings:sections.<id>.title / desc
 interface SectionDef {
@@ -43,7 +46,9 @@ interface SectionDef {
   adminOnly?: boolean;
 }
 
+// غير مدير النظام (بصلاحية «الإعدادات») يرى حسابه وكلمة المرور والمظهر والإضاءة فقط؛ الباقي لمدير النظام
 const SECTIONS: SectionDef[] = [
+  { id: 'profile', icon: UserCircle, gradient: 'from-sky-500 to-blue-600' },
   { id: 'users', icon: Users, gradient: 'from-violet-600 to-indigo-600', adminOnly: true },
   { id: 'system', icon: Server, gradient: 'from-slate-700 to-slate-900', adminOnly: true },
   { id: 'appearance', icon: Palette, gradient: 'from-amber-500 via-rose-500 to-indigo-600' },
@@ -75,6 +80,7 @@ export const SettingsView: React.FC = () => {
   };
 
   const { canCustomize } = useTheme();
+  const supportCount = useSupportCount();
   const visible = SECTIONS.filter(s => (!s.adminOnly || isAdmin) && (s.id !== 'appearance' || canCustomize));
   const current = visible.find(s => s.id === section) || null;
 
@@ -123,6 +129,9 @@ export const SettingsView: React.FC = () => {
                     <div className="flex items-center gap-1.5">
                       <span className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white">{t(`sections.${s.id}.title`)}</span>
                       {s.adminOnly && <ShieldCheck className="w-3.5 h-3.5 text-amber-500" aria-label={t('adminOnly')} />}
+                      {s.id === 'users' && supportCount > 0 && (
+                        <span className="min-w-5 text-center text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-rose-500 text-white" title={t('pendingRequests', { count: supportCount })}>{supportCount}</span>
+                      )}
                     </div>
                     <p className="text-xs text-slate-500 mt-1 leading-relaxed">{t(`sections.${s.id}.desc`)}</p>
                   </div>
@@ -134,6 +143,7 @@ export const SettingsView: React.FC = () => {
         </div>
       )}
 
+      {current?.id === 'profile' && <div className="space-y-5"><ProfileInfoCard /><PasswordCard /></div>}
       {current?.id === 'users' && <UsersAdmin />}
       {current?.id === 'system' && <SystemConsole />}
       {current?.id === 'appearance' && <AppearanceAndNavigationSection />}
@@ -142,8 +152,83 @@ export const SettingsView: React.FC = () => {
   );
 };
 
+// ───── الإضاءة (فاتح / ليلي): متاحة لكل حساب، ولا تحتاج صلاحية «ضبط المظهر» ─────
+export const ThemeModeCard: React.FC = () => {
+  const { t } = useTranslation('settings');
+  const { themeMode, setThemeMode } = useTheme();
+  // خيارات الإضاءة (Light / Dark)
+  const themeOptions = [
+    {
+      id: 'light' as const,
+      title: t('theme.light.title'),
+      desc: t('theme.light.desc'),
+      icon: Sun,
+      iconCls: 'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400',
+      activeBorder: 'border-amber-500 ring-2 ring-amber-500/25 bg-amber-50/50 dark:bg-amber-950/30',
+      tag: t('theme.light.tag'),
+    },
+    {
+      id: 'dark' as const,
+      title: t('theme.dark.title'),
+      desc: t('theme.dark.desc'),
+      icon: Moon,
+      iconCls: 'bg-slate-800 text-blue-400 dark:bg-blue-950 dark:text-blue-300',
+      activeBorder: 'border-blue-600 ring-2 ring-blue-500/25 bg-blue-50/50 dark:bg-blue-950/35',
+      tag: t('theme.dark.tag'),
+    },
+  ];
+
+  return (
+    <div className={cardCls}>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+          <Sun className="w-5 h-5" />
+        </div>
+        <div>
+          <h3 className="text-base font-extrabold text-slate-900 dark:text-white">{t('theme.title')}</h3>
+          <p className="text-xs text-slate-500">{t('theme.text')}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        {themeOptions.map((o) => {
+          const Icon = o.icon;
+          const on = themeMode === o.id;
+          return (
+            <button
+              key={o.id}
+              onClick={() => setThemeMode(o.id)}
+              className={`p-4 rounded-2xl border-2 flex items-center gap-4 transition-all text-start group ${
+                on ? o.activeBorder : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+              }`}
+            >
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-105 ${o.iconCls}`}>
+                <Icon className="w-6 h-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-sm text-slate-900 dark:text-white">{o.title}</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold">
+                    {o.tag}
+                  </span>
+                </div>
+                <div className="text-xs text-slate-500 mt-1 leading-relaxed">{o.desc}</div>
+              </div>
+              {on ? (
+                <CheckCircle2 className="w-5 h-5 text-blue-600 shrink-0" />
+              ) : (
+                <div className="w-5 h-5 rounded-full border border-slate-300 dark:border-slate-700 shrink-0" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 // ───── المظهر والإضاءة وشريط التنقل (مدمج في صفحة واحدة احترافية) ─────
-const AppearanceAndNavigationSection: React.FC = () => {
+export const AppearanceAndNavigationSection: React.FC = () => {
   const { t } = useTranslation('settings');
   const {
     themeMode,
@@ -167,27 +252,6 @@ const AppearanceAndNavigationSection: React.FC = () => {
   const shadePalette = getShadePalette(bgGradient, themeMode);
   const currentShade = shadePalette.find((s) => s.level === shadeLevel) || shadePalette[3];
 
-  // خيارات الإضاءة (Light / Dark)
-  const themeOptions = [
-    {
-      id: 'light' as const,
-      title: t('theme.light.title'),
-      desc: t('theme.light.desc'),
-      icon: Sun,
-      iconCls: 'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400',
-      activeBorder: 'border-amber-500 ring-2 ring-amber-500/25 bg-amber-50/50 dark:bg-amber-950/30',
-      tag: t('theme.light.tag'),
-    },
-    {
-      id: 'dark' as const,
-      title: t('theme.dark.title'),
-      desc: t('theme.dark.desc'),
-      icon: Moon,
-      iconCls: 'bg-slate-800 text-blue-400 dark:bg-blue-950 dark:text-blue-300',
-      activeBorder: 'border-blue-600 ring-2 ring-blue-500/25 bg-blue-50/50 dark:bg-blue-950/35',
-      tag: t('theme.dark.tag'),
-    },
-  ];
 
   // خيارات تدرجات ألوان الخلفية المتعددة التدريجية (موسعة بألوان هادئة ومريحة للعين)
   const gradientOptions: {
@@ -482,52 +546,7 @@ const AppearanceAndNavigationSection: React.FC = () => {
         </div>
       </div>
 
-      {/* 🌓 2. بطاقة نظام الإضاءة (Light & Dark Theme) */}
-      <div className={cardCls}>
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-            <Sun className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-base font-extrabold text-slate-900 dark:text-white">{t('theme.title')}</h3>
-            <p className="text-xs text-slate-500">{t('theme.text')}</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          {themeOptions.map((o) => {
-            const Icon = o.icon;
-            const on = themeMode === o.id;
-            return (
-              <button
-                key={o.id}
-                onClick={() => setThemeMode(o.id)}
-                className={`p-4 rounded-2xl border-2 flex items-center gap-4 transition-all text-start group ${
-                  on ? o.activeBorder : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                }`}
-              >
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-105 ${o.iconCls}`}>
-                  <Icon className="w-6 h-6" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-slate-900 dark:text-white">{o.title}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold">
-                      {o.tag}
-                    </span>
-                  </div>
-                  <div className="text-xs text-slate-500 mt-1 leading-relaxed">{o.desc}</div>
-                </div>
-                {on ? (
-                  <CheckCircle2 className="w-5 h-5 text-blue-600 shrink-0" />
-                ) : (
-                  <div className="w-5 h-5 rounded-full border border-slate-300 dark:border-slate-700 shrink-0" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <ThemeModeCard />
 
       {/* 🌈 3. بطاقة خلفيات النظام والتدرجات اللونية المتعددة (Gradual Multi-Color Background Gradients) */}
       <div className={cardCls}>

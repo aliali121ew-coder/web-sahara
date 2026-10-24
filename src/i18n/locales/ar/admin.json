@@ -200,7 +200,7 @@
       "sahara.balance": "الرصيد",
       "sahara.tanks": "الخزانات",
       "sahara.black-oil": "النفط الأسود",
-      "sahara.reserves": "الاحتياطي",
+      "sahara.reserves": "مزارع الموقع (كل المواقع)",
       "sahara.petrol": "البنزين",
       "sahara.reports": "التقارير",
       "suppliers": "الموردين",
@@ -244,7 +244,8 @@
     "createAccount": "إنشاء الحساب",
     "resetFor": "إعادة تعيين كلمة مرور @{{username}}",
     "markDone": "تمت المعالجة",
-    "reopen": "إعادة فتح الطلب"
+    "reopen": "إعادة فتح الطلب",
+    "fromAccount": "من داخل الحساب"
   },
   "audit": {
     "actions": {
@@ -253,10 +254,12 @@
       "auth.failed": "محاولة دخول فاشلة",
       "auth.locked": "إبطاء الدخول بعد محاولات خاطئة",
       "auth.password": "تغيير كلمة المرور",
+      "auth.password_request": "طلب إعادة تعيين كلمة المرور",
       "auth.passkey_add": "إضافة بصمة دخول",
       "auth.passkey_remove": "حذف بصمة دخول",
       "admin.create": "إنشاء حساب",
       "admin.update": "تعديل حساب",
+      "admin.password": "إعادة تعيين كلمة مرور",
       "admin.support": "معالجة طلب دعم",
       "profile.update": "تحديث الملف الشخصي",
       "data.save": "حفظ بيانات",

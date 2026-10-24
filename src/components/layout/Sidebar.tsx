@@ -28,6 +28,7 @@ import { useTranslation } from 'react-i18next';
 import { NavTabId } from '../../types';
 import { getAmbientBgColor, getAmbientGradientStyle } from '../../lib/themeGradients';
 import { ProfileCard } from './ProfileCard';
+import { useSupportCount } from '../admin/useSupportCount';
 import { useConnection } from '../../lib/useConnection';
 import { chatApi } from '../chat/chatApi';
 
@@ -271,6 +272,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const profile = useSessionProfile();
   const online = useConnection();
   const tokens = useMemo(() => getDesignTokens(sidebarStyle, themeMode), [sidebarStyle, themeMode]);
+  // طلبات الموظفين المفتوحة (لمدير النظام): شارة على «الإعدادات»
+  const supportCount = useSupportCount();
 
   // Master Navigation Groups with Enterprise Submenus
   const allGroups: NavGroup[] = useMemo(() => [
@@ -295,10 +298,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       groupTitle: t('nav:groups.analytics'),
       items: [
         { id: 'chat', label: t('nav:items.chat'), icon: MessageSquare },
-        { id: 'settings', label: t('nav:items.settings'), icon: Settings },
+        { id: 'settings', label: t('nav:items.settings'), icon: Settings, badge: supportCount ? String(supportCount) : undefined },
       ]
     }
-  ], [t]);
+  ], [t, supportCount]);
 
   // Filter items based on permissions
   const permittedGroups = useMemo(() => {
@@ -861,7 +864,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                         {/* Optional item badge if expanded */}
                         {!isCollapsed && item.badge && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-md font-mono bg-blue-500/20 text-blue-300">
+                          <span className="min-w-5 text-center text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold bg-rose-500 text-white">
                             {item.badge}
                           </span>
                         )}
@@ -945,7 +948,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               isRtl={isRtl}
               sectionsCount={permittedGroups.reduce((n, g) => n + g.items.length, 0)}
               onSaveSelf={async v => { await chatApi.saveProfile(v); await refreshProfile(); }}
-              onOpenProfile={() => handleItemClick('settings')}
+              onOpenProfile={() => handleItemClick('profile')}
               onClose={() => setShowProfileMenu(false)}
             />
           )}
