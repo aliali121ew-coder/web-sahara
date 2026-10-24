@@ -38,7 +38,8 @@ export const ThemeFlower: React.FC<{ open: boolean; onClose: () => void }> = ({ 
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       aria-hidden={!open}
     >
-      <div className="relative w-[290px] h-[290px] max-w-full" onMouseLeave={onClose}>
+      {/* منطقة دائرية بحجم الزهرة نفسها: الخروج من حدودها (لا من البطاقة) يطويها */}
+      <div className={`relative rounded-full ${canCustomize ? 'w-[300px] h-[300px]' : 'w-[104px] h-[104px]'}`} onMouseLeave={onClose}>
         {canCustomize && THEME_SWATCHES.map((s, i) => {
           const a = i * (360 / THEME_SWATCHES.length);
           const on = bgGradient === s.id;

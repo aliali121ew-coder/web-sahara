@@ -20,6 +20,8 @@ interface Props {
   anchor?: DOMRect | null;
   /** الشريط مطوي: البطاقة تظهر بجانبه بدل فوقه */
   beside?: boolean;
+  /** تنزل من أسفل الزر (صورة الحساب في الشريط العلوي) */
+  below?: boolean;
   /** ملاصقة للعنصر (زر العين): يمينه أو يساره حسب المساحة، وتبدأ من مستواه */
   nextTo?: boolean;
   isRtl: boolean;
@@ -48,7 +50,7 @@ const sinceText = (started: number, t: TFunction) => {
 };
 
 /** بطاقة الملف الشخصي: غلاف بمنظر جبلي يتلاشى للأبيض، صورة دائرية، الاسم والدور، إحصاءات، وزر رئيسي */
-export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, isRtl, sectionsCount, status, lastStat, actionLabel, onSaveSelf, onOpenProfile, onClose }) => {
+export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, below, nextTo, isRtl, sectionsCount, status, lastStat, actionLabel, onSaveSelf, onOpenProfile, onClose }) => {
   const { t } = useTranslation(['nav', 'common']);
   const online = useConnection();
   const [open, setOpen] = useState(false);
@@ -131,6 +133,10 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
     if (spaceLeft >= width || spaceLeft >= spaceRight) style.left = Math.max(8, anchor.left - gap - width);
     else style.left = Math.min(vw - width - 8, anchor.right + gap);
     style.top = Math.min(Math.max(8, anchor.top - 24), Math.max(8, vh - EST_HEIGHT - 8));
+  } else if (below) {
+    style.top = anchor.bottom + 10;
+    if (isRtl) style.left = Math.max(8, Math.min(anchor.left, vw - width - 8));
+    else style.left = Math.max(8, Math.min(anchor.right - width, vw - width - 8));
   } else if (beside) {
     style.bottom = Math.max(8, vh - anchor.bottom);
     if (isRtl) style.right = vw - anchor.left + 10; else style.left = anchor.right + 10;
@@ -156,9 +162,9 @@ export const ProfileCard: React.FC<Props> = ({ profile, anchor, beside, nextTo, 
         className="fixed z-[71] rounded-[26px] isolate"
         style={{
           ...style,
-          transform: open ? 'translateY(0) scale(1)' : 'translateY(18px) scale(0.97)',
+          transform: open ? 'translateY(0) scale(1)' : `translateY(${below ? -18 : 18}px) scale(0.97)`,
           opacity: open ? 1 : 0,
-          transformOrigin: nextTo ? (style.left !== undefined && Number(style.left) < anchor!.left ? 'top right' : 'top left') : 'bottom center',
+          transformOrigin: nextTo ? (style.left !== undefined && Number(style.left) < anchor!.left ? 'top right' : 'top left') : below ? 'top center' : 'bottom center',
           transition: 'transform 260ms cubic-bezier(0.2, 0.9, 0.25, 1.1), opacity 180ms ease-out',
         }}
       >
