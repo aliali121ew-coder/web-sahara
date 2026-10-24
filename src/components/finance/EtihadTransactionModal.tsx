@@ -32,6 +32,8 @@ import { formatNumber, getBusinessDate } from '../../lib/utils';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTranslation } from 'react-i18next';
 import { readEtihadReportFile } from '../../lib/etihadReportFile';
+import { ContinuityCard } from './ContinuityCard';
+import { continuityCheck, etihadHistory, logReportAlert } from '../../lib/reportCheck';
 import { useReportAttach } from '../../lib/saharaFiles';
 import { ReportAttachNotice } from './DayFilesCell';
 import { DateField } from '../ui/DateField';
@@ -41,7 +43,7 @@ interface EtihadTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   /** يعيد رقم السجل المحفوظ (لإرفاق ملف الكشف به في الأرشيف) */
-  onSave: (record: Omit<EtihadBalanceRecord, 'id'>, id?: string) => string | void;
+  onSave: (record: Omit<EtihadBalanceRecord, 'id'>, id?: string, fromReport?: boolean) => string | void;
   editRecord?: EtihadBalanceRecord | null;
   lastRecordedPrice?: number;
   defaultPreviousBalance?: number;
@@ -90,6 +92,9 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
 
   // ملف الكشف: يعبّئ الخانات، ويُرفق باليوم في الأرشيف عند الحفظ فقط
   const [reportFile, setReportFile] = useState<File | null>(null);
+  // التحقق من صحة التقرير: "الرصيد السابق" في الكشف مقابل الرصيد الحالي لليوم السابق في سجل الاتحاد
+  const [reportPrev, setReportPrev] = useState<number | null>(null);
+  const continuity = reportFile ? continuityCheck('etihad-gas', date, reportPrev, etihadHistory(), editRecord?.id) : null;
   const [upload, setUpload] = useState<
     { status: 'idle' } | { status: 'reading'; name: string } | { status: 'done'; name: string; check: string } | { status: 'error'; message: string }
   >({ status: 'idle' });
@@ -200,6 +205,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
     setReportFile(null);
     try {
       const r = await readEtihadReportFile(file);
+      setReportPrev(r.previous);
       const fmt = (n: number | null) => (n === null ? '' : formatInputValue(Math.round(n)));
       if (r.inbound !== null) setPurchases(fmt(r.inbound));
       if (r.consumption !== null) setEtihadExpense(fmt(r.consumption));
@@ -257,8 +263,11 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
       createdAt: new Date().toISOString()
     };
 
-    const savedId = onSave(recordPayload, editRecord?.id) || editRecord?.id;
+    // التحقق قبل الحفظ (السجل الجديد لم يدخل التاريخ بعد)
+    const check = reportFile ? continuityCheck('etihad-gas', recordPayload.date, reportPrev, etihadHistory(), editRecord?.id) : null;
+    const savedId = onSave(recordPayload, editRecord?.id, !!reportFile) || editRecord?.id;
     if (reportFile && savedId) reportAttach.attach(savedId, reportFile);
+    if (reportFile && check) logReportAlert(check, { fileName: reportFile.name, source: 'window' });
     setReportFile(null);
     onClose();
   };
@@ -327,6 +336,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
                 <span>{t('finance:tx.upload.filled', { name: upload.name })}{upload.check && <> — {upload.check}</>}</span>
               </div>
             )}
+            {upload.status === 'done' && <div className="mb-3"><ContinuityCard check={continuity} /></div>}
             {upload.status === 'error' && (
               <div className="mb-3 flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs font-bold">
                 <AlertCircle className="w-4 h-4 shrink-0" />

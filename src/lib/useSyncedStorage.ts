@@ -3,6 +3,8 @@ import { CLOUD_APPLIED_EVENT } from './cloudSync';
 import { keepIfSame } from './keepIfSame';
 
 const LOCAL_EVENT = 'synced-storage-updated';
+/** حدث الكتابة المحلية (detail = المفتاح) لمن يحتفظ بنسخة في الذاكرة خارج useSyncedStorage */
+export const SYNCED_STORAGE_EVENT = LOCAL_EVENT;
 
 /** إبلاغ من يقرأ المفتاح عبر useSyncedStorage بأن قيمته تغيّرت في هذا الجهاز (لمن يكتب localStorage مباشرة) */
 export const notifySyncedStorage = (key: string) => window.dispatchEvent(new CustomEvent(LOCAL_EVENT, { detail: key }));

@@ -42,6 +42,10 @@ import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
 import { usePermissions } from '../../lib/usePermission';
 import { DateField } from '../ui/DateField';
+import { ContinuityCard } from './ContinuityCard';
+import { continuityCheck, logReportAlert } from '../../lib/reportCheck';
+import { logActivity, recordChanges } from '../../lib/reportActivity';
+
 
 // منطق النموذج (يوم جديد، التعبئة من الكشف، السجل، شروط الحفظ) في lib/petrolForm.ts
 type FormState = PetrolForm;
@@ -190,6 +194,9 @@ export const SaharaPetrolView: React.FC = () => {
     | { status: 'error'; message: string }
     | { status: 'done'; filled: number; unmatched: string[]; notes: string }
   >({ status: 'idle' });
+  // التحقق من صحة التقرير: "المدور السابق" في الكشف مقابل حالية اليوم السابق
+  const [reportPrev, setReportPrev] = useState<number | undefined>(undefined);
+  const continuity = form && reportFile ? continuityCheck('petrol', form.date, reportPrev, computed, form.id) : null;
   const handleUpload = async (file?: File) => {
     if (!file || !form) return;
     setUpload({ status: 'loading', fileName: file.name });
@@ -199,6 +206,7 @@ export const SaharaPetrolView: React.FC = () => {
       const res = applyPetrolReport(form, data, stations, computed);
       const { filled, unmatched } = res;
       setForm(res.form);
+      setReportPrev(data.previous);
       setUpload({ status: 'done', filled, unmatched, notes: [res.dateFromFile ? t('finance:saharaBalance.upload.dateFromFile', { date: res.dateFromFile }) : '', data.notes].filter(Boolean).join(' — ') });
       setReportFile(file);
     } catch (e) {
@@ -210,9 +218,13 @@ export const SaharaPetrolView: React.FC = () => {
   const save = () => {
     if (!form || !canSave) return;
     const record: PetrolLedgerRecord = petrolRecord(form, computed);
+    const old = form.id ? records.find(r => r.id === form.id) : undefined;
+    if (old) logActivity('petrol', 'edit', record.date, recordChanges(old, record));
+    else if (!reportFile) logActivity('petrol', 'create', record.date);
     // الحفظ يحدّث هذه الصفحة فقط؛ الواجهة الرئيسية والخزانات تنتظر "تأكيد البيانات"
     update(prev => (form.id ? prev.map(r => (r.id === form.id ? record : r)) : [...prev, record]));
     if (reportFile) reportAttach.attach(record.id, reportFile);
+    if (reportFile && continuity) logReportAlert(continuityCheck('petrol', record.date, reportPrev, computed, form.id), { fileName: reportFile.name, source: 'window' });
     setReportFile(null);
     setViewId(null);
     setForm(null);
@@ -910,6 +922,7 @@ export const SaharaPetrolView: React.FC = () => {
                       {upload.notes && <div className="text-slate-600 dark:text-slate-300">{upload.notes}</div>}
                     </div>
                   )}
+                  <ContinuityCard check={continuity} />
                 </div>
               )}
 

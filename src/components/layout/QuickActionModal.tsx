@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
-import { archiveKeyCounts, hasBrokenGlyphs, parseInboundFile, pickUnrecorded, type InboundImportRow } from '../../lib/inboundImport';
+import { archiveKeyCounts, canonicalColor, hasBrokenGlyphs, inboundRowDelivery, parseInboundFile, pickUnrecorded, productFromColor, type InboundImportRow } from '../../lib/inboundImport';
 import { fixInboundNamesWithAi } from '../../lib/inboundAi';
 import { applyNameIndex, isKnownName, readNameIndex, useNameIndex, type NameFix, type NameKind } from '../../lib/nameIndex';
 import { NameIndexModal } from '../deliveries/NameIndexModal';
@@ -83,20 +83,6 @@ const FAKE_DRIVERS = new Set(['سجاد حيدر الموسوي', 'سائق غي
 const isRealName = (v?: string) => { const t = (v || '').trim(); return !!t && !/^[_\-–—.]+$/.test(t); };
 /** ألوان المنتج: أربعة فقط (لا إضافة) */
 const PRODUCT_COLORS = ['عسلي', 'احمر', 'اصفر', 'نفط ابيض'];
-/** لون من ملف أو سجل قديم → أقرب الألوان الأربعة ("عسل ي" المقطوع من PDF = عسلي)؛ غير المعروف يبقى كما هو */
-const canonicalColor = (v?: string): string => {
-  const t = (v || '').normalize('NFKC').replace(/[أإآ]/g, 'ا').replace(/\s+/g, '');
-  if (!t) return '';
-  if (t.includes('عسل')) return 'عسلي';
-  if (t.includes('احمر')) return 'احمر';
-  if (t.includes('ابيض') || t.includes('نفط')) return 'نفط ابيض';
-  if (t.includes('اصفر')) return 'اصفر';
-  return (v || '').trim();
-};
-
-/** كشف الوارد خاص بالكاز: كل شحنة (رفع ملف أو إدخال يدوي) كاز مهما كان لونها، ومنها "نفط ابيض".
- *  النفط الأسود يُسجَّل من قسمه الخاص وليس من هنا. */
-const productFromColor = (_color: string) => 'كاز ممتاز';
 
 export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onClose, editData }) => {
   const { addDelivery, updateDelivery, deliveries } = useFuelStore();
@@ -583,34 +569,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({ isOpen, onCl
   const newImportRows = importRows.filter((r, i) => !isDuplicateRow(i) && !isOutOfRange(r));
 
   const handleImportSubmit = () => {
-    newImportRows.forEach((r) => {
-      const date = rowDate(r);
-      addDelivery({
-        company: receivingCompany,
-        supplierCompany: r.supplierCompany,
-        supplierName: r.supplierName,
-        driverName: r.driverName,
-        truckNumber: r.truckNumber,
-        voucherNumber: r.voucherNumber || `VCH-${Date.now().toString().slice(-4)}`,
-        receivedQuantity: r.receivedQuantity,
-        productDensity: r.productDensity,
-        productColor: canonicalColor(r.productColor),
-        productPrice: r.productPrice,
-        productCost: r.productCost,
-        receiptUnloadDate: date,
-        stationName: '',
-        tankCode: '',
-        product: productFromColor(canonicalColor(r.productColor)),
-        volumeLiters: r.receivedQuantity,
-        pricePerLiter: r.productPrice,
-        totalCostIqd: r.productCost,
-        receiptNumber: r.voucherNumber,
-        status: 'تم الاستلام' as const,
-        date,
-        time: new Date().toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' }),
-        attachments: []
-      }, receivingCompany);
-    });
+    newImportRows.forEach((r) => addDelivery(inboundRowDelivery(r, rowDate(r), receivingCompany), receivingCompany));
     setImportState({ status: 'idle' });
     setAiState({ status: 'idle' });
     aiRun.current = null;

@@ -1,4 +1,16 @@
 {
+  "check": {
+    "status": {
+      "match": "Report verified: carried forward matches the previous day's current balance",
+      "mismatch": "Warning: the report's carried forward does not match the previous day's current balance",
+      "noFileValue": "Not verified: the report has no carried-forward balance",
+      "noPrevDay": "No previous day in the system to compare with"
+    },
+    "fileCarried": "Carried forward in report",
+    "systemCurrent": "Current balance on {{date}}",
+    "noFileHint": "Current balance on {{date}} in the system: {{value}}",
+    "logged": "The result is recorded in the «Alerts log» when you save"
+  },
   "saharaBalance": {
     "upload": {
       "imagesUnsupported": "Image uploads aren’t supported — upload the statement as an Excel or PDF file",
@@ -1008,19 +1020,24 @@
   "bulk": {
     "button": "Bulk upload",
     "title": "Upload several sheets at once",
-    "hint": "Up to 5 files. Each file is read, saved to its section and attached to the archive directly, with the same rules as manual entry.",
+    "hint": "Up to 5 files, including the Etihad fuel report and Sahara and Etihad inbound. Each file is read, saved in its section and attached to the archive, with the same rules as saving by hand.",
+    "dropTitle": "Drag and drop files here, or click to choose",
+    "dropHint": "Up to {{max}} PDF or Excel files",
+    "dropReplace": "Drop the files to replace the list",
+    "chooseOther": "Other files",
     "kind": {
       "balance": "Gasoil balance sheet",
       "petrol": "Petrol sheet",
       "tanks": "Tanks file (black oil)",
       "black-oil": "Black oil report (Sahara and Etihad)",
       "none": "Unknown type",
-      "site-annual": "Site annual file (site farms)"
+      "site-annual": "Site annual file (site farms)",
+      "sahara-inbound": "Sahara inbound",
+      "etihad-balance": "Etihad fuel report",
+      "etihad-inbound": "Etihad inbound"
     },
     "problem": {
       "unknown": "File type not recognised — upload it from its tab",
-      "etihad": "Etihad sheet — upload it from the Etihad page",
-      "inbound": "Inbound file — upload it from the inbound page",
       "no-permission": "You cannot edit this section",
       "unreadable": "Could not read the file"
     },
@@ -1046,7 +1063,8 @@
       "noSites": "The file has no site you are allowed to edit",
       "readFailed": "Could not read the file",
       "noSite": "The site name is not in the file — upload it from the site farms page",
-      "duplicate": "Warning: file already uploaded — nothing new in it"
+      "duplicate": "Warning: file already uploaded — nothing new in it",
+      "noRows": "No shipments in the file"
     },
     "company": {
       "sahara": "Sahara",
@@ -1065,7 +1083,9 @@
       "tanksMissing": "Tanks updated — not read: {{list}}",
       "tanksOver": "Quantity above tank capacity (set to full): {{list}}",
       "farmsFailed": "Saved — could not read the site farms from the report",
-      "annual": "{{site}} {{year}}: {{added}} new days, {{changed}} changed"
+      "annual": "{{site}} {{year}}: {{added}} new days, {{changed}} changed",
+      "inbound": "{{added}} shipments added — {{recorded}} already recorded were skipped",
+      "continuity": "Carried forward differs from the current balance on {{date}} by {{diff}} — recorded in the alerts log"
     }
   },
   "siteHub": {

@@ -34,7 +34,8 @@ export type NavTabId =
   | 'reports'
   | 'chat'
   | 'settings'
-  | 'profile';
+  | 'profile'
+  | 'alerts';
 
 export interface SubpageInfo {
   title: string;

@@ -10,10 +10,10 @@ import { BlackOilDailyLedger } from './BlackOilDailyLedger';
 
 /** صفحة النفط الأسود (الاتحاد أو الصحاري): نفس التصميم، ولكل شركة سجلها وخزاناتها */
 export const EtihadBlackOilView: React.FC<{ company?: BlackOilCompany }> = ({ company = 'etihad' }) => {
-  const { t } = useTranslation(['finance', 'common']);
+  const { t } = useTranslation(['finance', 'common', 'dashboard']);
 
   // البطاقات تقرأ من السجل اليومي (المصدر المركزي للنفط الأسود)
-  const { balance, avgDaily, coverageDays, latest } = useBlackOilLedger(company);
+  const { balance, weekAvg, coverageDays, latest } = useBlackOilLedger(company);
   // السعة الاستيعابية = مجموع سعات خزانات قسم النفط الأسود في منظومة الخزانات
   const [centralTanks] = useCentralTanks(OFFICIAL_TABLE_TANK_UNITS);
   const etihadCapacity = centralTanks.filter(t => t.sectionKey === BLACK_OIL_SECTION_KEYS[company]).reduce((a, t) => a + t.capacityLiters, 0);
@@ -105,8 +105,8 @@ export const EtihadBlackOilView: React.FC<{ company?: BlackOilCompany }> = ({ co
             </span>
           </div>
           <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-            <span>{t('finance:blackOil.approvedAvg')}</span>
-            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{formatNumber(avgDaily)} {t('common:units.liter')}</span>
+            <span>{t('dashboard:sahara.weekAvg')}</span>
+            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{formatNumber(Math.round(weekAvg))} {t('common:units.liter')}</span>
           </div>
         </div>
 

@@ -64,8 +64,12 @@ describe('bulk file type detection', () => {
     expect(detectKind('موقف النفط األسود موقف الريان الرصيد الحقيقي بالخزانت').kind).toBe('black-oil');
     expect(detectKind('تقرير البـــانزين اليومي المــدور الســابق المصـروف الفعلي').kind).toBe('petrol');
     expect(detectKind('المدوّر السابق الرصيد المرسل الى المزارع المصروف الفعلي').kind).toBe('balance');
-    expect(detectKind('LAST UPDATED: الرصيد السابق معدل السعر').problem).toBe('etihad');
-    expect(detectKind('رقم الفوجر اسم السائق').problem).toBe('inbound');
+    expect(detectKind('LAST UPDATED: الرصيد السابق معدل السعر').kind).toBe('etihad-balance');
+    // وارد الاتحاد فيه عمود "التعامل"؛ وارد الصحاري بدونه
+    expect(detectKind('أسم المجهز أسم السائق رقم الفوجر الكمية التعامل').kind).toBe('etihad-inbound');
+    expect(detectKind('رقم الفوجر اسم السائق').kind).toBe('sahara-inbound');
+    // "المصروف" المقلوبة الحروف في PDF ("المرصوف")
+    expect(detectKind('المدوّر السابق المرصوف اليوم للمولدات').kind).toBe('balance');
     expect(detectKind('أي نص آخر').problem).toBe('unknown');
   });
 });

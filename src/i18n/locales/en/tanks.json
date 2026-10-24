@@ -18,6 +18,8 @@
     "down": "Move this section down",
     "delete": "Delete this whole section",
     "total": "Table stock total",
+    "updated": "Last update: {{date}} · {{time}}",
+    "notUpdated": "Last update: —",
     "confirmDeleteTitle": "Delete this section?",
     "confirmDeleteText": "Are you sure you want to delete <1>“{{name}}”</1>? All tanks in this section will be removed right away.",
     "namePlaceholder": "e.g. Premium gasoline tanks - Site 3",

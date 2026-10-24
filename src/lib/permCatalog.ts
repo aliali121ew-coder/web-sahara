@@ -35,6 +35,8 @@ export const PERM_GROUPS: SectionGroup[] = [
       { id: 'etihad.reserves', label: 'الاحتياطي' },
       { id: 'etihad.reports', label: 'التقارير' },
       { id: 'etihad.archive', label: 'الأرشيف' },
+      // زر "رفع متعدد" في صفحة الاتحاد (حفظ كل ملف يتطلب صلاحية تعديل قسمه)
+      { id: 'etihad.bulk-upload', label: 'الرفع المتعدد' },
     ],
   },
   {
@@ -141,6 +143,11 @@ const KEY_RULES: Rule[] = [
   { match: eq('sahara_price_log_v1'), read: ['prices', 'suppliers', 'dashboard'], write: ['prices', 'suppliers'] },
   { match: eq('sahara_tasks', 'sahara_supply_requests'), read: ['tasks', 'dashboard'], write: ['tasks'] },
   { match: eq('sahara_fuel_metrics'), read: ['dashboard', 'reports'], write: ['dashboard'] },
+  // سجل التنبيهات (التحقق من اتصال التقارير): يقرؤه من يرى أحد الأقسام الأربعة، ويضيف إليه من يحفظ يومًا فيها،
+  // ويعلّم التنبيه كمراجَع كل من يقرأ؛ تعديله وحذفه لمدير النظام
+  { match: eq('sahara_report_alerts_v1'), read: ['sahara.balance', 'etihad.balance', 'sahara.petrol', 'sahara.black-oil', 'etihad.black-oil'], write: [], create: ['sahara.balance', 'etihad.balance', 'sahara.petrol', 'sahara.black-oil', 'etihad.black-oil'], markRead: true },
+  // نشاط المستخدمين على التقارير ومحادثات التصحيح: نفس من يرى سجل التنبيهات ويضيف إليه
+  { match: eq('sahara_report_activity_v1', 'sahara_report_threads_v1'), read: ['sahara.balance', 'etihad.balance', 'sahara.petrol', 'sahara.black-oil', 'etihad.black-oil'], write: [], create: ['sahara.balance', 'etihad.balance', 'sahara.petrol', 'sahara.black-oil', 'etihad.black-oil'] },
   // الإشعارات: يقرؤها الجميع ويعلّمونها كمقروءة؛ ينشئها من يسجّل واردًا أو طلب تجهيز؛ تعديلها وحذفها لمدير النظام
   { match: eq('sahara_notifications'), read: [COMMON], write: [], create: ['deliveries-sahara', 'deliveries-etihad', 'tasks'], markRead: true },
   // رسائل التوجيه القديمة: قراءة للجميع، والكتابة لمدير النظام
@@ -180,6 +187,8 @@ export const COLLECTION_KEYS = [
   // التشغيل
   'sahara_tanks', 'sahara_fuel_metrics', 'sahara_supplier_prices', 'sahara_price_log_v1',
   'sahara_tasks', 'sahara_supply_requests', 'sahara_messages',
+  // سجل التنبيهات: إضافة من عدة أجهزة دون أن يمسح أحدها الآخر
+  'sahara_report_alerts_v1', 'sahara_report_activity_v1', 'sahara_report_threads_v1',
 ] as const;
 /** نسخة محلية من آخر قيمة وصلت من الخادم لكل مجموعة (لحساب الفرق) — لا تُزامَن أبدًا */
 export const SHADOW_PREFIX = 'sahara_shadow:';

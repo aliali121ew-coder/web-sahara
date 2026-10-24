@@ -1,3 +1,4 @@
+import { logActivity } from './reportActivity';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { keepIfSame } from './keepIfSame';
 
@@ -188,8 +189,10 @@ export const useSaharaLedger = () => {
   // بلا "تأكيد البيانات" (كان الحذف يُعدّ تعديلًا معلّقًا، و"إلغاء العملية" يعيد الأيام المحذوفة)
   const remove = useCallback((id: string) => {
     const pub = readPublished();
+    const gone = readSaharaRecords().find(r => r.id === id);
     if (pub) writePublished(pub.filter(r => r.id !== id));
     writeRecords(readSaharaRecords().filter(r => r.id !== id));
+    if (gone) logActivity('sahara-gas', 'delete', gone.date);
   }, []);
 
   return { records, computed, latest, update, publishedComputed, hasPending, publish, discard, remove };

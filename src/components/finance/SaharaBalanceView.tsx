@@ -60,6 +60,10 @@ import { useCentralTanks, resolveSaharaGasoilSectionKey, tankLiters } from '../.
 import { OFFICIAL_TABLE_TANK_UNITS } from '../tanks/TanksOverview';
 import { usePermissions } from '../../lib/usePermission';
 import { DateField } from '../ui/DateField';
+import { ContinuityCard } from './ContinuityCard';
+import { continuityCheck, logReportAlert } from '../../lib/reportCheck';
+import { logActivity, recordChanges } from '../../lib/reportActivity';
+
 
 
 /**
@@ -208,6 +212,9 @@ export const SaharaBalanceView: React.FC = () => {
   // ملف الكشف الذي عبّأ النافذة: يُرفق باليوم في الأرشيف عند الحفظ فقط
   const [reportFile, setReportFile] = useState<File | null>(null);
   const reportAttach = useReportAttach();
+  // التحقق من صحة التقرير: "المدور السابق" في الكشف (يُقارن مع حالية اليوم السابق لتاريخ النموذج)
+  const [reportPrev, setReportPrev] = useState<number | undefined>(undefined);
+  const continuity = form && reportFile ? continuityCheck('sahara-gas', form.date, reportPrev, computed, form.id) : null;
 
   const handleUpload = async (file: File | undefined) => {
     if (!file || !form) return;
@@ -222,6 +229,7 @@ export const SaharaBalanceView: React.FC = () => {
       const r = await readSaharaReportFile(file, liveStations.map(s => s.name));
       const res = applySaharaReport(form, r, liveStations, computed);
       setForm(res.form);
+      setReportPrev(r.previousCarried);
       const filled = res.filled;
       const unmatched = res.unmatched.map(u => `${u.name} (${formatNumber(u.balance)})`);
       const check = !res.check ? ''
@@ -322,10 +330,15 @@ export const SaharaBalanceView: React.FC = () => {
     };
     // الحفظ يحدّث هذه الصفحة فقط؛ الواجهة الرئيسية والخزانات تنتظر "تأكيد البيانات"
     // الأيام اللاحقة تتصل بالسلسلة: يُزال منها الرصيد اليدوي ورصيد الكشف (من أقدم تاريخ تأثّر إن تغيّر تاريخ اليوم)
-    const oldDate = records.find(r => r.id === form.id)?.date ?? record.date;
+    const old = records.find(r => r.id === form.id);
+    // التعديل يُسجَّل بقيمه قبل وبعد؛ اليوم الجديد بلا كشف يُسجَّل كإضافة يدوية (من كشف: في سجل التنبيهات)
+    if (old) logActivity('sahara-gas', 'edit', record.date, recordChanges(old, record));
+    else if (!reportFile) logActivity('sahara-gas', 'create', record.date);
+    const oldDate = old?.date ?? record.date;
     const from = oldDate < record.date ? oldDate : record.date;
     update(prev => cascadeSaharaRecords(form.id ? prev.map(r => (r.id === form.id ? record : r)) : [...prev, record], from));
     if (reportFile) reportAttach.attach(record.id, reportFile);
+    if (reportFile && continuity) logReportAlert(continuityCheck('sahara-gas', record.date, reportPrev, computed, form.id), { fileName: reportFile.name, source: 'window' });
     if (reportFile && canFarms) void importFarmsFromReport(reportFile, record.date).catch(() => undefined);
     setReportFile(null);
     setViewId(null);
@@ -1074,6 +1087,7 @@ onValue={v => setForm({ ...form, previous: v })}
                       {upload.notes && <div className="text-slate-600 dark:text-slate-300">{upload.notes}</div>}
                     </div>
                   )}
+                  <ContinuityCard check={continuity} />
                 </div>
               )}
 
