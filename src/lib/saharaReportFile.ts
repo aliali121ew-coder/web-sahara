@@ -132,10 +132,15 @@ const toNumber = (v: unknown): number | null => {
   return /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : null;
 };
 
+/**
+ * مفتاح عناوين البنود فقط (لا أسماء المواقع): بعض ملفات PDF تخرج حروفها بترتيب الرسم لا القراءة،
+ * فتصبح "المصروف" "المرصوف" و"المصرف" "المرصف"، وتسقط الياء ("الى" ← "ال"، "اليومي" ← "اليوم" + ياء منفصلة)
+ */
+const labelKey = (s: string) => looseKey(s).replace(/مرص/g, 'مصر').replace(/ي/g, '');
 const isLabel = (text: string, label: string) =>
-  normalizeArabic(text) === normalizeArabic(label) || looseKey(text) === looseKey(label);
+  normalizeArabic(text) === normalizeArabic(label) || labelKey(text) === labelKey(label);
 const hasLabel = (text: string, label: string) =>
-  normalizeArabic(text).includes(normalizeArabic(label)) || looseKey(text).includes(looseKey(label));
+  normalizeArabic(text).includes(normalizeArabic(label)) || labelKey(text).includes(labelKey(label));
 
 const finish = (
   values: Partial<Record<NumberField, number>>,
