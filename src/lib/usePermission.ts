@@ -44,6 +44,8 @@ export const TAB_SECTION: Record<string, { section?: string; group?: string }> =
   settings: { section: 'settings' },
   // سجل التنبيهات: لمن يرى أحد الأقسام الأربعة (كاز الصحاري، كاز الاتحاد، البنزين، النفط الأسود)
   alerts: {},
+  // تقرير العربات
+  'vehicles-report': { section: 'reports' },
   // الملف الشخصي لكل حساب بلا صلاحية (آخر القائمة: صفحة البداية لحساب بلا أقسام)
   profile: {},
 };
