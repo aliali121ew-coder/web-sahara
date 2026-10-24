@@ -63,6 +63,11 @@ const broadcastVersion = (env: Env, ctx: ExecutionContext, version: string) => {
   if (!env.HUB) return;
   ctx.waitUntil(env.HUB.get(env.HUB.idFromName(HUB_NAME)).fetch('https://hub/notify', { method: 'POST', body: version }).catch(() => undefined));
 };
+/** إبلاغ أجهزة حساب واحد بأن صلاحياته تغيّرت */
+const notifyPermsChanged = (env: Env, ctx: ExecutionContext, userId: string) => {
+  if (!env.HUB || !userId) return;
+  ctx.waitUntil(env.HUB.get(env.HUB.idFromName(HUB_NAME)).fetch('https://hub/notify-user', { method: 'POST', body: userId }).catch(() => undefined));
+};
 /** بصمة نص قصير (FNV-1a مرتين ببذرتين): رخيصة جدًا، تكفي لبصمة النسخة */
 const cheapHash = (text: string) => {
   let a = 0x811c9dc5, b = 0x01000193 ^ text.length;
@@ -388,7 +393,14 @@ export default {
 
     // المحادثة: الحسابات والغرف والرسائل والمرفقات
     if (url.pathname.startsWith('/api/chat/')) {
-      return handleChat(request, url, env.DB, env.APP_TOKEN, env.FILES, isDemo(env));
+      // تعديل حساب من مدير النظام يمس الصلاحيات: تُبلَّغ أجهزة الحساب فتحدّث الصفحة دون تسجيل خروج
+      const target = request.method === 'PATCH' ? url.pathname.match(/^\/api\/chat\/admin\/users\/([^/]+)$/) : null;
+      const changes = target ? await request.clone().json().catch(() => null) as Record<string, unknown> | null : null;
+      const res = await handleChat(request, url, env.DB, env.APP_TOKEN, env.FILES, isDemo(env));
+      if (target && res.ok && changes && ['perms', 'single_page', 'is_admin'].some(k => changes[k] !== undefined)) {
+        notifyPermsChanged(env, ctx, decodeURIComponent(target[1]));
+      }
+      return res;
     }
 
     // مرفقات سجلات رصيد الصحاري (PDF و Excel)

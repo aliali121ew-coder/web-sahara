@@ -37,6 +37,14 @@ export class StateHub {
       }
       return new Response('ok');
     }
+    // صلاحيات حساب تغيّرت: إشارة «perms» لأجهزته المفتوحة فقط (تعرض خط النبض ثم تحدّث الصفحة)
+    if (url.pathname === '/notify-user' && request.method === 'POST') {
+      const user = (await request.text()).slice(0, 64);
+      for (const ws of user ? this.state.getWebSockets(user) : []) {
+        try { ws.send('perms'); } catch { /* اتصال مغلق */ }
+      }
+      return new Response('ok');
+    }
     if (url.pathname === '/online') {
       const online = new Set<string>();
       for (const ws of this.state.getWebSockets()) {

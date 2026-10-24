@@ -251,6 +251,8 @@ const localSyncKeys = () => Object.keys(localStorage).filter(shouldSync);
 /** حدث يُطلق بعد تطبيق تعديلات أجهزة أخرى أثناء فتح الصفحة؛ detail = المفاتيح التي تغيّرت */
 /** فُتح اتصال التحديث اللحظي (أول مرة أو بعد انقطاع) */
 export const REALTIME_OPEN_EVENT = 'sahara:realtime-open';
+/** صلاحيات هذا الحساب تغيّرت (إشارة من القناة اللحظية): خط النبض ثم تحديث الصفحة (PermsPulse) */
+export const PERMS_CHANGED_EVENT = 'sahara:perms-changed';
 export const CLOUD_APPLIED_EVENT = 'cloud-state-applied';
 
 /**
@@ -589,7 +591,8 @@ export async function initCloudSync(): Promise<InitResult> {
     };
     ws.onmessage = e => {
       lastSeen = Date.now();
-      if (typeof e.data === 'string' && e.data !== 'pong') onVersion(e.data);
+      if (e.data === 'perms') window.dispatchEvent(new Event(PERMS_CHANGED_EVENT));
+      else if (typeof e.data === 'string' && e.data !== 'pong') onVersion(e.data);
     };
     ws.onclose = () => {
       clearInterval(pingTimer);

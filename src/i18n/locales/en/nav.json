@@ -69,7 +69,9 @@
     "pwMismatch": "The new passwords do not match",
     "forgot": "Forgot your password?",
     "forgotSent": "Your request was sent to the system admin to reset your password",
-    "forgotAlready": "Your request is already with the system admin"
+    "forgotAlready": "Your request is already with the system admin",
+    "permsUpdated": "Your permissions changed · reloading in {{n}}",
+    "permsReloading": "Reloading…"
   },
   "breadcrumb": {
     "label": "Breadcrumb",
