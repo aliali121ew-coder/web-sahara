@@ -1,53 +1,59 @@
-import React, { useEffect, useState } from 'react';
-import { ShieldCheck } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import React, { useEffect, useSyncExternalStore } from 'react';
 import { PERMS_CHANGED_EVENT } from '../../lib/cloudSync';
 import { refreshProfile } from '../../lib/session';
 
-const SECONDS = 5;
-// نبضة واحدة كل 40 وحدة؛ المسار نبضتان ويتحرك بمقدار نبضة فيبدو كشاشة مراقبة متصلة
-const BEAT = 'h12 l3 -3 l3 3 h2 l2 -8 l3 14 l2 -6 h3 l2 -2 l2 2 h6';
-const ECG = `M0 10 ${BEAT} ${BEAT} ${BEAT}`;
+export const PERMS_SECONDS = 5;
+
+// العدّ التنازلي مشترك: PermsPulse يديره، والخط حول صورة الحساب في الشريط العلوي يقرؤه
+let left: number | null = null;
+const listeners = new Set<() => void>();
+const setLeft = (v: number | null) => { left = v; listeners.forEach(l => l()); };
+const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l); }; };
+
+/** الثواني المتبقية قبل تحديث الصفحة بعد تغيير الصلاحيات (null = لا تغيير) */
+export const usePermsCountdown = () => useSyncExternalStore(subscribe, () => left, () => null);
 
 /**
- * عند تغيير مدير النظام صلاحيات هذا الحساب: شارة صغيرة بحجم زر «تحديث» أعلى الشاشة فيها نبض قلب هادئ
- * وعدّ تنازلي 5 ثوانٍ، ثم تُجلب الصلاحيات الجديدة وتُحدَّث الصفحة دون تسجيل خروج.
+ * عند تغيير مدير النظام صلاحيات هذا الحساب: خط يلتف حول صورة الحساب خلال 5 ثوانٍ (Header)،
+ * ثم تُجلب الصلاحيات الجديدة وتُحدَّث الصفحة دون تسجيل خروج.
  */
 export const PermsPulse: React.FC = () => {
-  const { t } = useTranslation('nav');
-  const [left, setLeft] = useState<number | null>(null);
+  const n = usePermsCountdown();
 
   useEffect(() => {
-    const start = () => setLeft(l => (l === null ? SECONDS : l));
+    const start = () => { if (left === null) setLeft(PERMS_SECONDS); };
     window.addEventListener(PERMS_CHANGED_EVENT, start);
     return () => window.removeEventListener(PERMS_CHANGED_EVENT, start);
   }, []);
 
   useEffect(() => {
-    if (left === null) return;
-    if (left <= 0) {
+    if (n === null) return;
+    if (n <= 0) {
       // الصلاحيات المحفوظة على الجهاز تُحدَّث قبل إعادة التحميل فتظهر الصفحة الجديدة مباشرة
       void refreshProfile().catch(() => null).finally(() => window.location.reload());
       return;
     }
-    const id = setTimeout(() => setLeft(left - 1), 1000);
+    const id = setTimeout(() => setLeft(n - 1), 1000);
     return () => clearTimeout(id);
-  }, [left]);
+  }, [n]);
 
-  if (left === null) return null;
-  const label = left > 0 ? t('profile.permsUpdated', { n: left }) : t('profile.permsReloading');
-  return (
-    <div className="fixed top-2 left-1/2 -translate-x-1/2 z-[90] pointer-events-none print:hidden" role="status" aria-live="polite" aria-label={label} title={label}>
-      <div className="relative inline-flex items-center gap-1.5 h-9 px-2.5 rounded-xl text-white bg-gradient-to-tr from-emerald-600 to-teal-500 shadow-md shadow-emerald-500/25">
-        <ShieldCheck className="w-4 h-4 shrink-0" />
-        <svg viewBox="0 0 40 20" className="w-14 h-5 overflow-hidden" aria-hidden="true">
-          <g style={{ animation: 'perms-ecg 1.6s linear infinite' }}>
-            <path d={ECG} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
-          </g>
-        </svg>
-        <span className="min-w-[22px] h-[22px] px-1 rounded-full bg-white/25 text-[11.5px] font-black font-mono tabular-nums leading-[22px] text-center">{Math.max(left, 0)}</span>
-      </div>
-      <style>{'@keyframes perms-ecg{from{transform:translateX(0)}to{transform:translateX(-40px)}}'}</style>
-    </div>
-  );
+  return null;
 };
+
+/** خط احترافي يلتف حول صورة الحساب ويكتمل خلال مدة العدّ (يُرسم فوق الزر) */
+export const PermsRing: React.FC<{ label: string }> = ({ label }) => (
+  <span className="pointer-events-none absolute -inset-[3px]" role="status" aria-live="polite" aria-label={label} title={label}>
+    <svg viewBox="0 0 52 52" className="w-full h-full overflow-visible" aria-hidden="true">
+      <defs>
+        <linearGradient id="perms-ring" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#10b981" />
+          <stop offset="1" stopColor="#14b8a6" />
+        </linearGradient>
+      </defs>
+      <rect x="1.5" y="1.5" width="49" height="49" rx="14" fill="none" stroke="#10b981" strokeOpacity="0.18" strokeWidth="2.5" />
+      <rect x="1.5" y="1.5" width="49" height="49" rx="14" fill="none" stroke="url(#perms-ring)" strokeWidth="2.5" strokeLinecap="round"
+        pathLength={100} strokeDasharray="100" style={{ animation: `perms-ring ${PERMS_SECONDS}s linear forwards`, filter: 'drop-shadow(0 0 3px rgba(16,185,129,.55))' }} />
+    </svg>
+    <style>{'@keyframes perms-ring{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}'}</style>
+  </span>
+);
