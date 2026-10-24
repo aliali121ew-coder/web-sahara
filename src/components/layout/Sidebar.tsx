@@ -5,6 +5,7 @@ import {
   Database,
   MessageSquare,
   Settings,
+  BellRing,
   Menu,
   X,
   ShieldCheck,
@@ -29,6 +30,7 @@ import { NavTabId } from '../../types';
 import { getAmbientBgColor, getAmbientGradientStyle } from '../../lib/themeGradients';
 import { ProfileCard } from './ProfileCard';
 import { useSupportCount } from '../admin/useSupportCount';
+import { useOpenAlertsCount } from '../alerts/useOpenAlertsCount';
 import { useConnection } from '../../lib/useConnection';
 import { chatApi } from '../chat/chatApi';
 
@@ -274,6 +276,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const tokens = useMemo(() => getDesignTokens(sidebarStyle, themeMode), [sidebarStyle, themeMode]);
   // طلبات الموظفين المفتوحة (لمدير النظام): شارة على «الإعدادات»
   const supportCount = useSupportCount();
+  const alertsCount = useOpenAlertsCount();
 
   // Master Navigation Groups with Enterprise Submenus
   const allGroups: NavGroup[] = useMemo(() => [
@@ -292,6 +295,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         // الشركتان منفصلتان في القائمة (كانتا تحت "رصيد الشركة")
         { id: 'finance-etihad', label: t('nav:items.financeEtihad'), icon: Building2 },
         { id: 'finance-sahara', label: t('nav:items.financeSahara'), icon: Factory },
+        // سجل التنبيهات (التحقق من صحة التقارير) تحت شركة الصحاري، مع عدد غير المراجَع
+        { id: 'alerts', label: t('nav:items.alerts'), icon: BellRing, badge: alertsCount ? String(alertsCount) : undefined },
       ]
     },
     {
@@ -301,7 +306,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: 'settings', label: t('nav:items.settings'), icon: Settings, badge: supportCount ? String(supportCount) : undefined },
       ]
     }
-  ], [t, supportCount]);
+  ], [t, supportCount, alertsCount]);
 
   // Filter items based on permissions
   const permittedGroups = useMemo(() => {

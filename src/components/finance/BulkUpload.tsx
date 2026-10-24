@@ -118,6 +118,7 @@ export const BulkUploadButton: React.FC<{ company?: 'sahara' | 'etihad' }> = ({ 
       n.tanksOver?.length ? t('finance:bulk.note.tanksOver', { list: n.tanksOver.join('، ') }) : '',
       n.farmsFailed ? t('finance:bulk.note.farmsFailed') : '',
       n.inbound ? t('finance:bulk.note.inbound', { added: n.inbound.added, recorded: n.inbound.recorded }) : '',
+      n.continuity?.status === 'mismatch' ? t('finance:bulk.note.continuity', { diff: n.continuity.diff.toLocaleString('en-US'), date: n.continuity.prevDate }) : '',
       ...(n.annual || []).map(a => t('finance:bulk.note.annual', { site: n.site, year: a.year, added: a.added, changed: a.changed }))
     ].filter(Boolean).join(' — ');
   };

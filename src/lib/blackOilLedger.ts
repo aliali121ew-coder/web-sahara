@@ -72,7 +72,7 @@ export const BLACK_OIL_SITES: Record<BlackOilCompany, { key: string; name: strin
   // الصحاري: "موقف الصحاري" في نفس ملف التقرير اليومي
   sahara: [{ key: 'sahara', name: 'موقع الصحاري', words: ['صحاري'] }]
 };
-const siteName = (key: string) => Object.values(BLACK_OIL_SITES).flat().find(s => s.key === key)?.name ?? key;
+export const siteName = (key: string) => Object.values(BLACK_OIL_SITES).flat().find(s => s.key === key)?.name ?? key;
 
 /** الشركة صاحبة السجل: لكل شركة سجل نفط أسود مستقل */
 export type BlackOilCompany = 'etihad' | 'sahara';

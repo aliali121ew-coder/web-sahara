@@ -37,12 +37,13 @@ const ReportsAnalytics = lazyPage(() => import('./components/reports/ReportsAnal
 const ChatApp = lazyPage(() => import('./components/chat/ChatApp'), 'ChatApp');
 const SettingsView = lazyPage(() => import('./components/settings/SettingsView'), 'SettingsView');
 const ProfileView = lazyPage(() => import('./components/settings/ProfileView'), 'ProfileView');
+const ReportAlertsView = lazyPage(() => import('./components/alerts/ReportAlertsView'), 'ReportAlertsView');
 
 const PAGE_PRELOADERS: Record<string, { preload: () => void }> = {
   dashboard: MainDashboard, tanks: TanksOverview, prices: PricesView, suppliers: SuppliersView,
   deliveries: InboundDeliveries, 'deliveries-sahara': InboundDeliveries, 'deliveries-etihad': InboundDeliveries,
   finance: FinanceBalance, 'finance-etihad': FinanceBalance, 'finance-sahara': FinanceBalance,
-  managers: SiteManagers, tasks: TasksLogistics, reports: ReportsAnalytics, chat: ChatApp, settings: SettingsView, profile: ProfileView,
+  managers: SiteManagers, tasks: TasksLogistics, reports: ReportsAnalytics, chat: ChatApp, settings: SettingsView, profile: ProfileView, alerts: ReportAlertsView,
 };
 
 const AppContent: React.FC = () => {
@@ -194,6 +195,8 @@ const AppContent: React.FC = () => {
         return <SettingsView />;
       case 'profile':
         return <ProfileView />;
+      case 'alerts':
+        return <ReportAlertsView />;
       default:
         return <MainDashboard />;
     }

@@ -1,0 +1,50 @@
+{
+  "title": "Alerts log",
+  "subtitle": "Daily report check: the «carried forward» balance in every saved report must match the previous day's current balance, for Sahara gas, Etihad gas, petrol and black oil.",
+  "reviewAll": "Review all ({{count}})",
+  "kpi": {
+    "total": "Checks",
+    "mismatch": "Mismatched reports",
+    "open": "Awaiting review",
+    "rate": "Match rate"
+  },
+  "group": {
+    "all": "All sections",
+    "sahara-gas": "Sahara gas",
+    "etihad-gas": "Etihad gas",
+    "petrol": "Petrol",
+    "black-oil": "Black oil"
+  },
+  "section": {
+    "sahara-gas": "Sahara gas",
+    "etihad-gas": "Etihad gas",
+    "petrol": "Petrol",
+    "black-oil-sahara": "Black oil · Sahara",
+    "black-oil-etihad": "Black oil · Etihad"
+  },
+  "status": {
+    "all": "All",
+    "mismatch": "Mismatch",
+    "match": "Match",
+    "noFileValue": "No carried value",
+    "noPrevDay": "No previous day"
+  },
+  "onlyOpen": "Unreviewed only",
+  "search": "Search by file, date or employee",
+  "empty": "No checks yet",
+  "emptyFiltered": "No results for these filters",
+  "emptyHint": "When a day is saved from a report file (from the section window or bulk upload), its carried-forward balance is compared with the previous day's current balance and shown here.",
+  "reportOf": "Report for {{date}}",
+  "fileCarried": "Carried forward in report",
+  "systemCurrent": "Current balance on {{date}}",
+  "prevCurrent": "Previous day current",
+  "diff": "Difference",
+  "site": "Site",
+  "sites": "Sites",
+  "review": "Mark reviewed",
+  "reviewed": "Reviewed",
+  "source": {
+    "window": "From section window",
+    "bulk": "From bulk upload"
+  }
+}

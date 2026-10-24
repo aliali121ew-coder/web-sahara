@@ -1,4 +1,16 @@
 {
+  "check": {
+    "status": {
+      "match": "Report verified: carried forward matches the previous day's current balance",
+      "mismatch": "Warning: the report's carried forward does not match the previous day's current balance",
+      "noFileValue": "Not verified: the report has no carried-forward balance",
+      "noPrevDay": "No previous day in the system to compare with"
+    },
+    "fileCarried": "Carried forward in report",
+    "systemCurrent": "Current balance on {{date}}",
+    "noFileHint": "Current balance on {{date}} in the system: {{value}}",
+    "logged": "The result is recorded in the «Alerts log» when you save"
+  },
   "saharaBalance": {
     "upload": {
       "imagesUnsupported": "Image uploads aren’t supported — upload the statement as an Excel or PDF file",
@@ -1072,7 +1084,8 @@
       "tanksOver": "Quantity above tank capacity (set to full): {{list}}",
       "farmsFailed": "Saved — could not read the site farms from the report",
       "annual": "{{site}} {{year}}: {{added}} new days, {{changed}} changed",
-      "inbound": "{{added}} shipments added — {{recorded}} already recorded were skipped"
+      "inbound": "{{added}} shipments added — {{recorded}} already recorded were skipped",
+      "continuity": "Carried forward differs from the current balance on {{date}} by {{diff}} — recorded in the alerts log"
     }
   },
   "siteHub": {

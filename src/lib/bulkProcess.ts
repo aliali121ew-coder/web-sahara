@@ -21,6 +21,7 @@ import { archiveKeyCounts, inboundRowDelivery, parseInboundFile, pickUnrecorded 
 import { applyNameIndex, readNameIndex } from './nameIndex';
 import type { EtihadBalanceRecord } from '../types/finance';
 import type { InboundDelivery } from '../types';
+import { blackOilContinuity, continuityCheck, etihadHistory, logReportAlert, type CheckStatus } from './reportCheck';
 import type { BulkKind } from './bulkUpload';
 
 /**
@@ -38,7 +39,7 @@ export interface BulkResult {
   date?: string;
   reasons?: BulkSkipReason[];
   /** ملاحظات لا تمنع الحفظ: مواقع غير مطابقة، فرق عن رصيد الكشف، فشل إرفاق الملف، ونتيجة كل شركة */
-  notes?: { unmatched?: string[]; diff?: number; attachFailed?: boolean; tanksMissing?: string[]; tanksOver?: string[]; farmsFailed?: boolean; site?: string; annual?: AnnualImport[]; companies?: Partial<Record<BlackOilCompany, BulkCompanyOutcome>>; inbound?: { added: number; recorded: number } };
+  notes?: { unmatched?: string[]; diff?: number; attachFailed?: boolean; tanksMissing?: string[]; tanksOver?: string[]; farmsFailed?: boolean; site?: string; annual?: AnnualImport[]; companies?: Partial<Record<BlackOilCompany, BulkCompanyOutcome>>; inbound?: { added: number; recorded: number }; continuity?: { status: CheckStatus; diff: number; prevDate: string | null } };
   error?: string;
 }
 
@@ -109,6 +110,8 @@ export const processBulkFile = async (kind: BulkKind, file: File, progress: (p: 
       const totalDeductions = etihadExpense + sales;
       if (totalDeductions > previous + purchases) return { status: 'skipped', date, reasons: ['negative'] };
       const currentBalance = previous + purchases - totalDeductions;
+      // التحقق من صحة التقرير قبل إدخال اليوم في السجل
+      const check = continuityCheck('etihad-gas', date, r.previous, etihadHistory());
       const newest = [...records].sort((a, b) => dayOf(b.date).localeCompare(dayOf(a.date)))[0];
       const record: EtihadBalanceRecord = {
         id: `rec-${Date.now()}`,
@@ -141,7 +144,8 @@ export const processBulkFile = async (kind: BulkKind, file: File, progress: (p: 
       progress(80);
       const attached = await attach(record.id, file);
       const diff = r.current !== null ? Math.round(currentBalance - r.current) : 0;
-      return { status: 'saved', date, notes: { diff: diff || undefined, attachFailed: !attached } };
+      logReportAlert(check, { fileName: file.name, source: 'bulk' });
+      return { status: 'saved', date, notes: { diff: diff || undefined, attachFailed: !attached, continuity: { status: check.status, diff: check.diff, prevDate: check.prevDate } } };
     }
 
     if (kind === 'etihad-inbound' || kind === 'sahara-inbound') {
@@ -175,14 +179,16 @@ export const processBulkFile = async (kind: BulkKind, file: File, progress: (p: 
       progress(65);
       if (blockers.length) return { status: 'skipped', date: applied.form.date, reasons: blockers };
       const record = { ...saharaDraft(applied.form), id: `sah-${Date.now()}`, savedAt: new Date().toISOString() };
+      const check = continuityCheck('sahara-gas', record.date, r.previousCarried, computed);
       updateSaharaRecords(prev => [...prev, record]);
+      logReportAlert(check, { fileName: file.name, source: 'bulk' });
       progress(80);
       const attached = await attach(record.id, file);
       // مزارع الموقع من نفس الكشف (لمن يملك تعديلها)؛ فشلها لا يلغي حفظ اليوم
       const farms = canEdit('sahara.reserves') ? await importFarmsFromReport(file, record.date).then(() => true, () => false) : true;
       return {
         status: 'saved', date: record.date,
-        notes: { unmatched: applied.unmatched.map(u => u.name), diff: applied.check?.diff || undefined, attachFailed: !attached, farmsFailed: !farms || undefined }
+        notes: { unmatched: applied.unmatched.map(u => u.name), diff: applied.check?.diff || undefined, attachFailed: !attached, farmsFailed: !farms || undefined, continuity: { status: check.status, diff: check.diff, prevDate: check.prevDate } }
       };
     }
 
@@ -197,10 +203,12 @@ export const processBulkFile = async (kind: BulkKind, file: File, progress: (p: 
       progress(65);
       if (blockers.length) return { status: 'skipped', date: applied.form.date, reasons: blockers };
       const record = petrolRecord(applied.form, computed);
+      const check = continuityCheck('petrol', record.date, data.previous, computed);
       updatePetrolRecords(prev => [...prev, record]);
+      logReportAlert(check, { fileName: file.name, source: 'bulk' });
       progress(80);
       const attached = await attach(record.id, file);
-      return { status: 'saved', date: record.date, notes: { unmatched: applied.unmatched, attachFailed: !attached } };
+      return { status: 'saved', date: record.date, notes: { unmatched: applied.unmatched, attachFailed: !attached, continuity: { status: check.status, diff: check.diff, prevDate: check.prevDate } } };
     }
 
     if (kind === 'site-annual') {
@@ -244,6 +252,7 @@ export const processBulkFile = async (kind: BulkKind, file: File, progress: (p: 
     const outcome: Partial<Record<BlackOilCompany, BulkCompanyOutcome>> = {};
     let saved: string | undefined;
     let attachFailed = false;
+    let mismatch: NonNullable<BulkResult['notes']>['continuity'];
     for (const [n, company] of companies.entries()) {
       const sites = BLACK_OIL_SITES[company];
       const records = readBlackOilRecords(company);
@@ -253,7 +262,11 @@ export const processBulkFile = async (kind: BulkKind, file: File, progress: (p: 
       const blockers = blackOilSaveBlockers(form, derived, records);
       if (blockers.length) { outcome[company] = { saved: false, reasons: blockers }; continue; }
       const record = blackOilRecord(form, derived, undefined, tankSnapshot);
+      const own = Object.fromEntries(sites.filter(s => report[s.key]).map(s => [s.key, report[s.key]]));
+      const check = blackOilContinuity(company, record.date, own, computed);
       updateBlackOilRecords(company, prev => [...prev, record]);
+      logReportAlert(check, { fileName: file.name, source: 'bulk' });
+      if (check.status === 'mismatch') mismatch = { status: check.status, diff: check.diff, prevDate: check.prevDate };
       if (!(await attach(record.id, file))) attachFailed = true;
       outcome[company] = { saved: true };
       saved = record.date;
@@ -262,7 +275,7 @@ export const processBulkFile = async (kind: BulkKind, file: File, progress: (p: 
     if (!saved) {
       return { status: 'skipped', date, reasons: [...new Set(Object.values(outcome).flatMap(o => o?.reasons || []))], notes: { companies: outcome } };
     }
-    return { status: 'saved', date: saved, notes: { attachFailed, companies: outcome } };
+    return { status: 'saved', date: saved, notes: { attachFailed, companies: outcome, continuity: mismatch } };
   } catch (e) {
     return { status: 'skipped', reasons: ['readFailed'], error: e instanceof Error ? e.message : String(e) };
   } finally {

@@ -19,6 +19,11 @@ import {
 } from '../../lib/blackOilForm';
 import { usePermissions } from '../../lib/usePermission';
 import { DateField } from '../ui/DateField';
+import { ContinuityCard } from './ContinuityCard';
+import { blackOilContinuity, logReportAlert } from '../../lib/reportCheck';
+import { siteName as blackOilSiteName } from '../../lib/blackOilLedger';
+import type { BlackOilSiteReport } from '../../lib/blackOilReportFile';
+
 
 export { getBlackOilAvgDaily, DEFAULT_BLACK_OIL_AVG_DAILY } from '../../lib/blackOilLedger';
 
@@ -137,6 +142,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive' | 'h
     const rec: BlackOilRecord = blackOilRecord(form, derived!, old, tankSnapshot);
     update(prev => (form.id ? prev.map(r => (r.id === form.id ? rec : r)) : [...prev, rec]));
     if (reportFile) reportAttach.attach(rec.id, reportFile);
+    if (reportFile && reportSites) logReportAlert(blackOilContinuity(company, rec.date, reportSites, computed, form.id), { fileName: reportFile.name, source: 'window' });
     setReportFile(null);
     setForm(null);
   };
@@ -146,6 +152,9 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive' | 'h
   const [reportState, setReportState] = useState<
     { status: 'idle' } | { status: 'reading'; fileName: string } | { status: 'done'; fileName: string; found: string[] } | { status: 'error'; message: string }
   >({ status: 'idle' });
+  // التحقق من صحة التقرير: لكل موقف، المدور المشتق (الحقيقي − الوارد + الاستهلاك) مقابل حالية اليوم السابق
+  const [reportSites, setReportSites] = useState<Record<string, BlackOilSiteReport> | null>(null);
+  const continuity = form && reportFile && reportSites ? blackOilContinuity(company, form.date, reportSites, computed, form.id) : null;
   const fillFromReport = async (file: File) => {
     if (!form) return;
     setReportState({ status: 'reading', fileName: file.name });
@@ -153,6 +162,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive' | 'h
     try {
       const { sites: report, date } = await parseBlackOilReport(file, sites.map(x => ({ key: x.key, words: x.words })));
       setForm(f => f && applyBlackOilReport(f, report, date));
+      setReportSites(report);
       setReportState({ status: 'done', fileName: file.name, found: sites.filter(x => report[x.key]).map(x => x.name) });
       setReportFile(file);
     } catch (err) {
@@ -437,6 +447,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive' | 'h
                   <span><Trans t={t} i18nKey="finance:blackOil.form.filledFrom" values={{ file: reportState.fileName, sites: fmtList(reportState.found.map(n => enumText(n))) }} components={{ 1: <span className="font-mono" /> }} /></span>
                 </div>
               )}
+              {reportState.status === 'done' && <ContinuityCard check={continuity} siteName={k => enumText(blackOilSiteName(k))} />}
               {reportState.status === 'error' && (
                 <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs font-bold">
                   <AlertTriangle className="w-4 h-4 shrink-0" />
