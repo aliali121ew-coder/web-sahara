@@ -10,6 +10,7 @@ import { DemoBanner } from './components/layout/DemoBanner';
 import { Sidebar } from './components/layout/Sidebar';
 import { QuickActionModal } from './components/layout/QuickActionModal';
 import { lazyPage } from './lib/lazyPage';
+import { PermsPulse } from './components/layout/PermsPulse';
 import { CHAT_ENABLED } from './lib/features';
 import { ComingSoonPage } from './components/layout/ComingSoonPage';
 import i18n from './i18n';
@@ -269,6 +270,7 @@ const AppContent: React.FC = () => {
 
       {/* أرشفة PDF شهر مزارع المواقع تلقائيًا بعد انتهائه (في الخلفية، لمن يملك تعديل الاحتياطي) */}
       <Suspense fallback={null}><SiteFarmsAutoArchive /></Suspense>
+      <PermsPulse />
 
       {/* Quick Action Modal */}
       <QuickActionModal
