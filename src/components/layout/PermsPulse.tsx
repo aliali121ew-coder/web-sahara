@@ -5,12 +5,13 @@ import { PERMS_CHANGED_EVENT } from '../../lib/cloudSync';
 import { refreshProfile } from '../../lib/session';
 
 const SECONDS = 5;
-// ثلاث نبضات على عرض الشاشة (المسار يُمدّ أفقيًا)
-const ECG = 'M0 8 H110 L120 8 L126 4 L132 8 L140 8 L146 1 L154 15 L160 8 L172 8 L178 6 L186 8 H330 L340 8 L346 4 L352 8 L360 8 L366 1 L374 15 L380 8 L392 8 L398 6 L406 8 H550 L560 8 L566 4 L572 8 L580 8 L586 1 L594 15 L600 8 L612 8 L618 6 L626 8 H700';
+// نبضة واحدة كل 40 وحدة؛ المسار نبضتان ويتحرك بمقدار نبضة فيبدو كشاشة مراقبة متصلة
+const BEAT = 'h12 l3 -3 l3 3 h2 l2 -8 l3 14 l2 -6 h3 l2 -2 l2 2 h6';
+const ECG = `M0 10 ${BEAT} ${BEAT} ${BEAT}`;
 
 /**
- * عند تغيير مدير النظام صلاحيات هذا الحساب: خط نبض صغير أعلى الشاشة 5 ثوانٍ مع عدّ تنازلي،
- * ثم تُجلب الصلاحيات الجديدة وتُحدَّث الصفحة دون تسجيل خروج.
+ * عند تغيير مدير النظام صلاحيات هذا الحساب: شارة صغيرة بحجم زر «تحديث» أعلى الشاشة فيها نبض قلب هادئ
+ * وعدّ تنازلي 5 ثوانٍ، ثم تُجلب الصلاحيات الجديدة وتُحدَّث الصفحة دون تسجيل خروج.
  */
 export const PermsPulse: React.FC = () => {
   const { t } = useTranslation('nav');
@@ -34,21 +35,19 @@ export const PermsPulse: React.FC = () => {
   }, [left]);
 
   if (left === null) return null;
+  const label = left > 0 ? t('profile.permsUpdated', { n: left }) : t('profile.permsReloading');
   return (
-    <div className="fixed inset-x-0 top-0 z-[90] pointer-events-none print:hidden" role="status" aria-live="polite">
-      <svg viewBox="0 0 700 16" preserveAspectRatio="none" className="block w-full h-4" aria-hidden="true">
-        <path d="M0 8 H700" className="stroke-emerald-500/20" strokeWidth="1" fill="none" />
-        <path d={ECG} fill="none" className="stroke-emerald-500" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round"
-          style={{ strokeDasharray: '60 1400', animation: 'perms-ecg 1.6s linear infinite' }} />
-      </svg>
-      <div className="h-0.5 bg-emerald-500 origin-right rtl:origin-right ltr:origin-left" style={{ animation: `perms-fill ${SECONDS}s linear forwards` }} />
-      <div className="flex justify-center mt-1">
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/95 dark:bg-slate-900/95 ring-1 ring-emerald-200 dark:ring-emerald-900 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 shadow-sm">
-          <ShieldCheck className="w-3 h-3" />
-          {left > 0 ? t('profile.permsUpdated', { n: left }) : t('profile.permsReloading')}
-        </span>
+    <div className="fixed top-2 left-1/2 -translate-x-1/2 z-[90] pointer-events-none print:hidden" role="status" aria-live="polite" aria-label={label} title={label}>
+      <div className="relative inline-flex items-center gap-1.5 h-9 px-2.5 rounded-xl text-white bg-gradient-to-tr from-emerald-600 to-teal-500 shadow-md shadow-emerald-500/25">
+        <ShieldCheck className="w-4 h-4 shrink-0" />
+        <svg viewBox="0 0 40 20" className="w-14 h-5 overflow-hidden" aria-hidden="true">
+          <g style={{ animation: 'perms-ecg 1.6s linear infinite' }}>
+            <path d={ECG} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
+          </g>
+        </svg>
+        <span className="min-w-[22px] h-[22px] px-1 rounded-full bg-white/25 text-[11.5px] font-black font-mono tabular-nums leading-[22px] text-center">{Math.max(left, 0)}</span>
       </div>
-      <style>{'@keyframes perms-ecg{from{stroke-dashoffset:60}to{stroke-dashoffset:-1400}}@keyframes perms-fill{from{transform:scaleX(0)}to{transform:scaleX(1)}}'}</style>
+      <style>{'@keyframes perms-ecg{from{transform:translateX(0)}to{transform:translateX(-40px)}}'}</style>
     </div>
   );
 };
