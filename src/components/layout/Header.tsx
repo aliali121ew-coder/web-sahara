@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { initials, logout, refreshProfile, useSessionProfile } from '../../lib/session';
 import { ProfileCard } from './ProfileCard';
+import { PermsRing, usePermsCountdown } from './PermsPulse';
 import { chatApi } from '../chat/chatApi';
 import { useTheme } from '../../context/ThemeContext';
 import { useFuelStore, useFuelNav } from '../../context/FuelDataContext';
@@ -66,6 +67,8 @@ export const Header: React.FC<HeaderProps> = ({
   // «الملف الشخصي» من قائمة الصورة: بطاقة الحساب (الاسم والصورة وكلمة المرور والثيم)
   const [showCard, setShowCard] = useState<boolean>(false);
   const [cardAnchor, setCardAnchor] = useState<DOMRect | null>(null);
+  // تغيير الصلاحيات: خط يلتف حول الصورة ثم تُحدَّث الصفحة
+  const permsLeft = usePermsCountdown();
 
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -282,8 +285,9 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="relative" ref={profileRef}>
             <button
               onClick={() => setShowProfileMenu(!showProfileMenu)}
-              className="flex items-center p-0.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-800 transition-all"
+              className="relative flex items-center p-0.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-800 transition-all"
             >
+              {permsLeft !== null && <PermsRing label={permsLeft > 0 ? t('nav:profile.permsUpdated', { n: permsLeft }) : t('nav:profile.permsReloading')} />}
               <div className="w-10 h-10 rounded-[10px] text-white font-black text-sm flex items-center justify-center shadow-xs overflow-hidden" style={{ background: profile?.color || '#4f46e5' }}>
                 {profile?.avatar ? <img src={profile.avatar} alt="" className="w-full h-full object-cover" /> : initials(profile?.name)}
               </div>
