@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { notifySyncedStorage, SYNCED_STORAGE_EVENT } from '../../lib/useSyncedStorage';
+import { logActivity, recordChanges } from '../../lib/reportActivity';
 import { usePermissions } from '../../lib/usePermission';
 import { canViewAnySite } from '../../lib/siteAccess';
 import { useSessionState } from '../../lib/useSessionState';
@@ -424,12 +425,15 @@ export const FinanceBalance: React.FC = () => {
 
   const handleDelete = (id: string) => {
     if (window.confirm(t('finance:hub.confirmDeleteRecord'))) {
+      const gone = records.find(r => r.id === id);
+      if (gone) logActivity('etihad-gas', 'delete', gone.date);
       setRecords(prev => prev.filter(r => r.id !== id));
       if (activeRecordId === id) setActiveRecordId(null);
     }
   };
 
   const handleDeleteMany = (ids: string[]) => {
+    records.filter(r => ids.includes(r.id)).forEach(r => logActivity('etihad-gas', 'delete', r.date));
     setRecords(prev => prev.filter(r => !ids.includes(r.id)));
     if (activeRecordId && ids.includes(activeRecordId)) {
       setActiveRecordId(null);
@@ -438,7 +442,10 @@ export const FinanceBalance: React.FC = () => {
 
   // يعيد رقم السجل حتى يُرفق به ملف الكشف في الأرشيف
   // بعد الحفظ يُعاد حساب رصيد كل الأيام اللاحقة من يوم إلى يوم (من أقدم تاريخ تأثّر إن تغيّر تاريخ اليوم)
-  const handleSaveRecord = (recordPayload: Omit<EtihadBalanceRecord, 'id'>, id?: string): string => {
+  const handleSaveRecord = (recordPayload: Omit<EtihadBalanceRecord, 'id'>, id?: string, fromReport = false): string => {
+    const old = id ? records.find(r => r.id === id) : undefined;
+    if (old) logActivity('etihad-gas', 'edit', recordPayload.date, recordChanges(old, recordPayload));
+    else if (!fromReport) logActivity('etihad-gas', 'create', recordPayload.date);
     if (id) {
       setRecords(prev => {
         const oldDate = prev.find(r => r.id === id)?.date ?? recordPayload.date;

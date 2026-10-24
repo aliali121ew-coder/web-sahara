@@ -1,3 +1,4 @@
+import { logActivity } from './reportActivity';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CLOUD_APPLIED_EVENT } from './cloudSync';
 import { syncSaharaPetrolTanks } from './centralTanks';
@@ -160,8 +161,10 @@ export const usePetrolLedger = () => {
   // بلا "تأكيد البيانات" (كان الحذف يُعدّ تعديلًا معلّقًا، و"إلغاء العملية" يعيد الأيام المحذوفة)
   const remove = useCallback((id: string) => {
     const pub = readList(PUBLISHED_KEY);
+    const gone = readPetrolRecords().find(r => r.id === id);
     if (pub) write(PUBLISHED_KEY, pub.filter(r => r.id !== id));
     write(STORAGE_KEY, readPetrolRecords().filter(r => r.id !== id));
+    if (gone) logActivity('petrol', 'delete', gone.date);
   }, []);
 
   return { records, computed, latest, update, publishedComputed, hasPending, publish, discard, remove };

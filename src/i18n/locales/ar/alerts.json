@@ -1,11 +1,12 @@
 {
   "title": "سجل التنبيهات",
-  "reviewAll": "مراجعة الكل ({{count}})",
   "kpi": {
-    "total": "عمليات التحقق",
-    "mismatch": "تقارير غير مطابقة",
-    "open": "بانتظار المراجعة",
-    "rate": "نسبة المطابقة"
+    "mismatch": "غير مطابقة",
+    "rate": "نسبة المطابقة",
+    "uploads": "تقارير مرفوعة",
+    "waitingUser": "بانتظار المستخدم",
+    "waitingAdmin": "بانتظار المدير",
+    "closed": "صُحّحت"
   },
   "group": {
     "all": "كل الأقسام",
@@ -39,11 +40,134 @@
   "prevCurrent": "حالي اليوم السابق",
   "diff": "الفرق",
   "site": "الموقف",
-  "sites": "المواقف",
   "review": "تمت المراجعة",
   "reviewed": "رُوجع",
   "source": {
     "window": "من نافذة القسم",
     "bulk": "من الرفع المتعدد"
+  },
+  "period": {
+    "7d": "7 أيام",
+    "30d": "30 يومًا",
+    "all": "الكل"
+  },
+  "export": "تصدير",
+  "tab": {
+    "alerts": "التنبيهات",
+    "users": "نشاط المستخدمين",
+    "corrections": "طلبات التصحيح"
+  },
+  "thread": {
+    "none": "—",
+    "waiting_user": "بانتظار المستخدم",
+    "waiting_admin": "بانتظار إغلاق المدير",
+    "closed": "صُحّح وأُغلق"
+  },
+  "timeline": "المسار الزمني",
+  "actions": "سجل الإجراءات",
+  "backToList": "رجوع إلى القائمة",
+  "pickAlert": "اختر تنبيهًا لعرض تفاصيله وإجراءاته",
+  "pickUser": "اختر مستخدمًا لعرض كل إجراءاته على التقارير",
+  "noActivity": "لا يوجد نشاط في هذه الفترة",
+  "noUserActions": "لا توجد إجراءات في هذه الفترة",
+  "noCorrections": "لا توجد طلبات تصحيح",
+  "noCorrectionsHint": "يطلب مدير النظام التصحيح من تفاصيل التنبيه غير المطابق، فيظهر الطلب هنا وعند المستخدم.",
+  "userOpen": "{{count}} طلب مفتوح",
+  "lastActive": "آخر نشاط {{when}}",
+  "userSummary": "{{mismatch}} خطأ · {{edits}} تعديل",
+  "userChip": {
+    "upl": "{{count}} تقرير",
+    "ok": "{{count}} مطابق",
+    "bad": "{{count}} غير مطابق",
+    "create": "{{count}} إضافة يدوية",
+    "edit": "{{count}} تعديل",
+    "delete": "{{count}} حذف",
+    "open": "{{count}} طلب مفتوح"
+  },
+  "ev": {
+    "upload": "رفع التقرير «{{file}}»",
+    "check": {
+      "match": "التحقق: مطابق",
+      "mismatch": "التحقق: غير مطابق",
+      "noFileValue": "التحقق: الكشف بلا مدور سابق",
+      "noPrevDay": "التحقق: لا يوم سابق"
+    },
+    "diff": "الفرق {{diff}}",
+    "auto": "تلقائي",
+    "request": "طلب تصحيح من @{{to}}",
+    "reply": "ردّ وأكمل الإجراء",
+    "close": "أُغلق الطلب",
+    "reopen": "أُعيد فتح الطلب",
+    "userUpload": "رفع كشف {{section}} ليوم {{date}}",
+    "create": "إضافة يوم {{date}} يدويًا · {{section}}",
+    "edit": "تعديل يوم {{date}} · {{section}}",
+    "delete": "حذف يوم {{date}} · {{section}}",
+    "user_request": "طلب تصحيح · {{section}} {{date}}",
+    "user_reply": "أكمل طلب تصحيح · {{section}} {{date}}",
+    "user_close": "أغلق طلب تصحيح · {{section}} {{date}}",
+    "user_reopen": "أعاد فتح طلب تصحيح · {{section}} {{date}}"
+  },
+  "act": {
+    "requestTitle": "طلب تصحيح من {{name}}",
+    "requestPh": "مثال: الرصيد الحالي ليوم {{date}} عندنا {{value}}. راجع المدور السابق في الكشف أو صحّح اليوم السابق.",
+    "request": "إرسال طلب التصحيح",
+    "reviewedNoRequest": "رُوجع التنبيه دون طلب تصحيح",
+    "awaitAdmin": "بانتظار مراجعة مدير النظام",
+    "matchNoAction": "التقرير مطابق — لا يحتاج إجراء",
+    "replyTitle": "التصحيح المطلوب: صحّح ثم اكتب ما فعلت",
+    "replyPh": "مثال: صحّحت المدور السابق في الكشف وأعدت رفعه",
+    "complete": "الرد وإكمال الإجراء",
+    "openSection": "فتح القسم للتعديل",
+    "waitingFor": "بانتظار تصحيح @{{name}}",
+    "closeTitle": "راجع رد المستخدم",
+    "closePh": "ملاحظة اختيارية للإغلاق أو لإعادة الفتح",
+    "close": "إغلاق الطلب",
+    "reopen": "إعادة فتح الطلب",
+    "waitingAdmin": "أُكمل الإجراء — بانتظار إغلاق مدير النظام",
+    "closed": "صُحّح وأُغلق الطلب"
+  },
+  "corrLast": {
+    "request": "طلب {{name}}",
+    "reply": "ردّ {{name}}",
+    "close": "أغلقه {{name}}",
+    "reopen": "أعاد فتحه {{name}}"
+  },
+  "csv": {
+    "date": "وقت التحقق",
+    "section": "القسم",
+    "report": "يوم الكشف",
+    "status": "الحالة",
+    "file": "المدور في الكشف",
+    "system": "حالي اليوم السابق",
+    "diff": "الفرق",
+    "correction": "طلب التصحيح",
+    "fileName": "الملف",
+    "by": "رفعه",
+    "source": "المصدر",
+    "fileNameExport": "سجل-التنبيهات"
+  },
+  "field": {
+    "vehicles": "الآليات",
+    "farms": "المزارع",
+    "generators": "المولدات",
+    "sales": "المبيعات",
+    "inbound": "الوارد",
+    "inboundQty": "الوارد",
+    "inboundInternal": "الوارد الداخلي",
+    "consumption": "الاستهلاك",
+    "purchases": "المشتريات",
+    "etihadExpense": "استهلاك الاتحاد",
+    "otherSales": "المبيعات",
+    "previousBalance": "الرصيد السابق",
+    "currentBalance": "الرصيد الحالي",
+    "previousOverride": "الرصيد السابق (يدوي)",
+    "currentOverride": "الرصيد الحالي (يدوي)",
+    "powerTank": "خزان الطاقة",
+    "price": "السعر",
+    "currentPrice": "السعر",
+    "operationalGas": "كاز تشغيلي",
+    "cleanGas": "كاز نظيف",
+    "previous": "الرصيد السابق",
+    "current": "الرصيد الحالي"
   }
 }

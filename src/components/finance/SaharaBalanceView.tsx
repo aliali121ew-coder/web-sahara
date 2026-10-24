@@ -62,6 +62,7 @@ import { usePermissions } from '../../lib/usePermission';
 import { DateField } from '../ui/DateField';
 import { ContinuityCard } from './ContinuityCard';
 import { continuityCheck, logReportAlert } from '../../lib/reportCheck';
+import { logActivity, recordChanges } from '../../lib/reportActivity';
 
 
 
@@ -329,7 +330,11 @@ export const SaharaBalanceView: React.FC = () => {
     };
     // الحفظ يحدّث هذه الصفحة فقط؛ الواجهة الرئيسية والخزانات تنتظر "تأكيد البيانات"
     // الأيام اللاحقة تتصل بالسلسلة: يُزال منها الرصيد اليدوي ورصيد الكشف (من أقدم تاريخ تأثّر إن تغيّر تاريخ اليوم)
-    const oldDate = records.find(r => r.id === form.id)?.date ?? record.date;
+    const old = records.find(r => r.id === form.id);
+    // التعديل يُسجَّل بقيمه قبل وبعد؛ اليوم الجديد بلا كشف يُسجَّل كإضافة يدوية (من كشف: في سجل التنبيهات)
+    if (old) logActivity('sahara-gas', 'edit', record.date, recordChanges(old, record));
+    else if (!reportFile) logActivity('sahara-gas', 'create', record.date);
+    const oldDate = old?.date ?? record.date;
     const from = oldDate < record.date ? oldDate : record.date;
     update(prev => cascadeSaharaRecords(form.id ? prev.map(r => (r.id === form.id ? record : r)) : [...prev, record], from));
     if (reportFile) reportAttach.attach(record.id, reportFile);

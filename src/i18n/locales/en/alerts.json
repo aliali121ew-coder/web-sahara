@@ -1,11 +1,12 @@
 {
   "title": "Alerts log",
-  "reviewAll": "Review all ({{count}})",
   "kpi": {
-    "total": "Checks",
-    "mismatch": "Mismatched reports",
-    "open": "Awaiting review",
-    "rate": "Match rate"
+    "mismatch": "Mismatched",
+    "rate": "Match rate",
+    "uploads": "Reports uploaded",
+    "waitingUser": "Waiting for user",
+    "waitingAdmin": "Waiting for admin",
+    "closed": "Corrected"
   },
   "group": {
     "all": "All sections",
@@ -39,11 +40,134 @@
   "prevCurrent": "Previous day current",
   "diff": "Difference",
   "site": "Site",
-  "sites": "Sites",
   "review": "Mark reviewed",
   "reviewed": "Reviewed",
   "source": {
     "window": "From section window",
     "bulk": "From bulk upload"
+  },
+  "period": {
+    "7d": "7 days",
+    "30d": "30 days",
+    "all": "All"
+  },
+  "export": "Export",
+  "tab": {
+    "alerts": "Alerts",
+    "users": "User activity",
+    "corrections": "Correction requests"
+  },
+  "thread": {
+    "none": "—",
+    "waiting_user": "Waiting for user",
+    "waiting_admin": "Waiting for admin to close",
+    "closed": "Corrected and closed"
+  },
+  "timeline": "Timeline",
+  "actions": "Actions log",
+  "backToList": "Back to list",
+  "pickAlert": "Choose an alert to see its details and actions",
+  "pickUser": "Choose a user to see all their report actions",
+  "noActivity": "No activity in this period",
+  "noUserActions": "No actions in this period",
+  "noCorrections": "No correction requests",
+  "noCorrectionsHint": "The system admin requests a correction from a mismatched alert; it shows here and to the user.",
+  "userOpen": "{{count}} open",
+  "lastActive": "Last active {{when}}",
+  "userSummary": "{{mismatch}} errors · {{edits}} edits",
+  "userChip": {
+    "upl": "{{count}} reports",
+    "ok": "{{count}} matched",
+    "bad": "{{count}} mismatched",
+    "create": "{{count}} manual",
+    "edit": "{{count}} edits",
+    "delete": "{{count}} deletes",
+    "open": "{{count}} open requests"
+  },
+  "ev": {
+    "upload": "Uploaded report «{{file}}»",
+    "check": {
+      "match": "Check: match",
+      "mismatch": "Check: mismatch",
+      "noFileValue": "Check: no carried-forward value",
+      "noPrevDay": "Check: no previous day"
+    },
+    "diff": "Difference {{diff}}",
+    "auto": "Automatic",
+    "request": "Correction requested from @{{to}}",
+    "reply": "Replied and completed the action",
+    "close": "Request closed",
+    "reopen": "Request reopened",
+    "userUpload": "Uploaded {{section}} report for {{date}}",
+    "create": "Added {{date}} by hand · {{section}}",
+    "edit": "Edited {{date}} · {{section}}",
+    "delete": "Deleted {{date}} · {{section}}",
+    "user_request": "Requested a correction · {{section}} {{date}}",
+    "user_reply": "Completed a correction · {{section}} {{date}}",
+    "user_close": "Closed a correction · {{section}} {{date}}",
+    "user_reopen": "Reopened a correction · {{section}} {{date}}"
+  },
+  "act": {
+    "requestTitle": "Request a correction from {{name}}",
+    "requestPh": "Example: our current balance for {{date}} is {{value}}. Check the carried forward in the report or correct the previous day.",
+    "request": "Send correction request",
+    "reviewedNoRequest": "Reviewed without a correction request",
+    "awaitAdmin": "Waiting for the system admin to review",
+    "matchNoAction": "Report matches — no action needed",
+    "replyTitle": "Correction requested: fix it, then describe what you did",
+    "replyPh": "Example: corrected the carried forward in the report and uploaded it again",
+    "complete": "Reply and complete the action",
+    "openSection": "Open the section to edit",
+    "waitingFor": "Waiting for @{{name}} to correct",
+    "closeTitle": "Review the reply",
+    "closePh": "Optional note for closing or reopening",
+    "close": "Close request",
+    "reopen": "Reopen request",
+    "waitingAdmin": "Action completed — waiting for the system admin to close",
+    "closed": "Corrected and closed"
+  },
+  "corrLast": {
+    "request": "{{name}} requested",
+    "reply": "{{name}} replied",
+    "close": "Closed by {{name}}",
+    "reopen": "Reopened by {{name}}"
+  },
+  "csv": {
+    "date": "Checked at",
+    "section": "Section",
+    "report": "Report day",
+    "status": "Status",
+    "file": "Carried forward in report",
+    "system": "Previous day current",
+    "diff": "Difference",
+    "correction": "Correction",
+    "fileName": "File",
+    "by": "Uploaded by",
+    "source": "Source",
+    "fileNameExport": "alerts-log"
+  },
+  "field": {
+    "vehicles": "Vehicles",
+    "farms": "Farms",
+    "generators": "Generators",
+    "sales": "Sales",
+    "inbound": "Inbound",
+    "inboundQty": "Inbound",
+    "inboundInternal": "Internal inbound",
+    "consumption": "Consumption",
+    "purchases": "Purchases",
+    "etihadExpense": "Etihad consumption",
+    "otherSales": "Sales",
+    "previousBalance": "Previous balance",
+    "currentBalance": "Current balance",
+    "previousOverride": "Previous balance (manual)",
+    "currentOverride": "Current balance (manual)",
+    "powerTank": "Power tank",
+    "price": "Price",
+    "currentPrice": "Price",
+    "operationalGas": "Operational gas",
+    "cleanGas": "Clean gas",
+    "previous": "Previous balance",
+    "current": "Current balance"
   }
 }

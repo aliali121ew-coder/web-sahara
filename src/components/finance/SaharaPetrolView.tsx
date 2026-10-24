@@ -44,6 +44,7 @@ import { usePermissions } from '../../lib/usePermission';
 import { DateField } from '../ui/DateField';
 import { ContinuityCard } from './ContinuityCard';
 import { continuityCheck, logReportAlert } from '../../lib/reportCheck';
+import { logActivity, recordChanges } from '../../lib/reportActivity';
 
 
 // منطق النموذج (يوم جديد، التعبئة من الكشف، السجل، شروط الحفظ) في lib/petrolForm.ts
@@ -217,6 +218,9 @@ export const SaharaPetrolView: React.FC = () => {
   const save = () => {
     if (!form || !canSave) return;
     const record: PetrolLedgerRecord = petrolRecord(form, computed);
+    const old = form.id ? records.find(r => r.id === form.id) : undefined;
+    if (old) logActivity('petrol', 'edit', record.date, recordChanges(old, record));
+    else if (!reportFile) logActivity('petrol', 'create', record.date);
     // الحفظ يحدّث هذه الصفحة فقط؛ الواجهة الرئيسية والخزانات تنتظر "تأكيد البيانات"
     update(prev => (form.id ? prev.map(r => (r.id === form.id ? record : r)) : [...prev, record]));
     if (reportFile) reportAttach.attach(record.id, reportFile);

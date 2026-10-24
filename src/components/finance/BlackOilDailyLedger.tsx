@@ -21,6 +21,7 @@ import { usePermissions } from '../../lib/usePermission';
 import { DateField } from '../ui/DateField';
 import { ContinuityCard } from './ContinuityCard';
 import { blackOilContinuity, logReportAlert } from '../../lib/reportCheck';
+import { logActivity, recordChanges } from '../../lib/reportActivity';
 import { siteName as blackOilSiteName } from '../../lib/blackOilLedger';
 import type { BlackOilSiteReport } from '../../lib/blackOilReportFile';
 
@@ -140,6 +141,9 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive' | 'h
     if (!form || !canSave || !derived) return;
     const old = form.id ? records.find(r => r.id === form.id) : undefined;
     const rec: BlackOilRecord = blackOilRecord(form, derived!, old, tankSnapshot);
+    const section = company === 'sahara' ? 'black-oil-sahara' : 'black-oil-etihad';
+    if (old) logActivity(section, 'edit', rec.date, recordChanges(old, rec));
+    else if (!reportFile) logActivity(section, 'create', rec.date);
     update(prev => (form.id ? prev.map(r => (r.id === form.id ? rec : r)) : [...prev, rec]));
     if (reportFile) reportAttach.attach(rec.id, reportFile);
     if (reportFile && reportSites) logReportAlert(blackOilContinuity(company, rec.date, reportSites, computed, form.id), { fileName: reportFile.name, source: 'window' });
@@ -208,6 +212,7 @@ export const BlackOilDailyLedger: React.FC<{ variant?: 'recent' | 'archive' | 'h
   const doRemove = () => {
     if (confirmDel) {
       update(prev => prev.filter(r => r.id !== confirmDel.id));
+      logActivity(company === 'sahara' ? 'black-oil-sahara' : 'black-oil-etihad', 'delete', confirmDel.date);
       removeDayFiles(confirmDel.id).catch(() => {});
     }
     setConfirmDel(null);

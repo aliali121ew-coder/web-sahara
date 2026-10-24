@@ -43,7 +43,7 @@ interface EtihadTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   /** يعيد رقم السجل المحفوظ (لإرفاق ملف الكشف به في الأرشيف) */
-  onSave: (record: Omit<EtihadBalanceRecord, 'id'>, id?: string) => string | void;
+  onSave: (record: Omit<EtihadBalanceRecord, 'id'>, id?: string, fromReport?: boolean) => string | void;
   editRecord?: EtihadBalanceRecord | null;
   lastRecordedPrice?: number;
   defaultPreviousBalance?: number;
@@ -265,7 +265,7 @@ export const EtihadTransactionModal: React.FC<EtihadTransactionModalProps> = ({
 
     // التحقق قبل الحفظ (السجل الجديد لم يدخل التاريخ بعد)
     const check = reportFile ? continuityCheck('etihad-gas', recordPayload.date, reportPrev, etihadHistory(), editRecord?.id) : null;
-    const savedId = onSave(recordPayload, editRecord?.id) || editRecord?.id;
+    const savedId = onSave(recordPayload, editRecord?.id, !!reportFile) || editRecord?.id;
     if (reportFile && savedId) reportAttach.attach(savedId, reportFile);
     if (reportFile && check) logReportAlert(check, { fileName: reportFile.name, source: 'window' });
     setReportFile(null);
