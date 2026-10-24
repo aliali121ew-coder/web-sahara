@@ -21,6 +21,10 @@ export const readCentralTanks = (fallback: TankUnitRow[]): TankUnitRow[] => {
 };
 
 const writeCentralTanks = (units: TankUnitRow[]) => {
+  // ختم وقت آخر تحديث للخزان الذي تغيّر منسوبه (يظهر في ترويسة قسمه)
+  const before = new Map(readCentralTanks([]).map(t => [t.id, t.levelMeters]));
+  const now = Date.now();
+  units = units.map(t => (before.get(t.id) !== t.levelMeters ? { ...t, updatedAt: now } : t));
   localStorage.setItem(CENTRAL_TANKS_KEY, JSON.stringify(units));
   recordDailySnapshot(units);
   window.dispatchEvent(new Event(SYNC_EVENT));

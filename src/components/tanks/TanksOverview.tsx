@@ -14,8 +14,7 @@ import {
   ArrowUp,
   ArrowDown,
   PencilLine,
-  X
-} from 'lucide-react';
+  X, Clock } from 'lucide-react';
 import { formatNumber } from '../../lib/utils';
 import { useTranslation, Trans } from 'react-i18next';
 import { Tank3DCard } from './Tank3DCard';
@@ -29,6 +28,7 @@ import { usePetrolLedger } from '../../lib/petrolLedger';
 import { enumText, siteName } from '../../i18n/enums';
 import i18n from '../../i18n';
 import { usePermissions } from '../../lib/usePermission';
+import { fmtDate, fmtTime } from '../../i18n/format';
 
 // Model for Detailed Tank Unit
 export interface TankUnitRow {
@@ -44,6 +44,7 @@ export interface TankUnitRow {
   temperatureC: number;      // درجة الحرارة
   pressureBar: number;       // الضغط
   hidden?: boolean;          // مخفي: لا يظهر في صفحات العرض ولا يُحتسب في الأرصدة
+  updatedAt?: number;        // آخر تغيير لمنسوب الخزان (ms) — يُختم عند الحفظ في centralTanks
 }
 
 // Section Configuration Definition
@@ -695,6 +696,9 @@ export const TanksOverview: React.FC = () => {
           return { ...t, ...comp };
         });
 
+        // آخر تحديث للقسم = أحدث تغيير لمنسوب أحد خزاناته
+        const secUpdatedAt = Math.max(0, ...tanks.filter(t => !t.hidden).map(t => t.updatedAt || 0));
+
         const secAveragePercent = secTotalCapacity > 0
           ? Number(((secTotalStored / secTotalCapacity) * 100).toFixed(1))
           : 0;
@@ -704,7 +708,8 @@ export const TanksOverview: React.FC = () => {
           tanks: calculatedTanks,
           secTotalCapacity,
           secTotalStored,
-          secAveragePercent
+          secAveragePercent,
+          secUpdatedAt
         };
       })
       .filter((s): s is NonNullable<typeof s> => s !== null);
@@ -856,7 +861,7 @@ export const TanksOverview: React.FC = () => {
 
       {/* 🚀 2. SECTIONS GRID */}
       <div className="space-y-8 sm:space-y-10">
-        {sectionsData.map(({ config, tanks, secTotalCapacity, secTotalStored, secAveragePercent }, sectionIndex) => {
+        {sectionsData.map(({ config, tanks, secTotalCapacity, secTotalStored, secAveragePercent, secUpdatedAt }, sectionIndex) => {
           const Icon = getSectionIcon(config);
 
           return (
@@ -980,6 +985,12 @@ export const TanksOverview: React.FC = () => {
                       <span className="text-[10px] font-bold text-slate-400 block">{t('tanks:section.total')}</span>
                       <span className="text-xs sm:text-sm font-black font-mono text-slate-900 dark:text-white">
                         {formatNumber(secTotalStored)} <span className="text-[9px] text-slate-400 font-normal">/ {formatNumber(secTotalCapacity)} {t('common:units.liter')}</span>
+                      </span>
+                      <span className="mt-0.5 flex items-center gap-1 text-[10px] font-bold text-slate-400" title={secUpdatedAt ? fmtDate(secUpdatedAt, { dateStyle: 'full', timeStyle: 'short' }) : undefined}>
+                        <Clock className="w-3 h-3" />
+                        {secUpdatedAt
+                          ? t('tanks:section.updated', { date: fmtDate(secUpdatedAt, { day: 'numeric', month: 'short' }), time: fmtTime(secUpdatedAt) })
+                          : t('tanks:section.notUpdated')}
                       </span>
                     </div>
                     <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/30 flex items-center justify-center font-mono font-black text-xs text-blue-600 dark:text-blue-400">
