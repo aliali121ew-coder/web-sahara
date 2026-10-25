@@ -22,6 +22,10 @@ export const PERM_GROUPS: SectionGroup[] = [
       { id: 'managers', label: 'مدراء المواقع' },
       { id: 'tasks', label: 'المهام والطلبات' },
       { id: 'reports', label: 'التقارير' },
+      // سجل التنبيهات: «عرض» يفتح الصفحة (تنبيهات أقسام الحساب فقط)، «تعديل» يسمح بالرد على طلبات التصحيح
+      { id: 'alerts', label: 'سجل التنبيهات' },
+      // تقرير العربات: يُبنى من الواردات التي يملك الحساب صلاحية عليها
+      { id: 'vehicles-report', label: 'تقرير العربات' },
       { id: 'chat', label: 'المحادثة' },
       { id: 'settings', label: 'الإعدادات' },
       { id: 'appearance', label: 'ضبط المظهر والخلفية' },
@@ -70,7 +74,7 @@ export const ALL_SECTIONS = PERM_GROUPS.flatMap(g => g.sections.map(s => s.id));
  * «صفحة واحدة فقط»: حساب لا يرى القائمة الجانبية ولا يتنقل بين الصفحات، ويفتح صفحته التي حدّدتها الإدارة فقط.
  * واجهة فقط (الصلاحيات الفعلية وحماية البيانات على الخادم كما هي)، ولا تُطبَّق على مدير النظام.
  */
-export const SINGLE_PAGE_TABS = ['dashboard', 'tanks', 'prices', 'suppliers', 'deliveries-sahara', 'deliveries-etihad', 'finance-etihad', 'finance-sahara', 'chat', 'settings'] as const;
+export const SINGLE_PAGE_TABS = ['dashboard', 'tanks', 'prices', 'suppliers', 'deliveries-sahara', 'deliveries-etihad', 'finance-etihad', 'finance-sahara', 'chat', 'settings', 'alerts', 'vehicles-report'] as const;
 export type SinglePageTab = (typeof SINGLE_PAGE_TABS)[number];
 export const sanitizeSinglePage = (v: unknown): string =>
   typeof v === 'string' && (SINGLE_PAGE_TABS as readonly string[]).includes(v) ? v : '';
@@ -97,6 +101,23 @@ export const levelOf = (perms: Perms, isAdmin: boolean, section: string): Level 
 export const groupLevel = (perms: Perms, isAdmin: boolean, groupId: string): Level => {
   const g = PERM_GROUPS.find(x => x.id === groupId);
   return (g ? Math.max(0, ...g.sections.map(s => levelOf(perms, isAdmin, s.id))) : 0) as Level;
+};
+
+/** أقسام التحقق من التقارير (تطابق CHECK_SECTION_PERM في checkSections.ts) */
+const CHECK_PERM_SECTIONS = ['sahara.balance', 'etihad.balance', 'sahara.petrol', 'sahara.black-oil', 'etihad.black-oil'];
+
+/**
+ * ترحيل مرة واحدة: يمنح صلاحيتي «سجل التنبيهات» و«تقرير العربات» لمن كان يفتحهما قبل أن تصبحا مستقلتين.
+ * - alerts: تعديل لمن يعدّل أحد أقسام التحقق (كان يستطيع الرد)، وعرض لمن يراها فقط
+ * - vehicles-report: عرض لمن يملك «التقارير»
+ * لا يغيّر صلاحية موجودة، ويعيد نفس الكائن إن لم يتغيّر شيء.
+ */
+export const grantPagePerms = (perms: Perms): Perms => {
+  const add: Perms = {};
+  const check = Math.max(0, ...CHECK_PERM_SECTIONS.map(s => perms[s] || 0)) as Level;
+  if (!perms.alerts && check) add.alerts = check;
+  if (!perms['vehicles-report'] && perms.reports) add['vehicles-report'] = 1;
+  return Object.keys(add).length ? { ...perms, ...add } : perms;
 };
 
 // ───── ربط مفاتيح البيانات بالأقسام ─────

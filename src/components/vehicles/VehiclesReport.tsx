@@ -1,6 +1,8 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useState, useMemo } from 'react';
 import { useFuelStore } from '../../context/FuelDataContext';
+import { usePermissions } from '../../lib/usePermission';
+import { ShieldAlert } from 'lucide-react';
 import { buildFleetAnalytics } from './vehicleDataUtils';
 import { TruckCard } from './TruckCard';
 import { TopConsumersPanel } from './TopConsumersPanel';
@@ -21,7 +23,14 @@ import {
 } from 'lucide-react';
 
 export const VehiclesReport: React.FC = () => {
-  const { saharaDeliveries, etihadDeliveries } = useFuelStore();
+  const { saharaDeliveries: saharaAll, etihadDeliveries: etihadAll } = useFuelStore();
+  // التقرير يُبنى من الواردات التي يملك الحساب صلاحية عرضها فقط (مدير النظام يرى الكل)
+  const { canView } = usePermissions();
+  const seeSahara = canView('deliveries-sahara');
+  const seeEtihad = canView('deliveries-etihad');
+  const noAccess = !seeSahara && !seeEtihad;
+  const saharaDeliveries = useMemo(() => (seeSahara ? saharaAll : []), [seeSahara, saharaAll]);
+  const etihadDeliveries = useMemo(() => (seeEtihad ? etihadAll : []), [seeEtihad, etihadAll]);
 
   // State for search and filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -89,6 +98,23 @@ export const VehiclesReport: React.FC = () => {
   const handlePrint = () => {
     window.print();
   };
+
+  // بلا صلاحية على أي واردات: رسالة توضيح بدل تقرير فارغ (أو عربات العرض التجريبية)
+  if (noAccess) {
+    return (
+      <div className="pb-12 font-cairo">
+        <div id="vehicles-report-no-access" className="max-w-xl mx-auto mt-10 rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-8 text-center shadow-soft-card">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mb-4">
+            <ShieldAlert className="w-7 h-7" />
+          </div>
+          <h2 className="text-lg font-black text-slate-900 dark:text-white">لا توجد صلاحية على الواردات</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 leading-7">
+            تقرير العربات يُبنى من بيانات الواردات. اطلب من مدير النظام صلاحية «واردات الصحاري» أو «واردات الاتحاد».
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-12 font-cairo">

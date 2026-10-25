@@ -14,7 +14,7 @@ import { checkPublicKey, parseClientData, randomChallenge, verifyAssertion } fro
 import { ensureFileColumns, loadFile, removeFile, storeFile } from './storage/files';
 import { schemaGate } from './storage/schema';
 import type { D1Database, D1PreparedStatement, R2Bucket } from './types';
-import { levelOf, parsePerms, sanitizePerms, sanitizeSinglePage, type Perms } from '../src/lib/permCatalog';
+import { grantPagePerms, levelOf, parsePerms, sanitizePerms, sanitizeSinglePage, type Perms } from '../src/lib/permCatalog';
 
 export type ChatDB = D1Database;
 
@@ -40,7 +40,7 @@ const str = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max
 const uid = () => crypto.randomUUID();
 
 // زِد الإصدار عند أي تعديل على التهيئة أدناه (راجع worker/storage/schema.ts)
-const CHAT_SCHEMA = '3';
+const CHAT_SCHEMA = '4';
 const ensureTables = (db: ChatDB) => schemaGate(db, 'chat', CHAT_SCHEMA, async () => {
   await db.exec("CREATE TABLE IF NOT EXISTS chat_users (id TEXT PRIMARY KEY, name TEXT NOT NULL, role TEXT NOT NULL DEFAULT '', bio TEXT NOT NULL DEFAULT '', avatar TEXT NOT NULL DEFAULT '', color TEXT NOT NULL DEFAULT '', last_seen INTEGER NOT NULL DEFAULT 0, typing_room TEXT NOT NULL DEFAULT '', typing_at INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL)");
   await db.exec("CREATE TABLE IF NOT EXISTS chat_rooms (id TEXT PRIMARY KEY, type TEXT NOT NULL, name TEXT NOT NULL DEFAULT '', description TEXT NOT NULL DEFAULT '', avatar TEXT NOT NULL DEFAULT '', created_by TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)");
@@ -96,7 +96,33 @@ const ensureTables = (db: ChatDB) => schemaGate(db, 'chat', CHAT_SCHEMA, async (
   const now = Date.now();
   await db.prepare("INSERT OR IGNORE INTO chat_rooms (id, type, name, description, avatar, created_by, created_at, updated_at) VALUES (?1, 'group', ?2, ?3, '', '', ?4, ?4)")
     .bind(GENERAL_ROOM, 'غرفة العمليات العامة', 'القناة الرئيسية لكل فريق الموقع', now).run();
+  await migratePagePerms(db);
 });
+
+const PERMS_MIGRATION_FLAG = 'perms_migrated:alerts-vehicles-v1';
+const migratePagePerms = async (db: ChatDB) => {
+  await db.exec('CREATE TABLE IF NOT EXISTS system_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL)');
+  const { results: done } = await db.prepare('SELECT 1 FROM system_meta WHERE key = ?').bind(PERMS_MIGRATION_FLAG).all();
+  if (done.length) return;
+  const { results } = await db.prepare('SELECT id, perms FROM chat_users WHERE is_admin = 0').all<{ id: string; perms: string }>();
+  const stmts: D1PreparedStatement[] = [];
+  for (const u of results) {
+    const p = parsePerms(u.perms);
+    const next = grantPagePerms(p);
+    if (next !== p) {
+      stmts.push(db.prepare('UPDATE chat_users SET perms = ? WHERE id = ?').bind(JSON.stringify(next), u.id));
+    }
+  }
+  if (stmts.length) {
+    const BATCH = 50;
+    for (let i = 0; i < stmts.length; i += BATCH) {
+      await db.batch(stmts.slice(i, i + BATCH));
+    }
+    await db.prepare('INSERT INTO audit_log (at, user_id, username, action, detail, ip) VALUES (?, ?, ?, ?, ?, ?)')
+      .bind(Date.now(), 'system', 'system', 'ترحيل الصلاحيات', `ترحيل صلاحيات الصفحات (${stmts.length} حساب)`, 'system').run().catch(() => {});
+  }
+  await db.prepare('INSERT OR REPLACE INTO system_meta (key, value, updated_at) VALUES (?, ?, ?)').bind(PERMS_MIGRATION_FLAG, String(stmts.length), Date.now()).run();
+};
 
 const parseMessage = (m: MessageRow) => ({
   ...m,
