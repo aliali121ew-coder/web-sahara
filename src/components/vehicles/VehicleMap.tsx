@@ -24,7 +24,7 @@ interface Draft { vehicle: string; km: string; date: string; fromName: string; t
  * خريطة حقيقية (تكبير وتصغير) لمسارات العربات: كل رحلة تُضاف يدويًا بالعربة والمسافة،
  * ويُرسم خطها فقط إن حُددت نقطتا البداية والنهاية على الخريطة.
  */
-export const VehicleMap: React.FC<{ date: string | null; vehicles: string[]; editable: boolean }> = ({ date, vehicles, editable }) => {
+export const VehicleMap: React.FC<{ date: string | null; vehicles: string[]; editable: boolean; vehicle?: string; title?: string }> = ({ date, vehicles, editable, vehicle, title = 'خريطة المسارات' }) => {
   const [routes, setRoutes] = useSyncedStorage<VehicleRoute[]>(VEHICLE_ROUTES_KEY, []);
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
@@ -35,7 +35,8 @@ export const VehicleMap: React.FC<{ date: string | null; vehicles: string[]; edi
   const pickRef = useRef<Picking>(null);
   pickRef.current = picking;
 
-  const visible = useMemo(() => (date ? routes.filter(r => r.date === date) : routes), [routes, date]);
+  // صفحة العربة: مساراتها فقط وفي كل الفترة
+  const visible = useMemo(() => routes.filter(r => (!date || r.date === date) && (!vehicle || r.vehicle === vehicle)), [routes, date, vehicle]);
   const totalKm = visible.reduce((s, r) => s + r.km, 0);
 
   // إنشاء الخريطة مرة واحدة
@@ -97,7 +98,7 @@ export const VehicleMap: React.FC<{ date: string | null; vehicles: string[]; edi
 
   useEffect(() => { if (box.current) box.current.style.cursor = picking ? 'crosshair' : ''; }, [picking]);
 
-  const openForm = () => setDraft({ vehicle: '', km: '', date: date || new Date().toLocaleDateString('en-CA').replace(/-/g, '/'), fromName: '', toName: '', from: null, to: null });
+  const openForm = () => setDraft({ vehicle: vehicle || '', km: '', date: date || new Date().toLocaleDateString('en-CA').replace(/-/g, '/'), fromName: '', toName: '', from: null, to: null });
 
   const save = () => {
     if (!draft) return;
@@ -132,7 +133,7 @@ export const VehicleMap: React.FC<{ date: string | null; vehicles: string[]; edi
     <div className="h-full rounded-3xl overflow-hidden bg-slate-950 text-white border border-slate-800 shadow-soft-card flex flex-col">
       <div className="px-4 pt-4 pb-3 flex items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-black flex items-center gap-2"><MapPin className="w-4 h-4 text-sky-400" />خريطة المسارات</h3>
+          <h3 className="text-sm font-black flex items-center gap-2"><MapPin className="w-4 h-4 text-sky-400" />{title}</h3>
           <p className="text-[11px] text-slate-400 mt-0.5">{visible.length} رحلة · {totalKm.toLocaleString()} كم</p>
         </div>
         {editable && !draft && (

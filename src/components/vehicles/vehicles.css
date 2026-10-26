@@ -30,3 +30,9 @@
 @media (prefers-reduced-motion: reduce) {
   .vehicle-flow, .vehicle-fill, .vehicle-kpi, .vehicle-drawer, .vehicle-float { animation: none; }
 }
+
+/* صفحة العربة */
+.vehicle-page { animation: vehicle-rise 0.35s ease-out both; }
+.vehicle-truck-in { animation: vehicle-drive 0.8s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes vehicle-drive { from { opacity: 0; transform: translateX(-40px); } }
+@media (prefers-reduced-motion: reduce) { .vehicle-page, .vehicle-truck-in { animation: none; } }

@@ -1,10 +1,11 @@
 /* eslint-disable i18next/no-literal-string */
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Truck, FileText, Fuel, Gauge, Trophy, TrendingUp, TrendingDown, Repeat2, Upload, X, Trash2, Loader2,
-  CheckCircle2, AlertTriangle, User,
+  CheckCircle2, AlertTriangle,
 } from 'lucide-react';
 import { usePermissions } from '../../lib/usePermission';
+import { useFuelNav } from '../../context/FuelDataContext';
 import { FREQUENT_DAYS, formatDay } from '../../lib/vehicleFuel';
 import { DateField } from '../ui/DateField';
 import { useVehicleData, type Scope, type UploadResult } from './useVehicleData';
@@ -12,6 +13,7 @@ import { VehicleMap } from './VehicleMap';
 import { TopVehicleCards } from './TopVehicleCards';
 import { RefillsTable } from './RefillsTable';
 import { FuelChart } from './FuelChart';
+import { VehicleDetailPage } from './VehicleDetailPage';
 import './vehicles.css';
 
 const Kpi: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactNode; sub: React.ReactNode; tone: string; onClick?: () => void }> = ({ icon, label, value, sub, tone, onClick }) => (
@@ -91,6 +93,35 @@ export const VehiclesReport: React.FC = () => {
   );
 
   const dateSet = useMemo(() => new Set(dates), [dates]);
+
+  // صفحة العربة الكاملة: مسار التنقل في الأعلى وزر الرجوع يعيدان للتقرير
+  const { setCurrentSubpage } = useFuelNav();
+  useEffect(() => {
+    if (!selected) return;
+    setCurrentSubpage({ title: `العربة ${selected.vehicle}`, parentTab: 'vehicles-report', onBack: () => setVehicle(null) });
+    return () => setCurrentSubpage(null);
+  }, [selected?.vehicle, setCurrentSubpage]);
+
+  const ranking = useMemo(() => [...history.values()].sort((a, b) => b.total - a.total).map(s => s.vehicle), [history]);
+  const fleet = useMemo(() => {
+    const total = allFills.reduce((s, f) => s + f.qty, 0);
+    return { total, avg: allFills.length ? Math.round(total / allFills.length) : 0 };
+  }, [allFills]);
+
+  if (selected) {
+    return (
+      <VehicleDetailPage
+        stat={selected}
+        ranking={ranking}
+        fleetAvg={fleet.avg}
+        fleetTotal={fleet.total}
+        vehicles={ranking}
+        editable={editable}
+        onBack={() => setVehicle(null)}
+        onOpen={setVehicle}
+      />
+    );
+  }
 
   return (
     <div className="space-y-5 pb-12 font-cairo">
@@ -214,67 +245,6 @@ export const VehiclesReport: React.FC = () => {
         </div>
       )}
 
-      {/* تفاصيل العربة */}
-      {selected && (
-        <div className="fixed inset-0 z-50 flex justify-start bg-slate-950/60 backdrop-blur-sm" onClick={() => setVehicle(null)}>
-          <div className="vehicle-drawer w-full max-w-lg h-full bg-slate-950 text-white shadow-2xl overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="relative p-5 border-b border-slate-800">
-              <div className="absolute inset-0 vehicle-hero-grid opacity-50" />
-              <div className="relative flex items-center justify-between">
-                <div>
-                  <div className="text-[11px] text-slate-400 font-bold">العربة</div>
-                  <div className="text-3xl font-black font-mono" dir="ltr">{selected.vehicle}</div>
-                </div>
-                <button type="button" onClick={() => setVehicle(null)} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 cursor-pointer" aria-label="إغلاق"><X className="w-5 h-5" /></button>
-              </div>
-              <img src="/trucks/semi_truck.jpg" alt="" className="relative mt-3 w-full h-36 object-contain rounded-2xl bg-white/95" />
-              <div className="relative grid grid-cols-4 gap-2 mt-4 text-center">
-                {[
-                  ['الإجمالي', selected.total.toLocaleString()],
-                  ['تفويلات', selected.count],
-                  ['المتوسط', selected.avg.toLocaleString()],
-                  ['متوسط الأيام', selected.avgGap ?? '—'],
-                ].map(([l, v]) => (
-                  <div key={String(l)} className="rounded-xl bg-white/5 border border-white/10 py-2">
-                    <div className="text-base font-black font-mono">{v}</div>
-                    <div className="text-[10px] text-slate-400">{l}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="p-5">
-              <h4 className="text-sm font-black mb-3">سجل التفويل</h4>
-              <ol className="relative border-r border-slate-800 mr-2 space-y-4">
-                {selected.fills.map(f => {
-                  const freq = f.days !== null && f.days <= FREQUENT_DAYS;
-                  return (
-                    <li key={f.date} className="mr-4">
-                      <span className={`absolute -right-[7px] mt-1.5 w-3.5 h-3.5 rounded-full border-2 border-slate-950 ${freq ? 'bg-rose-500' : 'bg-sky-500'}`} />
-                      <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono font-bold text-sm">{f.date}</span>
-                          <span className="font-mono font-black text-sky-300">{f.qty.toLocaleString()} لتر</span>
-                        </div>
-                        <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1"><User className="w-3 h-3" />{f.drivers.join('، ') || '—'}</div>
-                        <div className="text-[11px] text-slate-400 mt-1">
-                          {f.sites.join('، ')}{f.parts > 1 ? ` · مجموع ${f.parts} تفويلات في نفس اليوم` : ''}
-                        </div>
-                        <div className="mt-2 pt-2 border-t border-white/10 text-[11px] text-slate-400 flex flex-wrap gap-x-3">
-                          <span>السابقة: <b className="text-slate-200 font-mono">{f.prevQty?.toLocaleString() ?? '—'}</b></span>
-                          <span>بتاريخ <b className="text-slate-200 font-mono">{f.prevDate || '—'}</b></span>
-                          <span className={freq ? 'text-rose-400 font-bold' : ''}>بعد {f.days ?? '—'} يوم</span>
-                          {f.prevSite && <span>من {f.prevSite}</span>}
-                          {f.prevDriver && <span>السائق {f.prevDriver}</span>}
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ol>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
