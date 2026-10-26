@@ -3,10 +3,9 @@ import React from 'react';
 import { Flame, Repeat2, User, CalendarClock, ChevronLeft } from 'lucide-react';
 import { formatDay, type VehicleStat } from '../../lib/vehicleFuel';
 
-/** أعلى 6 عربات استهلاكًا: صورة الشاحنة وفوقها نسبة استهلاكها من الأعلى */
+/** أعلى 6 عربات استهلاكًا مع صورة الشاحنة */
 export const TopVehicleCards: React.FC<{ stats: VehicleStat[]; onOpen: (v: string) => void }> = ({ stats, onOpen }) => {
   const top = stats.slice(0, 6);
-  const max = Math.max(1, top[0]?.total || 0);
   return (
     <div className="h-full rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-soft-card">
       <div className="flex items-center justify-between mb-4">
@@ -17,7 +16,6 @@ export const TopVehicleCards: React.FC<{ stats: VehicleStat[]; onOpen: (v: strin
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
         {top.map((s, i) => {
-          const pct = Math.round((s.total / max) * 100);
           return (
             <button
               key={s.vehicle}
@@ -41,11 +39,6 @@ export const TopVehicleCards: React.FC<{ stats: VehicleStat[]; onOpen: (v: strin
 
               <div className="relative mx-3 mt-2 h-24 rounded-xl overflow-hidden bg-white dark:bg-slate-900">
                 <img src="/trucks/semi_truck.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal dark:opacity-80 group-hover:scale-105 transition-transform duration-500" />
-                {/* شريط الاستهلاك فوق المقطورة كما في لوحات التتبع */}
-                <div className="absolute top-[22%] right-[6%] w-[58%] h-[42%] rounded-md bg-sky-900/10 dark:bg-sky-900/40 overflow-hidden backdrop-blur-[1px]">
-                  <div className="h-full bg-gradient-to-l from-sky-500/90 to-indigo-500/80 vehicle-fill" style={{ width: `${pct}%` }} />
-                  <span className="absolute inset-0 flex items-center justify-center text-white text-sm font-black drop-shadow">{pct}%</span>
-                </div>
               </div>
 
               <div className="px-3 pt-2.5 pb-3 space-y-2">
