@@ -38,3 +38,13 @@
 @media (prefers-reduced-motion: reduce) { .vehicle-page, .vehicle-truck-in { animation: none; } }
 .vehicle-gauge { animation: vehicle-gauge-in 1.1s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes vehicle-gauge-in { from { stroke-dashoffset: 220; } }
+
+/* قائمة تفاصيل العربة الجانبية */
+.vehicle-sheet-in { animation: vehicle-sheet-in 0.38s cubic-bezier(.16,1,.3,1) both; }
+.vehicle-sheet-out { animation: vehicle-sheet-out 0.22s ease-in both; }
+@keyframes vehicle-sheet-in { from { transform: translateX(-100%); } }
+@keyframes vehicle-sheet-out { to { transform: translateX(-100%); } }
+.vehicle-fade-in { animation: vehicle-fade 0.25s ease-out both; }
+.vehicle-fade-out { animation: vehicle-fade 0.22s ease-in reverse both; }
+@keyframes vehicle-fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .vehicle-sheet-in, .vehicle-sheet-out, .vehicle-fade-in, .vehicle-fade-out { animation: none; } }

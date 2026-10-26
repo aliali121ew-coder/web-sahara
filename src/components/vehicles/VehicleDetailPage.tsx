@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight, ChevronRight, ChevronLeft, Fuel, Gauge, Trophy, Repeat2, Timer, Percent, Hash,
-  User, AlertTriangle, CheckCircle2, Route as RouteIcon, Layers, Pencil, ShieldCheck, Camera, Building2, Container,
+  User, AlertTriangle, CheckCircle2, Route as RouteIcon, Layers, IdCard, ShieldCheck, Building2, Container,
 } from 'lucide-react';
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine } from 'recharts';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
@@ -142,11 +142,9 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, ranking, fleetAvg, fl
             ].map((c, i) => (
               <span key={i} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold ${c.on ? 'bg-sky-500/10 text-sky-700 dark:text-sky-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>{c.icon}{c.v}</span>
             ))}
-            {editable && (
-              <button type="button" onClick={() => setEditing(true)} className="mr-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-black hover:opacity-90 cursor-pointer">
-                <Pencil className="w-3.5 h-3.5" />{profile ? 'تعديل ملف العربة' : 'إنشاء ملف العربة'}
-              </button>
-            )}
+            <button type="button" onClick={() => setEditing(true)} className="mr-auto flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-black hover:opacity-90 hover:-translate-x-0.5 transition-all cursor-pointer">
+              <IdCard className="w-3.5 h-3.5" />تفاصيل العربة
+            </button>
           </div>
           {profile?.notes && <p className="-mt-2 mb-4 text-xs text-slate-500 dark:text-slate-400 leading-6">{profile.notes}</p>}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-5 items-center">
@@ -164,11 +162,6 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, ranking, fleetAvg, fl
                 <img src={profile.photo} alt={`العربة ${stat.vehicle}`} className="relative w-full h-56 sm:h-64 object-cover rounded-3xl shadow-xl vehicle-truck-in" />
               ) : (
                 <img src="/trucks/semi_truck.jpg" alt="" className="relative w-full h-56 sm:h-64 object-contain mix-blend-multiply dark:mix-blend-normal dark:rounded-2xl dark:bg-white/95 vehicle-truck-in" />
-              )}
-              {editable && (
-                <button type="button" onClick={() => setEditing(true)} className="absolute bottom-3 left-3 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/90 dark:bg-slate-900/90 backdrop-blur text-xs font-black text-slate-700 dark:text-slate-200 shadow-lg hover:scale-105 transition-transform cursor-pointer">
-                  <Camera className="w-3.5 h-3.5" />{profile?.photo ? 'تغيير الصورة' : 'صورة العربة'}
-                </button>
               )}
               <div className="absolute top-2 left-2 flex flex-col gap-1.5">
                 <span className={`text-[11px] font-black px-2.5 py-1 rounded-xl ${vsFleet > 0 ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'}`} dir="ltr">{vsFleet > 0 ? '+' : ''}{vsFleet}% vs fleet</span>
@@ -297,8 +290,9 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, ranking, fleetAvg, fl
 
       {editing && (
         <VehicleProfileEditor
-          vehicle={stat.vehicle}
+          stat={stat}
           profile={profile}
+          editable={editable}
           drivers={[...new Set(stat.fills.flatMap(f => [...f.drivers, f.prevDriver]).filter(Boolean))]}
           onSave={saveProfile}
           onClose={() => setEditing(false)}
