@@ -142,7 +142,7 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, ranking, fleetAvg, fl
               {profile?.photo ? (
                 <img src={profile.photo} alt={`العربة ${stat.vehicle}`} className="relative w-full h-56 sm:h-64 object-cover rounded-3xl shadow-xl vehicle-truck-in" />
               ) : (
-                <VehicleArt code={stat.vehicle} scale={0.04} className="w-full h-56 sm:h-64 vehicle-truck-in dark:rounded-2xl dark:bg-white/95" imgClassName="mix-blend-multiply dark:mix-blend-normal" />
+                <VehicleArt code={stat.vehicle} scale={0.03} className="w-full h-56 sm:h-64 vehicle-truck-in dark:rounded-2xl dark:bg-white/95" imgClassName="mix-blend-multiply dark:mix-blend-normal" />
               )}
               <div className="absolute top-2 left-2 flex flex-col gap-1.5">
                 <span className={`text-[11px] font-black px-2.5 py-1 rounded-xl ${vsFleet > 0 ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'}`} dir="ltr">{vsFleet > 0 ? '+' : ''}{vsFleet}% vs fleet</span>

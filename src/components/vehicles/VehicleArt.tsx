@@ -13,7 +13,7 @@ export const VehicleArt: React.FC<{
   imgClassName?: string;
   /** حجم خط الرقم نسبةً لعرض الصورة */
   scale?: number;
-}> = ({ code, photo, className = '', imgClassName = '', scale = 0.045 }) => {
+}> = ({ code, photo, className = '', imgClassName = '', scale = 0.034 }) => {
   const cat = photo ? null : vehicleCategory(code);
   const box = useRef<HTMLDivElement>(null);
   const [boxSize, setBoxSize] = useState({ w: 0, h: 0 });
@@ -51,13 +51,17 @@ export const VehicleArt: React.FC<{
       {cat && k > 0 && (
         <span
           dir="ltr"
-          className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-mono font-black leading-none text-slate-900 bg-white border-slate-900 rounded-[3px] shadow-sm pointer-events-none select-none"
+          className="absolute whitespace-nowrap font-mono font-black leading-none text-white bg-[#111] rounded-[2px] pointer-events-none select-none"
           style={{
             left: left + iw * cat.door[0],
             top: top + ih * cat.door[1],
-            fontSize: Math.max(7, iw * scale),
-            padding: '0.18em 0.32em',
-            borderWidth: Math.max(1, iw * scale * 0.12),
+            fontSize: Math.max(6, iw * scale),
+            padding: '0.2em 0.35em 0.16em',
+            letterSpacing: '0.02em',
+            // ملصق مطبوع على الباب: يتبع ميل جانب العربة، بلا ظل ولا بروز
+            transform: `translate(-50%, -50%) skewY(${cat.tilt}deg) scaleX(0.92)`,
+            boxShadow: `inset 0 0 0 ${Math.max(0.6, iw * scale * 0.07)}px rgba(255,255,255,0.85)`,
+            opacity: 0.93,
           }}
         >
           {code}

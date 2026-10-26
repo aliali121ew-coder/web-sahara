@@ -510,26 +510,26 @@ export const shrinkImage = (file: File, max = 640): Promise<string> => new Promi
 
 // ───── فئة العربة من رمزها ─────
 
-export interface VehicleCategory { key: string; label: string; image: string; door: [number, number] }
+export interface VehicleCategory { key: string; label: string; image: string; door: [number, number]; tilt: number }
 
-/** door: موضع باب العربة في الصورة (نسبة من العرض والارتفاع) لطباعة رقمها عليه */
-const CATEGORY: Record<string, { label: string; image: string; door: [number, number] }> = {
-  HEAD: { label: 'رأس قاطرة', image: 'head', door: [0.44, 0.45] },
-  HF: { label: 'باص', image: 'hf', door: [0.66, 0.58] },
-  K: { label: 'خباطة', image: 'k', door: [0.37, 0.4] },
-  BS: { label: 'براد صغير', image: 'bs', door: [0.45, 0.56] },
-  A: { label: 'إطفاء', image: 'a', door: [0.47, 0.56] },
-  SF: { label: 'شفل صغير', image: 'sf', door: [0.83, 0.58] },
-  SF1: { label: 'شفل كبير', image: 'sf1', door: [0.78, 0.43] },
-  SL: { label: 'براد قاطرة', image: 'sl', door: [0.37, 0.5] },
-  AT: { label: 'براد', image: 'at', door: [0.38, 0.52] },
-  M: { label: 'كناسة', image: 'm', door: [0.42, 0.4] },
-  L: { label: 'قلاب', image: 'l', door: [0.37, 0.38] },
-  KS: { label: 'ضاغطة نفايات', image: 'ks', door: [0.38, 0.46] },
-  KA: { label: 'ساحبة زراعية', image: 'ka', door: [0.38, 0.4] },
-  HW: { label: 'حوضية ماء', image: 'hw', door: [0.44, 0.5] },
-  KH: { label: 'بيكب حمل', image: 'kh', door: [0.39, 0.523] },
-  KN: { label: 'كرين', image: 'kn', door: [0.3, 0.56] },
+/** door: موضع باب العربة في الصورة (نسبة من العرض والارتفاع) لطباعة رقمها عليه، tilt: ميل جانب العربة (درجة) ليتبع الرقم زاوية الباب */
+const CATEGORY: Record<string, { label: string; image: string; door: [number, number]; tilt: number }> = {
+  HEAD: { label: 'رأس قاطرة', image: 'head', door: [0.44, 0.45], tilt: 4 },
+  HF: { label: 'باص', image: 'hf', door: [0.66, 0.58], tilt: -8 },
+  K: { label: 'خباطة', image: 'k', door: [0.37, 0.4], tilt: -6 },
+  BS: { label: 'براد صغير', image: 'bs', door: [0.45, 0.56], tilt: -6 },
+  A: { label: 'إطفاء', image: 'a', door: [0.47, 0.56], tilt: -6 },
+  SF: { label: 'شفل صغير', image: 'sf', door: [0.83, 0.58], tilt: -8 },
+  SF1: { label: 'شفل كبير', image: 'sf1', door: [0.78, 0.43], tilt: -5 },
+  SL: { label: 'براد قاطرة', image: 'sl', door: [0.37, 0.5], tilt: -5 },
+  AT: { label: 'براد', image: 'at', door: [0.38, 0.52], tilt: -5 },
+  M: { label: 'كناسة', image: 'm', door: [0.42, 0.4], tilt: -5 },
+  L: { label: 'قلاب', image: 'l', door: [0.37, 0.38], tilt: -5 },
+  KS: { label: 'ضاغطة نفايات', image: 'ks', door: [0.38, 0.46], tilt: -5 },
+  KA: { label: 'ساحبة زراعية', image: 'ka', door: [0.38, 0.4], tilt: 0 },
+  HW: { label: 'حوضية ماء', image: 'hw', door: [0.44, 0.5], tilt: -6 },
+  KH: { label: 'بيكب حمل', image: 'kh', door: [0.39, 0.523], tilt: -3 },
+  KN: { label: 'كرين', image: 'kn', door: [0.3, 0.56], tilt: -5 },
 };
 
 /** أرقام الشفلات الكبيرة (SF + رقم): الشفل الكبير والصغير لكل منهما تسلسله */
