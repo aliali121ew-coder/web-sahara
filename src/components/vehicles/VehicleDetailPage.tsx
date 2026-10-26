@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight, ChevronRight, ChevronLeft, Fuel, Gauge, Trophy, Repeat2, Timer, Percent, Hash,
-  User, AlertTriangle, CheckCircle2, Route as RouteIcon, Layers, IdCard, ShieldCheck, Building2, Container,
+  User, CheckCircle2, Route as RouteIcon, Layers, IdCard, ShieldCheck, Building2, Container,
 } from 'lucide-react';
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine } from 'recharts';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
@@ -61,18 +61,6 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, ranking, fleetAvg, fl
   const myRoutes = useMemo(() => routes.filter(r => r.vehicle === stat.vehicle), [routes, stat.vehicle]);
   const km = myRoutes.reduce((s, r) => s + r.km, 0);
 
-  const drivers = useMemo(() => {
-    const m = new Map<string, { qty: number; count: number; last: string }>();
-    for (const f of stat.fills) for (const d of f.drivers) {
-      const x = m.get(d) || { qty: 0, count: 0, last: '' };
-      x.qty += f.qty / f.drivers.length;
-      x.count += 1;
-      if (f.date > x.last) x.last = f.date;
-      m.set(d, x);
-    }
-    return [...m.entries()].sort((a, b) => b[1].qty - a[1].qty);
-  }, [stat]);
-
   const chart = useMemo(() => [...stat.fills].reverse().map(f => ({ name: formatDay(f.date), qty: f.qty, prev: f.prevQty ?? null, days: f.days })), [stat]);
 
   // مخالفات ملف العربة (السعة، الحصة، السائق) — التكرار له تبويبه
@@ -88,18 +76,9 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, ranking, fleetAvg, fl
   const dailyView = stat.fills.slice(dailyPage * DAILY_PAGE, dailyPage * DAILY_PAGE + DAILY_PAGE);
 
   // ملاحظات تلقائية
-  const insights: { tone: 'warn' | 'ok'; text: string }[] = [];
-  if (stat.frequent) insights.push({ tone: 'warn', text: `فوّلت ${stat.frequent} مرة خلال ${FREQUENT_DAYS} يوم أو أقل من التفويلة السابقة` });
   const multi = stat.fills.filter(f => f.parts > 1);
-  if (multi.length) insights.push({ tone: 'warn', text: `تفويل من أكثر من موقع/مرة في نفس اليوم: ${multi.map(f => formatDay(f.date)).join('، ')}` });
-  if (vsFleet >= 25) insights.push({ tone: 'warn', text: `متوسط تفويلتها أعلى من متوسط الأسطول بـ ${vsFleet}%` });
-  if (drivers.length > 2) insights.push({ tone: 'warn', text: `تداول عليها ${drivers.length} سائقين` });
-  if (!insights.length) insights.push({ tone: 'ok', text: 'لا توجد ملاحظات: تفويل منتظم ضمن المعدل' });
 
   const disc = disciplineScore(stat, checks, fleetAvg);
-  const serious = checks.filter(c => SERIOUS.includes(c.kind));
-  for (const c of serious.slice(0, 4).reverse()) insights.unshift({ tone: 'warn', text: `${formatDay(c.date)}: ${c.text}` });
-  if (serious.length && insights[insights.length - 1]?.tone === 'ok') insights.pop();
 
   const tip = { contentStyle: { background: '#0f172a', border: '1px solid #1e293b', borderRadius: 12, fontSize: 12, color: '#e2e8f0', direction: 'rtl' as const }, labelStyle: { color: '#94a3b8', fontWeight: 700 } };
 
@@ -219,15 +198,6 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, ranking, fleetAvg, fl
                 <button type="button" onClick={() => setEditing(true)} className="w-full mt-2 text-[11px] font-bold text-sky-600 hover:underline cursor-pointer">أضف سعة الخزان لكشف التفويل الأكبر من الخزان</button>
               )}
             </div>
-          </div>
-          <div className={`${card} p-4 space-y-2`}>
-            <h3 className="text-sm font-black text-slate-900 dark:text-white mb-1">ملاحظات التحليل</h3>
-            {insights.map(n => (
-              <div key={n.text} className={`flex items-start gap-2 text-xs rounded-xl p-2.5 ${n.tone === 'warn' ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'}`}>
-                {n.tone === 'warn' ? <AlertTriangle className="w-4 h-4 shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0" />}
-                <span className="font-bold leading-6">{n.text}</span>
-              </div>
-            ))}
           </div>
         </div>
       </div>
