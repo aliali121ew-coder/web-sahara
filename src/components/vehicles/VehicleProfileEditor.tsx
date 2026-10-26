@@ -1,5 +1,6 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, IdCard, Fuel, Hash, Timer, Repeat2, User, Container, ShieldCheck, Building2, StickyNote, Save } from 'lucide-react';
 import { getProfile } from '../../lib/session';
 import { FREQUENT_DAYS, VEHICLE_TYPES, formatDay, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
@@ -46,7 +47,8 @@ export const VehicleProfileEditor: React.FC<{
   const label = 'text-[11px] font-black text-slate-500 dark:text-slate-400 mb-1.5 flex items-center gap-1.5';
   const overCap = (q: number) => !!p.tankLiters && q > p.tankLiters;
 
-  return (
+  // على body مباشرة: حركة دخول الصفحة (transform) تجعل fixed نسبيًا لها فتُقص القائمة
+  return createPortal(
     <div className={`fixed inset-0 z-[1000] flex justify-start ${closing ? 'vehicle-fade-out' : 'vehicle-fade-in'}`} role="dialog" aria-modal="true" aria-label={`تفاصيل العربة ${stat.vehicle}`}>
       <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-[3px]" onClick={close} />
       <aside className={`relative h-full w-full sm:w-[460px] bg-slate-50 dark:bg-slate-950 shadow-2xl flex flex-col ${closing ? 'vehicle-sheet-out' : 'vehicle-sheet-in'}`}>
@@ -168,6 +170,7 @@ export const VehicleProfileEditor: React.FC<{
           </div>
         )}
       </aside>
-    </div>
+    </div>,
+    document.body
   );
 };
