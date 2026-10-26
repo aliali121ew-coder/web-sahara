@@ -1,8 +1,9 @@
 /* eslint-disable i18next/no-literal-string */
 import React from 'react';
 import { Flame, Repeat2, User, CalendarClock, ChevronLeft } from 'lucide-react';
-import { VEHICLE_PROFILES_KEY, formatDay, vehicleCategory, vehicleImage, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
+import { VEHICLE_PROFILES_KEY, formatDay, vehicleCategory, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
+import { VehicleArt } from './VehicleArt';
 
 /** أعلى 6 عربات استهلاكًا مع صورة الشاحنة */
 export const TopVehicleCards: React.FC<{ stats: VehicleStat[]; onOpen: (v: string) => void }> = ({ stats, onOpen }) => {
@@ -42,11 +43,7 @@ export const TopVehicleCards: React.FC<{ stats: VehicleStat[]; onOpen: (v: strin
               </div>
 
               <div className="relative mx-3 mt-2 h-24 rounded-xl overflow-hidden bg-white dark:bg-slate-900">
-                {photo(s.vehicle) ? (
-                  <img src={photo(s.vehicle)} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                ) : (
-                  <img src={vehicleImage(s.vehicle)} alt={vehicleCategory(s.vehicle)?.label || ''} loading="lazy" className="absolute inset-0 w-full h-full object-contain p-1 mix-blend-multiply dark:mix-blend-normal dark:opacity-90 group-hover:scale-105 transition-transform duration-500" />
-                )}
+                <VehicleArt code={s.vehicle} photo={photo(s.vehicle)} className="absolute inset-0" imgClassName={photo(s.vehicle) ? '!object-cover' : 'mix-blend-multiply dark:mix-blend-normal group-hover:scale-105 transition-transform duration-500'} />
               </div>
 
               <div className="px-3 pt-2.5 pb-3 space-y-2">

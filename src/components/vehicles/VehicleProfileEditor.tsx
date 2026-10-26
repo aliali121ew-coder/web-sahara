@@ -3,7 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, IdCard, Fuel, Hash, Timer, Repeat2, User, Container, ShieldCheck, Building2, StickyNote, Save } from 'lucide-react';
 import { getProfile } from '../../lib/session';
-import { FREQUENT_DAYS, VEHICLE_TYPES, formatDay, vehicleCategory, vehicleImage, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
+import { VehicleArt } from './VehicleArt';
+import { FREQUENT_DAYS, VEHICLE_TYPES, formatDay, vehicleCategory, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
 
 export const emptyProfile = (vehicle: string): VehicleProfile => ({
   id: vehicle, type: '', tankLiters: null, dailyLimit: null, driver: '', department: '', notes: '', photo: '', updatedAt: '', by: '',
@@ -67,7 +68,7 @@ export const VehicleProfileEditor: React.FC<{
             </div>
             <button type="button" onClick={close} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer" aria-label="إغلاق"><X className="w-4 h-4" /></button>
           </div>
-          <img src={vehicleImage(stat.vehicle)} alt="" className="relative mt-3 w-full h-32 object-contain rounded-2xl bg-white/95 vehicle-truck-in" />
+          <VehicleArt code={stat.vehicle} className="mt-3 w-full h-32 rounded-2xl bg-white/95 vehicle-truck-in" />
           <div className="relative grid grid-cols-4 gap-2 mt-4">
             {[
               { i: <Fuel className="w-3.5 h-3.5" />, v: stat.total.toLocaleString(), l: 'لتر' },

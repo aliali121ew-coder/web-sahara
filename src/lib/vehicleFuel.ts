@@ -510,25 +510,26 @@ export const shrinkImage = (file: File, max = 640): Promise<string> => new Promi
 
 // ───── فئة العربة من رمزها ─────
 
-export interface VehicleCategory { key: string; label: string; image: string }
+export interface VehicleCategory { key: string; label: string; image: string; door: [number, number] }
 
-const CATEGORY: Record<string, { label: string; image: string }> = {
-  HEAD: { label: 'رأس قاطرة', image: 'head' },
-  HF: { label: 'باص', image: 'hf' },
-  K: { label: 'خباطة', image: 'k' },
-  BS: { label: 'براد صغير', image: 'bs' },
-  A: { label: 'إطفاء', image: 'a' },
-  SF: { label: 'شفل صغير', image: 'sf' },
-  SF1: { label: 'شفل كبير', image: 'sf1' },
-  SL: { label: 'براد قاطرة', image: 'sl' },
-  AT: { label: 'براد', image: 'at' },
-  M: { label: 'كناسة', image: 'm' },
-  L: { label: 'قلاب', image: 'l' },
-  KS: { label: 'ضاغطة نفايات', image: 'ks' },
-  KA: { label: 'ساحبة زراعية', image: 'ka' },
-  HW: { label: 'حوضية ماء', image: 'hw' },
-  KH: { label: 'بيكب حمل', image: 'kh' },
-  KN: { label: 'كرين', image: 'kn' },
+/** door: موضع باب العربة في الصورة (نسبة من العرض والارتفاع) لطباعة رقمها عليه */
+const CATEGORY: Record<string, { label: string; image: string; door: [number, number] }> = {
+  HEAD: { label: 'رأس قاطرة', image: 'head', door: [0.44, 0.45] },
+  HF: { label: 'باص', image: 'hf', door: [0.66, 0.58] },
+  K: { label: 'خباطة', image: 'k', door: [0.37, 0.4] },
+  BS: { label: 'براد صغير', image: 'bs', door: [0.45, 0.56] },
+  A: { label: 'إطفاء', image: 'a', door: [0.47, 0.56] },
+  SF: { label: 'شفل صغير', image: 'sf', door: [0.83, 0.58] },
+  SF1: { label: 'شفل كبير', image: 'sf1', door: [0.78, 0.43] },
+  SL: { label: 'براد قاطرة', image: 'sl', door: [0.37, 0.5] },
+  AT: { label: 'براد', image: 'at', door: [0.38, 0.52] },
+  M: { label: 'كناسة', image: 'm', door: [0.42, 0.4] },
+  L: { label: 'قلاب', image: 'l', door: [0.37, 0.38] },
+  KS: { label: 'ضاغطة نفايات', image: 'ks', door: [0.38, 0.46] },
+  KA: { label: 'ساحبة زراعية', image: 'ka', door: [0.38, 0.4] },
+  HW: { label: 'حوضية ماء', image: 'hw', door: [0.44, 0.5] },
+  KH: { label: 'بيكب حمل', image: 'kh', door: [0.39, 0.523] },
+  KN: { label: 'كرين', image: 'kn', door: [0.3, 0.56] },
 };
 
 /** أرقام الشفلات الكبيرة (SF + رقم): الشفل الكبير والصغير لكل منهما تسلسله */
@@ -546,7 +547,7 @@ export const vehicleCategory = (code: string): VehicleCategory | null => {
   let key = m[1];
   if (key === 'SF' && BIG_SF_NUMBERS.has(Number(m[2]))) key = 'SF1';
   const cat = CATEGORY[key];
-  return cat ? { key, label: cat.label, image: `/trucks/types/${cat.image}.webp` } : null;
+  return cat ? { key, ...cat, image: `/trucks/types/${cat.image}.webp` } : null;
 };
 
 /** صورة العربة: صورتها الخاصة إن وُجدت، ثم صورة فئتها، ثم الصورة العامة */

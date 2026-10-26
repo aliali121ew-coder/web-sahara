@@ -7,11 +7,12 @@ import {
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine } from 'recharts';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import {
-  FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, checkFills, disciplineScore, formatDay, vehicleCategory, vehicleImage,
+  FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, checkFills, disciplineScore, formatDay, vehicleCategory,
   type CheckKind, type DayFill, type VehicleProfile, type VehicleRoute, type VehicleStat,
 } from '../../lib/vehicleFuel';
 import { VehicleProfileEditor } from './VehicleProfileEditor';
 import { ScoreGauge } from './ScoreGauge';
+import { VehicleArt } from './VehicleArt';
 import { VehicleMap } from './VehicleMap';
 
 interface Props {
@@ -141,7 +142,7 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, ranking, fleetAvg, fl
               {profile?.photo ? (
                 <img src={profile.photo} alt={`العربة ${stat.vehicle}`} className="relative w-full h-56 sm:h-64 object-cover rounded-3xl shadow-xl vehicle-truck-in" />
               ) : (
-                <img src={vehicleImage(stat.vehicle)} alt={category?.label || ''} className="relative w-full h-56 sm:h-64 object-contain mix-blend-multiply dark:mix-blend-normal dark:rounded-2xl dark:bg-white/95 vehicle-truck-in" />
+                <VehicleArt code={stat.vehicle} scale={0.04} className="w-full h-56 sm:h-64 vehicle-truck-in dark:rounded-2xl dark:bg-white/95" imgClassName="mix-blend-multiply dark:mix-blend-normal" />
               )}
               <div className="absolute top-2 left-2 flex flex-col gap-1.5">
                 <span className={`text-[11px] font-black px-2.5 py-1 rounded-xl ${vsFleet > 0 ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'}`} dir="ltr">{vsFleet > 0 ? '+' : ''}{vsFleet}% vs fleet</span>
