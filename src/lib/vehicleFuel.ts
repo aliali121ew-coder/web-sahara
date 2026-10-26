@@ -313,3 +313,85 @@ export const straightKm = (a: MapPoint, b: MapPoint) => {
   const h = Math.sin(((b.lat - a.lat) * r) / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(((b.lng - a.lng) * r) / 2) ** 2;
   return Math.round(6371 * 2 * Math.asin(Math.sqrt(h)));
 };
+
+// ───── ملف العربة (يُدخل يدويًا) والتدقيق عليه ─────
+
+export const VEHICLE_TYPES = ['شاحنة', 'تريلة', 'بيكب', 'صالون', 'شفل', 'حفارة', 'كرين', 'رافعة شوكية', 'مولدة', 'حوضية', 'أخرى'] as const;
+
+export interface VehicleProfile {
+  /** = رقم العربة */
+  id: string;
+  type: string;
+  /** سعة الخزان (لتر): تفويلة أكبر منها مستحيلة */
+  tankLiters: number | null;
+  /** الحصة اليومية المسموحة (لتر) */
+  dailyLimit: number | null;
+  /** السائق المعتمد للعربة */
+  driver: string;
+  department: string;
+  notes: string;
+  /** صورة مصغّرة (data URL) */
+  photo: string;
+  updatedAt: string;
+  by: string;
+}
+
+export const VEHICLE_PROFILES_KEY = 'sahara_vehicle_profiles_v1';
+
+export type CheckKind = 'capacity' | 'limit' | 'driver' | 'frequent' | 'multi';
+export interface FillCheck { kind: CheckKind; date: string; text: string }
+
+/** مخالفات كل تفويلة مقابل ملف العربة */
+export const checkFills = (fills: DayFill[], profile: VehicleProfile | undefined): FillCheck[] => {
+  const out: FillCheck[] = [];
+  const norm = (s: string) => normalizeArabic(s);
+  for (const f of fills) {
+    if (profile?.tankLiters && f.qty > profile.tankLiters) out.push({ kind: 'capacity', date: f.date, text: `${f.qty.toLocaleString()} لتر أكبر من سعة الخزان ${profile.tankLiters.toLocaleString()}` });
+    if (profile?.dailyLimit && f.qty > profile.dailyLimit) out.push({ kind: 'limit', date: f.date, text: `تجاوز الحصة اليومية بـ ${(f.qty - profile.dailyLimit).toLocaleString()} لتر` });
+    if (profile?.driver && f.drivers.length && !f.drivers.some(d => norm(d) === norm(profile.driver))) out.push({ kind: 'driver', date: f.date, text: `فوّلها ${f.drivers.join('، ')} وليس السائق المعتمد` });
+    if (f.days !== null && f.days <= FREQUENT_DAYS) out.push({ kind: 'frequent', date: f.date, text: `تفويل بعد ${f.days} يوم من السابقة` });
+    if (f.parts > 1) out.push({ kind: 'multi', date: f.date, text: `${f.parts} تفويلات في نفس اليوم (${f.sites.join('، ')})` });
+  }
+  return out;
+};
+
+/** وزن كل نوع مخالفة في مؤشر الانضباط */
+const PENALTY: Record<CheckKind, number> = { capacity: 30, limit: 15, driver: 8, frequent: 12, multi: 10 };
+
+/**
+ * مؤشر الانضباط 0–100: يبدأ من 100 ويُخصم لكل مخالفة (نسبةً لعدد التفويلات)،
+ * ولزيادة متوسط التفويلة عن متوسط الأسطول.
+ */
+export const disciplineScore = (stat: VehicleStat, checks: FillCheck[], fleetAvg: number) => {
+  const factors: { label: string; points: number }[] = [];
+  const kinds: CheckKind[] = ['capacity', 'limit', 'driver', 'frequent', 'multi'];
+  const labels: Record<CheckKind, string> = { capacity: 'تجاوز سعة الخزان', limit: 'تجاوز الحصة اليومية', driver: 'سائق غير معتمد', frequent: 'تفويل متكرر', multi: 'أكثر من تفويلة باليوم' };
+  for (const k of kinds) {
+    const n = checks.filter(c => c.kind === k).length;
+    if (n) factors.push({ label: labels[k], points: Math.round(PENALTY[k] * Math.min(3, n) * Math.max(0.5, n / stat.count)) });
+  }
+  if (fleetAvg && stat.avg > fleetAvg * 1.25) factors.push({ label: 'أعلى من متوسط الأسطول', points: Math.min(20, Math.round(((stat.avg / fleetAvg) - 1) * 10)) });
+  const score = Math.max(0, 100 - factors.reduce((s, f) => s + f.points, 0));
+  return { score, factors, grade: score >= 85 ? 'ممتاز' : score >= 70 ? 'جيد' : score >= 50 ? 'يحتاج متابعة' : 'مخالف' };
+};
+
+/** تصغير الصورة قبل حفظها مع ملف العربة (عرض 640 بكسل، JPEG) */
+export const shrinkImage = (file: File, max = 640): Promise<string> => new Promise((resolve, reject) => {
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.onload = () => {
+    const k = Math.min(1, max / Math.max(img.width, img.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.width * k);
+    c.height = Math.round(img.height * k);
+    const ctx = c.getContext('2d');
+    if (!ctx) { URL.revokeObjectURL(url); reject(new Error('تعذّرت معالجة الصورة')); return; }
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(url);
+    resolve(c.toDataURL('image/jpeg', 0.8));
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('الملف ليس صورة صالحة')); };
+  img.src = url;
+});

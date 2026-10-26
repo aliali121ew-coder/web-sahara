@@ -1,11 +1,14 @@
 /* eslint-disable i18next/no-literal-string */
 import React from 'react';
 import { Flame, Repeat2, User, CalendarClock, ChevronLeft } from 'lucide-react';
-import { formatDay, type VehicleStat } from '../../lib/vehicleFuel';
+import { VEHICLE_PROFILES_KEY, formatDay, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
+import { useSyncedStorage } from '../../lib/useSyncedStorage';
 
 /** أعلى 6 عربات استهلاكًا مع صورة الشاحنة */
 export const TopVehicleCards: React.FC<{ stats: VehicleStat[]; onOpen: (v: string) => void }> = ({ stats, onOpen }) => {
   const top = stats.slice(0, 6);
+  const [profiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
+  const photo = (v: string) => profiles.find(p => p.id === v)?.photo;
   return (
     <div className="h-full rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-soft-card">
       <div className="flex items-center justify-between mb-4">
@@ -38,7 +41,11 @@ export const TopVehicleCards: React.FC<{ stats: VehicleStat[]; onOpen: (v: strin
               </div>
 
               <div className="relative mx-3 mt-2 h-24 rounded-xl overflow-hidden bg-white dark:bg-slate-900">
-                <img src="/trucks/semi_truck.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal dark:opacity-80 group-hover:scale-105 transition-transform duration-500" />
+                {photo(s.vehicle) ? (
+                  <img src={photo(s.vehicle)} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                ) : (
+                  <img src="/trucks/semi_truck.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal dark:opacity-80 group-hover:scale-105 transition-transform duration-500" />
+                )}
               </div>
 
               <div className="px-3 pt-2.5 pb-3 space-y-2">
