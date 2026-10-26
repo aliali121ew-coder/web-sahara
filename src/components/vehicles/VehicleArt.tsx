@@ -13,7 +13,7 @@ export const VehicleArt: React.FC<{
   imgClassName?: string;
   /** حجم خط الرقم نسبةً لعرض الصورة */
   scale?: number;
-}> = ({ code, photo, className = '', imgClassName = '', scale = 0.034 }) => {
+}> = ({ code, photo, className = '', imgClassName = '', scale = 0.045 }) => {
   const cat = photo ? null : vehicleCategory(code);
   const box = useRef<HTMLDivElement>(null);
   const [boxSize, setBoxSize] = useState({ w: 0, h: 0 });
@@ -39,7 +39,8 @@ export const VehicleArt: React.FC<{
   const top = (boxSize.h - ih) / 2;
 
   return (
-    <div ref={box} className={`relative ${className}`}>
+    // «relative» افتراضيًا فقط: مع absolute يتغلّب relative فينهار ارتفاع الإطار وتختفي الصورة
+    <div ref={box} className={`${/(^|\s)(absolute|fixed)(\s|$)/.test(className) ? '' : 'relative '}${className}`}>
       <img
         ref={img}
         src={src}
@@ -51,17 +52,19 @@ export const VehicleArt: React.FC<{
       {cat && k > 0 && (
         <span
           dir="ltr"
-          className="absolute whitespace-nowrap font-mono font-black leading-none text-white bg-[#111] rounded-[2px] pointer-events-none select-none"
+          className="absolute whitespace-nowrap leading-none pointer-events-none select-none"
           style={{
             left: left + iw * cat.door[0],
             top: top + ih * cat.door[1],
-            fontSize: Math.max(6, iw * scale),
-            padding: '0.2em 0.35em 0.16em',
-            letterSpacing: '0.02em',
-            // ملصق مطبوع على الباب: يتبع ميل جانب العربة، بلا ظل ولا بروز
-            transform: `translate(-50%, -50%) skewY(${cat.tilt}deg) scaleX(0.92)`,
-            boxShadow: `inset 0 0 0 ${Math.max(0.6, iw * scale * 0.07)}px rgba(255,255,255,0.85)`,
-            opacity: 0.93,
+            fontSize: Math.max(7, iw * scale),
+            fontFamily: '"Arial Black", "Segoe UI Black", "Helvetica Neue", Arial, sans-serif',
+            fontWeight: 900,
+            letterSpacing: '0.01em',
+            color: '#141414',
+            // كتابة مطبوعة على الباب: تأخذ ظل الباب وإضاءته (multiply) وتتبع ميل جانب العربة، بلا خلفية ولا بروز
+            mixBlendMode: 'multiply',
+            opacity: 0.9,
+            transform: `translate(-50%, -50%) skewY(${cat.tilt}deg) scaleX(0.9)`,
           }}
         >
           {code}

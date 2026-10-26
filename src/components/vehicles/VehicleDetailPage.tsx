@@ -138,11 +138,10 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, ranking, fleetAvg, fl
               <Spec tone="bg-rose-500/10 text-rose-600" icon={<Percent className="w-4 h-4" />} label="حصتها من الأسطول" value={`${share}%`} />
             </div>
             <div className="md:col-span-3 relative">
-              <div className="absolute inset-x-6 bottom-2 h-6 rounded-full bg-slate-900/20 blur-xl" />
               {profile?.photo ? (
                 <img src={profile.photo} alt={`العربة ${stat.vehicle}`} className="relative w-full h-56 sm:h-64 object-cover rounded-3xl shadow-xl vehicle-truck-in" />
               ) : (
-                <VehicleArt code={stat.vehicle} scale={0.03} className="w-full h-56 sm:h-64 vehicle-truck-in dark:rounded-2xl dark:bg-white/95" imgClassName="mix-blend-multiply dark:mix-blend-normal" />
+                <VehicleArt code={stat.vehicle} scale={0.042} className="w-full h-56 sm:h-64" />
               )}
               <div className="absolute top-2 left-2 flex flex-col gap-1.5">
                 <span className={`text-[11px] font-black px-2.5 py-1 rounded-xl ${vsFleet > 0 ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'}`} dir="ltr">{vsFleet > 0 ? '+' : ''}{vsFleet}% vs fleet</span>

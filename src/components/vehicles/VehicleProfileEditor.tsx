@@ -68,7 +68,7 @@ export const VehicleProfileEditor: React.FC<{
             </div>
             <button type="button" onClick={close} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer" aria-label="إغلاق"><X className="w-4 h-4" /></button>
           </div>
-          <VehicleArt code={stat.vehicle} className="mt-3 w-full h-32 rounded-2xl bg-white/95 vehicle-truck-in" />
+          <VehicleArt code={stat.vehicle} className="mt-3 w-full h-32" />
           <div className="relative grid grid-cols-4 gap-2 mt-4">
             {[
               { i: <Fuel className="w-3.5 h-3.5" />, v: stat.total.toLocaleString(), l: 'لتر' },

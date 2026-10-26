@@ -42,8 +42,8 @@ export const TopVehicleCards: React.FC<{ stats: VehicleStat[]; onOpen: (v: strin
                 )}
               </div>
 
-              <div className="relative mx-3 mt-2 h-24 rounded-xl overflow-hidden bg-white dark:bg-slate-900">
-                <VehicleArt code={s.vehicle} photo={photo(s.vehicle)} className="absolute inset-0" imgClassName={photo(s.vehicle) ? '!object-cover' : 'mix-blend-multiply dark:mix-blend-normal group-hover:scale-105 transition-transform duration-500'} />
+              <div className="relative mx-3 mt-2 h-24 rounded-xl overflow-hidden">
+                <VehicleArt code={s.vehicle} photo={photo(s.vehicle)} className="absolute inset-0" imgClassName={photo(s.vehicle) ? '!object-cover' : ''} />
               </div>
 
               <div className="px-3 pt-2.5 pb-3 space-y-2">
