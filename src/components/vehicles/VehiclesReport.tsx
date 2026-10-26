@@ -230,7 +230,7 @@ export const VehiclesReport: React.FC = () => {
                 <div key={f.id} className="rounded-2xl border border-slate-200 dark:border-slate-800 p-3 flex items-start gap-3">
                   <span className="p-2 rounded-xl bg-rose-500/10 text-rose-500"><FileText className="w-4 h-4" /></span>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">{f.site} · <span className="font-mono">{f.reportDate}</span></div>
+                    <div className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">{f.site} · <span className="font-mono">{f.reportDate}</span>{f.docNo && <span className="text-[10px] text-slate-400"> · مستند {f.docNo}</span>}{f.dateSource === 'notes' && <span className="mr-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300">التاريخ من الملاحظات</span>}</div>
                     <div className="text-[11px] text-slate-500 truncate">{f.name}</div>
                     <div className="text-[11px] text-slate-400 mt-0.5">{f.rows} سطر · {f.totalQty.toLocaleString()} لتر · رُفع {new Date(f.uploadedAt).toLocaleString('en-GB')}{f.by ? ` · ${f.by}` : ''}</div>
                   </div>

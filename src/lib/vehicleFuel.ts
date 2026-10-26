@@ -28,6 +28,8 @@ export interface VehicleRefill {
   prevQty: number | null;
   prevDate: string;
   kind: string;
+  /** رقم السيارة (اللوحة) إن وُجد في المستند */
+  plate?: string;
 }
 
 export interface VehicleFile {
@@ -41,6 +43,10 @@ export interface VehicleFile {
   reportDate: string;
   rows: number;
   totalQty: number;
+  /** رقم المستند (مستند تجهيز زيت الغاز) */
+  docNo?: string;
+  /** من أين أُخذ تاريخ التفويل: حقل الملاحظات أو تاريخ الملف */
+  dateSource?: 'notes' | 'file';
 }
 
 export const VEHICLE_FILES_KEY = 'sahara_vehicle_files_v1';
@@ -100,40 +106,114 @@ export interface VehicleSheet {
   site: string;
   rows: Omit<VehicleRefill, 'id' | 'fileId' | 'site'>[];
   total: number | null;
+  docNo: string;
+  dateSource: 'notes' | 'file';
 }
 
-/** يقرأ سطور الكشف (صفحات → أسطر → عناصر) — منفصلة عن PDF لتُختبر */
+/** أول تاريخ داخل نص (قد يأتي مع كلام في حقل الملاحظات) */
+const DATE_ANY = /(\d{4}[/-]\d{1,2}[/-]\d{1,2}|\d{1,2}[/-]\d{1,2}[/-]\d{4})/;
+const dateInText = (s: string) => {
+  const m = DATE_ANY.exec(s.replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))));
+  return m ? toIsoDate(m[1]) : null;
+};
+
+// مستند تجهيز زيت الغاز (مستند واحد بعدة عربات): الغرض | الفني | اسم السائق | رقم السيارة | العربة | الكمية | المخزن | و القياس | اسم المادة
+type VCol = 'kind' | 'tech' | 'driver' | 'plate' | 'vehicle' | 'qty' | 'store';
+const VOUCHER_HEADERS: [VCol, string][] = [
+  ['driver', 'اسم السائق'],
+  ['plate', 'رقم السيارة'],
+  ['vehicle', 'العربة'],
+  ['qty', 'الكمية'],
+  ['store', 'المخزن'],
+  ['kind', 'الغرض'],
+  ['tech', 'الفني'],
+];
+const readVoucherHeader = (line: PdfItem[]): Map<VCol, number> | null => {
+  const cols = new Map<VCol, number>();
+  for (const [col, l] of VOUCHER_HEADERS) {
+    const hit = line.find(i => normalizeArabic(i.str) === normalizeArabic(l));
+    if (hit) cols.set(col, center(hit));
+  }
+  return cols.has('vehicle') && cols.has('qty') && cols.has('plate') ? cols : null;
+};
+
+/** كل عنصر في السطر يُنسب لأقرب عمود */
+const assign = <C extends string>(line: PdfItem[], cols: Map<C, number>) => {
+  const cells = new Map<C, string[]>();
+  const entries = [...cols.entries()];
+  for (const it of line) {
+    const c = center(it);
+    const [col] = entries.reduce((best, e) => (Math.abs(e[1] - c) < Math.abs(best[1] - c) ? e : best));
+    cells.set(col, [...(cells.get(col) || []), it.str]);
+  }
+  return cells;
+};
+
+/**
+ * يقرأ سطور الملف (صفحات → أسطر → عناصر) — منفصلة عن PDF لتُختبر.
+ * يدعم «كشف مطابقة الكاز» و«مستند تجهيز زيت الغاز».
+ * التاريخ: تاريخ حقل «الملاحظات» أولًا (البيانات تُدخل أحيانًا في غير يومها)، وإلا تاريخ الملف/السطر.
+ */
 export const parseVehicleSheet = (pages: PdfItem[][][]): VehicleSheet => {
   let site = '';
   let total: number | null = null;
+  let docNo = '';
+  let notesDate: string | null = null;
+  let docDate: string | null = null;
   const rows: VehicleSheet['rows'] = [];
+  const isLabel = (i: PdfItem, l: string) => normalizeArabic(i.str) === normalizeArabic(l);
+
   for (const lines of pages) {
     let cols: Map<Col, number> | null = null;
+    let vcols: Map<VCol, number> | null = null;
     for (const line of lines) {
       const text = normalizeArabic(line.map(i => i.str).join(' '));
-      if (!site && text.includes(normalizeArabic('المصنع')) && !text.includes(normalizeArabic('السابق'))) {
+      if (!site && line.some(i => isLabel(i, 'المصنع'))) {
         // «المصنع» عنوان في أقصى اليمين، واسم الموقع النص الذي يليه يسارًا
-        const label = line.find(i => normalizeArabic(i.str) === normalizeArabic('المصنع'));
-        const name = label && line.filter(i => i.x < label.x && num(i.str) === null && !toIsoDate(i.str) && normalizeArabic(i.str) !== normalizeArabic('من'))
+        const label = line.find(i => isLabel(i, 'المصنع'))!;
+        const name = line.filter(i => i.x < label.x && num(i.str) === null && !toIsoDate(i.str) && !isLabel(i, 'من') && i.str.trim())
           .sort((a, b) => b.x - a.x)[0];
-        if (name) site = clean(name.str);
+        if (name) site = clean(name.str).replace(/^\)(.*)$/, '$1').replace(/\)([^()]+)$/, '($1)');
       }
+      // حقل الملاحظات: تاريخ فيه يتقدّم على تاريخ الملف
+      if (notesDate === null && line.some(i => isLabel(i, 'الملاحظات') || isLabel(i, 'ملاحظات'))) {
+        notesDate = line.map(i => dateInText(i.str)).find(Boolean) || null;
+      }
+      if (!docNo && line.some(i => isLabel(i, 'رقم المستند'))) {
+        const label = line.find(i => isLabel(i, 'رقم المستند'))!;
+        const n = line.filter(i => i.x < label.x && /^\d+$/.test(i.str.trim())).sort((a, b) => b.x - a.x)[0];
+        if (n) docNo = n.str.trim();
+      }
+      if (!docDate && !cols && !vcols && line.some(i => isLabel(i, 'تاريخ'))) {
+        docDate = line.map(i => toIsoDate(i.str)).find(Boolean) || null;
+      }
+
       const header = readHeader(line);
-      if (header) { cols = header; continue; }
-      if (!cols) continue;
+      if (header) { cols = header; vcols = null; continue; }
+      const vheader = readVoucherHeader(line);
+      if (vheader) { vcols = vheader; cols = null; continue; }
+      if (!cols && !vcols) continue;
       if (text.includes(normalizeArabic('المجموع'))) {
         const n = line.map(i => num(i.str)).filter((v): v is number => v !== null);
         if (n.length) total = Math.max(...n);
         continue;
       }
-      // كل عنصر يُنسب لأقرب عمود
-      const cells = new Map<Col, string[]>();
-      const entries = [...cols.entries()];
-      for (const it of line) {
-        const c = center(it);
-        const [col] = entries.reduce((best, e) => (Math.abs(e[1] - c) < Math.abs(best[1] - c) ? e : best));
-        cells.set(col, [...(cells.get(col) || []), it.str]);
+
+      if (vcols) {
+        const cells = assign(line, vcols);
+        const get = (c: VCol) => clean((cells.get(c) || []).join(' '));
+        const qty = num(get('qty'));
+        const vehicle = get('vehicle').replace(/\s+/g, '');
+        if (qty === null || !vehicle) continue;
+        rows.push({
+          vehicle, driver: get('driver'), qty, date: '', days: null,
+          prevSite: '', prevDriver: '', prevQty: null, prevDate: '',
+          kind: get('kind'), plate: get('plate').replace(/\s+/g, ''),
+        });
+        continue;
       }
+
+      const cells = assign(line, cols!);
       const get = (c: Col) => clean((cells.get(c) || []).join(' '));
       // خلية التاريخ قد تلتصق بها وحدة القياس المجاورة («لتر»)
       const dateIn = (c: Col) => (cells.get(c) || []).map(toIsoDate).find(Boolean) || '';
@@ -155,7 +235,10 @@ export const parseVehicleSheet = (pages: PdfItem[][][]): VehicleSheet => {
       });
     }
   }
-  return { site, rows, total };
+  // تاريخ الملاحظات أولًا، ثم تاريخ السطر أو المستند
+  for (const r of rows) r.date = notesDate || r.date || docDate || '';
+  const kept = rows.filter(r => r.date);
+  return { site, rows: kept, total, docNo, dateSource: notesDate ? 'notes' : 'file' };
 };
 
 const hash = (s: string) => {
@@ -172,8 +255,8 @@ export const readVehicleFile = async (file: File): Promise<{ file: VehicleFile; 
   if (!sheet.rows.length) throw new Error('لم يُعثر على جدول تفويل العربات في الملف');
   const site = sheet.site || 'غير محدد';
   const reportDate = sheet.rows.reduce((m, r) => (r.date > m ? r.date : m), '');
-  // معرّف الملف من الموقع والتاريخ: رفع كشف نفس الموقع واليوم مرة ثانية يستبدل الأول
-  const fileId = `vf-${hash(`${site}|${reportDate}`)}`;
+  // معرّف الملف: المستند برقمه، والكشف بموقعه وتاريخه — رفع نفس الملف مرة ثانية يستبدل الأول
+  const fileId = `vf-${hash(sheet.docNo ? `${site}|doc|${sheet.docNo}` : `${site}|${reportDate}`)}`;
   const p = getProfile();
   const refills = sheet.rows.map((r, i) => ({ ...r, site, fileId, id: `${fileId}-${i}` }));
   return {
@@ -186,6 +269,8 @@ export const readVehicleFile = async (file: File): Promise<{ file: VehicleFile; 
       reportDate,
       rows: refills.length,
       totalQty: refills.reduce((s, r) => s + r.qty, 0),
+      ...(sheet.docNo ? { docNo: sheet.docNo } : {}),
+      dateSource: sheet.dateSource,
     },
     refills,
     total: sheet.total,
@@ -214,6 +299,12 @@ export interface DayFill {
 /** حد «التفويل المتكرر»: تفويلتان خلال يوم واحد أو أقل */
 export const FREQUENT_DAYS = 1;
 
+/** عدد الأيام بين تاريخين YYYY/MM/DD */
+export const daysBetween = (a: string, b: string) => {
+  const t = (d: string) => { const [y, m, dd] = d.split('/').map(Number); return Date.UTC(y, m - 1, dd); };
+  return Math.round((t(b) - t(a)) / 86400000);
+};
+
 export const groupDayFills = (refills: VehicleRefill[]): DayFill[] => {
   const map = new Map<string, VehicleRefill[]>();
   for (const r of refills) {
@@ -221,7 +312,7 @@ export const groupDayFills = (refills: VehicleRefill[]): DayFill[] => {
     const l = map.get(k);
     if (l) l.push(r); else map.set(k, [r]);
   }
-  return [...map.values()].map(list => {
+  const fills = [...map.values()].map(list => {
     // السطر المرجعي للتفويلة السابقة = الأقدم تاريخًا سابقًا (الذي يشير لما قبل هذا اليوم)
     const outside = list.filter(r => r.prevDate && r.prevDate < r.date).sort((a, b) => a.prevDate.localeCompare(b.prevDate))[0] || list[0];
     const days = list.reduce<number | null>((m, r) => (r.days === null ? m : m === null ? r.days : Math.min(m, r.days)), null);
@@ -239,6 +330,27 @@ export const groupDayFills = (refills: VehicleRefill[]): DayFill[] => {
       prevDriver: outside.prevDriver,
     };
   });
+  // سطور بلا «عدد الأيام/السابق» (مستند تجهيز): تُكمَل من تفويلة العربة السابقة في البيانات
+  const byVehicle = new Map<string, DayFill[]>();
+  for (const f of fills) {
+    const l = byVehicle.get(f.vehicle);
+    if (l) l.push(f); else byVehicle.set(f.vehicle, [f]);
+  }
+  for (const list of byVehicle.values()) {
+    list.sort((a, b) => a.date.localeCompare(b.date));
+    for (let k = 1; k < list.length; k++) {
+      const f = list[k];
+      const prev = list[k - 1];
+      if (f.days === null) f.days = daysBetween(prev.date, f.date);
+      if (!f.prevDate) {
+        f.prevDate = prev.date;
+        f.prevQty = prev.qty;
+        f.prevSite = prev.sites.join('، ');
+        f.prevDriver = prev.drivers.join('، ');
+      }
+    }
+  }
+  return fills;
 };
 
 export interface VehicleStat {
