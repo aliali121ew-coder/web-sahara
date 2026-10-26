@@ -163,6 +163,8 @@ const KEY_RULES: Rule[] = [
   // سجل الأسعار والمشتريات: كل من يعدّل الأسعار أو الموردين يضيف له
   { match: eq('sahara_price_log_v1'), read: ['prices', 'suppliers', 'dashboard'], write: ['prices', 'suppliers'] },
   { match: eq('sahara_tasks', 'sahara_supply_requests'), read: ['tasks', 'dashboard'], write: ['tasks'] },
+  // تقرير العربات: كشوف تفويل الآليات المرفوعة (PDF) وسطورها
+  { match: eq('sahara_vehicle_files_v1', 'sahara_vehicle_refills_v1'), read: ['vehicles-report'], write: ['vehicles-report'] },
   { match: eq('sahara_fuel_metrics'), read: ['dashboard', 'reports'], write: ['dashboard'] },
   // سجل التنبيهات (التحقق من اتصال التقارير): يقرؤه من يرى أحد الأقسام الأربعة، ويضيف إليه من يحفظ يومًا فيها،
   // ويعلّم التنبيه كمراجَع كل من يقرأ؛ تعديله وحذفه لمدير النظام
@@ -210,6 +212,8 @@ export const COLLECTION_KEYS = [
   'sahara_tasks', 'sahara_supply_requests', 'sahara_messages',
   // سجل التنبيهات: إضافة من عدة أجهزة دون أن يمسح أحدها الآخر
   'sahara_report_alerts_v1', 'sahara_report_activity_v1', 'sahara_report_threads_v1',
+  // تقرير العربات: مئات السطور يوميًا
+  'sahara_vehicle_files_v1', 'sahara_vehicle_refills_v1',
 ] as const;
 /** نسخة محلية من آخر قيمة وصلت من الخادم لكل مجموعة (لحساب الفرق) — لا تُزامَن أبدًا */
 export const SHADOW_PREFIX = 'sahara_shadow:';

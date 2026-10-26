@@ -1,492 +1,280 @@
 /* eslint-disable i18next/no-literal-string */
-import React, { useState, useMemo } from 'react';
-import { useFuelStore } from '../../context/FuelDataContext';
-import { usePermissions } from '../../lib/usePermission';
-import { ShieldAlert } from 'lucide-react';
-import { buildFleetAnalytics } from './vehicleDataUtils';
-import { TruckCard } from './TruckCard';
-import { TopConsumersPanel } from './TopConsumersPanel';
-import { LargeTruckModal } from './LargeTruckModal';
-import type { VehicleItem } from './types';
+import React, { useMemo, useRef, useState } from 'react';
 import {
-  Truck,
-  Fuel,
-  TrendingUp,
-  Clock,
-  Search,
-  LayoutGrid,
-  List,
-  Award,
-  Layers,
-  ArrowUpDown,
-  Printer,
+  Truck, FileText, Fuel, Gauge, Trophy, TrendingUp, TrendingDown, Repeat2, Upload, X, Trash2, Loader2,
+  CheckCircle2, AlertTriangle, CalendarDays, User,
 } from 'lucide-react';
+import { usePermissions } from '../../lib/usePermission';
+import { FREQUENT_DAYS, formatDay } from '../../lib/vehicleFuel';
+import { useVehicleData, type Scope, type UploadResult } from './useVehicleData';
+import { SitesMap } from './SitesMap';
+import { TopVehicleCards } from './TopVehicleCards';
+import { RefillsTable } from './RefillsTable';
+import { FuelChart } from './FuelChart';
+import './vehicles.css';
+
+const Kpi: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactNode; sub: React.ReactNode; tone: string; onClick?: () => void }> = ({ icon, label, value, sub, tone, onClick }) => (
+  <div
+    onClick={onClick}
+    className={`vehicle-kpi relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 shadow-soft-card ${onClick ? 'cursor-pointer hover:border-sky-400' : ''}`}
+  >
+    <div className={`absolute -top-8 -left-8 w-24 h-24 rounded-full blur-2xl opacity-20 ${tone}`} />
+    <div className="flex items-center justify-between mb-2 relative">
+      <span className="text-slate-500 dark:text-slate-400 text-[11px] font-bold">{label}</span>
+      <span className={`p-1.5 rounded-xl text-white ${tone}`}>{icon}</span>
+    </div>
+    <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono relative truncate">{value}</div>
+    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-bold mt-1 relative truncate">{sub}</div>
+  </div>
+);
 
 export const VehiclesReport: React.FC = () => {
-  const { saharaDeliveries: saharaAll, etihadDeliveries: etihadAll } = useFuelStore();
-  // التقرير يُبنى من الواردات التي يملك الحساب صلاحية عرضها فقط (مدير النظام يرى الكل)
-  const { canView } = usePermissions();
-  const seeSahara = canView('deliveries-sahara');
-  const seeEtihad = canView('deliveries-etihad');
-  const noAccess = !seeSahara && !seeEtihad;
-  const saharaDeliveries = useMemo(() => (seeSahara ? saharaAll : []), [seeSahara, saharaAll]);
-  const etihadDeliveries = useMemo(() => (seeEtihad ? etihadAll : []), [seeEtihad, etihadAll]);
+  const { canEdit } = usePermissions();
+  const editable = canEdit('vehicles-report');
+  const [scope, setScope] = useState<Scope | null>(null);
+  const data = useVehicleData(scope);
+  const { files, dates, active, fills, stats, history, prevDay, prevTotal, allFills } = data;
 
-  // State for search and filters
-  const [searchQuery, setSearchQuery] = useState('');
-  const [companyFilter, setCompanyFilter] = useState<'all' | 'sahara' | 'etihad'>('all');
-  const [fuelFilter, setFuelFilter] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'fuelings' | 'consumption' | 'latest' | 'plate'>('consumption');
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [busy, setBusy] = useState(false);
+  const [results, setResults] = useState<UploadResult[] | null>(null);
+  const [showFiles, setShowFiles] = useState(false);
+  const [vehicle, setVehicle] = useState<string | null>(null);
+  const [drag, setDrag] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
 
-  // Selected vehicle for large truck modal (Image 2)
-  const [selectedVehicle, setSelectedVehicle] = useState<VehicleItem | null>(null);
-
-  // Build reactive analytics data
-  const { vehicles, kpis, top15PercentVehicles } = useMemo(() => {
-    return buildFleetAnalytics(saharaDeliveries, etihadDeliveries);
-  }, [saharaDeliveries, etihadDeliveries]);
-
-  // Filtered and sorted vehicles for the left fleet grid
-  const filteredVehicles = useMemo(() => {
-    let list = [...vehicles];
-
-    // Filter by search query
-    const q = searchQuery.trim().toLowerCase();
-    if (q) {
-      list = list.filter(
-        v =>
-          v.truckNumber.toLowerCase().includes(q) ||
-          v.plateDisplay.toLowerCase().includes(q) ||
-          v.driverName.toLowerCase().includes(q) ||
-          v.supplierCompany.toLowerCase().includes(q) ||
-          v.fuelType.toLowerCase().includes(q)
-      );
+  const doUpload = async (list: FileList | File[] | null) => {
+    const pdfs = [...(list || [])].filter(f => /\.pdf$/i.test(f.name));
+    if (!pdfs.length) return;
+    setBusy(true);
+    try {
+      setResults(await data.upload(pdfs));
+      setScope(null);
+    } finally {
+      setBusy(false);
+      if (input.current) input.current.value = '';
     }
-
-    // Filter by company
-    if (companyFilter === 'sahara') {
-      list = list.filter(v => v.company === 'صحاري كربلاء');
-    } else if (companyFilter === 'etihad') {
-      list = list.filter(v => v.company === 'شركة الاتحاد');
-    }
-
-    // Filter by fuel type
-    if (fuelFilter !== 'all') {
-      list = list.filter(v => v.fuelType === fuelFilter);
-    }
-
-    // Sorting
-    switch (sortBy) {
-      case 'fuelings':
-        list.sort((a, b) => b.fuelingsCount - a.fuelingsCount);
-        break;
-      case 'consumption':
-        list.sort((a, b) => b.totalFuelLiters - a.totalFuelLiters);
-        break;
-      case 'latest':
-        list.sort((a, b) => b.lastFuelingDate.localeCompare(a.lastFuelingDate));
-        break;
-      case 'plate':
-        list.sort((a, b) => a.truckNumber.localeCompare(b.truckNumber));
-        break;
-    }
-
-    return list;
-  }, [vehicles, searchQuery, companyFilter, fuelFilter, sortBy]);
-
-  const handlePrint = () => {
-    window.print();
   };
 
-  // بلا صلاحية على أي واردات: رسالة توضيح بدل تقرير فارغ (أو عربات العرض التجريبية)
-  if (noAccess) {
-    return (
-      <div className="pb-12 font-cairo">
-        <div id="vehicles-report-no-access" className="max-w-xl mx-auto mt-10 rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-8 text-center shadow-soft-card">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mb-4">
-            <ShieldAlert className="w-7 h-7" />
-          </div>
-          <h2 className="text-lg font-black text-slate-900 dark:text-white">لا توجد صلاحية على الواردات</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 leading-7">
-            تقرير العربات يُبنى من بيانات الواردات. اطلب من مدير النظام صلاحية «واردات الصحاري» أو «واردات الاتحاد».
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const k = useMemo(() => {
+    const total = fills.reduce((s, f) => s + f.qty, 0);
+    const top = fills.reduce<(typeof fills)[number] | null>((m, f) => (!m || f.qty > m.qty ? f : m), null);
+    const frequentVehicles = new Set(fills.filter(f => f.days !== null && f.days <= FREQUENT_DAYS).map(f => f.vehicle));
+    const change = prevTotal ? Math.round(((total - prevTotal) / prevTotal) * 1000) / 10 : null;
+    return { total, top, frequent: frequentVehicles.size, change, avg: fills.length ? Math.round(total / fills.length) : 0 };
+  }, [fills, prevTotal]);
+
+  const lastUpload = files.reduce((m, f) => (f.uploadedAt > m ? f.uploadedAt : m), '');
+  const selected = vehicle ? history.get(vehicle) : undefined;
+
+  const uploadBtn = editable && (
+    <>
+      <input ref={input} type="file" accept="application/pdf,.pdf" multiple hidden onChange={e => doUpload(e.target.files)} />
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => input.current?.click()}
+        className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-l from-sky-500 to-indigo-600 text-white text-sm font-black shadow-lg shadow-sky-500/25 hover:brightness-110 disabled:opacity-60 cursor-pointer transition-all"
+      >
+        {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+        رفع كشوف PDF
+      </button>
+    </>
+  );
 
   return (
-    <div className="space-y-6 pb-12 font-cairo">
-      {/* 🌟 1. Enterprise Page Header */}
-      <div className="no-print flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/25">
-              <Truck className="w-5 h-5" />
+    <div
+      className="space-y-5 pb-12 font-cairo"
+      onDragOver={e => { if (editable) { e.preventDefault(); setDrag(true); } }}
+      onDragLeave={() => setDrag(false)}
+      onDrop={e => { e.preventDefault(); setDrag(false); if (editable) void doUpload(e.dataTransfer.files); }}
+    >
+      {/* الرأس: العنوان، الفترة، الرفع */}
+      <div className="relative overflow-hidden rounded-3xl bg-slate-950 text-white p-5 sm:p-6 border border-slate-800">
+        <div className="absolute inset-0 vehicle-hero-grid opacity-60" />
+        <div className="absolute -top-24 left-10 w-72 h-72 rounded-full bg-sky-500/20 blur-3xl" />
+        <div className="relative flex flex-col lg:flex-row lg:items-center gap-4">
+          <div className="flex items-center gap-3 ml-auto">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/30">
+              <Truck className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                <span>تقرير وتحليل العربات والأسطول</span>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                  {kpis.totalVehicles} شاحنة
-                </span>
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                تحليل عمليات التفويل، كفاءة الاستهلاك، رصد أعلى 15%، وفحص الشاحنات الكبيرة
-              </p>
+              <h2 className="text-xl sm:text-2xl font-black">تقرير العربات</h2>
+              <p className="text-xs text-slate-400 mt-0.5">تحليل تفويل الآليات من الكشوف اليومية · العربات الأكثر استهلاكًا وتكرارًا</p>
             </div>
           </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button type="button" onClick={() => setShowFiles(true)} className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-sm font-bold hover:bg-white/10 cursor-pointer">
+              <FileText className="w-4 h-4 text-sky-300" />الملفات ({files.length})
+            </button>
+            {uploadBtn}
+          </div>
         </div>
-
-        {/* Global actions */}
-        <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-bold border border-slate-200/80 dark:border-slate-700 shadow-xs transition-all cursor-pointer"
-          >
-            <Printer className="w-4 h-4 text-slate-400" />
-            <span>طباعة التقرير</span>
-          </button>
-        </div>
+        {dates.length > 0 && (
+          <div className="relative mt-4 flex items-center gap-1.5 overflow-x-auto pb-1 vehicle-scroll">
+            <CalendarDays className="w-4 h-4 text-slate-500 shrink-0 ml-1" />
+            {[...dates].reverse().slice(0, 14).map(d => {
+              const on = active.kind === 'day' && active.date === d;
+              return (
+                <button key={d} type="button" onClick={() => setScope({ kind: 'day', date: d })} className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold font-mono transition-all cursor-pointer ${on ? 'bg-sky-500 text-white shadow-md shadow-sky-500/30' : 'bg-white/5 text-slate-300 hover:bg-white/10'}`}>
+                  {formatDay(d)}
+                </button>
+              );
+            })}
+            <button type="button" onClick={() => setScope({ kind: 'all' })} className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${active.kind === 'all' ? 'bg-sky-500 text-white' : 'bg-white/5 text-slate-300 hover:bg-white/10'}`}>
+              كل الفترة
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* 🌟 2. TOP METRIC CARDS ("في الاعلاه كارتات" - Image 3 Style) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-        {/* Card 1: Total Vehicles */}
-        <div className="rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 shadow-soft-card relative overflow-hidden group hover:border-blue-500/40 transition-colors">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-400 text-xs font-bold">إجمالي العربات</span>
-            <span className="p-1.5 rounded-xl bg-blue-500/10 text-blue-500">
-              <Truck className="w-4 h-4" />
-            </span>
+      {results && (
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black text-slate-700 dark:text-slate-200">نتيجة الرفع</span>
+            <button type="button" onClick={() => setResults(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer" aria-label="إغلاق"><X className="w-4 h-4" /></button>
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-            {kpis.totalVehicles}
-          </div>
-          <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold mt-1 block">
-            {kpis.activeTrucksNow} شاحنة نشطة الآن
-          </span>
-        </div>
-
-        {/* Card 2: Total Refills */}
-        <div className="rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 shadow-soft-card relative overflow-hidden group hover:border-blue-500/40 transition-colors">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-400 text-xs font-bold">إجمالي التفويلات</span>
-            <span className="p-1.5 rounded-xl bg-purple-500/10 text-purple-500">
-              <Fuel className="w-4 h-4" />
-            </span>
-          </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-            {kpis.totalFuelings}
-          </div>
-          <span className="text-[11px] text-purple-600 dark:text-purple-400 font-bold mt-1 block">
-            عملية تفويل وتفريغ
-          </span>
-        </div>
-
-        {/* Card 3: Total Fuel Volume */}
-        <div className="rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 shadow-soft-card relative overflow-hidden group hover:border-blue-500/40 transition-colors">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-400 text-xs font-bold">حجم الوقود الإجمالي</span>
-            <span className="p-1.5 rounded-xl bg-emerald-500/10 text-emerald-500">
-              <TrendingUp className="w-4 h-4" />
-            </span>
-          </div>
-          <div className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono truncate">
-            {Math.round(kpis.totalFuelVolumeLiters / 1000)}k <span className="text-xs font-normal text-slate-400">لتر</span>
-          </div>
-          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold mt-1 block">
-            {kpis.totalFuelVolumeLiters.toLocaleString()} لتر كلي
-          </span>
-        </div>
-
-        {/* Card 4: Avg Liters per fill */}
-        <div className="rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 shadow-soft-card relative overflow-hidden group hover:border-blue-500/40 transition-colors">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-400 text-xs font-bold">متوسط التفويلة</span>
-            <span className="p-1.5 rounded-xl bg-cyan-500/10 text-cyan-500">
-              <Layers className="w-4 h-4" />
-            </span>
-          </div>
-          <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono">
-            {kpis.avgLitersPerFueling.toLocaleString()} <span className="text-xs font-normal text-slate-400">لتر</span>
-          </div>
-          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold mt-1 block">
-            معدل الشحنة الواحدة
-          </span>
-        </div>
-
-        {/* Card 5: Latest Refill */}
-        <div className="rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 shadow-soft-card relative overflow-hidden group hover:border-blue-500/40 transition-colors">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-400 text-xs font-bold">أحدث تفويلة</span>
-            <span className="p-1.5 rounded-xl bg-amber-500/10 text-amber-500">
-              <Clock className="w-4 h-4" />
-            </span>
-          </div>
-          <div className="text-sm sm:text-base font-black text-slate-900 dark:text-white font-mono truncate">
-            {kpis.latestRefillDate}
-          </div>
-          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold mt-1 block truncate">
-            العجلة: {kpis.latestRefillTruck}
-          </span>
-        </div>
-
-        {/* Card 6: Top Refueled Truck */}
-        <div className="rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 shadow-soft-card relative overflow-hidden group hover:border-blue-500/40 transition-colors">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-400 text-xs font-bold">الأكثر تفويلاً</span>
-            <span className="p-1.5 rounded-xl bg-indigo-500/10 text-indigo-500">
-              <Award className="w-4 h-4" />
-            </span>
-          </div>
-          <div className="text-sm sm:text-base font-black text-indigo-600 dark:text-indigo-400 font-mono truncate">
-            {kpis.topRefueledTruck.truckNumber}
-          </div>
-          <span className="text-[11px] text-indigo-500 dark:text-indigo-300 font-bold mt-1 block">
-            {kpis.topRefueledTruck.count} تفويلة مسجلة
-          </span>
-        </div>
-      </div>
-
-      {/* 🌟 3. MAIN SPLIT LAYOUT:
-          - RIGHT: أعلى استهلاك 15% ("الصقحة تنقسم الى اعلى استهلاك 15% على اليمين")
-          - LEFT: الباقي على اليسار ("ولباقي على اليسار")
-      */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* 👉 RIGHT COLUMN: TOP 15% CONSUMPTION (4 of 12 cols in RTL) */}
-        <div className="lg:col-span-4 order-1 lg:order-1 sticky top-16">
-          <TopConsumersPanel
-            topVehicles={top15PercentVehicles}
-            onSelect={setSelectedVehicle}
-            totalStationFuel={kpis.totalFuelVolumeLiters}
-          />
-        </div>
-
-        {/* 👈 LEFT COLUMN: FLEET GRID & REMAINING VEHICLES (8 of 12 cols in RTL) */}
-        <div className="lg:col-span-8 order-2 lg:order-2 space-y-4">
-          {/* Controls Bar: Search, Filters, Sorting, View Toggle */}
-          <div className="rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-soft-card space-y-3">
-            <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-              {/* Search Box */}
-              <div className="relative w-full sm:flex-1">
-                <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="ابحث برقم العجلة، اسم السائق، أو نوع الوقود..."
-                  className="w-full pr-10 pl-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 text-xs sm:text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                  >
-                    مسح
-                  </button>
-                )}
-              </div>
-
-              {/* View Mode Toggle */}
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700 self-end sm:self-auto">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded-xl transition-all ${
-                    viewMode === 'grid'
-                      ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
-                      : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
-                  }`}
-                  title="عرض بطاقات الشاحنات"
-                >
-                  <LayoutGrid className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('table')}
-                  className={`p-2 rounded-xl transition-all ${
-                    viewMode === 'table'
-                      ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
-                      : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
-                  }`}
-                  title="عرض جدول تفصيلي"
-                >
-                  <List className="w-4 h-4" />
-                </button>
-              </div>
+          {results.map(r => (
+            <div key={r.name} className={`flex items-start gap-2 text-xs ${r.ok ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+              {r.ok ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
+              <span><b>{r.name}</b> — {r.message}</span>
             </div>
+          ))}
+        </div>
+      )}
 
-            {/* Filter Chips & Sorting Row */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
-              {/* Company filters */}
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-400 font-bold ml-1">الشركة:</span>
-                <button
-                  type="button"
-                  onClick={() => setCompanyFilter('all')}
-                  className={`px-3 py-1 rounded-xl font-bold transition-all ${
-                    companyFilter === 'all'
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
-                  }`}
-                >
-                  الكل ({vehicles.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCompanyFilter('sahara')}
-                  className={`px-3 py-1 rounded-xl font-bold transition-all ${
-                    companyFilter === 'sahara'
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
-                  }`}
-                >
-                  صحاري كربلاء
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCompanyFilter('etihad')}
-                  className={`px-3 py-1 rounded-xl font-bold transition-all ${
-                    companyFilter === 'etihad'
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
-                  }`}
-                >
-                  شركة الاتحاد
-                </button>
-              </div>
-
-              {/* Sort By Dropdown */}
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400 font-bold flex items-center gap-1">
-                  <ArrowUpDown className="w-3 h-3" />
-                  <span>ترتيب:</span>
-                </span>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                  className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-hidden cursor-pointer"
-                >
-                  <option value="consumption">الأعلى استهلاكاً (لتر)</option>
-                  <option value="fuelings">الأكثر تفويلاً (مرات)</option>
-                  <option value="latest">الأحدث تفويلاً</option>
-                  <option value="plate">رقم اللوحة والعجلة</option>
-                </select>
-              </div>
-            </div>
+      {!allFills.length ? (
+        <div className={`rounded-3xl border-2 border-dashed p-12 text-center transition-colors ${drag ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/30' : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900'}`}>
+          <div className="w-16 h-16 mx-auto rounded-3xl bg-gradient-to-tr from-sky-500 to-indigo-600 text-white flex items-center justify-center mb-4 shadow-lg shadow-sky-500/30 vehicle-float">
+            <Upload className="w-7 h-7" />
+          </div>
+          <h3 className="text-lg font-black text-slate-900 dark:text-white">لا توجد كشوف بعد</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 mb-5">
+            {editable ? 'اسحب ملفات «كشف مطابقة الكاز» هنا أو ارفعها — يمكن رفع عدة ملفات معًا' : 'لم يرفع أحد كشوف العربات بعد'}
+          </p>
+          <div className="inline-flex">{uploadBtn}</div>
+        </div>
+      ) : (
+        <>
+          {/* الكارتات */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-3">
+            <Kpi tone="bg-slate-700" icon={<FileText className="w-4 h-4" />} label="الملفات المرفوعة" value={files.length} sub={lastUpload ? `آخر رفع ${new Date(lastUpload).toLocaleDateString('en-GB')}` : '—'} onClick={() => setShowFiles(true)} />
+            <Kpi tone="bg-sky-500" icon={<Truck className="w-4 h-4" />} label="إجمالي العربات" value={stats.length} sub={active.kind === 'day' ? `يوم ${formatDay(active.date)}` : `${dates.length} يوم`} />
+            <Kpi tone="bg-indigo-500" icon={<Fuel className="w-4 h-4" />} label="إجمالي التفويلات" value={k.total.toLocaleString()} sub={`لتر · ${fills.length} تفويلة`} />
+            <Kpi tone="bg-violet-500" icon={<Gauge className="w-4 h-4" />} label="متوسط التفويلة" value={k.avg.toLocaleString()} sub="لتر للتفويلة" />
+            <Kpi tone="bg-amber-500" icon={<Trophy className="w-4 h-4" />} label="أعلى تفويلة" value={k.top ? k.top.qty.toLocaleString() : '—'} sub={k.top ? <span dir="ltr">عربة {k.top.vehicle}</span> : '—'} onClick={k.top ? () => setVehicle(k.top!.vehicle) : undefined} />
+            <Kpi
+              tone={k.change === null ? 'bg-slate-400' : k.change > 0 ? 'bg-rose-500' : 'bg-emerald-500'}
+              icon={k.change !== null && k.change < 0 ? <TrendingDown className="w-4 h-4" /> : <TrendingUp className="w-4 h-4" />}
+              label="مقارنة باليوم السابق"
+              value={k.change === null ? '—' : <span dir="ltr">{k.change > 0 ? '+' : ''}{k.change}%</span>}
+              sub={prevDay ? `عن ${formatDay(prevDay)} (${prevTotal?.toLocaleString()} لتر)` : active.kind === 'all' ? 'اختر يومًا للمقارنة' : 'لا يوجد كشف لليوم السابق'}
+            />
+            <Kpi tone="bg-rose-500" icon={<Repeat2 className="w-4 h-4" />} label="تفويل متكرر" value={k.frequent} sub={`عربة خلال ${FREQUENT_DAYS} يوم أو أقل`} />
           </div>
 
-          {/* Fleet Vehicles Grid (Image 3 Style) */}
-          {viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {filteredVehicles.map((vehicle) => (
-                <TruckCard
-                  key={vehicle.id}
-                  vehicle={vehicle}
-                  onSelect={setSelectedVehicle}
-                />
+          {/* الخريطة 30% + أعلى الاستهلاك */}
+          <div className="grid grid-cols-1 lg:grid-cols-10 gap-5 items-stretch">
+            <div className="lg:col-span-3"><SitesMap fills={fills} /></div>
+            <div className="lg:col-span-7"><TopVehicleCards stats={stats} onOpen={setVehicle} /></div>
+          </div>
+
+          {/* الجدول 50% + الرسم 50% */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-stretch">
+            <RefillsTable fills={fills} onOpen={setVehicle} />
+            <FuelChart stats={stats} allFills={allFills} />
+          </div>
+        </>
+      )}
+
+      {/* نافذة الملفات */}
+      {showFiles && (
+        <div className="fixed inset-0 z-50 flex justify-start bg-slate-950/50 backdrop-blur-sm" onClick={() => setShowFiles(false)}>
+          <div className="vehicle-drawer w-full max-w-md h-full bg-white dark:bg-slate-900 shadow-2xl p-5 overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-black text-slate-900 dark:text-white">الكشوف المرفوعة</h3>
+              <button type="button" onClick={() => setShowFiles(false)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer" aria-label="إغلاق"><X className="w-5 h-5 text-slate-500" /></button>
+            </div>
+            <div className="space-y-2">
+              {[...files].sort((a, b) => b.reportDate.localeCompare(a.reportDate)).map(f => (
+                <div key={f.id} className="rounded-2xl border border-slate-200 dark:border-slate-800 p-3 flex items-start gap-3">
+                  <span className="p-2 rounded-xl bg-rose-500/10 text-rose-500"><FileText className="w-4 h-4" /></span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">{f.site} · <span className="font-mono">{f.reportDate}</span></div>
+                    <div className="text-[11px] text-slate-500 truncate">{f.name}</div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">{f.rows} سطر · {f.totalQty.toLocaleString()} لتر · رُفع {new Date(f.uploadedAt).toLocaleString('en-GB')}{f.by ? ` · ${f.by}` : ''}</div>
+                  </div>
+                  {editable && (
+                    <button type="button" onClick={() => { if (window.confirm(`حذف كشف ${f.site} ليوم ${f.reportDate}؟`)) data.removeFile(f.id); }} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 cursor-pointer" aria-label="حذف"><Trash2 className="w-4 h-4" /></button>
+                  )}
+                </div>
               ))}
+              {!files.length && <p className="text-sm text-slate-400 text-center py-8">لا توجد ملفات</p>}
             </div>
-          ) : (
-            /* Table View */
-            <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-soft-card">
-              <div className="overflow-x-auto">
-                <table className="w-full text-right text-xs">
-                  <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 font-bold border-b border-slate-200 dark:border-slate-800">
-                    <tr>
-                      <th className="py-3 px-4">رقم العجلة واللوحة</th>
-                      <th className="py-3 px-4">السائق</th>
-                      <th className="py-3 px-4">الشركة</th>
-                      <th className="py-3 px-4">نوع الوقود</th>
-                      <th className="py-3 px-4">عدد التفويلات</th>
-                      <th className="py-3 px-4">إجمالي اللترات</th>
-                      <th className="py-3 px-4">آخر تفويلة</th>
-                      <th className="py-3 px-4">الحالة</th>
-                      <th className="py-3 px-4 text-center">إجراء</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
-                    {filteredVehicles.map((v) => (
-                      <tr
-                        key={v.id}
-                        onClick={() => setSelectedVehicle(v)}
-                        className="hover:bg-blue-50/50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
-                      >
-                        <td className="py-3 px-4">
-                          <div className="font-bold text-slate-900 dark:text-white font-mono">{v.truckNumber}</div>
-                          <div className="text-[11px] text-slate-400">{v.plateDisplay}</div>
-                        </td>
-                        <td className="py-3 px-4 font-bold">{v.driverName}</td>
-                        <td className="py-3 px-4">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                            {v.company}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">{v.fuelType}</td>
-                        <td className="py-3 px-4 font-mono font-bold text-blue-600 dark:text-blue-400">
-                          {v.fuelingsCount}
-                        </td>
-                        <td className="py-3 px-4 font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                          {v.totalFuelLiters.toLocaleString()} لتر
-                        </td>
-                        <td className="py-3 px-4 font-mono text-[11px] text-slate-500">
-                          {v.lastFuelingDate}
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                            {v.statusText}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedVehicle(v);
-                            }}
-                            className="px-2.5 py-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] transition-all cursor-pointer shadow-xs"
-                          >
-                            فحص الشاحنة
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          </div>
+        </div>
+      )}
+
+      {/* تفاصيل العربة */}
+      {selected && (
+        <div className="fixed inset-0 z-50 flex justify-start bg-slate-950/60 backdrop-blur-sm" onClick={() => setVehicle(null)}>
+          <div className="vehicle-drawer w-full max-w-lg h-full bg-slate-950 text-white shadow-2xl overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="relative p-5 border-b border-slate-800">
+              <div className="absolute inset-0 vehicle-hero-grid opacity-50" />
+              <div className="relative flex items-center justify-between">
+                <div>
+                  <div className="text-[11px] text-slate-400 font-bold">العربة</div>
+                  <div className="text-3xl font-black font-mono" dir="ltr">{selected.vehicle}</div>
+                </div>
+                <button type="button" onClick={() => setVehicle(null)} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 cursor-pointer" aria-label="إغلاق"><X className="w-5 h-5" /></button>
+              </div>
+              <img src="/trucks/semi_truck.jpg" alt="" className="relative mt-3 w-full h-36 object-contain rounded-2xl bg-white/95" />
+              <div className="relative grid grid-cols-4 gap-2 mt-4 text-center">
+                {[
+                  ['الإجمالي', selected.total.toLocaleString()],
+                  ['تفويلات', selected.count],
+                  ['المتوسط', selected.avg.toLocaleString()],
+                  ['متوسط الأيام', selected.avgGap ?? '—'],
+                ].map(([l, v]) => (
+                  <div key={String(l)} className="rounded-xl bg-white/5 border border-white/10 py-2">
+                    <div className="text-base font-black font-mono">{v}</div>
+                    <div className="text-[10px] text-slate-400">{l}</div>
+                  </div>
+                ))}
               </div>
             </div>
-          )}
-
-          {/* Empty search results fallback */}
-          {filteredVehicles.length === 0 && (
-            <div className="text-center py-12 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8">
-              <Truck className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-              <h4 className="text-base font-bold text-slate-700 dark:text-slate-300">لا توجد عربات مطابقة للبحث</h4>
-              <p className="text-xs text-slate-400 mt-1">جرب تغيير كلمات البحث أو إعادة ضبط خيارات التصفية</p>
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchQuery('');
-                  setCompanyFilter('all');
-                  setFuelFilter('all');
-                }}
-                className="mt-4 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold cursor-pointer"
-              >
-                إعادة ضبط البحث
-              </button>
+            <div className="p-5">
+              <h4 className="text-sm font-black mb-3">سجل التفويل</h4>
+              <ol className="relative border-r border-slate-800 mr-2 space-y-4">
+                {selected.fills.map(f => {
+                  const freq = f.days !== null && f.days <= FREQUENT_DAYS;
+                  return (
+                    <li key={f.date} className="mr-4">
+                      <span className={`absolute -right-[7px] mt-1.5 w-3.5 h-3.5 rounded-full border-2 border-slate-950 ${freq ? 'bg-rose-500' : 'bg-sky-500'}`} />
+                      <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono font-bold text-sm">{f.date}</span>
+                          <span className="font-mono font-black text-sky-300">{f.qty.toLocaleString()} لتر</span>
+                        </div>
+                        <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1"><User className="w-3 h-3" />{f.drivers.join('، ') || '—'}</div>
+                        <div className="text-[11px] text-slate-400 mt-1">
+                          {f.sites.join('، ')}{f.parts > 1 ? ` · مجموع ${f.parts} تفويلات في نفس اليوم` : ''}
+                        </div>
+                        <div className="mt-2 pt-2 border-t border-white/10 text-[11px] text-slate-400 flex flex-wrap gap-x-3">
+                          <span>السابقة: <b className="text-slate-200 font-mono">{f.prevQty?.toLocaleString() ?? '—'}</b></span>
+                          <span>بتاريخ <b className="text-slate-200 font-mono">{f.prevDate || '—'}</b></span>
+                          <span className={freq ? 'text-rose-400 font-bold' : ''}>بعد {f.days ?? '—'} يوم</span>
+                          {f.prevSite && <span>من {f.prevSite}</span>}
+                          {f.prevDriver && <span>السائق {f.prevDriver}</span>}
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
             </div>
-          )}
+          </div>
         </div>
-      </div>
-
-      {/* 🌟 4. THE LARGE TRUCK MODAL ("عند ضغط تنفتح كما في الصورة الشاحنة الكبيرة" - Image 2) */}
-      <LargeTruckModal
-        vehicle={selectedVehicle}
-        onClose={() => setSelectedVehicle(null)}
-      />
+      )}
     </div>
   );
 };
