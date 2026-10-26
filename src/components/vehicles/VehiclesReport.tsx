@@ -2,10 +2,11 @@
 import React, { useMemo, useRef, useState } from 'react';
 import {
   Truck, FileText, Fuel, Gauge, Trophy, TrendingUp, TrendingDown, Repeat2, Upload, X, Trash2, Loader2,
-  CheckCircle2, AlertTriangle, CalendarDays, User,
+  CheckCircle2, AlertTriangle, User,
 } from 'lucide-react';
 import { usePermissions } from '../../lib/usePermission';
 import { FREQUENT_DAYS, formatDay } from '../../lib/vehicleFuel';
+import { DateField } from '../ui/DateField';
 import { useVehicleData, type Scope, type UploadResult } from './useVehicleData';
 import { SitesMap } from './SitesMap';
 import { TopVehicleCards } from './TopVehicleCards';
@@ -66,6 +67,7 @@ export const VehiclesReport: React.FC = () => {
   const lastUpload = files.reduce((m, f) => (f.uploadedAt > m ? f.uploadedAt : m), '');
   const selected = vehicle ? history.get(vehicle) : undefined;
 
+  // زر الرفع: يُضغط لاختيار الملفات أو تُسحب الملفات وتُفلت عليه
   const uploadBtn = editable && (
     <>
       <input ref={input} type="file" accept="application/pdf,.pdf" multiple hidden onChange={e => doUpload(e.target.files)} />
@@ -73,58 +75,56 @@ export const VehiclesReport: React.FC = () => {
         type="button"
         disabled={busy}
         onClick={() => input.current?.click()}
-        className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-l from-sky-500 to-indigo-600 text-white text-sm font-black shadow-lg shadow-sky-500/25 hover:brightness-110 disabled:opacity-60 cursor-pointer transition-all"
+        onDragOver={e => { e.preventDefault(); setDrag(true); }}
+        onDragLeave={() => setDrag(false)}
+        onDrop={e => { e.preventDefault(); setDrag(false); void doUpload(e.dataTransfer.files); }}
+        className={`flex items-center gap-2 px-4 py-2 rounded-2xl border-2 border-dashed text-sm font-black transition-all cursor-pointer disabled:opacity-60 ${
+          drag
+            ? 'border-sky-500 bg-sky-500 text-white scale-105 shadow-lg shadow-sky-500/30'
+            : 'border-sky-400/70 bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900/40'
+        }`}
       >
         {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-        رفع كشوف PDF
+        {drag ? 'أفلت الملفات هنا' : 'رفع كشوف PDF أو اسحبها هنا'}
       </button>
     </>
   );
 
+  const dateSet = useMemo(() => new Set(dates), [dates]);
+
   return (
-    <div
-      className="space-y-5 pb-12 font-cairo"
-      onDragOver={e => { if (editable) { e.preventDefault(); setDrag(true); } }}
-      onDragLeave={() => setDrag(false)}
-      onDrop={e => { e.preventDefault(); setDrag(false); if (editable) void doUpload(e.dataTransfer.files); }}
-    >
-      {/* الرأس: العنوان، الفترة، الرفع */}
-      <div className="relative overflow-hidden rounded-3xl bg-slate-950 text-white p-5 sm:p-6 border border-slate-800">
-        <div className="absolute inset-0 vehicle-hero-grid opacity-60" />
-        <div className="absolute -top-24 left-10 w-72 h-72 rounded-full bg-sky-500/20 blur-3xl" />
-        <div className="relative flex flex-col lg:flex-row lg:items-center gap-4">
-          <div className="flex items-center gap-3 ml-auto">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/30">
-              <Truck className="w-6 h-6" />
-            </div>
-            <div>
-              <h2 className="text-xl sm:text-2xl font-black">تقرير العربات</h2>
-              <p className="text-xs text-slate-400 mt-0.5">تحليل تفويل الآليات من الكشوف اليومية · العربات الأكثر استهلاكًا وتكرارًا</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <button type="button" onClick={() => setShowFiles(true)} className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-sm font-bold hover:bg-white/10 cursor-pointer">
-              <FileText className="w-4 h-4 text-sky-300" />الملفات ({files.length})
-            </button>
-            {uploadBtn}
-          </div>
-        </div>
+    <div className="space-y-5 pb-12 font-cairo">
+      {/* أدوات الصفحة: التاريخ الموحّد، الملفات، الرفع */}
+      <div className="flex flex-wrap items-center gap-2">
         {dates.length > 0 && (
-          <div className="relative mt-4 flex items-center gap-1.5 overflow-x-auto pb-1 vehicle-scroll">
-            <CalendarDays className="w-4 h-4 text-slate-500 shrink-0 ml-1" />
-            {[...dates].reverse().slice(0, 14).map(d => {
-              const on = active.kind === 'day' && active.date === d;
-              return (
-                <button key={d} type="button" onClick={() => setScope({ kind: 'day', date: d })} className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold font-mono transition-all cursor-pointer ${on ? 'bg-sky-500 text-white shadow-md shadow-sky-500/30' : 'bg-white/5 text-slate-300 hover:bg-white/10'}`}>
-                  {formatDay(d)}
-                </button>
-              );
-            })}
-            <button type="button" onClick={() => setScope({ kind: 'all' })} className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${active.kind === 'all' ? 'bg-sky-500 text-white' : 'bg-white/5 text-slate-300 hover:bg-white/10'}`}>
+          <>
+            <DateField
+              value={active.kind === 'day' ? active.date : ''}
+              onChange={v => setScope({ kind: 'day', date: v })}
+              marked={dateSet}
+              onlyMarked
+              min={dates[0]}
+              max={dates[dates.length - 1]}
+              placeholder="كل الفترة"
+              ariaLabel="تاريخ الكشف"
+              iconClassName="text-sky-600"
+              className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold font-mono text-slate-700 dark:text-slate-200 shadow-xs"
+            />
+            <button
+              type="button"
+              onClick={() => setScope({ kind: 'all' })}
+              className={`px-3.5 py-2 rounded-2xl text-sm font-bold border transition-all cursor-pointer ${active.kind === 'all' ? 'bg-sky-500 border-sky-500 text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'}`}
+            >
               كل الفترة
             </button>
-          </div>
+          </>
         )}
+        <div className="flex items-center gap-2 mr-auto">
+          <button type="button" onClick={() => setShowFiles(true)} className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-sky-400 cursor-pointer">
+            <FileText className="w-4 h-4 text-sky-500" />الملفات ({files.length})
+          </button>
+          {uploadBtn}
+        </div>
       </div>
 
       {results && (
