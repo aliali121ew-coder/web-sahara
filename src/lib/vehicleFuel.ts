@@ -286,3 +286,30 @@ export const previousDate = (dates: string[], date: string) => dates.filter(d =>
 
 /** MM/DD للعرض المختصر */
 export const formatDay = (d: string) => (d ? d.slice(5) : '—');
+
+// ───── مسارات العربات على الخريطة ─────
+
+export interface MapPoint { lat: number; lng: number; name: string }
+
+/** رحلة تُضاف يدويًا: العربة والمسافة، ومن/إلى اختياريان (بدونهما لا يُرسم خط) */
+export interface VehicleRoute {
+  id: string;
+  vehicle: string;
+  km: number;
+  /** YYYY/MM/DD */
+  date: string;
+  from: MapPoint | null;
+  to: MapPoint | null;
+  note: string;
+  by: string;
+  createdAt: string;
+}
+
+export const VEHICLE_ROUTES_KEY = 'sahara_vehicle_routes_v1';
+
+/** المسافة المستقيمة بين نقطتين (كم) — للمقارنة مع المسافة المسجّلة */
+export const straightKm = (a: MapPoint, b: MapPoint) => {
+  const r = Math.PI / 180;
+  const h = Math.sin(((b.lat - a.lat) * r) / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(((b.lng - a.lng) * r) / 2) ** 2;
+  return Math.round(6371 * 2 * Math.asin(Math.sqrt(h)));
+};

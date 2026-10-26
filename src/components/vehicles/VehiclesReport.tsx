@@ -8,7 +8,7 @@ import { usePermissions } from '../../lib/usePermission';
 import { FREQUENT_DAYS, formatDay } from '../../lib/vehicleFuel';
 import { DateField } from '../ui/DateField';
 import { useVehicleData, type Scope, type UploadResult } from './useVehicleData';
-import { SitesMap } from './SitesMap';
+import { VehicleMap } from './VehicleMap';
 import { TopVehicleCards } from './TopVehicleCards';
 import { RefillsTable } from './RefillsTable';
 import { FuelChart } from './FuelChart';
@@ -174,7 +174,7 @@ export const VehiclesReport: React.FC = () => {
 
           {/* الخريطة 30% + أعلى الاستهلاك */}
           <div className="grid grid-cols-1 lg:grid-cols-10 gap-5 items-stretch">
-            <div className="lg:col-span-3"><SitesMap fills={fills} /></div>
+            <div className="lg:col-span-3"><VehicleMap date={active.kind === 'day' ? active.date : null} vehicles={stats.map(s => s.vehicle)} editable={editable} /></div>
             <div className="lg:col-span-7"><TopVehicleCards stats={stats} onOpen={setVehicle} /></div>
           </div>
 
