@@ -7,7 +7,7 @@ import {
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine } from 'recharts';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import {
-  FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, checkFills, disciplineScore, formatDay,
+  FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, checkFills, disciplineScore, formatDay, vehicleCategory, vehicleImage,
   type CheckKind, type DayFill, type VehicleProfile, type VehicleRoute, type VehicleStat,
 } from '../../lib/vehicleFuel';
 import { VehicleProfileEditor } from './VehicleProfileEditor';
@@ -44,6 +44,7 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, ranking, fleetAvg, fl
   const [tab, setTab] = useState<'all' | 'frequent' | 'multi' | 'violations'>('all');
   const [profiles, setProfiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
   const [editing, setEditing] = useState(false);
+  const category = vehicleCategory(stat.vehicle);
   const [dailyPage, setDailyPage] = useState(0);
   useEffect(() => setDailyPage(0), [stat.vehicle]);
   const profile = profiles.find(p => p.id === stat.vehicle);
@@ -91,7 +92,7 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, ranking, fleetAvg, fl
         </button>
         <div className="flex items-center gap-3 ml-auto">
           <div>
-            <div className="text-[11px] text-slate-500 font-bold">العربة</div>
+            <div className="text-[11px] text-slate-500 font-bold">{category ? `العربة · ${category.label}` : 'العربة'}</div>
             <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono leading-none" dir="ltr">{stat.vehicle}</div>
           </div>
           {stat.frequent > 0 ? (
@@ -113,7 +114,7 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, ranking, fleetAvg, fl
           {/* ملف العربة */}
           <div className="flex flex-wrap items-center gap-2 mb-4">
             {[
-              { icon: <Hash className="w-3.5 h-3.5" />, v: profile?.type || 'النوع غير محدد', on: !!profile?.type },
+              { icon: <Hash className="w-3.5 h-3.5" />, v: profile?.type || category?.label || 'النوع غير محدد', on: !!(profile?.type || category) },
               { icon: <Container className="w-3.5 h-3.5" />, v: profile?.tankLiters ? `خزان ${profile.tankLiters.toLocaleString()} L` : 'سعة الخزان؟', on: !!profile?.tankLiters },
               { icon: <ShieldCheck className="w-3.5 h-3.5" />, v: profile?.dailyLimit ? `حصة ${profile.dailyLimit.toLocaleString()} L/يوم` : 'بلا حصة يومية', on: !!profile?.dailyLimit },
               { icon: <User className="w-3.5 h-3.5" />, v: profile?.driver || 'بلا سائق معتمد', on: !!profile?.driver },
@@ -140,7 +141,7 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, ranking, fleetAvg, fl
               {profile?.photo ? (
                 <img src={profile.photo} alt={`العربة ${stat.vehicle}`} className="relative w-full h-56 sm:h-64 object-cover rounded-3xl shadow-xl vehicle-truck-in" />
               ) : (
-                <img src="/trucks/semi_truck.jpg" alt="" className="relative w-full h-56 sm:h-64 object-contain mix-blend-multiply dark:mix-blend-normal dark:rounded-2xl dark:bg-white/95 vehicle-truck-in" />
+                <img src={vehicleImage(stat.vehicle)} alt={category?.label || ''} className="relative w-full h-56 sm:h-64 object-contain mix-blend-multiply dark:mix-blend-normal dark:rounded-2xl dark:bg-white/95 vehicle-truck-in" />
               )}
               <div className="absolute top-2 left-2 flex flex-col gap-1.5">
                 <span className={`text-[11px] font-black px-2.5 py-1 rounded-xl ${vsFleet > 0 ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'}`} dir="ltr">{vsFleet > 0 ? '+' : ''}{vsFleet}% vs fleet</span>

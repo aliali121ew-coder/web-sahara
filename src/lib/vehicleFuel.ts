@@ -507,3 +507,45 @@ export const shrinkImage = (file: File, max = 640): Promise<string> => new Promi
   img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('الملف ليس صورة صالحة')); };
   img.src = url;
 });
+
+// ───── فئة العربة من رمزها ─────
+
+export interface VehicleCategory { key: string; label: string; image: string }
+
+const CATEGORY: Record<string, { label: string; image: string }> = {
+  HEAD: { label: 'رأس قاطرة', image: 'head' },
+  HF: { label: 'باص', image: 'hf' },
+  K: { label: 'خباطة', image: 'k' },
+  BS: { label: 'براد صغير', image: 'bs' },
+  A: { label: 'إطفاء', image: 'a' },
+  SF: { label: 'شفل صغير', image: 'sf' },
+  SF1: { label: 'شفل كبير', image: 'sf1' },
+  SL: { label: 'براد قاطرة', image: 'sl' },
+  AT: { label: 'براد', image: 'at' },
+  M: { label: 'كناسة', image: 'm' },
+  L: { label: 'قلاب', image: 'l' },
+  KS: { label: 'ضاغطة نفايات', image: 'ks' },
+  KA: { label: 'ساحبة زراعية', image: 'ka' },
+  HW: { label: 'حوضية ماء', image: 'hw' },
+};
+
+/** أرقام الشفلات الكبيرة (SF + رقم): الشفل الكبير والصغير لكل منهما تسلسله */
+export const BIG_SF_NUMBERS = new Set<number>();
+
+/**
+ * الفئة من رمز العربة: الأرقام فقط = رأس قاطرة (يُفصل ويُشد لأكثر من مقطورة)،
+ * وغيرها بالحروف قبل الرقم (HF12 → باص، SF64 → شفل).
+ */
+export const vehicleCategory = (code: string): VehicleCategory | null => {
+  const c = code.trim().toUpperCase();
+  if (/^\d+$/.test(c)) return { key: 'HEAD', ...CATEGORY.HEAD, image: `/trucks/types/${CATEGORY.HEAD.image}.webp` };
+  const m = /^([A-Z]+)(\d*)/.exec(c);
+  if (!m) return null;
+  let key = m[1];
+  if (key === 'SF' && BIG_SF_NUMBERS.has(Number(m[2]))) key = 'SF1';
+  const cat = CATEGORY[key];
+  return cat ? { key, label: cat.label, image: `/trucks/types/${cat.image}.webp` } : null;
+};
+
+/** صورة العربة: صورتها الخاصة إن وُجدت، ثم صورة فئتها، ثم الصورة العامة */
+export const vehicleImage = (code: string, photo?: string) => photo || vehicleCategory(code)?.image || '/trucks/semi_truck.jpg';

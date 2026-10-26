@@ -1,7 +1,7 @@
 /* eslint-disable i18next/no-literal-string */
 import React from 'react';
 import { Flame, Repeat2, User, CalendarClock, ChevronLeft } from 'lucide-react';
-import { VEHICLE_PROFILES_KEY, formatDay, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
+import { VEHICLE_PROFILES_KEY, formatDay, vehicleCategory, vehicleImage, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 
 /** أعلى 6 عربات استهلاكًا مع صورة الشاحنة */
@@ -30,6 +30,7 @@ export const TopVehicleCards: React.FC<{ stats: VehicleStat[]; onOpen: (v: strin
                 <div className="flex items-center gap-2">
                   <span className={`w-6 h-6 rounded-lg text-[11px] font-black flex items-center justify-center ${i === 0 ? 'bg-orange-500 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>{i + 1}</span>
                   <span className="font-mono font-black text-slate-900 dark:text-white text-base" dir="ltr">{s.vehicle}</span>
+                  {vehicleCategory(s.vehicle) && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300">{vehicleCategory(s.vehicle)!.label}</span>}
                 </div>
                 {s.frequent > 0 ? (
                   <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
@@ -44,7 +45,7 @@ export const TopVehicleCards: React.FC<{ stats: VehicleStat[]; onOpen: (v: strin
                 {photo(s.vehicle) ? (
                   <img src={photo(s.vehicle)} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                 ) : (
-                  <img src="/trucks/semi_truck.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal dark:opacity-80 group-hover:scale-105 transition-transform duration-500" />
+                  <img src={vehicleImage(s.vehicle)} alt={vehicleCategory(s.vehicle)?.label || ''} loading="lazy" className="absolute inset-0 w-full h-full object-contain p-1 mix-blend-multiply dark:mix-blend-normal dark:opacity-90 group-hover:scale-105 transition-transform duration-500" />
                 )}
               </div>
 
