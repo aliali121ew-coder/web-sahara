@@ -527,6 +527,8 @@ const CATEGORY: Record<string, { label: string; image: string }> = {
   KS: { label: 'ضاغطة نفايات', image: 'ks' },
   KA: { label: 'ساحبة زراعية', image: 'ka' },
   HW: { label: 'حوضية ماء', image: 'hw' },
+  KH: { label: 'بيكب حمل', image: 'kh' },
+  KN: { label: 'كرين', image: 'kn' },
 };
 
 /** أرقام الشفلات الكبيرة (SF + رقم): الشفل الكبير والصغير لكل منهما تسلسله */
