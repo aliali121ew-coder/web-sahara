@@ -66,7 +66,7 @@ export const TopVehicleCards: React.FC<{ stats: VehicleStat[]; onOpen: (v: strin
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto max-h-[640px] -mx-1 px-1 vehicle-page" key={selected || 'all'}>
+      <div className="flex-1 vehicle-page" key={selected || 'all'}>
         {!current ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
             {categories.map(c => {

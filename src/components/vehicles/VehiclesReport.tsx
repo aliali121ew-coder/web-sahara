@@ -11,8 +11,6 @@ import { DateField } from '../ui/DateField';
 import { useVehicleData, type Scope, type UploadResult } from './useVehicleData';
 import { VehicleMap } from './VehicleMap';
 import { TopVehicleCards } from './TopVehicleCards';
-import { RefillsTable } from './RefillsTable';
-import { FuelChart } from './FuelChart';
 import { VehicleDetailPage } from './VehicleDetailPage';
 import './vehicles.css';
 
@@ -240,12 +238,6 @@ export const VehiclesReport: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-10 gap-5 items-stretch">
             <div className="lg:col-span-3"><VehicleMap date={active.kind === 'day' ? active.date : null} vehicles={stats.map(s => s.vehicle)} editable={editable} /></div>
             <div className="lg:col-span-7"><TopVehicleCards stats={stats} onOpen={setVehicle} /></div>
-          </div>
-
-          {/* الجدول 50% + الرسم 50% */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-stretch">
-            <RefillsTable fills={fills} onOpen={setVehicle} />
-            <FuelChart stats={stats} allFills={allFills} />
           </div>
         </>
       )}
