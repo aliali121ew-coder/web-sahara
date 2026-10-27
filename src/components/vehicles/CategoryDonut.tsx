@@ -48,7 +48,7 @@ export const CategoryDonut: React.FC<{ stats: VehicleStat[]; category: string | 
   const sliceOf = (i: number) => Math.min(i, slices.length - 1);
 
   return (
-    <div className="shrink-0 rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 shadow-soft-card">
+    <div className="shrink-0 rounded-3xl bg-gradient-to-b from-indigo-50 via-white to-white dark:from-indigo-950/40 dark:via-slate-900/90 dark:to-slate-900/90 border border-indigo-100 dark:border-indigo-900/50 p-4 shadow-soft-card">
       <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-1.5">
           <div className="p-1 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400"><PieIcon className="w-3.5 h-3.5" /></div>

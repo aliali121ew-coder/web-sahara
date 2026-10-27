@@ -11,21 +11,21 @@ const TOP = 7;
 const CARD_MIN = 68;
 const GAP = 8;
 
-/** لون الحلقة متدرج حسب النسبة: فيروزي هادئ للنسب المنخفضة ← كهرماني ← أحمر للنسب العالية (60% فأكثر) */
+/** لون الكارت متدرج حسب النسبة: فيروزي هادئ للنسب المنخفضة ← كهرماني ← أحمر للنسب العالية (60% فأكثر) */
 const shareColor = (pct: number) => {
   const t = Math.min(1, Math.max(0, pct / 60));
   const hue = Math.round(170 - 170 * t);
-  return { stroke: `hsl(${hue} 70% 45%)`, soft: `hsl(${hue} 70% 45% / 0.12)` };
+  return { stroke: `hsl(${hue} 70% 45%)`, tint: `hsl(${hue} 75% 50% / 0.11)`, border: `hsl(${hue} 70% 50% / 0.35)` };
 };
 
-/** حلقة النسبة: امتلاؤها ونصّها = نسبة العربة من استهلاك فئتها؛ لونها متدرج حسب النسبة */
+/** حلقة النسبة بلون محايد: امتلاؤها ونصّها = نسبة العربة من استهلاك فئتها (اللون في الكارت نفسه) */
 const ShareRing: React.FC<{ pct: number }> = ({ pct }) => {
   const r = 15;
   const len = 2 * Math.PI * r;
-  const { stroke: color, soft } = shareColor(pct);
+  const color = '#475569';
   return (
     <div className="relative w-11 h-11 shrink-0">
-      <span className="absolute inset-1 rounded-full" style={{ background: soft }} />
+      <span className="absolute inset-1 rounded-full bg-white/70 dark:bg-slate-900/60" />
       <svg viewBox="0 0 36 36" className="relative w-11 h-11 -rotate-90">
         <circle cx="18" cy="18" r={r} fill="none" stroke="rgb(148 163 184 / 0.25)" strokeWidth="3.5" />
         <circle cx="18" cy="18" r={r} fill="none" stroke={color} strokeWidth="3.5" strokeLinecap="round" strokeDasharray={len} strokeDashoffset={len * (1 - Math.min(1, Math.max(0.03, pct / 100)))} className="vehicle-gauge" />
@@ -88,8 +88,8 @@ export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | n
               <button
                 type="button"
                 onClick={() => onOpen(s.vehicle)}
-                className="vehicle-kpi w-full flex items-center gap-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 px-2.5 py-2 hover:border-sky-400 dark:hover:border-sky-500 hover:bg-white dark:hover:bg-slate-900 hover:shadow-md transition-all text-right cursor-pointer"
-                style={{ animationDelay: `${i * 0.04}s` }}
+                className="vehicle-kpi w-full flex items-center gap-2.5 rounded-2xl border px-2.5 py-2 hover:shadow-md hover:-translate-y-px transition-all text-right cursor-pointer"
+                style={{ animationDelay: `${i * 0.04}s`, background: `linear-gradient(to left, ${shareColor(share).tint}, transparent 85%)`, borderColor: shareColor(share).border }}
               >
                 <ShareRing pct={share} />
                 <div className="flex-1 min-w-0">
