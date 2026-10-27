@@ -14,8 +14,17 @@ const PALETTE: [string, string][] = [
 ];
 
 /** دائرة استهلاك فئات العربات: الإجمالي في الوسط، ونسبة كل فئة ولتراتها في الدليل */
-export const CategoryDonut: React.FC<{ stats: VehicleStat[] }> = ({ stats }) => {
-  const groups = useMemo(() => groupByCategory(stats), [stats]);
+export const CategoryDonut: React.FC<{ stats: VehicleStat[]; category: string | null }> = ({ stats, category }) => {
+  // بلا فئة مفتوحة: توزيع الفئات؛ مع فئة مفتوحة: توزيع عرباتها (أعلى 9 والباقي مجمّع)
+  const all = useMemo(() => groupByCategory(stats), [stats]);
+  const open = category ? all.find(g => g.key === category) : undefined;
+  const groups = useMemo(() => {
+    if (!open) return all.map(g => ({ key: g.key, label: g.label, total: g.total }));
+    const sorted = [...open.vehicles].sort((a, b) => b.total - a.total);
+    const items = sorted.slice(0, 9).map(v => ({ key: v.vehicle, label: v.vehicle, total: v.total }));
+    const rest = sorted.slice(9).reduce((t, v) => t + v.total, 0);
+    return rest ? [...items, { key: 'rest', label: `باقي العربات (${sorted.length - 9})`, total: rest }] : items;
+  }, [all, open]);
   const total = groups.reduce((t, g) => t + g.total, 0);
   const [active, setActive] = useState<number | null>(null);
   const focus = active !== null ? groups[active] : null;
@@ -25,7 +34,7 @@ export const CategoryDonut: React.FC<{ stats: VehicleStat[] }> = ({ stats }) => 
       <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-1.5">
           <div className="p-1 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400"><PieIcon className="w-3.5 h-3.5" /></div>
-          <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">توزيع الاستهلاك حسب الفئة</h3>
+          <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">{open ? `توزيع ${open.label} حسب العربة` : 'توزيع الاستهلاك حسب الفئة'}</h3>
         </div>
         <span className="font-mono text-[10px] font-extrabold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-full border border-blue-200/60 dark:border-blue-800/40">100%</span>
       </div>
@@ -90,7 +99,7 @@ export const CategoryDonut: React.FC<{ stats: VehicleStat[] }> = ({ stats }) => 
               className={`flex items-center gap-1.5 text-[11px] rounded-lg px-1.5 py-1 text-right transition-colors cursor-default ${active === i ? 'bg-slate-100 dark:bg-slate-800' : ''}`}
             >
               <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: `linear-gradient(135deg, ${PALETTE[i % PALETTE.length][0]}, ${PALETTE[i % PALETTE.length][1]})` }} />
-              <span className="font-bold text-slate-700 dark:text-slate-200 truncate flex-1">{g.label}</span>
+              <span className={`font-bold text-slate-700 dark:text-slate-200 truncate flex-1 ${open && g.key !== 'rest' ? 'font-mono' : ''}`} dir={open && g.key !== 'rest' ? 'ltr' : undefined}>{g.label}</span>
               <span className="font-mono font-black text-slate-500 dark:text-slate-400">{pct}%</span>
             </button>
           );

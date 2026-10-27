@@ -47,6 +47,8 @@ export const VehiclesReport: React.FC = () => {
   }, [results]);
   const [showFiles, setShowFiles] = useState(false);
   const [vehicle, setVehicle] = useState<string | null>(null);
+  // الفئة المفتوحة في كارت الفئات: الدائرة وكارت الأعلى استهلاكًا يتبعانها
+  const [category, setCategory] = useState<string | null>(null);
   // البحث عن عربة برقمها (كل العربات المسجلة في كل الفترة) يفتح صفحتها مباشرة
   const [query, setQuery] = useState('');
   const [searchMiss, setSearchMiss] = useState(false);
@@ -236,12 +238,12 @@ export const VehiclesReport: React.FC = () => {
           </div>
 
           {/* دائرة الفئات وأعلى 7 (30%) + فئات العربات */}
-          <div className="grid grid-cols-1 lg:grid-cols-10 gap-5 items-start">
-            <div className="lg:col-span-3 space-y-5">
-              <CategoryDonut stats={stats} />
-              <TopSevenCard stats={stats} onOpen={setVehicle} />
+          <div className="grid grid-cols-1 lg:grid-cols-10 gap-5 items-stretch">
+            <div className="lg:col-span-3 flex flex-col gap-5">
+              <CategoryDonut stats={stats} category={category} />
+              <TopSevenCard stats={stats} category={category} onOpen={setVehicle} />
             </div>
-            <div className="lg:col-span-7"><TopVehicleCards stats={stats} onOpen={setVehicle} /></div>
+            <div className="lg:col-span-7"><TopVehicleCards stats={stats} onOpen={setVehicle} selected={category} onSelect={setCategory} /></div>
           </div>
         </>
       )}

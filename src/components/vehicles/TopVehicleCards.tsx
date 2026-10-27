@@ -1,5 +1,5 @@
 /* eslint-disable i18next/no-literal-string */
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Layers, Repeat2, User, CalendarClock, ChevronLeft, ArrowRight, Truck } from 'lucide-react';
 import { VEHICLE_PROFILES_KEY, formatDay, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
@@ -12,10 +12,15 @@ const OTHER = OTHER_CATEGORY;
  * فئات العربات: كارت لكل فئة موجودة في البيانات (الإجمالي، عدد العربات والتفويلات، المتكرر)،
  * والضغط على الفئة يعرض عرباتها مرتبة بالاستهلاك، والضغط على عربة يفتح صفحتها.
  */
-export const TopVehicleCards: React.FC<{ stats: VehicleStat[]; onOpen: (v: string) => void }> = ({ stats, onOpen }) => {
+export const TopVehicleCards: React.FC<{
+  stats: VehicleStat[];
+  onOpen: (v: string) => void;
+  /** الفئة المفتوحة (مرفوعة للصفحة لتتبعها الدائرة وكارت الأعلى استهلاكًا) */
+  selected: string | null;
+  onSelect: (key: string | null) => void;
+}> = ({ stats, onOpen, selected, onSelect: setSelected }) => {
   const [profiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
   const photo = (v: string) => profiles.find(p => p.id === v)?.photo;
-  const [selected, setSelected] = useState<string | null>(null);
 
   const categories = useMemo(() => groupByCategory(stats), [stats]);
 
