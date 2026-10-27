@@ -1,10 +1,10 @@
 /* eslint-disable i18next/no-literal-string */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, IdCard, Fuel, Hash, Timer, Repeat2, User, Container, ShieldCheck, Building2, StickyNote, Save } from 'lucide-react';
+import { X, IdCard, Fuel, Hash, Timer, Repeat2, User, Container, ShieldCheck, Building2, StickyNote, Save, Camera, Trash2, Loader2 } from 'lucide-react';
 import { getProfile } from '../../lib/session';
 import { VehicleArt } from './VehicleArt';
-import { FREQUENT_DAYS, VEHICLE_TYPES, formatDay, vehicleCategory, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
+import { FREQUENT_DAYS, VEHICLE_TYPES, formatDay, shrinkImage, vehicleCategory, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
 
 export const emptyProfile = (vehicle: string): VehicleProfile => ({
   id: vehicle, type: '', tankLiters: null, dailyLimit: null, driver: '', department: '', notes: '', photo: '', updatedAt: '', by: '',
@@ -25,6 +25,18 @@ export const VehicleProfileEditor: React.FC<{
   onClose: () => void;
 }> = ({ stat, profile, drivers, editable, onSave, onClose }) => {
   const [p, setP] = useState<VehicleProfile>(profile || emptyProfile(stat.vehicle));
+  // تغيير صورة العربة: تُصغَّر وتُحفظ مع تفاصيلها، والإزالة تعيد صورة فئتها
+  const photoInput = useRef<HTMLInputElement>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoErr, setPhotoErr] = useState('');
+  const pickPhoto = async (f: File | undefined) => {
+    if (!f) return;
+    setPhotoBusy(true);
+    setPhotoErr('');
+    try { const photo = await shrinkImage(f); setP(x => ({ ...x, photo })); }
+    catch (e) { setPhotoErr(e instanceof Error ? e.message : 'تعذّرت قراءة الصورة'); }
+    finally { setPhotoBusy(false); if (photoInput.current) photoInput.current.value = ''; }
+  };
   const [tab, setTab] = useState<Tab>('info');
   const [closing, setClosing] = useState(false);
   const dirty = JSON.stringify(p) !== JSON.stringify(profile || emptyProfile(stat.vehicle));
@@ -68,7 +80,26 @@ export const VehicleProfileEditor: React.FC<{
             </div>
             <button type="button" onClick={close} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer" aria-label="إغلاق"><X className="w-4 h-4" /></button>
           </div>
-          <VehicleArt code={stat.vehicle} className="mt-3 w-full h-32" />
+          <div className="relative mt-3 group">
+            {p.photo
+              ? <img src={p.photo} alt="" className="w-full h-32 object-contain" />
+              : <VehicleArt code={stat.vehicle} className="w-full h-32" />}
+            {editable && (
+              <>
+                <input ref={photoInput} type="file" accept="image/*" hidden onChange={e => pickPhoto(e.target.files?.[0])} />
+                <div className="absolute bottom-1 left-1 flex gap-1.5">
+                  <button type="button" onClick={() => photoInput.current?.click()} disabled={photoBusy} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 backdrop-blur text-[11px] font-black cursor-pointer">
+                    {photoBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+                    {p.photo ? 'تغيير الصورة' : 'صورة العربة'}
+                  </button>
+                  {p.photo && (
+                    <button type="button" onClick={() => setP({ ...p, photo: '' })} title="إزالة الصورة والعودة لصورة الفئة" className="p-1.5 rounded-xl bg-white/10 hover:bg-rose-500/30 border border-white/15 cursor-pointer" aria-label="إزالة الصورة"><Trash2 className="w-3.5 h-3.5" /></button>
+                  )}
+                </div>
+              </>
+            )}
+            {photoErr && <p className="mt-1 text-[11px] text-rose-300">{photoErr}</p>}
+          </div>
           <div className="relative grid grid-cols-4 gap-2 mt-4">
             {[
               { i: <Fuel className="w-3.5 h-3.5" />, v: stat.total.toLocaleString(), l: 'لتر' },

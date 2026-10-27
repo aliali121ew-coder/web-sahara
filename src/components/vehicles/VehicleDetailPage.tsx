@@ -7,7 +7,7 @@ import {
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine } from 'recharts';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import {
-  FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, checkFills, disciplineScore, formatDay, vehicleCategory,
+  FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, checkFills, daysBetween, disciplineScore, formatDay, vehicleCategory,
   type CheckKind, type DayFill, type VehicleProfile, type VehicleRefill, type VehicleRoute, type VehicleStat,
 } from '../../lib/vehicleFuel';
 import { VehicleProfileEditor } from './VehicleProfileEditor';
@@ -77,15 +77,26 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, ranking, fle
     : stat.fills;
   const DAILY_PAGE = 7;
   // كل تفويلة سطرًا مستقلًا: تفويل نفس اليوم من أكثر من موقع يظهر بسطوره، مع مجموع اليوم
+  // يوم لكل سطر (الأحدث أولًا) من الملفات المرفوعة فقط: كمية اليوم والمواقع التي فُوِّلت منها بكمياتها؛
+  // الكمية السابقة في الكشوف لا تُستخدم هنا، وعدد الأيام بين أيام التفويل المرفوعة
   const entries = useMemo(() => {
-    const byDay = new Map(stat.fills.map(f => [f.date, f]));
-    return [...refills]
-      .sort((a, b) => b.date.localeCompare(a.date) || a.site.localeCompare(b.site))
-      .map(r => {
-        const day = byDay.get(r.date);
-        return { r, days: r.days ?? day?.days ?? null, same: day && day.parts > 1 ? day : null };
-      });
-  }, [refills, stat]);
+    const byDate = new Map<string, VehicleRefill[]>();
+    for (const r of refills) byDate.set(r.date, [...(byDate.get(r.date) || []), r]);
+    const asc = [...byDate.keys()].sort();
+    return asc.map((date, i) => {
+      const rows = byDate.get(date)!;
+      const sites = new Map<string, number>();
+      for (const r of rows) sites.set(r.site, (sites.get(r.site) || 0) + r.qty);
+      return {
+        date,
+        qty: rows.reduce((t, r) => t + r.qty, 0),
+        days: i > 0 ? daysBetween(asc[i - 1], date) : null,
+        drivers: [...new Set(rows.map(r => r.driver).filter(Boolean))],
+        sites: [...sites.entries()],
+        count: rows.length,
+      };
+    }).reverse();
+  }, [refills]);
   const dailyPages = Math.max(1, Math.ceil(entries.length / DAILY_PAGE));
   const dailyView = entries.slice(dailyPage * DAILY_PAGE, dailyPage * DAILY_PAGE + DAILY_PAGE);
 
@@ -166,25 +177,31 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, ranking, fle
           <div className="mt-5 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
             <div className="flex items-center justify-between gap-2 px-4 py-3">
               <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2"><RouteIcon className="w-4 h-4 text-sky-500" />التفويلات اليومية</h3>
-              <span className="text-[11px] text-slate-500 font-bold">{entries.length} تفويلة</span>
+              <span className="text-[11px] text-slate-500 font-bold">{entries.length} يوم</span>
             </div>
             <table className="w-full text-right text-xs">
               <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400">
-                <tr>{['التفويلة اليومية', 'عدد الأيام', 'التاريخ', 'اسم السائق', 'الموقع'].map(h => <th key={h} className="py-2.5 px-4 font-bold">{h}</th>)}</tr>
+                <tr>{['التفويلة اليومية', 'عدد الأيام', 'التاريخ', 'اسم السائق', 'المواقع'].map(h => <th key={h} className="py-2.5 px-4 font-bold">{h}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
-                {dailyView.map(({ r, days, same }) => {
-                  const freq = days !== null && days <= FREQUENT_DAYS;
+                {dailyView.map(d => {
+                  const freq = d.days !== null && d.days <= FREQUENT_DAYS;
+                  const multi = d.sites.length > 1 || d.count > 1;
                   return (
-                    <tr key={r.id} className={same ? 'bg-amber-50/70 dark:bg-amber-950/20' : freq ? 'bg-rose-50/60 dark:bg-rose-950/20' : ''}>
-                      <td className="py-2.5 px-4 font-mono font-black text-slate-900 dark:text-white">{r.qty.toLocaleString()} L</td>
-                      <td className="py-2.5 px-4"><span className={`px-2 py-0.5 rounded-md font-mono font-bold ${freq ? 'bg-rose-500/10 text-rose-600' : 'bg-slate-100 dark:bg-slate-800'}`}>{days ?? '—'}</span></td>
-                      <td className="py-2.5 px-4 font-mono text-slate-500">
-                        {r.date}
-                        {same && <span className="mr-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300" title={same.sites.join('، ')}>نفس اليوم · {same.qty.toLocaleString()} L</span>}
+                    <tr key={d.date} className={multi ? 'bg-amber-50/70 dark:bg-amber-950/20' : freq ? 'bg-rose-50/60 dark:bg-rose-950/20' : ''}>
+                      <td className="py-2.5 px-4 font-mono font-black text-slate-900 dark:text-white">{d.qty.toLocaleString()} L</td>
+                      <td className="py-2.5 px-4"><span className={`px-2 py-0.5 rounded-md font-mono font-bold ${freq ? 'bg-rose-500/10 text-rose-600' : 'bg-slate-100 dark:bg-slate-800'}`}>{d.days ?? '—'}</span></td>
+                      <td className="py-2.5 px-4 font-mono text-slate-500">{d.date}</td>
+                      <td className="py-2.5 px-4"><span className="flex items-center gap-1"><User className="w-3 h-3 text-slate-400 shrink-0" />{d.drivers.join('، ') || '—'}</span></td>
+                      <td className="py-2.5 px-4">
+                        <div className="flex flex-wrap gap-1">
+                          {d.sites.map(([site, q]) => (
+                            <span key={site} className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${multi ? 'bg-amber-500/15 text-amber-800 dark:text-amber-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+                              {site}{multi && <span className="font-mono"> · {q.toLocaleString()} L</span>}
+                            </span>
+                          ))}
+                        </div>
                       </td>
-                      <td className="py-2.5 px-4"><span className="flex items-center gap-1"><User className="w-3 h-3 text-slate-400" />{r.driver || '—'}</span></td>
-                      <td className="py-2.5 px-4 text-slate-500">{r.site}</td>
                     </tr>
                   );
                 })}
