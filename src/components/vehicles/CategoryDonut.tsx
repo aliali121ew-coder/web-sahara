@@ -8,6 +8,9 @@ import { groupByCategory, useCategoryNames, useVehicleNames } from './categories
 // تدرّج لكل شريحة (من/إلى) بنفس روح دائرة «توزيع نسب الاستهلاك» في الرئيسية
 /** سطور الدليل في كل صفحة: الكارت يحافظ على حجمه، والباقي بالتنقل بين الصفحات */
 const LEGEND_PAGE = 6;
+/** الشرائح الملوّنة في الدائرة؛ الباقي شريحة رمادية واحدة (تجنّب مئات الشرائح الرفيعة) */
+const SLICES = 5;
+const REST: [string, string] = ['#94a3b8', '#cbd5e1'];
 
 const PALETTE: [string, string][] = [
   ['#6d28d9', '#8b5cf6'], ['#1d4ed8', '#3b82f6'], ['#0d9488', '#2dd4bf'], ['#c2410c', '#fb923c'],
@@ -27,15 +30,23 @@ export const CategoryDonut: React.FC<{ stats: VehicleStat[]; category: string | 
     ? [...open.vehicles].sort((a, b) => b.total - a.total).map(v => ({ key: v.vehicle, label: names.get(v.vehicle) || v.vehicle, total: v.total }))
     : all.map(g => ({ key: g.key, label: g.label, total: g.total }))), [all, open, names]);
   const groups = full;
+  const slices = useMemo(() => {
+    if (full.length <= SLICES + 1) return full;
+    const rest = full.slice(SLICES);
+    return [...full.slice(0, SLICES), { key: 'rest', label: `الباقي (${rest.length})`, total: rest.reduce((t, g) => t + g.total, 0) }];
+  }, [full]);
   const [legendPage, setLegendPage] = useState(0);
   useEffect(() => setLegendPage(0), [category]);
   const legendPages = Math.max(1, Math.ceil(groups.length / LEGEND_PAGE));
   const legendStart = legendPage * LEGEND_PAGE;
-  const colorOf = (i: number) => PALETTE[i % PALETTE.length];
+  // لون الصف/الشريحة: الأعلى بألوانها، والباقي رمادي
+  const colorOf = (i: number) => (i < SLICES || full.length <= SLICES + 1 ? PALETTE[i % PALETTE.length] : REST);
   const total = groups.reduce((t, g) => t + g.total, 0);
 
   const [active, setActive] = useState<number | null>(null);
-  const focus = active !== null ? groups[active] : null;
+  const focus = active !== null ? slices[active] : null;
+  // الصف في الجدول يُبرز شريحته (أو الشريحة الرمادية)
+  const sliceOf = (i: number) => Math.min(i, slices.length - 1);
 
   return (
     <div className="shrink-0 rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 shadow-soft-card">
@@ -57,26 +68,27 @@ export const CategoryDonut: React.FC<{ stats: VehicleStat[]; category: string | 
                   <stop offset="100%" stopColor={b} />
                 </linearGradient>
               ))}
+              <linearGradient id="vcatRest" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor={REST[0]} /><stop offset="100%" stopColor={REST[1]} /></linearGradient>
             </defs>
             <Pie data={[{ value: 1 }]} dataKey="value" cx="50%" cy="50%" innerRadius={52} outerRadius={80} fill="rgb(148 163 184 / 0.12)" stroke="none" isAnimationActive={false} />
             <Pie
-              data={groups.map(g => ({ name: g.label, value: g.total }))}
+              data={slices.map(g => ({ name: g.label, value: g.total }))}
               dataKey="value"
               cx="50%"
               cy="50%"
               innerRadius={54}
               outerRadius={78}
-              paddingAngle={groups.length > 1 ? 1.5 : 0}
+              paddingAngle={slices.length > 1 ? 1.5 : 0}
               cornerRadius={4}
               startAngle={90}
               endAngle={-270}
               stroke="none"
               onMouseEnter={(_, i) => setActive(i)}
             >
-              {groups.map((g, i) => (
+              {slices.map((g, i) => (
                 <Cell
                   key={g.key}
-                  fill={`url(#vcat${i % PALETTE.length})`}
+                  fill={g.key === 'rest' ? 'url(#vcatRest)' : `url(#vcat${i % PALETTE.length})`}
                   opacity={active === null || active === i ? 1 : 0.35}
                   style={{ transition: 'opacity .2s', outline: 'none', cursor: 'pointer' }}
                 />
@@ -85,7 +97,7 @@ export const CategoryDonut: React.FC<{ stats: VehicleStat[]; category: string | 
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-          <span className="text-xl font-black font-mono leading-none" style={{ color: focus ? colorOf(active ?? 0)[0] : undefined }}>
+          <span className="text-xl font-black font-mono leading-none" style={{ color: focus ? (focus.key === 'rest' ? REST[0] : PALETTE[(active ?? 0) % PALETTE.length][0]) : undefined }}>
             {(focus ? focus.total : total).toLocaleString()}
           </span>
           <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-1">لتر</span>
@@ -95,23 +107,29 @@ export const CategoryDonut: React.FC<{ stats: VehicleStat[]; category: string | 
         </div>
       </div>
 
-      {/* دليل هادئ: نقطة بلون الشريحة، الاسم، اللترات، والنسبة — بلا أشرطة */}
-      <div className="mt-3 h-[228px] flex flex-col">
+      {/* جدول مختصر: الاسم، اللترات، النسبة — بلون شريحته */}
+      <div className="mt-3 h-[252px]">
+        <div className="grid grid-cols-[1fr_auto_3rem] gap-2 px-2 pb-1.5 text-[10px] font-bold text-slate-400 border-b border-slate-100 dark:border-slate-800">
+          <span>{open ? 'العربة' : 'الفئة'}</span><span className="text-left">لتر</span><span className="text-left">%</span>
+        </div>
         {groups.slice(legendStart, legendStart + LEGEND_PAGE).map((g, k) => {
           const i = legendStart + k;
           const pct = total ? Math.round((g.total / total) * 1000) / 10 : 0;
           const [c0] = colorOf(i);
+          const si = sliceOf(i);
           return (
             <div
               key={g.key}
-              onMouseEnter={() => setActive(i)}
+              onMouseEnter={() => setActive(si)}
               onMouseLeave={() => setActive(null)}
-              className={`flex items-center gap-2.5 h-[38px] px-2 rounded-lg text-xs transition-colors border-b border-slate-100 dark:border-slate-800/70 last:border-b-0 ${active === i ? 'bg-slate-50 dark:bg-slate-800/60' : ''}`}
+              className={`grid grid-cols-[1fr_auto_3rem] gap-2 items-center h-[37px] px-2 text-xs border-b border-slate-100 dark:border-slate-800/70 last:border-b-0 transition-colors ${active === si ? 'bg-slate-50 dark:bg-slate-800/60' : ''}`}
             >
-              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: c0 }} />
-              <span className={`flex-1 min-w-0 font-bold text-slate-700 dark:text-slate-200 truncate ${open ? 'font-mono' : ''}`} dir={open ? 'ltr' : undefined}>{g.label}</span>
-              <span className="font-mono text-slate-400 dark:text-slate-500 shrink-0">{g.total.toLocaleString()} L</span>
-              <span className="font-mono font-black text-slate-600 dark:text-slate-300 shrink-0 w-12 text-left">{pct}%</span>
+              <span className="flex items-center gap-2 min-w-0">
+                <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: c0 }} />
+                <span className={`font-bold text-slate-700 dark:text-slate-200 truncate ${open ? 'font-mono' : ''}`} dir={open ? 'ltr' : undefined}>{g.label}</span>
+              </span>
+              <span className="font-mono text-slate-500 dark:text-slate-400 text-left">{g.total.toLocaleString()}</span>
+              <span className="font-mono font-black text-slate-700 dark:text-slate-200 text-left">{pct}</span>
             </div>
           );
         })}
