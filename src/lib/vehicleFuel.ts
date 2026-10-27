@@ -72,7 +72,7 @@ const num = (s: string): number | null => {
 /** نص عربي مقروء (الملف يخزّن أشكال العرض للحروف) */
 const clean = (s: string) => s.normalize('NFKC').replace(/\s+/g, ' ').trim();
 
-type Col = 'driver' | 'vehicle' | 'qty' | 'date' | 'days' | 'prevSite' | 'prevDriver' | 'prevQty' | 'prevDate' | 'kind';
+type Col = 'driver' | 'vehicle' | 'qty' | 'date' | 'days' | 'prevSite' | 'prevDriver' | 'prevQty' | 'prevDate' | 'kind' | 'shift';
 
 // عناوين الأعمدة (الأطول أولًا حتى لا يطابق «السائق» عنوان «السائق السابق»)
 const HEADERS: [Col, string][] = [
@@ -81,6 +81,7 @@ const HEADERS: [Col, string][] = [
   ['prevQty', 'الكمية السابقة'],
   ['days', 'عدد الايام'],
   ['kind', 'تشغيلي/انشائي'],
+  ['shift', 'الشفت'],
   ['driver', 'السائق'],
   ['vehicle', 'العربة'],
   ['qty', 'الكمية'],
@@ -99,7 +100,9 @@ const readHeader = (line: PdfItem[]): Map<Col, number> | null => {
   }
   const dates = line.filter(i => normalizeArabic(i.str) === normalizeArabic('التاريخ')).sort((a, b) => a.x - b.x);
   if (dates.length >= 2) { cols.set('date', center(dates[0])); cols.set('prevDate', center(dates[dates.length - 1])); }
-  return cols.has('vehicle') && cols.has('qty') && cols.has('prevQty') ? cols : null;
+  else if (dates.length === 1) cols.set('date', center(dates[0]));
+  // الأساس: العربة والكمية والتاريخ؛ أعمدة «السابق» والسائق والشفت اختيارية (كشف تجهيز الكاز بلا «السابق»)
+  return cols.has('vehicle') && cols.has('qty') && cols.has('date') ? cols : null;
 };
 
 export interface VehicleSheet {
@@ -217,8 +220,10 @@ export const parseVehicleSheet = (pages: PdfItem[][][]): VehicleSheet => {
       const get = (c: Col) => clean((cells.get(c) || []).join(' '));
       // خلية التاريخ قد تلتصق بها وحدة القياس المجاورة («لتر»)
       const dateIn = (c: Col) => (cells.get(c) || []).map(toIsoDate).find(Boolean) || '';
+      // وكذلك الأرقام: قد تلتصق بها «لتر» أو اسم المادة من عمود مجاور ليس له عنوان مقروء
+      const numIn = (c: Col) => (cells.get(c) || []).map(num).find((v): v is number => v !== null) ?? null;
       const date = dateIn('date');
-      const qty = num(get('qty'));
+      const qty = numIn('qty');
       const vehicle = get('vehicle').replace(/\s+/g, '');
       if (!date || qty === null || !vehicle) continue;
       rows.push({
@@ -226,10 +231,10 @@ export const parseVehicleSheet = (pages: PdfItem[][][]): VehicleSheet => {
         driver: get('driver'),
         qty,
         date,
-        days: num(get('days')),
+        days: numIn('days'),
         prevSite: get('prevSite'),
         prevDriver: get('prevDriver'),
-        prevQty: num(get('prevQty')),
+        prevQty: numIn('prevQty'),
         prevDate: dateIn('prevDate'),
         kind: get('kind'),
       });

@@ -66,7 +66,6 @@ export const VehiclesReport: React.FC = () => {
     return { total, top, frequent: frequentVehicles.size, change, avg: fills.length ? Math.round(total / fills.length) : 0 };
   }, [fills, prevTotal]);
 
-  const lastUpload = files.reduce((m, f) => (f.uploadedAt > m ? f.uploadedAt : m), '');
   const selected = vehicle ? history.get(vehicle) : undefined;
 
   // زر الرفع: يُضغط لاختيار الملفات أو تُسحب الملفات وتُفلت عليه
@@ -187,8 +186,7 @@ export const VehiclesReport: React.FC = () => {
       ) : (
         <>
           {/* الكارتات */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-3">
-            <Kpi tone="bg-slate-700" icon={<FileText className="w-4 h-4" />} label="الملفات المرفوعة" value={files.length} sub={lastUpload ? `آخر رفع ${new Date(lastUpload).toLocaleDateString('en-GB')}` : '—'} onClick={() => setShowFiles(true)} />
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
             <Kpi tone="bg-sky-500" icon={<Truck className="w-4 h-4" />} label="إجمالي العربات" value={stats.length} sub={active.kind === 'day' ? `يوم ${formatDay(active.date)}` : `${dates.length} يوم`} />
             <Kpi tone="bg-indigo-500" icon={<Fuel className="w-4 h-4" />} label="إجمالي التفويلات" value={k.total.toLocaleString()} sub={`لتر · ${fills.length} تفويلة`} />
             <Kpi tone="bg-violet-500" icon={<Gauge className="w-4 h-4" />} label="متوسط التفويلة" value={k.avg.toLocaleString()} sub="لتر للتفويلة" />
