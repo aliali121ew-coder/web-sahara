@@ -3,38 +3,37 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Trophy, Repeat2, CalendarClock, Timer, Fuel } from 'lucide-react';
 import { VEHICLE_PROFILES_KEY, formatDay, vehicleCategory, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
-import { VehicleArt } from './VehicleArt';
 import { groupByCategory, useCategoryNames, useVehicleNames } from './categories';
 
 /** عدد العربات المعروضة: أعلى 7 فقط */
 const TOP = 7;
 /** أقل ارتفاع لكارت العربة (px) — لحساب كم كارتًا يتسع حتى نهاية العمود */
-const CARD_MIN = 64;
+const CARD_MIN = 68;
 const GAP = 8;
 
 // لون حلقة الترتيب: ذهبي، فضي، برونزي، ثم أزرق
 const RING = ['#d97706', '#64748b', '#c2410c'];
 const RING_DEFAULT = '#3b82f6';
 
-/** حلقة حول رقم الترتيب: امتلاؤها = استهلاك العربة مقارنةً بالأولى */
-const RankRing: React.FC<{ rank: number; ratio: number }> = ({ rank, ratio }) => {
+/** حلقة النسبة: امتلاؤها ونصّها = نسبة العربة من استهلاك فئتها؛ لونها بحسب الترتيب */
+const ShareRing: React.FC<{ rank: number; pct: number }> = ({ rank, pct }) => {
   const r = 15;
   const len = 2 * Math.PI * r;
   const color = RING[rank - 1] || RING_DEFAULT;
   return (
-    <div className="relative w-10 h-10 shrink-0">
-      <svg viewBox="0 0 36 36" className="w-10 h-10 -rotate-90">
+    <div className="relative w-11 h-11 shrink-0">
+      <svg viewBox="0 0 36 36" className="w-11 h-11 -rotate-90">
         <circle cx="18" cy="18" r={r} fill="none" stroke="rgb(148 163 184 / 0.25)" strokeWidth="3.5" />
-        <circle cx="18" cy="18" r={r} fill="none" stroke={color} strokeWidth="3.5" strokeLinecap="round" strokeDasharray={len} strokeDashoffset={len * (1 - Math.max(0.04, ratio))} className="vehicle-gauge" />
+        <circle cx="18" cy="18" r={r} fill="none" stroke={color} strokeWidth="3.5" strokeLinecap="round" strokeDasharray={len} strokeDashoffset={len * (1 - Math.min(1, Math.max(0.03, pct / 100)))} className="vehicle-gauge" />
       </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-xs font-black" style={{ color }}>{rank}</span>
+      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black font-mono" style={{ color }}>{pct < 10 ? pct.toFixed(1) : Math.round(pct)}%</span>
     </div>
   );
 };
 
 /**
  * الأعلى استهلاكًا (7 فقط): بلا فئة مفتوحة = أعلى عربة في كل فئة؛ مع فئة مفتوحة = أعلى عربات الفئة.
- * كل عربة في كارت صغير، والكارتات تتوزع بالتساوي حتى نهاية العمود.
+ * كل عربة في كارت صغير (حلقة نسبتها من فئتها، آخر تفويلة والسابقة)، والكارتات تتوزع بالتساوي حتى نهاية العمود.
  */
 export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | null; onOpen: (v: string) => void }> = ({ stats, category, onOpen }) => {
   const [profiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
@@ -65,7 +64,6 @@ export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | n
     return () => ro.disconnect();
   }, []);
   const view = list.slice(0, fit);
-  const max = list[0]?.s.total || 1;
 
   return (
     <div className="flex-1 min-h-0 flex flex-col rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 shadow-soft-card">
@@ -89,23 +87,30 @@ export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | n
                 className="vehicle-kpi w-full flex items-center gap-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 px-2.5 py-2 hover:border-sky-400 dark:hover:border-sky-500 hover:bg-white dark:hover:bg-slate-900 hover:shadow-md transition-all text-right cursor-pointer"
                 style={{ animationDelay: `${i * 0.04}s` }}
               >
-                <RankRing rank={i + 1} ratio={s.total / max} />
-                <VehicleArt code={names.get(s.vehicle) || s.vehicle} photo={prof?.photo} className="w-12 h-9 shrink-0" />
+                <ShareRing rank={i + 1} pct={share} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className={`font-black text-sm text-slate-900 dark:text-white truncate ${prof?.name ? '' : 'font-mono'}`} dir={prof?.name ? undefined : 'ltr'}>{prof?.name || s.vehicle}</span>
                     <span className="text-[10px] font-bold text-slate-400 truncate">{tag || (cat ? labels[cat.key] || cat.label : '')}</span>
                     {s.frequent > 0 && <span className="shrink-0 flex items-center gap-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400"><Repeat2 className="w-3 h-3" />متكرر</span>}
                   </div>
-                  <div className="flex items-center gap-2.5 mt-1 text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                    <span className="flex items-center gap-0.5"><Fuel className="w-3 h-3" />{s.count} تفويلة</span>
-                    <span className="flex items-center gap-0.5"><CalendarClock className="w-3 h-3" />{formatDay(s.last.date)}</span>
-                    {s.avgGap !== null && <span className="flex items-center gap-0.5"><Timer className="w-3 h-3" />كل {s.avgGap} يوم</span>}
+                  {/* آخر تفويلة وعدد الأيام، ثم السابقة بخط رصاصي فاتح */}
+                  <div className="flex items-center gap-2 mt-1 text-[11px] font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                    <span className="flex items-center gap-0.5"><Fuel className="w-3 h-3 text-sky-500" /><span className="font-mono">{s.last.qty.toLocaleString()}</span> L</span>
+                    <span className="flex items-center gap-0.5 font-mono"><CalendarClock className="w-3 h-3 text-sky-500" />{formatDay(s.last.date)}</span>
+                    {s.last.days !== null && <span className={`flex items-center gap-0.5 ${s.last.days <= 1 ? 'text-rose-600 dark:text-rose-400' : ''}`}><Timer className="w-3 h-3" />بعد {s.last.days} يوم</span>}
                   </div>
+                  {s.last.prevQty !== null && (
+                    <div className="flex items-center gap-1.5 mt-0.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500 whitespace-nowrap">
+                      <span>السابقة</span>
+                      <span className="font-mono">{s.last.prevQty.toLocaleString()} L</span>
+                      <span className="font-mono">{formatDay(s.last.prevDate)}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="text-left shrink-0">
                   <div className="font-mono font-black text-base text-slate-900 dark:text-white leading-none">{s.total.toLocaleString()}</div>
-                  <div className="text-[10px] text-slate-400 font-bold mt-1">لتر · {share.toFixed(1)}% من فئته</div>
+                  <div className="text-[10px] text-slate-400 font-bold mt-1 whitespace-nowrap">لتر · {s.count} تفويلة</div>
                 </div>
               </button>
             </li>
