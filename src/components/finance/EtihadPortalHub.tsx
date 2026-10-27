@@ -178,10 +178,10 @@ export const EtihadPortalHub: React.FC<EtihadPortalHubProps> = ({
         {/* ── 1. لمسة زجاجية علوية ناصعة (Top Glass Sheen) ── */}
         <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-white to-transparent pointer-events-none" />
 
-        {/* ── تدرج خفيف من الأعلى بلون الثيم المختار (يتغير مع الثيم) ── */}
+        {/* ── تدرج خفيف جدًا من الأعلى بلون الثيم (3%، مريح للعين) ── */}
         <div
-          className="absolute top-0 inset-x-0 h-48 -z-10 pointer-events-none"
-          style={{ backgroundImage: 'linear-gradient(to bottom, rgb(var(--app-accent-rgb, 14 165 233) / 0.08), transparent)' }}
+          className="absolute top-0 inset-x-0 h-28 -z-10 pointer-events-none"
+          style={{ backgroundImage: 'linear-gradient(to bottom, rgb(var(--app-accent-rgb, 14 165 233) / 0.03), transparent)' }}
         />
 
         {/* ── 2. ترويسة العنوان متضمنة داخل كارت الأم ── */}
