@@ -3,7 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { PieChart as PieIcon } from 'lucide-react';
 import type { VehicleStat } from '../../lib/vehicleFuel';
-import { groupByCategory, useVehicleNames } from './categories';
+import { groupByCategory, useCategoryNames, useVehicleNames } from './categories';
 
 // تدرّج لكل شريحة (من/إلى) بنفس روح دائرة «توزيع نسب الاستهلاك» في الرئيسية
 const PALETTE: [string, string][] = [
@@ -17,7 +17,8 @@ const PALETTE: [string, string][] = [
 export const CategoryDonut: React.FC<{ stats: VehicleStat[]; category: string | null }> = ({ stats, category }) => {
   // بلا فئة مفتوحة: توزيع الفئات؛ مع فئة مفتوحة: توزيع عرباتها (أعلى 9 والباقي مجمّع)
   const names = useVehicleNames();
-  const all = useMemo(() => groupByCategory(stats, names), [stats, names]);
+  const [labels] = useCategoryNames();
+  const all = useMemo(() => groupByCategory(stats, names, labels), [stats, names, labels]);
   const open = category ? all.find(g => g.key === category) : undefined;
   const groups = useMemo(() => {
     if (!open) return all.map(g => ({ key: g.key, label: g.label, total: g.total }));

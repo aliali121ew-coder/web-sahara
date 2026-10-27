@@ -4,6 +4,8 @@ import { createPortal } from 'react-dom';
 import { X, IdCard, Fuel, Hash, Timer, Repeat2, User, Container, ShieldCheck, Building2, StickyNote, Save, Tag, Camera, Trash2, Loader2 } from 'lucide-react';
 import { getProfile } from '../../lib/session';
 import { VehicleArt } from './VehicleArt';
+import { useCategoryNames } from './categories';
+import { usePermissions } from '../../lib/usePermission';
 import { FREQUENT_DAYS, VEHICLE_TYPES, formatDay, shrinkImage, vehicleCategory, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
 
 export const emptyProfile = (vehicle: string): VehicleProfile => ({
@@ -25,6 +27,10 @@ export const VehicleProfileEditor: React.FC<{
   onClose: () => void;
 }> = ({ stat, profile, drivers, editable, onSave, onClose }) => {
   const [p, setP] = useState<VehicleProfile>(profile || emptyProfile(stat.vehicle));
+  const [catLabels] = useCategoryNames();
+  // اسم العربة يعدّله مدير النظام فقط
+  const { isAdmin } = usePermissions();
+  const headCat = vehicleCategory(p.name?.trim() || stat.vehicle);
   // تغيير صورة العربة: تُصغَّر وتُحفظ مع تفاصيلها، والإزالة تعيد صورة فئتها
   const photoInput = useRef<HTMLInputElement>(null);
   const [photoBusy, setPhotoBusy] = useState(false);
@@ -81,7 +87,7 @@ export const VehicleProfileEditor: React.FC<{
                 ) : (
                   <div className="text-2xl font-black font-mono leading-tight" dir="ltr">{stat.vehicle}</div>
                 )}
-                {vehicleCategory(p.name?.trim() || stat.vehicle) && <div className="text-[11px] font-bold text-sky-300 mt-0.5">{vehicleCategory(p.name?.trim() || stat.vehicle)!.label}</div>}
+                {headCat && <div className="text-[11px] font-bold text-sky-300 mt-0.5">{catLabels[headCat.key] || headCat.label}</div>}
               </div>
             </div>
             <button type="button" onClick={close} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer" aria-label="إغلاق"><X className="w-4 h-4" /></button>
@@ -131,10 +137,10 @@ export const VehicleProfileEditor: React.FC<{
         <div className="flex-1 overflow-y-auto p-5">
           {tab === 'info' ? (
             <div className="space-y-4 vehicle-page">
-              <label className="block">
+              {isAdmin && <label className="block">
                 <span className={label}><Tag className="w-3.5 h-3.5" />اسم العربة</span>
                 <input disabled={!editable} value={p.name || ''} onChange={e => setP({ ...p, name: e.target.value })} className={field} placeholder={`مثال: قلاب نقل الأسمدة — الرمز ${stat.vehicle} يبقى كما هو`} />
-              </label>
+              </label>}
               <div>
                 <span className={label}><Hash className="w-3.5 h-3.5" />نوع العربة</span>
                 <div className="flex flex-wrap gap-1.5">

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { VEHICLE_PROFILES_KEY, vehicleCategory, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
+import { VEHICLE_CATEGORY_NAMES_KEY, VEHICLE_PROFILES_KEY, vehicleCategory, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 
 export interface CategoryGroup {
@@ -16,13 +16,13 @@ export interface CategoryGroup {
 export const OTHER_CATEGORY = 'OTHER';
 
 /** تجميع العربات حسب فئتها (من رمزها)، الأعلى استهلاكًا أولًا و«أخرى» في الآخر */
-export const groupByCategory = (stats: VehicleStat[], names?: Map<string, string>): CategoryGroup[] => {
+export const groupByCategory = (stats: VehicleStat[], names?: Map<string, string>, labels?: Record<string, string>): CategoryGroup[] => {
   const map = new Map<string, CategoryGroup>();
   for (const s of stats) {
     const code = names?.get(s.vehicle) || s.vehicle;
     const cat = vehicleCategory(code);
     const key = cat?.key || OTHER_CATEGORY;
-    const c = map.get(key) || { key, label: cat?.label || 'أخرى', sample: code, vehicles: [], total: 0, fills: 0, frequent: 0 };
+    const c = map.get(key) || { key, label: labels?.[key] || cat?.label || 'أخرى', sample: code, vehicles: [], total: 0, fills: 0, frequent: 0 };
     c.vehicles.push(s);
     c.total += s.total;
     c.fills += s.count;
@@ -37,4 +37,15 @@ export const groupByCategory = (stats: VehicleStat[], names?: Map<string, string
 export const useVehicleNames = () => {
   const [profiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
   return useMemo(() => new Map(profiles.filter(p => p.name?.trim()).map(p => [p.id, p.name!.trim()])), [profiles]);
+};
+
+/** أسماء الفئات المخصصة (مدير النظام يعيد تسميتها): [الأسماء، حفظ اسم فئة أو إزالته] */
+export const useCategoryNames = () => {
+  const [labels, setLabels] = useSyncedStorage<Record<string, string>>(VEHICLE_CATEGORY_NAMES_KEY, {});
+  const rename = (key: string, name: string) => setLabels(prev => {
+    const next = { ...prev };
+    if (name.trim()) next[key] = name.trim(); else delete next[key];
+    return next;
+  });
+  return [labels, rename] as const;
 };

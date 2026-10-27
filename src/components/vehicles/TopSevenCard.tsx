@@ -4,7 +4,7 @@ import { Trophy, Repeat2, ChevronLeft } from 'lucide-react';
 import { VEHICLE_PROFILES_KEY, vehicleCategory, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { VehicleArt } from './VehicleArt';
-import { groupByCategory, useVehicleNames } from './categories';
+import { groupByCategory, useCategoryNames, useVehicleNames } from './categories';
 
 /** عدد العربات المعروضة: أعلى 7 فقط */
 const TOP = 7;
@@ -22,7 +22,8 @@ const MEDAL = [
 export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | null; onOpen: (v: string) => void }> = ({ stats, category, onOpen }) => {
   const [profiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
   const names = useVehicleNames();
-  const groups = useMemo(() => groupByCategory(stats, names), [stats, names]);
+  const [labels] = useCategoryNames();
+  const groups = useMemo(() => groupByCategory(stats, names, labels), [stats, names, labels]);
   const open = category ? groups.find(g => g.key === category) : undefined;
 
   const list = useMemo(() => {
@@ -69,7 +70,7 @@ export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | n
                     ) : (
                       <>
                         <span className="font-mono font-black text-sm text-slate-900 dark:text-white" dir="ltr">{s.vehicle}</span>
-                        <span className="text-[10px] font-bold text-slate-400 truncate">{tag || cat?.label || ''}</span>
+                        <span className="text-[10px] font-bold text-slate-400 truncate">{tag || (cat ? labels[cat.key] || cat.label : '')}</span>
                       </>
                     )}
                     {s.frequent > 0 && <Repeat2 className="w-3 h-3 text-rose-500 shrink-0" />}

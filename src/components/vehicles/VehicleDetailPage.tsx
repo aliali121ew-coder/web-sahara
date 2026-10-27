@@ -13,6 +13,7 @@ import {
 import { VehicleProfileEditor } from './VehicleProfileEditor';
 import { ScoreGauge } from './ScoreGauge';
 import { VehicleArt } from './VehicleArt';
+import { useCategoryNames } from './categories';
 import { VehicleMap } from './VehicleMap';
 
 interface Props {
@@ -51,7 +52,9 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, ranking, fle
   useEffect(() => setDailyPage(0), [stat.vehicle]);
   const profile = profiles.find(p => p.id === stat.vehicle);
   // الاسم إن وُجد يحدد الفئة والصورة (يُعامل كرمز العربة)
-  const category = vehicleCategory(profile?.name || stat.vehicle);
+  const [catLabels] = useCategoryNames();
+  const baseCategory = vehicleCategory(profile?.name || stat.vehicle);
+  const category = baseCategory ? { ...baseCategory, label: catLabels[baseCategory.key] || baseCategory.label } : null;
   const checks = useMemo(() => checkFills(stat.fills, profile), [stat, profile]);
   const saveProfile = (p: VehicleProfile) => { setProfiles(prev => [p, ...prev.filter(x => x.id !== p.id)]); setEditing(false); };
 

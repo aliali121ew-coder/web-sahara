@@ -1,10 +1,11 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useEffect, useMemo, useState } from 'react';
-import { Layers, Repeat2, User, CalendarClock, ChevronLeft, ChevronRight, ArrowRight, Truck } from 'lucide-react';
+import { Layers, Repeat2, User, CalendarClock, ChevronLeft, ChevronRight, ArrowRight, Truck, MoreVertical, Pencil, RotateCcw, Check, X } from 'lucide-react';
 import { VEHICLE_PROFILES_KEY, formatDay, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { VehicleArt } from './VehicleArt';
-import { OTHER_CATEGORY, groupByCategory, useVehicleNames } from './categories';
+import { OTHER_CATEGORY, groupByCategory, useCategoryNames, useVehicleNames } from './categories';
+import { usePermissions } from '../../lib/usePermission';
 
 const OTHER = OTHER_CATEGORY;
 const PAGE_SIZE = 9;
@@ -24,7 +25,18 @@ export const TopVehicleCards: React.FC<{
   const photo = (v: string) => profiles.find(p => p.id === v)?.photo;
 
   const names = useVehicleNames();
-  const categories = useMemo(() => groupByCategory(stats, names), [stats, names]);
+  // إعادة تسمية الفئات لمدير النظام فقط: قائمة النقاط الثلاث في أعلى الكارت
+  const { isAdmin } = usePermissions();
+  const [labels, renameCategory] = useCategoryNames();
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [editing, setEditing] = useState<{ key: string; value: string } | null>(null);
+  useEffect(() => {
+    if (!menuFor) return;
+    const close = () => setMenuFor(null);
+    window.addEventListener('click', close);
+    return () => window.removeEventListener('click', close);
+  }, [menuFor]);
+  const categories = useMemo(() => groupByCategory(stats, names, labels), [stats, names, labels]);
 
   const grand = categories.reduce((t, c) => t + c.total, 0) || 1;
   const current = categories.find(c => c.key === selected);
@@ -64,15 +76,61 @@ export const TopVehicleCards: React.FC<{
             {categories.map(c => {
               const share = Math.round((c.total / grand) * 100);
               return (
-                <button
+                <div
                   key={c.key}
-                  type="button"
-                  onClick={() => setSelected(c.key)}
-                  className="group text-right rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-3 hover:border-sky-400 dark:hover:border-sky-500 hover:-translate-y-0.5 hover:shadow-lg transition-all cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => { if (editing?.key !== c.key) setSelected(c.key); }}
+                  onKeyDown={e => { if (e.key === 'Enter' && editing?.key !== c.key) setSelected(c.key); }}
+                  className="group relative text-right rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-3 hover:border-sky-400 dark:hover:border-sky-500 hover:-translate-y-0.5 hover:shadow-lg transition-all cursor-pointer"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-black text-slate-900 dark:text-white">{c.label}</span>
-                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-sky-500/10 text-sky-700 dark:text-sky-300">{share}%</span>
+                  <div className="flex items-center justify-between gap-1">
+                    {editing?.key === c.key ? (
+                      <form
+                        className="flex items-center gap-1 flex-1 min-w-0"
+                        onClick={e => e.stopPropagation()}
+                        onSubmit={e => { e.preventDefault(); renameCategory(c.key, editing.value); setEditing(null); }}
+                      >
+                        <input
+                          autoFocus
+                          value={editing.value}
+                          onChange={e => setEditing({ key: c.key, value: e.target.value })}
+                          onKeyDown={e => { if (e.key === 'Escape') setEditing(null); }}
+                          className="w-full min-w-0 px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-sky-400 text-sm font-black text-slate-900 dark:text-white focus:outline-hidden"
+                        />
+                        <button type="submit" className="p-1 rounded-lg bg-sky-500 text-white cursor-pointer" aria-label="حفظ"><Check className="w-3.5 h-3.5" /></button>
+                        <button type="button" onClick={() => setEditing(null)} className="p-1 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 cursor-pointer" aria-label="إلغاء"><X className="w-3.5 h-3.5" /></button>
+                      </form>
+                    ) : (
+                      <span className="text-sm font-black text-slate-900 dark:text-white truncate">{c.label}</span>
+                    )}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-sky-500/10 text-sky-700 dark:text-sky-300">{share}%</span>
+                      {isAdmin && editing?.key !== c.key && (
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={e => { e.stopPropagation(); setMenuFor(m => (m === c.key ? null : c.key)); }}
+                            className="p-0.5 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/70 dark:hover:bg-slate-800 cursor-pointer"
+                            aria-label="خيارات الفئة"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                          {menuFor === c.key && (
+                            <div onClick={e => e.stopPropagation()} className="vehicle-page absolute left-0 top-7 z-20 w-44 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xl p-1 text-xs font-bold">
+                              <button type="button" onClick={() => { setEditing({ key: c.key, value: c.label }); setMenuFor(null); }} className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 cursor-pointer">
+                                <Pencil className="w-3.5 h-3.5 text-sky-500" />إعادة تسمية الفئة
+                              </button>
+                              {labels[c.key] && (
+                                <button type="button" onClick={() => { renameCategory(c.key, ''); setMenuFor(null); }} className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 cursor-pointer">
+                                  <RotateCcw className="w-3.5 h-3.5 text-amber-500" />استعادة الاسم الأصلي
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="relative h-20 mt-2">
                     {c.key === OTHER
@@ -87,7 +145,7 @@ export const TopVehicleCards: React.FC<{
                     <span><b className="text-slate-700 dark:text-slate-200">{c.vehicles.length}</b> عربة · {c.fills} تفويلة</span>
                     {c.frequent > 0 && <span className="flex items-center gap-0.5 text-rose-600 dark:text-rose-400 font-bold"><Repeat2 className="w-3 h-3" />{c.frequent}</span>}
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
