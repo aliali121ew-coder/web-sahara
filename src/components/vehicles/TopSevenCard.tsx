@@ -1,12 +1,15 @@
 /* eslint-disable i18next/no-literal-string */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Trophy, Repeat2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { VEHICLE_PROFILES_KEY, vehicleCategory, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { VehicleArt } from './VehicleArt';
 import { groupByCategory } from './categories';
 
-const PAGE = 7;
+/** أقل عدد سطور في الصفحة؛ ويزيد ليملأ ارتفاع الكارت حتى نهاية العمود */
+const MIN_PAGE = 7;
+/** ارتفاع السطر التقريبي قبل القياس (px) */
+const ROW_FALLBACK = 56;
 
 // المراكز الثلاثة الأولى: ذهبي، فضي، برونزي
 const MEDAL = [
@@ -17,7 +20,7 @@ const MEDAL = [
 
 /**
  * الأعلى استهلاكًا: بلا فئة مفتوحة = أعلى عربة في كل فئة؛ مع فئة مفتوحة = عربات الفئة بالترتيب.
- * 7 سطور لكل صفحة، والكارت يمتد لنهاية العمود وأزرار الصفحات في أسفله.
+ * السطور تملأ الكارت حتى نهاية العمود (7 على الأقل)، وأزرار الصفحات في أسفله.
  */
 export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | null; onOpen: (v: string) => void }> = ({ stats, category, onOpen }) => {
   const [profiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
@@ -32,8 +35,22 @@ export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | n
       .sort((a, b) => b.s.total - a.s.total);
   }, [groups, open]);
 
+  // عدد السطور يُحسب من ارتفاع القائمة المتاح (الكارت يمتد مع كارت الفئات) فتمتلئ حتى نهايته ثم الصفحات
+  const listRef = useRef<HTMLOListElement>(null);
+  const [PAGE, setPerPage] = useState(MIN_PAGE);
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      const first = el.querySelector('li');
+      const row = first ? first.getBoundingClientRect().height + 4 : ROW_FALLBACK;
+      setPerPage(Math.max(MIN_PAGE, Math.floor((el.clientHeight + 4) / row)));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const [page, setPage] = useState(0);
-  useEffect(() => setPage(0), [category, stats]);
+  useEffect(() => setPage(0), [category, stats, PAGE]);
   const pages = Math.max(1, Math.ceil(list.length / PAGE));
   const view = list.slice(page * PAGE, page * PAGE + PAGE);
   const max = list[0]?.s.total || 1;
@@ -48,7 +65,7 @@ export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | n
         <span className="text-[10px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-full border border-amber-200/60 dark:border-amber-800/40">{list.length} {open ? 'عربة' : 'فئة'}</span>
       </div>
 
-      <ol className="mt-2 space-y-1 flex-1 vehicle-page" key={`${category || 'all'}-${page}`}>
+      <ol ref={listRef} className="mt-2 space-y-1 flex-1 min-h-0 overflow-hidden vehicle-page">
         {view.map(({ s, tag }, k) => {
           const i = page * PAGE + k;
           const cat = vehicleCategory(s.vehicle);
