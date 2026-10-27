@@ -42,11 +42,20 @@ export const TopSevenCard: React.FC<{ stats: VehicleStat[]; onOpen: (v: string) 
                 className="group w-full flex items-center gap-2.5 rounded-2xl px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors text-right cursor-pointer"
               >
                 <span className={`w-6 h-6 shrink-0 rounded-lg text-[11px] font-black flex items-center justify-center shadow-sm ${MEDAL[i] || 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>{i + 1}</span>
-                <VehicleArt code={s.vehicle} photo={photo} className="w-14 h-10 shrink-0" imgClassName={photo ? '!object-cover rounded-lg' : ''} />
+                <VehicleArt code={s.vehicle} photo={photo} className="w-14 h-10 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="font-mono font-black text-sm text-slate-900 dark:text-white" dir="ltr">{s.vehicle}</span>
-                    <span className="text-[10px] font-bold text-slate-400 truncate">{profiles.find(p => p.id === s.vehicle)?.name || cat?.label || ''}</span>
+                    {profiles.find(p => p.id === s.vehicle)?.name ? (
+                      <>
+                        <span className="font-black text-sm text-slate-900 dark:text-white truncate">{profiles.find(p => p.id === s.vehicle)!.name}</span>
+                        <span className="font-mono text-[10px] font-bold text-sky-700 dark:text-sky-300" dir="ltr">{s.vehicle}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-mono font-black text-sm text-slate-900 dark:text-white" dir="ltr">{s.vehicle}</span>
+                        <span className="text-[10px] font-bold text-slate-400 truncate">{cat?.label || ''}</span>
+                      </>
+                    )}
                     {s.frequent > 0 && <Repeat2 className="w-3 h-3 text-rose-500 shrink-0" />}
                   </div>
                   <div className="mt-1 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">

@@ -88,8 +88,14 @@ export const TopVehicleCards: React.FC<{ stats: VehicleStat[]; onOpen: (v: strin
                 <div className="flex items-center justify-between px-3 pt-3">
                   <div className="flex items-center gap-2">
                     <span className={`w-6 h-6 rounded-lg text-[11px] font-black flex items-center justify-center ${i === 0 ? 'bg-orange-500 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>{i + 1}</span>
-                    <span className="font-mono font-black text-slate-900 dark:text-white text-base" dir="ltr">{s.vehicle}</span>
-                    {profiles.find(p => p.id === s.vehicle)?.name && <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 truncate max-w-[110px]">{profiles.find(p => p.id === s.vehicle)!.name}</span>}
+                    {profiles.find(p => p.id === s.vehicle)?.name ? (
+                      <span className="flex flex-col leading-tight min-w-0">
+                        <span className="font-black text-slate-900 dark:text-white text-sm truncate max-w-[130px]">{profiles.find(p => p.id === s.vehicle)!.name}</span>
+                        <span className="font-mono text-[10px] font-bold text-sky-700 dark:text-sky-300" dir="ltr">{s.vehicle}</span>
+                      </span>
+                    ) : (
+                      <span className="font-mono font-black text-slate-900 dark:text-white text-base" dir="ltr">{s.vehicle}</span>
+                    )}
                   </div>
                   {s.frequent > 0 ? (
                     <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
@@ -101,7 +107,7 @@ export const TopVehicleCards: React.FC<{ stats: VehicleStat[]; onOpen: (v: strin
                 </div>
 
                 <div className="relative mx-3 mt-2 h-24 rounded-xl overflow-hidden">
-                  <VehicleArt code={s.vehicle} photo={photo(s.vehicle)} className="absolute inset-0" imgClassName={photo(s.vehicle) ? '!object-cover' : ''} />
+                  <VehicleArt code={s.vehicle} photo={photo(s.vehicle)} className="absolute inset-0" />
                 </div>
 
                 <div className="px-3 pt-2.5 pb-3 space-y-2">

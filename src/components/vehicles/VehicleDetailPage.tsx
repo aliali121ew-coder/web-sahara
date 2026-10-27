@@ -118,8 +118,15 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, ranking, fle
         <div className="flex items-center gap-3 ml-auto">
           <div>
             <div className="text-[11px] text-slate-500 font-bold">{category ? `العربة · ${category.label}` : 'العربة'}</div>
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono leading-none" dir="ltr">{stat.vehicle}</div>
-            {profile?.name && <div className="text-sm font-black text-sky-700 dark:text-sky-300 mt-1">{profile.name}</div>}
+            {/* الاسم إن وُجد يحل محل الرمز في العنوان، والرمز صغيرًا تحته */}
+            {profile?.name ? (
+              <>
+                <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-none">{profile.name}</div>
+                <div className="text-sm font-black text-sky-700 dark:text-sky-300 font-mono mt-1" dir="ltr">{stat.vehicle}</div>
+              </>
+            ) : (
+              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono leading-none" dir="ltr">{stat.vehicle}</div>
+            )}
           </div>
           {stat.frequent > 0 ? (
             <span className="flex items-center gap-1 text-xs font-black px-3 py-1 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"><Repeat2 className="w-3.5 h-3.5" />تفويل متكرر</span>
@@ -164,7 +171,7 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, ranking, fle
             </div>
             <div className="md:col-span-3 relative">
               {profile?.photo ? (
-                <img src={profile.photo} alt={`العربة ${stat.vehicle}`} className="relative w-full h-56 sm:h-64 object-cover rounded-3xl shadow-xl vehicle-truck-in" />
+                <img src={profile.photo} alt={`العربة ${stat.vehicle}`} className="relative w-full h-56 sm:h-64 object-contain" />
               ) : (
                 <VehicleArt code={stat.vehicle} className="w-full h-56 sm:h-64" />
               )}

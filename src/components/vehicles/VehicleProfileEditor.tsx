@@ -74,8 +74,14 @@ export const VehicleProfileEditor: React.FC<{
               <span className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/30"><IdCard className="w-5 h-5" /></span>
               <div>
                 <div className="text-[11px] text-slate-400 font-bold">تفاصيل العربة</div>
-                <div className="text-2xl font-black font-mono leading-tight" dir="ltr">{stat.vehicle}</div>
-                {p.name?.trim() && <div className="text-sm font-black text-white/90 mt-0.5">{p.name.trim()}</div>}
+                {p.name?.trim() ? (
+                  <>
+                    <div className="text-2xl font-black leading-tight">{p.name.trim()}</div>
+                    <div className="text-xs font-black font-mono text-sky-300 mt-0.5" dir="ltr">{stat.vehicle}</div>
+                  </>
+                ) : (
+                  <div className="text-2xl font-black font-mono leading-tight" dir="ltr">{stat.vehicle}</div>
+                )}
                 {vehicleCategory(stat.vehicle) && <div className="text-[11px] font-bold text-sky-300 mt-0.5">{vehicleCategory(stat.vehicle)!.label}</div>}
               </div>
             </div>
