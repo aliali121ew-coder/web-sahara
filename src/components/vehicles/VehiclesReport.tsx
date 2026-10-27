@@ -9,7 +9,8 @@ import { useFuelNav } from '../../context/FuelDataContext';
 import { FREQUENT_DAYS, formatDay } from '../../lib/vehicleFuel';
 import { DateField } from '../ui/DateField';
 import { useVehicleData, type Scope, type UploadResult } from './useVehicleData';
-import { VehicleMap } from './VehicleMap';
+import { CategoryDonut } from './CategoryDonut';
+import { TopSevenCard } from './TopSevenCard';
 import { TopVehicleCards } from './TopVehicleCards';
 import { VehicleDetailPage } from './VehicleDetailPage';
 import './vehicles.css';
@@ -234,9 +235,12 @@ export const VehiclesReport: React.FC = () => {
             <Kpi tone="bg-rose-500" icon={<Repeat2 className="w-4 h-4" />} label="تفويل متكرر" value={k.frequent} sub={`عربة خلال ${FREQUENT_DAYS} يوم أو أقل`} />
           </div>
 
-          {/* الخريطة 30% + أعلى الاستهلاك */}
-          <div className="grid grid-cols-1 lg:grid-cols-10 gap-5 items-stretch">
-            <div className="lg:col-span-3"><VehicleMap date={active.kind === 'day' ? active.date : null} vehicles={stats.map(s => s.vehicle)} editable={editable} /></div>
+          {/* دائرة الفئات وأعلى 7 (30%) + فئات العربات */}
+          <div className="grid grid-cols-1 lg:grid-cols-10 gap-5 items-start">
+            <div className="lg:col-span-3 space-y-5">
+              <CategoryDonut stats={stats} />
+              <TopSevenCard stats={stats} onOpen={setVehicle} />
+            </div>
             <div className="lg:col-span-7"><TopVehicleCards stats={stats} onOpen={setVehicle} /></div>
           </div>
         </>

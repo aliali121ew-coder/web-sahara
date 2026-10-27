@@ -1,22 +1,12 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useMemo, useState } from 'react';
 import { Layers, Repeat2, User, CalendarClock, ChevronLeft, ArrowRight, Truck } from 'lucide-react';
-import { VEHICLE_PROFILES_KEY, formatDay, vehicleCategory, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
+import { VEHICLE_PROFILES_KEY, formatDay, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { VehicleArt } from './VehicleArt';
+import { OTHER_CATEGORY, groupByCategory } from './categories';
 
-interface Category {
-  key: string;
-  label: string;
-  /** رمز عربة من الفئة لعرض صورتها */
-  sample: string;
-  vehicles: VehicleStat[];
-  total: number;
-  fills: number;
-  frequent: number;
-}
-
-const OTHER = 'OTHER';
+const OTHER = OTHER_CATEGORY;
 
 /**
  * فئات العربات: كارت لكل فئة موجودة في البيانات (الإجمالي، عدد العربات والتفويلات، المتكرر)،
@@ -27,20 +17,7 @@ export const TopVehicleCards: React.FC<{ stats: VehicleStat[]; onOpen: (v: strin
   const photo = (v: string) => profiles.find(p => p.id === v)?.photo;
   const [selected, setSelected] = useState<string | null>(null);
 
-  const categories = useMemo(() => {
-    const map = new Map<string, Category>();
-    for (const s of stats) {
-      const cat = vehicleCategory(s.vehicle);
-      const key = cat?.key || OTHER;
-      const c = map.get(key) || { key, label: cat?.label || 'أخرى', sample: s.vehicle, vehicles: [], total: 0, fills: 0, frequent: 0 };
-      c.vehicles.push(s);
-      c.total += s.total;
-      c.fills += s.count;
-      if (s.frequent) c.frequent += 1;
-      map.set(key, c);
-    }
-    return [...map.values()].sort((a, b) => b.total - a.total);
-  }, [stats]);
+  const categories = useMemo(() => groupByCategory(stats), [stats]);
 
   const grand = categories.reduce((t, c) => t + c.total, 0) || 1;
   const current = categories.find(c => c.key === selected);
