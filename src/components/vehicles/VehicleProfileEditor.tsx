@@ -77,12 +77,11 @@ export const VehicleProfileEditor: React.FC<{
                 {p.name?.trim() ? (
                   <>
                     <div className="text-2xl font-black leading-tight">{p.name.trim()}</div>
-                    <div className="text-xs font-black font-mono text-sky-300 mt-0.5" dir="ltr">{stat.vehicle}</div>
                   </>
                 ) : (
                   <div className="text-2xl font-black font-mono leading-tight" dir="ltr">{stat.vehicle}</div>
                 )}
-                {vehicleCategory(stat.vehicle) && <div className="text-[11px] font-bold text-sky-300 mt-0.5">{vehicleCategory(stat.vehicle)!.label}</div>}
+                {vehicleCategory(p.name?.trim() || stat.vehicle) && <div className="text-[11px] font-bold text-sky-300 mt-0.5">{vehicleCategory(p.name?.trim() || stat.vehicle)!.label}</div>}
               </div>
             </div>
             <button type="button" onClick={close} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer" aria-label="إغلاق"><X className="w-4 h-4" /></button>
@@ -90,7 +89,7 @@ export const VehicleProfileEditor: React.FC<{
           <div className="relative mt-3 group">
             {p.photo
               ? <img src={p.photo} alt="" className="w-full h-32 object-contain" />
-              : <VehicleArt code={stat.vehicle} className="w-full h-32" />}
+              : <VehicleArt code={p.name?.trim() || stat.vehicle} className="w-full h-32" />}
             {editable && (
               <>
                 <input ref={photoInput} type="file" accept="image/*" hidden onChange={e => pickPhoto(e.target.files?.[0])} />

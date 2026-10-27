@@ -3,7 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { PieChart as PieIcon } from 'lucide-react';
 import type { VehicleStat } from '../../lib/vehicleFuel';
-import { groupByCategory } from './categories';
+import { groupByCategory, useVehicleNames } from './categories';
 
 // تدرّج لكل شريحة (من/إلى) بنفس روح دائرة «توزيع نسب الاستهلاك» في الرئيسية
 const PALETTE: [string, string][] = [
@@ -16,12 +16,13 @@ const PALETTE: [string, string][] = [
 /** دائرة استهلاك فئات العربات: الإجمالي في الوسط، ونسبة كل فئة ولتراتها في الدليل */
 export const CategoryDonut: React.FC<{ stats: VehicleStat[]; category: string | null }> = ({ stats, category }) => {
   // بلا فئة مفتوحة: توزيع الفئات؛ مع فئة مفتوحة: توزيع عرباتها (أعلى 9 والباقي مجمّع)
-  const all = useMemo(() => groupByCategory(stats), [stats]);
+  const names = useVehicleNames();
+  const all = useMemo(() => groupByCategory(stats, names), [stats, names]);
   const open = category ? all.find(g => g.key === category) : undefined;
   const groups = useMemo(() => {
     if (!open) return all.map(g => ({ key: g.key, label: g.label, total: g.total }));
     const sorted = [...open.vehicles].sort((a, b) => b.total - a.total);
-    const items = sorted.slice(0, 9).map(v => ({ key: v.vehicle, label: v.vehicle, total: v.total }));
+    const items = sorted.slice(0, 9).map(v => ({ key: v.vehicle, label: names.get(v.vehicle) || v.vehicle, total: v.total }));
     const rest = sorted.slice(9).reduce((t, v) => t + v.total, 0);
     return rest ? [...items, { key: 'rest', label: `باقي العربات (${sorted.length - 9})`, total: rest }] : items;
   }, [all, open]);

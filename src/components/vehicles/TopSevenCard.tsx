@@ -4,7 +4,7 @@ import { Trophy, Repeat2, ChevronLeft } from 'lucide-react';
 import { VEHICLE_PROFILES_KEY, vehicleCategory, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { VehicleArt } from './VehicleArt';
-import { groupByCategory } from './categories';
+import { groupByCategory, useVehicleNames } from './categories';
 
 /** عدد العربات المعروضة: أعلى 7 فقط */
 const TOP = 7;
@@ -21,7 +21,8 @@ const MEDAL = [
  */
 export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | null; onOpen: (v: string) => void }> = ({ stats, category, onOpen }) => {
   const [profiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
-  const groups = useMemo(() => groupByCategory(stats), [stats]);
+  const names = useVehicleNames();
+  const groups = useMemo(() => groupByCategory(stats, names), [stats, names]);
   const open = category ? groups.find(g => g.key === category) : undefined;
 
   const list = useMemo(() => {
@@ -48,7 +49,7 @@ export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | n
       <ol className="mt-2 space-y-1 vehicle-page" key={category || 'all'}>
         {view.map(({ s, tag }, k) => {
           const i = k;
-          const cat = vehicleCategory(s.vehicle);
+          const cat = vehicleCategory(names.get(s.vehicle) || s.vehicle);
           const prof = profiles.find(p => p.id === s.vehicle);
           return (
             <li key={s.vehicle}>
@@ -58,13 +59,12 @@ export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | n
                 className="group w-full flex items-center gap-2.5 rounded-2xl px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors text-right cursor-pointer"
               >
                 <span className={`w-6 h-6 shrink-0 rounded-lg text-[11px] font-black flex items-center justify-center shadow-sm ${MEDAL[i] || 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>{i + 1}</span>
-                <VehicleArt code={s.vehicle} photo={prof?.photo} className="w-14 h-10 shrink-0" />
+                <VehicleArt code={names.get(s.vehicle) || s.vehicle} photo={prof?.photo} className="w-14 h-10 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     {prof?.name ? (
                       <>
                         <span className="font-black text-sm text-slate-900 dark:text-white truncate">{prof.name}</span>
-                        <span className="font-mono text-[10px] font-bold text-sky-700 dark:text-sky-300" dir="ltr">{s.vehicle}</span>
                       </>
                     ) : (
                       <>

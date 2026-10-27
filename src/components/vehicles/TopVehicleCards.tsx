@@ -4,7 +4,7 @@ import { Layers, Repeat2, User, CalendarClock, ChevronLeft, ChevronRight, ArrowR
 import { VEHICLE_PROFILES_KEY, formatDay, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { VehicleArt } from './VehicleArt';
-import { OTHER_CATEGORY, groupByCategory } from './categories';
+import { OTHER_CATEGORY, groupByCategory, useVehicleNames } from './categories';
 
 const OTHER = OTHER_CATEGORY;
 const PAGE_SIZE = 9;
@@ -23,7 +23,8 @@ export const TopVehicleCards: React.FC<{
   const [profiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
   const photo = (v: string) => profiles.find(p => p.id === v)?.photo;
 
-  const categories = useMemo(() => groupByCategory(stats), [stats]);
+  const names = useVehicleNames();
+  const categories = useMemo(() => groupByCategory(stats, names), [stats, names]);
 
   const grand = categories.reduce((t, c) => t + c.total, 0) || 1;
   const current = categories.find(c => c.key === selected);
@@ -105,7 +106,6 @@ export const TopVehicleCards: React.FC<{
                     {profiles.find(p => p.id === s.vehicle)?.name ? (
                       <span className="flex flex-col leading-tight min-w-0">
                         <span className="font-black text-slate-900 dark:text-white text-sm truncate max-w-[130px]">{profiles.find(p => p.id === s.vehicle)!.name}</span>
-                        <span className="font-mono text-[10px] font-bold text-sky-700 dark:text-sky-300" dir="ltr">{s.vehicle}</span>
                       </span>
                     ) : (
                       <span className="font-mono font-black text-slate-900 dark:text-white text-base" dir="ltr">{s.vehicle}</span>
@@ -121,7 +121,7 @@ export const TopVehicleCards: React.FC<{
                 </div>
 
                 <div className="relative mx-3 mt-2 h-24 rounded-xl overflow-hidden">
-                  <VehicleArt code={s.vehicle} photo={photo(s.vehicle)} className="absolute inset-0" />
+                  <VehicleArt code={names.get(s.vehicle) || s.vehicle} photo={photo(s.vehicle)} className="absolute inset-0" />
                 </div>
 
                 <div className="px-3 pt-2.5 pb-3 space-y-2">

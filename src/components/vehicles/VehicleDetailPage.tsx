@@ -47,10 +47,11 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, ranking, fle
   const [tab, setTab] = useState<'all' | 'frequent' | 'multi' | 'violations'>('all');
   const [profiles, setProfiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
   const [editing, setEditing] = useState(false);
-  const category = vehicleCategory(stat.vehicle);
   const [dailyPage, setDailyPage] = useState(0);
   useEffect(() => setDailyPage(0), [stat.vehicle]);
   const profile = profiles.find(p => p.id === stat.vehicle);
+  // الاسم إن وُجد يحدد الفئة والصورة (يُعامل كرمز العربة)
+  const category = vehicleCategory(profile?.name || stat.vehicle);
   const checks = useMemo(() => checkFills(stat.fills, profile), [stat, profile]);
   const saveProfile = (p: VehicleProfile) => { setProfiles(prev => [p, ...prev.filter(x => x.id !== p.id)]); setEditing(false); };
 
@@ -122,7 +123,6 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, ranking, fle
             {profile?.name ? (
               <>
                 <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-none">{profile.name}</div>
-                <div className="text-sm font-black text-sky-700 dark:text-sky-300 font-mono mt-1" dir="ltr">{stat.vehicle}</div>
               </>
             ) : (
               <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono leading-none" dir="ltr">{stat.vehicle}</div>
@@ -173,7 +173,7 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, ranking, fle
               {profile?.photo ? (
                 <img src={profile.photo} alt={`العربة ${stat.vehicle}`} className="relative w-full h-56 sm:h-64 object-contain" />
               ) : (
-                <VehicleArt code={stat.vehicle} className="w-full h-56 sm:h-64" />
+                <VehicleArt code={profile?.name || stat.vehicle} className="w-full h-56 sm:h-64" />
               )}
               <div className="absolute top-2 left-2 flex flex-col gap-1.5">
                 <span className={`text-[11px] font-black px-2.5 py-1 rounded-xl ${vsFleet > 0 ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'}`} dir="ltr">{vsFleet > 0 ? '+' : ''}{vsFleet}% vs fleet</span>
