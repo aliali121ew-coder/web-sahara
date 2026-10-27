@@ -1,6 +1,7 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useEffect, useMemo, useState } from 'react';
-import { BarChart3, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { PieChart as PieIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { VehicleStat } from '../../lib/vehicleFuel';
 import { groupByCategory, useCategoryNames, useVehicleNames } from './categories';
 
@@ -18,7 +19,7 @@ const PALETTE: [string, string][] = [
   ['#15803d', '#86efac'], ['#a16207', '#fde047'], ['#475569', '#94a3b8'], ['#701a75', '#e879f9'],
 ];
 
-/** توزيع استهلاك فئات العربات (أو عربات الفئة المفتوحة): شريط واحد مقسّم وجدول مرتب بصفحات */
+/** دائرة استهلاك فئات العربات (الإجمالي في الوسط، أعلى 5 والباقي رمادي) وتحتها جدول مرتب بأشرطة رفيعة باهتة */
 export const CategoryDonut: React.FC<{ stats: VehicleStat[]; category: string | null }> = ({ stats, category }) => {
   // بلا فئة مفتوحة: توزيع الفئات؛ مع فئة مفتوحة: توزيع عرباتها (أعلى 9 والباقي مجمّع)
   const names = useVehicleNames();
@@ -44,54 +45,67 @@ export const CategoryDonut: React.FC<{ stats: VehicleStat[]; category: string | 
 
   const [active, setActive] = useState<number | null>(null);
   const focus = active !== null ? slices[active] : null;
+  const max = full[0]?.total || 1;
   // الصف في الجدول يُبرز شريحته (أو الشريحة الرمادية)
   const sliceOf = (i: number) => Math.min(i, slices.length - 1);
-
-  const max = full[0]?.total || 1;
-  const topShare = total ? Math.round((slices.filter(g => g.key !== 'rest').reduce((t, g) => t + g.total, 0) / total) * 1000) / 10 : 0;
-  const restSlice = slices.find(g => g.key === 'rest');
 
   return (
     <div className="shrink-0 rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 shadow-soft-card">
       <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-1.5">
-          <div className="p-1 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400"><BarChart3 className="w-3.5 h-3.5" /></div>
+          <div className="p-1 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400"><PieIcon className="w-3.5 h-3.5" /></div>
           <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">{open ? `توزيع ${open.label} حسب العربة` : 'توزيع الاستهلاك حسب الفئة'}</h3>
         </div>
-        <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400">{full.length} {open ? 'عربة' : 'فئة'}</span>
+        <span className="font-mono text-[10px] font-extrabold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-full border border-blue-200/60 dark:border-blue-800/40">100%</span>
       </div>
 
-      {/* الإجمالي، أو العنصر الذي يمر عليه المؤشر */}
-      <div className="flex items-baseline gap-1.5 mt-3.5">
-        <span className="text-2xl font-black font-mono text-slate-900 dark:text-white leading-none" style={{ color: focus ? (focus.key === 'rest' ? REST[0] : PALETTE[(active ?? 0) % PALETTE.length][0]) : undefined }}>
-          {(focus ? focus.total : total).toLocaleString()}
-        </span>
-        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 truncate">
-          {focus ? `لتر · ${focus.label} · ${total ? Math.round((focus.total / total) * 1000) / 10 : 0}%` : 'لتر الإجمالي'}
-        </span>
-      </div>
-
-      {/* شريط واحد مقسّم: أعلى 5 بألوانها والباقي رمادي */}
-      <div className="flex h-3 mt-3 rounded-full overflow-hidden gap-[2px]" onMouseLeave={() => setActive(null)}>
-        {slices.map((g, i) => (
-          <div
-            key={g.key}
-            onMouseEnter={() => setActive(i)}
-            title={`${g.label} · ${g.total.toLocaleString()} L`}
-            className="h-full transition-opacity duration-200 cursor-default"
-            style={{
-              width: `${total ? (g.total / total) * 100 : 0}%`,
-              minWidth: 3,
-              flexGrow: g.key === 'rest' ? 1 : 0,
-              background: g.key === 'rest' ? REST[1] : PALETTE[i % PALETTE.length][0],
-              opacity: active === null || active === i ? 1 : 0.35,
-            }}
-          />
-        ))}
-      </div>
-      <div className="flex items-center justify-between mt-1.5 text-[10px] font-bold text-slate-400">
-        <span>{restSlice ? `أعلى ${SLICES} = ${topShare}%` : '100%'}</span>
-        {restSlice && <span>الباقي {full.length - SLICES} {open ? 'عربة' : 'فئة'}</span>}
+      <div className="relative w-44 h-44 mx-auto mt-3" onMouseLeave={() => setActive(null)}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart className="outline-none select-none">
+            <defs>
+              {PALETTE.map(([a, b], i) => (
+                <linearGradient key={i} id={`vcat${i}`} x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor={a} />
+                  <stop offset="100%" stopColor={b} />
+                </linearGradient>
+              ))}
+              <linearGradient id="vcatRest" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor={REST[0]} /><stop offset="100%" stopColor={REST[1]} /></linearGradient>
+            </defs>
+            <Pie data={[{ value: 1 }]} dataKey="value" cx="50%" cy="50%" innerRadius={52} outerRadius={80} fill="rgb(148 163 184 / 0.12)" stroke="none" isAnimationActive={false} />
+            <Pie
+              data={slices.map(g => ({ name: g.label, value: g.total }))}
+              dataKey="value"
+              cx="50%"
+              cy="50%"
+              innerRadius={54}
+              outerRadius={78}
+              paddingAngle={slices.length > 1 ? 1.5 : 0}
+              cornerRadius={4}
+              startAngle={90}
+              endAngle={-270}
+              stroke="none"
+              onMouseEnter={(_, i) => setActive(i)}
+            >
+              {slices.map((g, i) => (
+                <Cell
+                  key={g.key}
+                  fill={g.key === 'rest' ? 'url(#vcatRest)' : `url(#vcat${i % PALETTE.length})`}
+                  opacity={active === null || active === i ? 1 : 0.35}
+                  style={{ transition: 'opacity .2s', outline: 'none', cursor: 'pointer' }}
+                />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+          <span className="text-xl font-black font-mono leading-none" style={{ color: focus ? (focus.key === 'rest' ? REST[0] : PALETTE[(active ?? 0) % PALETTE.length][0]) : undefined }}>
+            {(focus ? focus.total : total).toLocaleString()}
+          </span>
+          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-1">لتر</span>
+          <span className="text-[11px] font-black text-slate-700 dark:text-slate-200 mt-0.5 max-w-[90px] truncate">
+            {focus ? `${focus.label} · ${total ? Math.round((focus.total / total) * 100) : 0}%` : 'الإجمالي'}
+          </span>
+        </div>
       </div>
 
       {/* الجدول: ترتيب، اسم بشريط رفيع باهت، لترات، نسبة */}
