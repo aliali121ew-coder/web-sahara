@@ -15,29 +15,35 @@ const GAP = 8;
 const shareColor = (pct: number) => {
   const t = Math.min(1, Math.max(0, pct / 60));
   const hue = Math.round(170 - 170 * t);
-  return { stroke: `hsl(${hue} 70% 45%)`, tint: `hsl(${hue} 75% 50% / 0.11)`, border: `hsl(${hue} 70% 50% / 0.35)` };
+  return { stroke: `hsl(${hue} 70% 45%)`, tint: `hsl(${hue} 75% 50% / 0.05)`, border: `hsl(${hue} 60% 50% / 0.2)` };
 };
 
-/** حلقة النسبة بلون محايد: امتلاؤها ونصّها = نسبة العربة من استهلاك فئتها (اللون في الكارت نفسه) */
-const ShareRing: React.FC<{ pct: number }> = ({ pct }) => {
+/**
+ * حلقة التغير: آخر تفويلة مقارنةً بالسابقة — أحمر مع ↑ إذا زادت، أخضر مع ↓ إذا قلّت،
+ * وامتلاؤها بمقدار التغير (حتى 100%)؛ رمادية بلا سابقة.
+ */
+const ChangeRing: React.FC<{ last: number; prev: number | null }> = ({ last, prev }) => {
   const r = 15;
   const len = 2 * Math.PI * r;
-  const color = '#475569';
+  const change = prev ? ((last - prev) / prev) * 100 : null;
+  const color = change === null || change === 0 ? '#94a3b8' : change > 0 ? '#e11d48' : '#059669';
+  const fill = change === null ? 0 : Math.min(1, Math.abs(change) / 100);
+  const txt = change === null ? '—' : `${change > 0 ? '↑' : change < 0 ? '↓' : ''}${Math.abs(change) < 10 ? Math.abs(change).toFixed(1) : Math.round(Math.abs(change))}%`;
   return (
-    <div className="relative w-11 h-11 shrink-0">
-      <span className="absolute inset-1 rounded-full bg-white/70 dark:bg-slate-900/60" />
-      <svg viewBox="0 0 36 36" className="relative w-11 h-11 -rotate-90">
+    <div className="relative w-12 h-12 shrink-0" title={change === null ? 'لا توجد تفويلة سابقة' : `مقارنةً بالتفويلة السابقة (${prev} لتر)`}>
+      <span className="absolute inset-1 rounded-full bg-white/80 dark:bg-slate-900/60" />
+      <svg viewBox="0 0 36 36" className="relative w-12 h-12 -rotate-90">
         <circle cx="18" cy="18" r={r} fill="none" stroke="rgb(148 163 184 / 0.25)" strokeWidth="3.5" />
-        <circle cx="18" cy="18" r={r} fill="none" stroke={color} strokeWidth="3.5" strokeLinecap="round" strokeDasharray={len} strokeDashoffset={len * (1 - Math.min(1, Math.max(0.03, pct / 100)))} className="vehicle-gauge" />
+        {fill > 0 && <circle cx="18" cy="18" r={r} fill="none" stroke={color} strokeWidth="3.5" strokeLinecap="round" strokeDasharray={len} strokeDashoffset={len * (1 - Math.max(0.04, fill))} className="vehicle-gauge" />}
       </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black font-mono" style={{ color }}>{pct < 10 ? pct.toFixed(1) : Math.round(pct)}%</span>
+      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black font-mono" style={{ color }} dir="ltr">{txt}</span>
     </div>
   );
 };
 
 /**
  * الأعلى استهلاكًا (7 فقط): بلا فئة مفتوحة = أعلى عربة في كل فئة؛ مع فئة مفتوحة = أعلى عربات الفئة.
- * كل عربة في كارت صغير (حلقة نسبتها من فئتها، آخر تفويلة والسابقة)، والكارتات تتوزع بالتساوي حتى نهاية العمود.
+ * كل عربة في كارت صغير (حلقة تغيّر آخر تفويلة عن السابقة، آخر تفويلة والسابقة)، والكارتات تتوزع بالتساوي حتى نهاية العمود.
  */
 export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | null; onOpen: (v: string) => void }> = ({ stats, category, onOpen }) => {
   const [profiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
@@ -91,7 +97,7 @@ export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | n
                 className="vehicle-kpi w-full flex items-center gap-2.5 rounded-2xl border px-2.5 py-2 hover:shadow-md hover:-translate-y-px transition-all text-right cursor-pointer"
                 style={{ animationDelay: `${i * 0.04}s`, background: `linear-gradient(to left, ${shareColor(share).tint}, transparent 85%)`, borderColor: shareColor(share).border }}
               >
-                <ShareRing pct={share} />
+                <ChangeRing last={s.last.qty} prev={s.last.prevQty} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className={`font-black text-sm text-slate-900 dark:text-white truncate ${prof?.name ? '' : 'font-mono'}`} dir={prof?.name ? undefined : 'ltr'}>{prof?.name || s.vehicle}</span>
@@ -100,14 +106,14 @@ export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | n
                   </div>
                   {/* آخر تفويلة وعدد الأيام، ثم السابقة بخط رصاصي فاتح */}
                   <div className="flex items-center gap-2 mt-1 text-[11px] font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                    <span className="flex items-center gap-0.5"><Fuel className="w-3 h-3 text-sky-500" /><span className="font-mono">{s.last.qty.toLocaleString()}</span> L</span>
+                    <span className="flex items-center gap-0.5"><Fuel className="w-3 h-3 text-sky-500" /><span className="font-mono">{s.last.qty.toLocaleString()}</span> لتر</span>
                     <span className="flex items-center gap-0.5 font-mono"><CalendarClock className="w-3 h-3 text-sky-500" />{formatDay(s.last.date)}</span>
                     {s.last.days !== null && <span className={`flex items-center gap-0.5 ${s.last.days <= 1 ? 'text-rose-600 dark:text-rose-400' : ''}`}><Timer className="w-3 h-3" />بعد {s.last.days} يوم</span>}
                   </div>
                   {s.last.prevQty !== null && (
                     <div className="flex items-center gap-1.5 mt-0.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500 whitespace-nowrap">
                       <span>السابقة</span>
-                      <span className="font-mono">{s.last.prevQty.toLocaleString()} L</span>
+                      <span className="font-mono">{s.last.prevQty.toLocaleString()} لتر</span>
                       <span className="font-mono">{formatDay(s.last.prevDate)}</span>
                     </div>
                   )}

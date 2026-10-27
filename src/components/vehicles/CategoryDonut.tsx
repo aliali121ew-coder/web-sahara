@@ -11,10 +11,10 @@ const LEGEND_PAGE = 6;
 const SLICES = 5;
 const REST: [string, string] = ['#cbd5e1', '#e2e8f0'];
 
-// تدرّج ثابت ومريح بلون واحد (نيلي): الأكبر أغمق ثم يفتح تدريجيًا، والباقي رمادي هادئ
+// ألوان مختلفة هادئة لتمييز الاستهلاك (درجات متوسطة غير صارخة)، والباقي رمادي فاتح
 const PALETTE: [string, string][] = [
-  ['#3730a3', '#4f46e5'], ['#4f46e5', '#6366f1'], ['#6366f1', '#818cf8'],
-  ['#818cf8', '#a5b4fc'], ['#a5b4fc', '#c7d2fe'], ['#c7d2fe', '#e0e7ff'],
+  ['#6366f1', '#818cf8'], ['#14b8a6', '#5eead4'], ['#f59e0b', '#fcd34d'],
+  ['#ec4899', '#f9a8d4'], ['#0ea5e9', '#7dd3fc'], ['#84cc16', '#bef264'],
 ];
 
 /** دائرة استهلاك فئات العربات (الإجمالي في الوسط، أعلى 5 والباقي رمادي) وتحتها جدول مرتب بأشرطة رفيعة باهتة */
@@ -127,7 +127,7 @@ export const CategoryDonut: React.FC<{ stats: VehicleStat[]; category: string | 
                   <span className="block h-full rounded-full vehicle-fill" style={{ width: `${Math.max(3, (g.total / max) * 100)}%`, background: c0, opacity: 0.75 }} />
                 </span>
               </span>
-              <span className="font-mono text-slate-500 dark:text-slate-400 text-left">{g.total.toLocaleString()} L</span>
+              <span className="font-mono text-slate-500 dark:text-slate-400 text-left">{g.total.toLocaleString()} لتر</span>
               <span className="font-mono font-black text-slate-700 dark:text-slate-200 text-left">{pct}%</span>
             </div>
           );
