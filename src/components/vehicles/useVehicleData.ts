@@ -5,7 +5,7 @@ import {
   type VehicleFile, type VehicleRefill,
 } from '../../lib/vehicleFuel';
 
-export type Scope = { kind: 'day'; date: string } | { kind: 'all' };
+export type Scope = { kind: 'day'; date: string } | { kind: 'range'; from: string; to: string } | { kind: 'all' };
 
 export interface UploadResult { name: string; ok: boolean; message: string }
 
@@ -28,8 +28,11 @@ export const useVehicleData = (scope: Scope | null) => {
   const active: Scope = scope ?? (dates.length ? { kind: 'day', date: dates[dates.length - 1] } : { kind: 'all' });
 
   const fills = useMemo(
-    () => (active.kind === 'all' ? allFills : allFills.filter(f => f.date === active.date)),
-    [allFills, active.kind, active.kind === 'day' ? active.date : '']
+    () => (active.kind === 'all' ? allFills
+      : active.kind === 'range' ? allFills.filter(f => f.date >= active.from && f.date <= active.to)
+      : allFills.filter(f => f.date === active.date)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allFills, active.kind, active.kind === 'day' ? active.date : '', active.kind === 'range' ? `${active.from}|${active.to}` : '']
   );
   const stats = useMemo(() => vehicleStats(fills).sort((a, b) => b.total - a.total), [fills]);
   /** تاريخ كل عربة الكامل (للنافذة التفصيلية والمعدلات) بغض النظر عن النطاق */

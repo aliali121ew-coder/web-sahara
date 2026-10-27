@@ -33,7 +33,6 @@ export const CategoryDonut: React.FC<{ stats: VehicleStat[]; category: string | 
   const legendStart = legendPage * LEGEND_PAGE;
   const colorOf = (i: number) => PALETTE[i % PALETTE.length];
   const total = groups.reduce((t, g) => t + g.total, 0);
-  const max = Math.max(1, ...groups.map(g => g.total));
 
   const [active, setActive] = useState<number | null>(null);
   const focus = active !== null ? groups[active] : null;
@@ -96,26 +95,23 @@ export const CategoryDonut: React.FC<{ stats: VehicleStat[]; category: string | 
         </div>
       </div>
 
-      {/* دليل مرتب بأشرطة: اسم الفئة ونسبتها وشريط بطولها مقارنةً بالأكبر */}
-      <div className="mt-3 space-y-2 h-[228px]">
+      {/* دليل هادئ: نقطة بلون الشريحة، الاسم، اللترات، والنسبة — بلا أشرطة */}
+      <div className="mt-3 h-[228px] flex flex-col">
         {groups.slice(legendStart, legendStart + LEGEND_PAGE).map((g, k) => {
           const i = legendStart + k;
           const pct = total ? Math.round((g.total / total) * 1000) / 10 : 0;
-          const [c0, c1] = colorOf(i);
+          const [c0] = colorOf(i);
           return (
             <div
               key={g.key}
               onMouseEnter={() => setActive(i)}
               onMouseLeave={() => setActive(null)}
-              className={`rounded-lg px-1.5 py-1 transition-colors ${active === i ? 'bg-slate-100 dark:bg-slate-800' : ''}`}
+              className={`flex items-center gap-2.5 h-[38px] px-2 rounded-lg text-xs transition-colors border-b border-slate-100 dark:border-slate-800/70 last:border-b-0 ${active === i ? 'bg-slate-50 dark:bg-slate-800/60' : ''}`}
             >
-              <div className="flex items-center justify-between gap-2 text-xs">
-                <span className={`font-bold text-slate-700 dark:text-slate-200 truncate ${open ? 'font-mono' : ''}`} dir={open ? 'ltr' : undefined}>{g.label}</span>
-                <span className="font-mono font-black text-slate-500 dark:text-slate-400 shrink-0">{pct}%</span>
-              </div>
-              <div className="mt-1 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                <div className="h-full rounded-full vehicle-fill" style={{ width: `${Math.max(2, (g.total / max) * 100)}%`, background: `linear-gradient(90deg, ${c1}, ${c0})` }} />
-              </div>
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: c0 }} />
+              <span className={`flex-1 min-w-0 font-bold text-slate-700 dark:text-slate-200 truncate ${open ? 'font-mono' : ''}`} dir={open ? 'ltr' : undefined}>{g.label}</span>
+              <span className="font-mono text-slate-400 dark:text-slate-500 shrink-0">{g.total.toLocaleString()} L</span>
+              <span className="font-mono font-black text-slate-600 dark:text-slate-300 shrink-0 w-12 text-left">{pct}%</span>
             </div>
           );
         })}

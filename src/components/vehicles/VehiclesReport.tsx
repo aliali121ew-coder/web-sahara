@@ -1,13 +1,13 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Search, Truck, FileText, Fuel, Gauge, Trophy, TrendingUp, TrendingDown, Repeat2, Upload, X, Trash2, Loader2,
+  Search, CalendarDays, Truck, FileText, Fuel, Gauge, Trophy, TrendingUp, TrendingDown, Repeat2, Upload, X, Trash2, Loader2,
   CheckCircle2, AlertTriangle,
 } from 'lucide-react';
 import { usePermissions } from '../../lib/usePermission';
 import { useFuelNav } from '../../context/FuelDataContext';
 import { FREQUENT_DAYS, formatDay } from '../../lib/vehicleFuel';
-import { DateField } from '../ui/DateField';
+import { DateRangeCalendar } from '../ui/DateRangeCalendar';
 import { useVehicleData, type Scope, type UploadResult } from './useVehicleData';
 import { CategoryDonut } from './CategoryDonut';
 import { TopSevenCard } from './TopSevenCard';
@@ -47,6 +47,7 @@ export const VehiclesReport: React.FC = () => {
   }, [results]);
   const [showFiles, setShowFiles] = useState(false);
   const [vehicle, setVehicle] = useState<string | null>(null);
+  const [rangeOpen, setRangeOpen] = useState(false);
   // الفئة المفتوحة في كارت الفئات: الدائرة وكارت الأعلى استهلاكًا يتبعانها
   const [category, setCategory] = useState<string | null>(null);
   // البحث عن عربة برقمها (كل العربات المسجلة في كل الفترة) يفتح صفحتها مباشرة
@@ -141,18 +142,34 @@ export const VehiclesReport: React.FC = () => {
       <div className="flex flex-wrap items-center gap-2">
         {dates.length > 0 && (
           <>
-            <DateField
-              value={active.kind === 'day' ? active.date : ''}
-              onChange={v => setScope({ kind: 'day', date: v })}
-              marked={dateSet}
-              onlyMarked
-              min={dates[0]}
-              max={dates[dates.length - 1]}
-              placeholder="كل الفترة"
-              ariaLabel="تاريخ الكشف"
-              iconClassName="text-sky-600"
-              className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold font-mono text-slate-700 dark:text-slate-200 shadow-xs"
-            />
+            {/* التاريخ: يوم واحد أو فترة «من – إلى» بنفس تقويم صفحة الوارد */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setRangeOpen(o => !o)}
+                aria-label="تاريخ الكشف"
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl border text-sm font-bold font-mono shadow-xs cursor-pointer transition-all ${active.kind !== 'all' ? 'bg-white dark:bg-slate-900 border-sky-400 text-slate-800 dark:text-slate-100' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'}`}
+              >
+                <CalendarDays className="w-4 h-4 text-sky-600" />
+                {active.kind === 'day' ? active.date : active.kind === 'range' ? `${active.from} ← ${active.to}` : 'اختر يومًا أو فترة'}
+              </button>
+              {rangeOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setRangeOpen(false)} />
+                  <div className="absolute z-50 top-full mt-2 right-0">
+                    <DateRangeCalendar
+                      from={active.kind === 'day' ? active.date : active.kind === 'range' ? active.from : ''}
+                      to={active.kind === 'day' ? active.date : active.kind === 'range' ? active.to : ''}
+                      marked={dateSet}
+                      min={dates[0]}
+                      max={dates[dates.length - 1]}
+                      onApply={(from, to) => { setScope(!to || from === to ? { kind: 'day', date: from } : { kind: 'range', from, to }); setRangeOpen(false); }}
+                      onClear={() => { setScope({ kind: 'all' }); setRangeOpen(false); }}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
             <button
               type="button"
               onClick={() => setScope({ kind: 'all' })}
@@ -223,7 +240,7 @@ export const VehiclesReport: React.FC = () => {
         <>
           {/* الكارتات */}
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
-            <Kpi tone="bg-sky-500" icon={<Truck className="w-4 h-4" />} label="إجمالي العربات" value={stats.length} sub={active.kind === 'day' ? `يوم ${formatDay(active.date)}` : `${dates.length} يوم`} />
+            <Kpi tone="bg-sky-500" icon={<Truck className="w-4 h-4" />} label="إجمالي العربات" value={stats.length} sub={active.kind === 'day' ? `يوم ${formatDay(active.date)}` : active.kind === 'range' ? `${formatDay(active.from)} ← ${formatDay(active.to)}` : `${dates.length} يوم`} />
             <Kpi tone="bg-indigo-500" icon={<Fuel className="w-4 h-4" />} label="إجمالي التفويلات" value={k.total.toLocaleString()} sub={`لتر · ${fills.length} تفويلة`} />
             <Kpi tone="bg-violet-500" icon={<Gauge className="w-4 h-4" />} label="متوسط التفويلة" value={k.avg.toLocaleString()} sub="لتر للتفويلة" />
             <Kpi tone="bg-amber-500" icon={<Trophy className="w-4 h-4" />} label="أعلى تفويلة" value={k.top ? k.top.qty.toLocaleString() : '—'} sub={k.top ? <span dir="ltr">عربة {k.top.vehicle}</span> : '—'} onClick={k.top ? () => setVehicle(k.top!.vehicle) : undefined} />
@@ -232,7 +249,7 @@ export const VehiclesReport: React.FC = () => {
               icon={k.change !== null && k.change < 0 ? <TrendingDown className="w-4 h-4" /> : <TrendingUp className="w-4 h-4" />}
               label="مقارنة باليوم السابق"
               value={k.change === null ? '—' : <span dir="ltr">{k.change > 0 ? '+' : ''}{k.change}%</span>}
-              sub={prevDay ? `عن ${formatDay(prevDay)} (${prevTotal?.toLocaleString()} لتر)` : active.kind === 'all' ? 'اختر يومًا للمقارنة' : 'لا يوجد كشف لليوم السابق'}
+              sub={prevDay ? `عن ${formatDay(prevDay)} (${prevTotal?.toLocaleString()} لتر)` : active.kind === 'day' ? 'لا يوجد كشف لليوم السابق' : 'اختر يومًا للمقارنة'}
             />
             <Kpi tone="bg-rose-500" icon={<Repeat2 className="w-4 h-4" />} label="تفويل متكرر" value={k.frequent} sub={`عربة خلال ${FREQUENT_DAYS} يوم أو أقل`} />
           </div>
