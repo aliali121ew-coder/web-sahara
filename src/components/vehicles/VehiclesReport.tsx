@@ -1,7 +1,7 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Truck, FileText, Fuel, Gauge, Trophy, TrendingUp, TrendingDown, Repeat2, Upload, X, Trash2, Loader2,
+  Search, Truck, FileText, Fuel, Gauge, Trophy, TrendingUp, TrendingDown, Repeat2, Upload, X, Trash2, Loader2,
   CheckCircle2, AlertTriangle,
 } from 'lucide-react';
 import { usePermissions } from '../../lib/usePermission';
@@ -48,6 +48,9 @@ export const VehiclesReport: React.FC = () => {
   }, [results]);
   const [showFiles, setShowFiles] = useState(false);
   const [vehicle, setVehicle] = useState<string | null>(null);
+  // البحث عن عربة برقمها (كل العربات المسجلة في كل الفترة) يفتح صفحتها مباشرة
+  const [query, setQuery] = useState('');
+  const [searchMiss, setSearchMiss] = useState(false);
   const [drag, setDrag] = useState(false);
   const input = useRef<HTMLInputElement>(null);
 
@@ -157,6 +160,37 @@ export const VehiclesReport: React.FC = () => {
               كل الفترة
             </button>
           </>
+        )}
+        {history.size > 0 && (
+          <form
+            className="relative"
+            onSubmit={e => {
+              e.preventDefault();
+              const q = query.trim().toUpperCase();
+              if (!q) return;
+              const hit = history.has(q) ? q : [...history.keys()].find(v => v.toUpperCase() === q) || [...history.keys()].find(v => v.toUpperCase().startsWith(q));
+              if (hit) { setVehicle(hit); setQuery(''); setSearchMiss(false); } else setSearchMiss(true);
+            }}
+          >
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            <input
+              list="vehicles-search-list"
+              value={query}
+              onChange={e => {
+                const v = e.target.value;
+                setQuery(v);
+                setSearchMiss(false);
+                // اختيار من القائمة المقترحة يفتح العربة فورًا
+                if (history.has(v)) { setVehicle(v); setQuery(''); }
+              }}
+              placeholder="ابحث برقم العربة"
+              aria-label="البحث عن عربة"
+              dir="ltr"
+              className={`w-48 pr-9 pl-3 py-2 rounded-2xl bg-white dark:bg-slate-900 border text-sm font-bold font-mono text-slate-700 dark:text-slate-200 placeholder:font-cairo placeholder:font-normal focus:outline-hidden focus:ring-4 focus:ring-sky-500/10 transition-all text-right ${searchMiss ? 'border-rose-400 focus:border-rose-500' : 'border-slate-200 dark:border-slate-700 focus:border-sky-500'}`}
+            />
+            <datalist id="vehicles-search-list">{[...history.keys()].sort((a, b) => a.localeCompare(b, 'en', { numeric: true })).map(v => <option key={v} value={v} />)}</datalist>
+            {searchMiss && <span className="absolute -bottom-5 right-2 text-[10px] font-bold text-rose-500">لا توجد عربة بهذا الرقم</span>}
+          </form>
         )}
         <div className="flex items-center gap-2 mr-auto">
           <button type="button" onClick={() => setShowFiles(true)} className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-sky-400 cursor-pointer">
