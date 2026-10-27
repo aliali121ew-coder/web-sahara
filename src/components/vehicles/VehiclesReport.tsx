@@ -238,7 +238,7 @@ export const VehiclesReport: React.FC = () => {
           </div>
 
           {/* دائرة الفئات وأعلى 7 (30%) + فئات العربات */}
-          <div className="grid grid-cols-1 lg:grid-cols-10 gap-5 items-stretch">
+          <div className="grid grid-cols-1 lg:grid-cols-10 gap-5 items-start">
             <div className="lg:col-span-3 flex flex-col gap-5">
               <CategoryDonut stats={stats} category={category} />
               <TopSevenCard stats={stats} category={category} onOpen={setVehicle} />

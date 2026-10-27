@@ -1,12 +1,13 @@
 /* eslint-disable i18next/no-literal-string */
-import React, { useMemo } from 'react';
-import { Layers, Repeat2, User, CalendarClock, ChevronLeft, ArrowRight, Truck } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Layers, Repeat2, User, CalendarClock, ChevronLeft, ChevronRight, ArrowRight, Truck } from 'lucide-react';
 import { VEHICLE_PROFILES_KEY, formatDay, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { VehicleArt } from './VehicleArt';
 import { OTHER_CATEGORY, groupByCategory } from './categories';
 
 const OTHER = OTHER_CATEGORY;
+const PAGE_SIZE = 9;
 
 /**
  * فئات العربات: كارت لكل فئة موجودة في البيانات (الإجمالي، عدد العربات والتفويلات، المتكرر)،
@@ -26,6 +27,14 @@ export const TopVehicleCards: React.FC<{
 
   const grand = categories.reduce((t, c) => t + c.total, 0) || 1;
   const current = categories.find(c => c.key === selected);
+  // عربات الفئة على صفحات: 9 (ثلاثة صفوف) لينتهي الكارت مع نهاية الدائرة وكارت الأعلى استهلاكًا
+  const [page, setPage] = useState(1);
+  useEffect(() => setPage(1), [selected, stats]);
+  const vehicles = current?.vehicles || [];
+  const totalPages = Math.max(1, Math.ceil(vehicles.length / PAGE_SIZE));
+  const startIndex = (page - 1) * PAGE_SIZE;
+  const endIndex = Math.min(vehicles.length, startIndex + PAGE_SIZE);
+  const pageVehicles = vehicles.slice(startIndex, endIndex);
 
   return (
     <div className="h-full rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-soft-card flex flex-col">
@@ -48,7 +57,7 @@ export const TopVehicleCards: React.FC<{
         )}
       </div>
 
-      <div className="flex-1 vehicle-page" key={selected || 'all'}>
+      <div className="flex-1 vehicle-page" key={`${selected || 'all'}-${page}`}>
         {!current ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
             {categories.map(c => {
@@ -83,7 +92,7 @@ export const TopVehicleCards: React.FC<{
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-            {current.vehicles.map((s, i) => (
+            {pageVehicles.map((s, k) => { const i = startIndex + k; return (
               <button
                 key={s.vehicle}
                 type="button"
@@ -133,10 +142,55 @@ export const TopVehicleCards: React.FC<{
                   </div>
                 </div>
               </button>
-            ))}
+            ); })}
           </div>
         )}
       </div>
+
+      {/* الصفحات بنفس شريط صفحة الوارد */}
+      {current && vehicles.length > 0 && (
+        <div className="mt-4 -mx-4 sm:-mx-5 -mb-4 sm:-mb-5 p-3 sm:p-4 rounded-b-3xl bg-slate-50/90 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="text-xs font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap shrink-0">
+            عرض <span className="font-sans font-black text-blue-600 dark:text-blue-400">{startIndex + 1}–{endIndex}</span> من <span className="font-sans font-black text-slate-900 dark:text-white">{vehicles.length}</span> عربة
+          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1.5 select-none">
+              <button
+                type="button"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1 transition-all ${page === 1 ? 'opacity-40 cursor-not-allowed border-slate-200 dark:border-slate-700 text-slate-400' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 cursor-pointer shadow-2xs active:scale-95'}`}
+              >
+                <ChevronRight className="w-3.5 h-3.5" /><span>السابق</span>
+              </button>
+              <div className="flex items-center gap-1">
+                {(() => {
+                  const windowSize = Math.min(10, totalPages);
+                  const windowStart = Math.min(Math.max(1, page - Math.floor(windowSize / 2)), totalPages - windowSize + 1);
+                  return Array.from({ length: windowSize }, (_, i) => windowStart + i);
+                })().map(n => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setPage(n)}
+                    className={`w-8 h-8 rounded-xl font-sans font-black text-xs transition-all cursor-pointer ${n === page ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-2 ring-blue-400/40' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700'}`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1 transition-all ${page === totalPages ? 'opacity-40 cursor-not-allowed border-slate-200 dark:border-slate-700 text-slate-400' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 cursor-pointer shadow-2xs active:scale-95'}`}
+              >
+                <span>التالي</span><ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

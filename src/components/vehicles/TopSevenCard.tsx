@@ -1,15 +1,13 @@
 /* eslint-disable i18next/no-literal-string */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Trophy, Repeat2, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Trophy, Repeat2, ChevronLeft } from 'lucide-react';
 import { VEHICLE_PROFILES_KEY, vehicleCategory, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { VehicleArt } from './VehicleArt';
 import { groupByCategory } from './categories';
 
-/** أقل عدد سطور في الصفحة؛ ويزيد ليملأ ارتفاع الكارت حتى نهاية العمود */
-const MIN_PAGE = 7;
-/** ارتفاع السطر التقريبي قبل القياس (px) */
-const ROW_FALLBACK = 56;
+/** عدد العربات المعروضة: أعلى 7 فقط */
+const TOP = 7;
 
 // المراكز الثلاثة الأولى: ذهبي، فضي، برونزي
 const MEDAL = [
@@ -19,8 +17,7 @@ const MEDAL = [
 ];
 
 /**
- * الأعلى استهلاكًا: بلا فئة مفتوحة = أعلى عربة في كل فئة؛ مع فئة مفتوحة = عربات الفئة بالترتيب.
- * السطور تملأ الكارت حتى نهاية العمود (7 على الأقل)، وأزرار الصفحات في أسفله.
+ * الأعلى استهلاكًا (7 فقط): بلا فئة مفتوحة = أعلى عربة في كل فئة؛ مع فئة مفتوحة = أعلى عربات الفئة.
  */
 export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | null; onOpen: (v: string) => void }> = ({ stats, category, onOpen }) => {
   const [profiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
@@ -35,39 +32,22 @@ export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | n
       .sort((a, b) => b.s.total - a.s.total);
   }, [groups, open]);
 
-  // عدد السطور يُحسب من ارتفاع القائمة المتاح (الكارت يمتد مع كارت الفئات) فتمتلئ حتى نهايته ثم الصفحات
-  const listRef = useRef<HTMLOListElement>(null);
-  const [PAGE, setPerPage] = useState(MIN_PAGE);
-  useEffect(() => {
-    const el = listRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => {
-      const first = el.querySelector('li');
-      const row = first ? first.getBoundingClientRect().height + 4 : ROW_FALLBACK;
-      setPerPage(Math.max(MIN_PAGE, Math.floor((el.clientHeight + 4) / row)));
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-  const [page, setPage] = useState(0);
-  useEffect(() => setPage(0), [category, stats, PAGE]);
-  const pages = Math.max(1, Math.ceil(list.length / PAGE));
-  const view = list.slice(page * PAGE, page * PAGE + PAGE);
+  const view = list.slice(0, TOP);
   const max = list[0]?.s.total || 1;
 
   return (
-    <div className="flex-1 flex flex-col rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 shadow-soft-card">
+    <div className="flex flex-col rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 shadow-soft-card">
       <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-1.5">
           <div className="p-1 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400"><Trophy className="w-3.5 h-3.5" /></div>
           <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">{open ? `الأعلى استهلاكًا · ${open.label}` : 'الأعلى استهلاكًا في كل فئة'}</h3>
         </div>
-        <span className="text-[10px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-full border border-amber-200/60 dark:border-amber-800/40">{list.length} {open ? 'عربة' : 'فئة'}</span>
+        <span className="text-[10px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-full border border-amber-200/60 dark:border-amber-800/40">أعلى {Math.min(TOP, list.length)} من {list.length}</span>
       </div>
 
-      <ol ref={listRef} className="mt-2 space-y-1 flex-1 min-h-0 overflow-hidden vehicle-page">
+      <ol className="mt-2 space-y-1 vehicle-page" key={category || 'all'}>
         {view.map(({ s, tag }, k) => {
-          const i = page * PAGE + k;
+          const i = k;
           const cat = vehicleCategory(s.vehicle);
           const prof = profiles.find(p => p.id === s.vehicle);
           return (
@@ -110,13 +90,6 @@ export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | n
         {!list.length && <li className="text-xs text-slate-400 text-center py-6">لا توجد بيانات</li>}
       </ol>
 
-      {pages > 1 && (
-        <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-center gap-1 text-xs text-slate-500">
-          <button type="button" disabled={page === 0} onClick={() => setPage(p => p - 1)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer" aria-label="السابقة"><ChevronRight className="w-4 h-4" /></button>
-          <span className="font-mono font-bold px-2">{page + 1} / {pages}</span>
-          <button type="button" disabled={page >= pages - 1} onClick={() => setPage(p => p + 1)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer" aria-label="التالية"><ChevronLeft className="w-4 h-4" /></button>
-        </div>
-      )}
     </div>
   );
 };
