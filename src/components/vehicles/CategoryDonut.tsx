@@ -1,14 +1,13 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useEffect, useMemo, useState } from 'react';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { PieChart as PieIcon, ChevronDown } from 'lucide-react';
+import { PieChart as PieIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { VehicleStat } from '../../lib/vehicleFuel';
 import { groupByCategory, useCategoryNames, useVehicleNames } from './categories';
 
 // تدرّج لكل شريحة (من/إلى) بنفس روح دائرة «توزيع نسب الاستهلاك» في الرئيسية
-/** عدد الشرائح الظاهرة قبل «عرض الكل»؛ الباقي يُجمّع في شريحة رمادية */
-const TOP = 4;
-const REST: [string, string] = ['#64748b', '#94a3b8'];
+/** سطور الدليل في كل صفحة: الكارت يحافظ على حجمه، والباقي بالتنقل بين الصفحات */
+const LEGEND_PAGE = 6;
 
 const PALETTE: [string, string][] = [
   ['#6d28d9', '#8b5cf6'], ['#1d4ed8', '#3b82f6'], ['#0d9488', '#2dd4bf'], ['#c2410c', '#fb923c'],
@@ -27,15 +26,12 @@ export const CategoryDonut: React.FC<{ stats: VehicleStat[]; category: string | 
   const full = useMemo(() => (open
     ? [...open.vehicles].sort((a, b) => b.total - a.total).map(v => ({ key: v.vehicle, label: names.get(v.vehicle) || v.vehicle, total: v.total }))
     : all.map(g => ({ key: g.key, label: g.label, total: g.total }))), [all, open, names]);
-  // مختصر: أعلى 4 والباقي في سطر واحد، و«عرض الكل» يفتح القائمة كاملة
-  const [expanded, setExpanded] = useState(false);
-  useEffect(() => setExpanded(false), [category]);
-  const groups = useMemo(() => {
-    if (expanded || full.length <= TOP + 1) return full;
-    const rest = full.slice(TOP);
-    return [...full.slice(0, TOP), { key: 'rest', label: `${rest.length} ${open ? 'عربة' : 'فئة'} أخرى`, total: rest.reduce((t, g) => t + g.total, 0) }];
-  }, [full, expanded, open]);
-  const colorOf = (i: number) => (groups[i]?.key === 'rest' ? REST : PALETTE[i % PALETTE.length]);
+  const groups = full;
+  const [legendPage, setLegendPage] = useState(0);
+  useEffect(() => setLegendPage(0), [category]);
+  const legendPages = Math.max(1, Math.ceil(groups.length / LEGEND_PAGE));
+  const legendStart = legendPage * LEGEND_PAGE;
+  const colorOf = (i: number) => PALETTE[i % PALETTE.length];
   const total = groups.reduce((t, g) => t + g.total, 0);
   const max = Math.max(1, ...groups.map(g => g.total));
 
@@ -43,7 +39,7 @@ export const CategoryDonut: React.FC<{ stats: VehicleStat[]; category: string | 
   const focus = active !== null ? groups[active] : null;
 
   return (
-    <div className="rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 shadow-soft-card">
+    <div className="shrink-0 rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 shadow-soft-card">
       <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-1.5">
           <div className="p-1 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400"><PieIcon className="w-3.5 h-3.5" /></div>
@@ -62,7 +58,6 @@ export const CategoryDonut: React.FC<{ stats: VehicleStat[]; category: string | 
                   <stop offset="100%" stopColor={b} />
                 </linearGradient>
               ))}
-              <linearGradient id="vcatRest" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor={REST[0]} /><stop offset="100%" stopColor={REST[1]} /></linearGradient>
             </defs>
             <Pie data={[{ value: 1 }]} dataKey="value" cx="50%" cy="50%" innerRadius={52} outerRadius={80} fill="rgb(148 163 184 / 0.12)" stroke="none" isAnimationActive={false} />
             <Pie
@@ -82,7 +77,7 @@ export const CategoryDonut: React.FC<{ stats: VehicleStat[]; category: string | 
               {groups.map((g, i) => (
                 <Cell
                   key={g.key}
-                  fill={g.key === 'rest' ? 'url(#vcatRest)' : `url(#vcat${i % PALETTE.length})`}
+                  fill={`url(#vcat${i % PALETTE.length})`}
                   opacity={active === null || active === i ? 1 : 0.35}
                   style={{ transition: 'opacity .2s', outline: 'none', cursor: 'pointer' }}
                 />
@@ -102,8 +97,9 @@ export const CategoryDonut: React.FC<{ stats: VehicleStat[]; category: string | 
       </div>
 
       {/* دليل مرتب بأشرطة: اسم الفئة ونسبتها وشريط بطولها مقارنةً بالأكبر */}
-      <div className="mt-3 space-y-2">
-        {groups.map((g, i) => {
+      <div className="mt-3 space-y-2 h-[228px]">
+        {groups.slice(legendStart, legendStart + LEGEND_PAGE).map((g, k) => {
+          const i = legendStart + k;
           const pct = total ? Math.round((g.total / total) * 1000) / 10 : 0;
           const [c0, c1] = colorOf(i);
           return (
@@ -114,7 +110,7 @@ export const CategoryDonut: React.FC<{ stats: VehicleStat[]; category: string | 
               className={`rounded-lg px-1.5 py-1 transition-colors ${active === i ? 'bg-slate-100 dark:bg-slate-800' : ''}`}
             >
               <div className="flex items-center justify-between gap-2 text-xs">
-                <span className={`font-bold text-slate-700 dark:text-slate-200 truncate ${open && g.key !== 'rest' ? 'font-mono' : ''}`} dir={open && g.key !== 'rest' ? 'ltr' : undefined}>{g.label}</span>
+                <span className={`font-bold text-slate-700 dark:text-slate-200 truncate ${open ? 'font-mono' : ''}`} dir={open ? 'ltr' : undefined}>{g.label}</span>
                 <span className="font-mono font-black text-slate-500 dark:text-slate-400 shrink-0">{pct}%</span>
               </div>
               <div className="mt-1 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
@@ -124,11 +120,15 @@ export const CategoryDonut: React.FC<{ stats: VehicleStat[]; category: string | 
           );
         })}
       </div>
-      {full.length > TOP + 1 && (
-        <button type="button" onClick={() => setExpanded(e => !e)} className="mt-2 flex items-center gap-1 text-xs font-bold text-sky-600 dark:text-sky-400 hover:underline cursor-pointer">
-          {expanded ? 'عرض مختصر' : `عرض كل ${open ? 'العربات' : 'الفئات'} (${full.length})`}
-          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
-        </button>
+      {legendPages > 1 && (
+        <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500">
+          <span className="font-bold">{legendStart + 1}–{Math.min(groups.length, legendStart + LEGEND_PAGE)} من {groups.length} {open ? 'عربة' : 'فئة'}</span>
+          <div className="flex items-center gap-1">
+            <button type="button" disabled={legendPage === 0} onClick={() => setLegendPage(p => p - 1)} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer" aria-label="السابقة"><ChevronRight className="w-4 h-4" /></button>
+            <span className="font-mono font-bold">{legendPage + 1} / {legendPages}</span>
+            <button type="button" disabled={legendPage >= legendPages - 1} onClick={() => setLegendPage(p => p + 1)} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer" aria-label="التالية"><ChevronLeft className="w-4 h-4" /></button>
+          </div>
+        </div>
       )}
     </div>
   );

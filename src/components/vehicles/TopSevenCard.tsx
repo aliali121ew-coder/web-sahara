@@ -1,5 +1,5 @@
 /* eslint-disable i18next/no-literal-string */
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Trophy, Repeat2, ChevronLeft } from 'lucide-react';
 import { VEHICLE_PROFILES_KEY, vehicleCategory, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
@@ -34,20 +34,34 @@ export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | n
       .sort((a, b) => b.s.total - a.s.total);
   }, [groups, open]);
 
-  const view = list.slice(0, TOP);
+  // السطور بقدر المساحة المتاحة حتى نهاية كارت الفئات (7 كحد أقصى)
+  const listRef = useRef<HTMLOListElement>(null);
+  const [fit, setFit] = useState(TOP);
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      const first = el.querySelector('li');
+      const row = first ? first.getBoundingClientRect().height + 4 : 56;
+      setFit(Math.max(1, Math.min(TOP, Math.floor((el.clientHeight + 4) / row))));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const view = list.slice(0, fit);
   const max = list[0]?.s.total || 1;
 
   return (
-    <div className="flex flex-col rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 shadow-soft-card">
+    <div className="flex-1 min-h-0 flex flex-col rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 shadow-soft-card">
       <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-1.5">
           <div className="p-1 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400"><Trophy className="w-3.5 h-3.5" /></div>
           <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">{open ? `الأعلى استهلاكًا · ${open.label}` : 'الأعلى استهلاكًا في كل فئة'}</h3>
         </div>
-        <span className="text-[10px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-full border border-amber-200/60 dark:border-amber-800/40">أعلى {Math.min(TOP, list.length)} من {list.length}</span>
+        <span className="text-[10px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-full border border-amber-200/60 dark:border-amber-800/40">أعلى {Math.min(fit, list.length)} من {list.length}</span>
       </div>
 
-      <ol className="mt-2 space-y-1 vehicle-page" key={category || 'all'}>
+      <ol ref={listRef} className="mt-2 space-y-1 flex-1 min-h-0 overflow-hidden">
         {view.map(({ s, tag }, k) => {
           const i = k;
           const cat = vehicleCategory(names.get(s.vehicle) || s.vehicle);
