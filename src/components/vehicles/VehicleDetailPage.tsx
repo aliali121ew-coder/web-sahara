@@ -4,11 +4,10 @@ import {
   ArrowRight, ChevronRight, ChevronLeft, Fuel, Gauge, Trophy, Repeat2, Timer, Percent, Hash,
   User, CheckCircle2, Route as RouteIcon, Layers, IdCard, ShieldCheck, Building2, Container,
 } from 'lucide-react';
-import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine } from 'recharts';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import {
-  FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, checkFills, daysBetween, disciplineScore, formatDay, vehicleCategory,
-  type CheckKind, type DayFill, type VehicleProfile, type VehicleRefill, type VehicleRoute, type VehicleStat,
+  FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, checkFills, daysBetween, disciplineScore, vehicleCategory,
+  type CheckKind, type VehicleProfile, type VehicleRefill, type VehicleRoute, type VehicleStat,
 } from '../../lib/vehicleFuel';
 import { VehicleProfileEditor } from './VehicleProfileEditor';
 import { ScoreGauge } from './ScoreGauge';
@@ -32,7 +31,6 @@ interface Props {
 }
 
 const card = 'rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 shadow-soft-card';
-const isFreq = (f: DayFill) => f.days !== null && f.days <= FREQUENT_DAYS;
 
 const Spec: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactNode; tone: string }> = ({ icon, label, value, tone }) => (
   <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 p-3">
@@ -69,48 +67,54 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, ranking, fle
   const myRoutes = useMemo(() => routes.filter(r => r.vehicle === stat.vehicle), [routes, stat.vehicle]);
   const km = myRoutes.reduce((s, r) => s + r.km, 0);
 
-  const chart = useMemo(() => [...stat.fills].reverse().map(f => ({ name: formatDay(f.date), qty: f.qty, prev: f.prevQty ?? null, days: f.days })), [stat]);
 
   // مخالفات ملف العربة (السعة، الحصة، السائق) — التكرار له تبويبه
   const SERIOUS: CheckKind[] = ['capacity', 'limit', 'driver'];
   const violationDates = new Set(checks.filter(c => SERIOUS.includes(c.kind)).map(c => c.date));
   const overCap = new Set(checks.filter(c => c.kind === 'capacity').map(c => c.date));
-  const rows = tab === 'frequent' ? stat.fills.filter(isFreq)
-    : tab === 'multi' ? stat.fills.filter(f => f.parts > 1)
-    : tab === 'violations' ? stat.fills.filter(f => violationDates.has(f.date))
-    : stat.fills;
+  // السجل: كل تفويلة (كل كمية) في سطر مستقل كما في الملفات، مع عدد تفويلات يومها
+  const allRows = useMemo(() => {
+    const perDay = new Map<string, number>();
+    for (const r of refills) perDay.set(r.date, (perDay.get(r.date) || 0) + 1);
+    return [...refills]
+      .sort((a, b) => b.date.localeCompare(a.date) || b.qty - a.qty)
+      .map(r => ({
+        key: r.id, date: r.date, qty: r.qty, days: r.days,
+        drivers: r.driver ? [r.driver] : [], sites: [r.site],
+        prevQty: r.prevQty, prevDate: r.prevDate, prevDriver: r.prevDriver, prevSite: r.prevSite,
+        parts: perDay.get(r.date) || 1,
+      }));
+  }, [refills]);
+  const rows = tab === 'frequent' ? allRows.filter(f => f.days !== null && f.days <= FREQUENT_DAYS)
+    : tab === 'multi' ? allRows.filter(f => f.parts > 1)
+    : tab === 'violations' ? allRows.filter(f => violationDates.has(f.date))
+    : allRows;
   const DAILY_PAGE = 7;
-  // آخر تفويلة فقط: أحدث تاريخ للعربة في كل الملفات المرفوعة، وسطر لكل موقع فوّلت منه في ذلك اليوم.
+  // آخر تفويلة فقط: أحدث تاريخ للعربة في كل الملفات المرفوعة، وسطر لكل كمية في ذلك اليوم.
   // الكمية السابقة في الكشوف لا تُستخدم هنا؛ عدد الأيام = من تاريخ التفويل المرفوع الذي قبله
   const entries = useMemo(() => {
     const dates = [...new Set(refills.map(r => r.date))].sort();
     const date = dates[dates.length - 1];
     if (!date) return [];
     const prev = dates[dates.length - 2];
-    const bySite = new Map<string, VehicleRefill[]>();
-    for (const r of refills) if (r.date === date) bySite.set(r.site, [...(bySite.get(r.site) || []), r]);
-    return [...bySite.entries()].map(([site, rows]) => {
-      const qty = rows.reduce((t, r) => t + r.qty, 0);
-      return {
-        key: site,
-        date,
-        qty,
-        days: prev ? daysBetween(prev, date) : null,
-        drivers: [...new Set(rows.map(r => r.driver).filter(Boolean))],
-        sites: [[site, qty]] as [string, number][],
-        count: rows.length,
-      };
-    }).sort((a, b) => b.qty - a.qty);
+    // كل كمية في سطر مستقل (لا تُجمع تفويلات نفس الموقع أو اليوم)
+    return refills.filter(r => r.date === date).map(r => ({
+      key: r.id,
+      date,
+      qty: r.qty,
+      days: r.days ?? (prev ? daysBetween(prev, date) : null),
+      drivers: r.driver ? [r.driver] : [],
+      sites: [[r.site, r.qty]] as [string, number][],
+      count: 1,
+    })).sort((a, b) => b.qty - a.qty);
   }, [refills]);
   const dailyPages = Math.max(1, Math.ceil(entries.length / DAILY_PAGE));
   const dailyView = entries.slice(dailyPage * DAILY_PAGE, dailyPage * DAILY_PAGE + DAILY_PAGE);
 
   // ملاحظات تلقائية
-  const multi = stat.fills.filter(f => f.parts > 1);
 
   const disc = disciplineScore(stat, checks, fleetAvg);
 
-  const tip = { contentStyle: { background: '#0f172a', border: '1px solid #1e293b', borderRadius: 12, fontSize: 12, color: '#e2e8f0', direction: 'rtl' as const }, labelStyle: { color: '#94a3b8', fontWeight: 700 } };
 
   return (
     <div className="space-y-5 pb-12 font-cairo vehicle-page">
@@ -251,34 +255,11 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, ranking, fle
         </div>
       </div>
 
-      {/* الرسم البياني */}
-      <div className={`${card} p-4`}>
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-black text-slate-900 dark:text-white">الكمية في كل تفويلة</h3>
-          <span className="text-[11px] text-slate-500">الخط المتقطع = متوسط الأسطول ({fleetAvg.toLocaleString()} L)</span>
-        </div>
-        <div className="h-64" dir="ltr">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chart} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
-              <defs><linearGradient id="vdBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#38bdf8" /><stop offset="100%" stopColor="#6366f1" /></linearGradient></defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgb(148 163 184 / 0.2)" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <YAxis yAxisId="l" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <YAxis yAxisId="r" orientation="right" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <Tooltip {...tip} formatter={(v: number, n: string) => [n === 'days' ? `${v} يوم` : `${v?.toLocaleString()} L`, n === 'qty' ? 'الكمية' : n === 'prev' ? 'السابقة' : 'الأيام']} />
-              <ReferenceLine yAxisId="l" y={fleetAvg} stroke="#f97316" strokeDasharray="6 4" />
-              <Bar yAxisId="l" dataKey="qty" fill="url(#vdBar)" radius={[8, 8, 0, 0]} maxBarSize={36} />
-              <Line yAxisId="r" type="monotone" dataKey="days" stroke="#f43f5e" strokeWidth={2} dot={{ r: 3 }} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
       {/* السجل */}
       <div className={`${card} overflow-hidden`}>
         <div className="p-4 flex flex-wrap items-center gap-2 border-b border-slate-100 dark:border-slate-800">
           <h3 className="text-sm font-black text-slate-900 dark:text-white ml-auto flex items-center gap-2"><Layers className="w-4 h-4 text-sky-500" />سجل التفويل</h3>
-          {([['all', `الكل (${stat.fills.length})`], ['frequent', `المتكرر (${stat.frequent})`], ['multi', `أكثر من موقع (${multi.length})`], ['violations', `مخالفات الملف (${violationDates.size})`]] as const).map(([k, l]) => (
+          {([['all', `الكل (${allRows.length})`], ['frequent', `المتكرر (${allRows.filter(f => f.days !== null && f.days <= FREQUENT_DAYS).length})`], ['multi', `أكثر من تفويلة باليوم (${allRows.filter(f => f.parts > 1).length})`], ['violations', `مخالفات الملف (${violationDates.size})`]] as const).map(([k, l]) => (
             <button key={k} type="button" onClick={() => setTab(k)} className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all ${tab === k ? 'bg-sky-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>{l}</button>
           ))}
         </div>
@@ -289,12 +270,12 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, ranking, fle
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
               {rows.map(f => (
-                <tr key={f.date} className={overCap.has(f.date) ? 'bg-rose-100/80 dark:bg-rose-950/40' : violationDates.has(f.date) ? 'bg-amber-50/70 dark:bg-amber-950/20' : isFreq(f) ? 'bg-rose-50/60 dark:bg-rose-950/20' : ''}>
+                <tr key={f.key} className={overCap.has(f.date) ? 'bg-rose-100/80 dark:bg-rose-950/40' : violationDates.has(f.date) ? 'bg-amber-50/70 dark:bg-amber-950/20' : f.days !== null && f.days <= FREQUENT_DAYS ? 'bg-rose-50/60 dark:bg-rose-950/20' : ''}>
                   <td className="py-2.5 px-3 font-mono font-bold">{f.date}</td>
-                  <td className="py-2.5 px-3 font-mono font-black text-sky-700 dark:text-sky-400">{f.qty.toLocaleString()}{overCap.has(f.date) && <span className="mr-1 text-[9px] px-1 rounded bg-rose-500 text-white">فوق السعة</span>}{f.parts > 1 && <span className="mr-1 text-[9px] px-1 rounded bg-amber-500/15 text-amber-600">×{f.parts}</span>}</td>
+                  <td className="py-2.5 px-3 font-mono font-black text-sky-700 dark:text-sky-400">{f.qty.toLocaleString()}{overCap.has(f.date) && <span className="mr-1 text-[9px] px-1 rounded bg-rose-500 text-white">فوق السعة</span>}{f.parts > 1 && <span className="mr-1 text-[9px] px-1 rounded bg-amber-500/15 text-amber-600" title="عدد تفويلات هذا اليوم">{f.parts} باليوم</span>}</td>
                   <td className="py-2.5 px-3">{f.drivers.join('، ') || '—'}</td>
                   <td className="py-2.5 px-3 text-slate-500">{f.sites.join('، ')}</td>
-                  <td className="py-2.5 px-3"><span className={`px-1.5 py-0.5 rounded-md font-mono font-bold ${isFreq(f) ? 'bg-rose-500/10 text-rose-600' : ''}`}>{f.days ?? '—'}</span></td>
+                  <td className="py-2.5 px-3"><span className={`px-1.5 py-0.5 rounded-md font-mono font-bold ${f.days !== null && f.days <= FREQUENT_DAYS ? 'bg-rose-500/10 text-rose-600' : ''}`}>{f.days ?? '—'}</span></td>
                   <td className="py-2.5 px-3 font-mono">{f.prevQty?.toLocaleString() ?? '—'}</td>
                   <td className="py-2.5 px-3 font-mono text-slate-500">{f.prevDate || '—'}</td>
                   <td className="py-2.5 px-3 text-slate-500">{f.prevDriver || '—'}</td>
