@@ -113,10 +113,13 @@ export const VehiclesReport: React.FC = () => {
     return { total, avg: allFills.length ? Math.round(total / allFills.length) : 0 };
   }, [allFills]);
 
+  const vehicleRefills = useMemo(() => (vehicle ? data.refills.filter(r => r.vehicle === vehicle) : []), [data.refills, vehicle]);
+
   if (selected) {
     return (
       <VehicleDetailPage
         stat={selected}
+        refills={vehicleRefills}
         ranking={ranking}
         fleetAvg={fleet.avg}
         fleetTotal={fleet.total}
