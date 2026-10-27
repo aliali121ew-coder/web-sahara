@@ -515,6 +515,7 @@ const CATEGORY: Record<string, { label: string; image: string; door: [number, nu
   HW: { label: 'حوضية ماء', image: 'hw', door: [0.44, 0.5], tilt: -6 },
   KH: { label: 'بيكب حمل', image: 'kh', door: [0.39, 0.523], tilt: -3 },
   KN: { label: 'كرين', image: 'kn', door: [0.3, 0.56], tilt: -5 },
+  R: { label: 'رافعة شوكية', image: 'r', door: [0.75, 0.6], tilt: 0 },
 };
 
 /** أرقام الشفلات الكبيرة (SF + رقم): الشفل الكبير والصغير لكل منهما تسلسله */
