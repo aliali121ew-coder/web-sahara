@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import {
   VEHICLE_FILES_KEY, VEHICLE_REFILLS_KEY, groupDayFills, previousDate, readVehicleFile, vehicleStats,
@@ -13,6 +13,15 @@ export interface UploadResult { name: string; ok: boolean; message: string }
 export const useVehicleData = (scope: Scope | null) => {
   const [files, setFiles] = useSyncedStorage<VehicleFile[]>(VEHICLE_FILES_KEY, []);
   const [refills, setRefills] = useSyncedStorage<VehicleRefill[]>(VEHICLE_REFILLS_KEY, []);
+
+  // قائمة الملفات تُصفَّر كل 24 ساعة: يُحذف سجل الملف فقط وتبقى تفويلاته المخزنة
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { const t = window.setInterval(() => setNow(Date.now()), 60_000); return () => window.clearInterval(t); }, []);
+  const recentFiles = useMemo(() => files.filter(f => now - Date.parse(f.uploadedAt) < DAY_MS), [files, now, DAY_MS]);
+  useEffect(() => {
+    if (recentFiles.length !== files.length) setFiles(prev => prev.filter(f => Date.now() - Date.parse(f.uploadedAt) < DAY_MS));
+  }, [recentFiles.length, files.length, setFiles, DAY_MS]);
 
   const allFills = useMemo(() => groupDayFills(refills), [refills]);
   const dates = useMemo(() => [...new Set(allFills.map(f => f.date))].sort(), [allFills]);
@@ -54,5 +63,5 @@ export const useVehicleData = (scope: Scope | null) => {
     setFiles(prev => prev.filter(f => f.id !== id));
   }, [setFiles, setRefills]);
 
-  return { files, refills, allFills, dates, active, fills, stats, history, prevDay, prevTotal, upload, removeFile };
+  return { files, recentFiles, refills, allFills, dates, active, fills, stats, history, prevDay, prevTotal, upload, removeFile };
 };

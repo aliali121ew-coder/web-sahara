@@ -36,10 +36,16 @@ export const VehiclesReport: React.FC = () => {
   const editable = canEdit('vehicles-report');
   const [scope, setScope] = useState<Scope | null>(null);
   const data = useVehicleData(scope);
-  const { files, dates, active, fills, stats, history, prevDay, prevTotal, allFills } = data;
+  const { recentFiles, dates, active, fills, stats, history, prevDay, prevTotal, allFills } = data;
 
   const [busy, setBusy] = useState(false);
+  // عدد الملفات المرفوعة يظهر لحظيًا بجانب زر الرفع ثم يُصفَّر
   const [results, setResults] = useState<UploadResult[] | null>(null);
+  useEffect(() => {
+    if (!results) return;
+    const t = window.setTimeout(() => setResults(null), 5000);
+    return () => window.clearTimeout(t);
+  }, [results]);
   const [showFiles, setShowFiles] = useState(false);
   const [vehicle, setVehicle] = useState<string | null>(null);
   const [drag, setDrag] = useState(false);
@@ -151,26 +157,18 @@ export const VehiclesReport: React.FC = () => {
         )}
         <div className="flex items-center gap-2 mr-auto">
           <button type="button" onClick={() => setShowFiles(true)} className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-sky-400 cursor-pointer">
-            <FileText className="w-4 h-4 text-sky-500" />الملفات ({files.length})
+            <FileText className="w-4 h-4 text-sky-500" />الملفات ({recentFiles.length})
           </button>
+          {results && (
+            <span className="vehicle-kpi flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-black bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" role="status">
+              <CheckCircle2 className="w-4 h-4" />رُفع {results.filter(r => r.ok).length}
+              {results.some(r => !r.ok) && <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400 mr-1" title={results.filter(r => !r.ok).map(r => `${r.name}: ${r.message}`).join(' · ')}><AlertTriangle className="w-3.5 h-3.5" />تعذّر {results.filter(r => !r.ok).length}</span>}
+            </span>
+          )}
           {uploadBtn}
         </div>
       </div>
 
-      {results && (
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-black text-slate-700 dark:text-slate-200">نتيجة الرفع</span>
-            <button type="button" onClick={() => setResults(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer" aria-label="إغلاق"><X className="w-4 h-4" /></button>
-          </div>
-          {results.map(r => (
-            <div key={r.name} className={`flex items-start gap-2 text-xs ${r.ok ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-              {r.ok ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
-              <span><b>{r.name}</b> — {r.message}</span>
-            </div>
-          ))}
-        </div>
-      )}
 
       {!allFills.length ? (
         <div className={`rounded-3xl border-2 border-dashed p-12 text-center transition-colors ${drag ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/30' : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900'}`}>
@@ -224,7 +222,7 @@ export const VehiclesReport: React.FC = () => {
               <button type="button" onClick={() => setShowFiles(false)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer" aria-label="إغلاق"><X className="w-5 h-5 text-slate-500" /></button>
             </div>
             <div className="space-y-2">
-              {[...files].sort((a, b) => b.reportDate.localeCompare(a.reportDate)).map(f => (
+              {[...recentFiles].sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt)).map(f => (
                 <div key={f.id} className="rounded-2xl border border-slate-200 dark:border-slate-800 p-3 flex items-start gap-3">
                   <span className="p-2 rounded-xl bg-rose-500/10 text-rose-500"><FileText className="w-4 h-4" /></span>
                   <div className="flex-1 min-w-0">
@@ -237,7 +235,7 @@ export const VehiclesReport: React.FC = () => {
                   )}
                 </div>
               ))}
-              {!files.length && <p className="text-sm text-slate-400 text-center py-8">لا توجد ملفات</p>}
+              {!recentFiles.length && <p className="text-sm text-slate-400 text-center py-8">لا توجد ملفات مرفوعة خلال آخر 24 ساعة</p>}
             </div>
           </div>
         </div>
