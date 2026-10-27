@@ -13,7 +13,7 @@ export interface CategoryGroup {
 
 export const OTHER_CATEGORY = 'OTHER';
 
-/** تجميع العربات حسب فئتها (من رمزها)، الأعلى استهلاكًا أولًا */
+/** تجميع العربات حسب فئتها (من رمزها)، الأعلى استهلاكًا أولًا و«أخرى» في الآخر */
 export const groupByCategory = (stats: VehicleStat[]): CategoryGroup[] => {
   const map = new Map<string, CategoryGroup>();
   for (const s of stats) {
@@ -26,5 +26,6 @@ export const groupByCategory = (stats: VehicleStat[]): CategoryGroup[] => {
     if (s.frequent) c.frequent += 1;
     map.set(key, c);
   }
-  return [...map.values()].sort((a, b) => b.total - a.total);
+  // «أخرى» دائمًا في الآخر، وبقية الفئات بالأعلى استهلاكًا
+  return [...map.values()].sort((a, b) => (a.key === OTHER_CATEGORY ? 1 : 0) - (b.key === OTHER_CATEGORY ? 1 : 0) || b.total - a.total);
 };
