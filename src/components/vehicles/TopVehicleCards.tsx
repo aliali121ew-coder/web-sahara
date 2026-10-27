@@ -4,6 +4,7 @@ import { Layers, Repeat2, User, CalendarClock, ChevronLeft, ChevronRight, ArrowR
 import { VEHICLE_PROFILES_KEY, formatDay, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { VehicleArt } from './VehicleArt';
+import { VehicleSearch, type SearchOption } from './VehicleSearch';
 import { OTHER_CATEGORY, groupByCategory, useCategoryNames, useVehicleNames } from './categories';
 import { usePermissions } from '../../lib/usePermission';
 
@@ -40,6 +41,12 @@ export const TopVehicleCards: React.FC<{
 
   const grand = categories.reduce((t, c) => t + c.total, 0) || 1;
   const current = categories.find(c => c.key === selected);
+  const searchOptions = useMemo<SearchOption[]>(() => (current ? [current] : categories).flatMap(c => c.vehicles.map(v => ({
+    vehicle: v.vehicle,
+    label: names.get(v.vehicle) || v.vehicle,
+    category: current ? undefined : c.label,
+    total: v.total,
+  }))), [current, categories, names]);
   // عربات الفئة على صفحات: 9 (ثلاثة صفوف) لينتهي الكارت مع نهاية الدائرة وكارت الأعلى استهلاكًا
   const [page, setPage] = useState(1);
   useEffect(() => setPage(1), [selected, stats]);
@@ -68,6 +75,13 @@ export const TopVehicleCards: React.FC<{
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{categories.length} فئة خلال الفترة المختارة · اضغط على فئة لعرض عرباتها</p>
           </div>
         )}
+        {/* البحث: داخل الفئة المفتوحة عن عرباتها، وفي الرئيسية عن كل العربات مع فئاتها */}
+        <VehicleSearch
+          key={selected || 'all'}
+          options={searchOptions}
+          onOpen={onOpen}
+          placeholder={current ? `ابحث في ${current.label}` : 'ابحث برقم العربة'}
+        />
       </div>
 
       <div className="flex-1 vehicle-page" key={`${selected || 'all'}-${page}`}>
