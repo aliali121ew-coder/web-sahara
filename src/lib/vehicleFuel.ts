@@ -416,6 +416,8 @@ export const VEHICLE_TYPES = ['شاحنة', 'تريلة', 'بيكب', 'صالو�
 export interface VehicleProfile {
   /** = رقم العربة */
   id: string;
+  /** اسم وصفي للعربة يظهر بجانب رمزها (الرمز نفسه لا يتغير لأنه يربطها بسطور الملفات) */
+  name?: string;
   type: string;
   /** سعة الخزان (لتر): تفويلة أكبر منها مستحيلة */
   tankLiters: number | null;

@@ -1,13 +1,13 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, IdCard, Fuel, Hash, Timer, Repeat2, User, Container, ShieldCheck, Building2, StickyNote, Save, Camera, Trash2, Loader2 } from 'lucide-react';
+import { X, IdCard, Fuel, Hash, Timer, Repeat2, User, Container, ShieldCheck, Building2, StickyNote, Save, Tag, Camera, Trash2, Loader2 } from 'lucide-react';
 import { getProfile } from '../../lib/session';
 import { VehicleArt } from './VehicleArt';
 import { FREQUENT_DAYS, VEHICLE_TYPES, formatDay, shrinkImage, vehicleCategory, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
 
 export const emptyProfile = (vehicle: string): VehicleProfile => ({
-  id: vehicle, type: '', tankLiters: null, dailyLimit: null, driver: '', department: '', notes: '', photo: '', updatedAt: '', by: '',
+  id: vehicle, name: '', type: '', tankLiters: null, dailyLimit: null, driver: '', department: '', notes: '', photo: '', updatedAt: '', by: '',
 });
 
 type Tab = 'info' | 'fills';
@@ -53,7 +53,7 @@ export const VehicleProfileEditor: React.FC<{
   const num = (v: string) => (v.trim() === '' ? null : Math.max(0, Number(v)) || null);
   const save = () => {
     const u = getProfile();
-    onSave({ ...p, driver: p.driver.trim(), department: p.department.trim(), notes: p.notes.trim(), updatedAt: new Date().toISOString(), by: u?.name || u?.username || '' });
+    onSave({ ...p, name: (p.name || '').trim(), driver: p.driver.trim(), department: p.department.trim(), notes: p.notes.trim(), updatedAt: new Date().toISOString(), by: u?.name || u?.username || '' });
   };
 
   const field = 'w-full px-3 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-100 focus:outline-hidden focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 disabled:bg-slate-50 dark:disabled:bg-slate-800/50 disabled:text-slate-500 transition-all';
@@ -75,6 +75,7 @@ export const VehicleProfileEditor: React.FC<{
               <div>
                 <div className="text-[11px] text-slate-400 font-bold">تفاصيل العربة</div>
                 <div className="text-2xl font-black font-mono leading-tight" dir="ltr">{stat.vehicle}</div>
+                {p.name?.trim() && <div className="text-sm font-black text-white/90 mt-0.5">{p.name.trim()}</div>}
                 {vehicleCategory(stat.vehicle) && <div className="text-[11px] font-bold text-sky-300 mt-0.5">{vehicleCategory(stat.vehicle)!.label}</div>}
               </div>
             </div>
@@ -125,6 +126,10 @@ export const VehicleProfileEditor: React.FC<{
         <div className="flex-1 overflow-y-auto p-5">
           {tab === 'info' ? (
             <div className="space-y-4 vehicle-page">
+              <label className="block">
+                <span className={label}><Tag className="w-3.5 h-3.5" />اسم العربة</span>
+                <input disabled={!editable} value={p.name || ''} onChange={e => setP({ ...p, name: e.target.value })} className={field} placeholder={`مثال: قلاب نقل الأسمدة — الرمز ${stat.vehicle} يبقى كما هو`} />
+              </label>
               <div>
                 <span className={label}><Hash className="w-3.5 h-3.5" />نوع العربة</span>
                 <div className="flex flex-wrap gap-1.5">

@@ -46,7 +46,7 @@ export const TopSevenCard: React.FC<{ stats: VehicleStat[]; onOpen: (v: string) 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono font-black text-sm text-slate-900 dark:text-white" dir="ltr">{s.vehicle}</span>
-                    {cat && <span className="text-[10px] font-bold text-slate-400 truncate">{cat.label}</span>}
+                    <span className="text-[10px] font-bold text-slate-400 truncate">{profiles.find(p => p.id === s.vehicle)?.name || cat?.label || ''}</span>
                     {s.frequent > 0 && <Repeat2 className="w-3 h-3 text-rose-500 shrink-0" />}
                   </div>
                   <div className="mt-1 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">

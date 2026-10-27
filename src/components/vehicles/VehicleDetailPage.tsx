@@ -119,6 +119,7 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, ranking, fle
           <div>
             <div className="text-[11px] text-slate-500 font-bold">{category ? `العربة · ${category.label}` : 'العربة'}</div>
             <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono leading-none" dir="ltr">{stat.vehicle}</div>
+            {profile?.name && <div className="text-sm font-black text-sky-700 dark:text-sky-300 mt-1">{profile.name}</div>}
           </div>
           {stat.frequent > 0 ? (
             <span className="flex items-center gap-1 text-xs font-black px-3 py-1 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"><Repeat2 className="w-3.5 h-3.5" />تفويل متكرر</span>
