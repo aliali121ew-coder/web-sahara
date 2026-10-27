@@ -72,28 +72,40 @@ const num = (s: string): number | null => {
 /** نص عربي مقروء (الملف يخزّن أشكال العرض للحروف) */
 const clean = (s: string) => s.normalize('NFKC').replace(/\s+/g, ' ').trim();
 
-type Col = 'driver' | 'vehicle' | 'qty' | 'date' | 'days' | 'prevSite' | 'prevDriver' | 'prevQty' | 'prevDate' | 'kind' | 'shift';
+type Col =
+  | 'driver' | 'vehicle' | 'qty' | 'date' | 'days' | 'prevSite' | 'prevDriver' | 'prevQty' | 'prevDate'
+  | 'kind' | 'shift' | 'plate' | 'store' | 'tech';
 
-// عناوين الأعمدة (الأطول أولًا حتى لا يطابق «السائق» عنوان «السائق السابق»)
+// عناوين الأعمدة في كل أنواع الكشوف (الأطول أولًا حتى لا يطابق «السائق» عنوان «السائق السابق»).
+// أعمدة لا تُستخدم (الشفت، المخزن، الفني) تُعرَّف حتى لا تُنسب نصوصها لعمود مجاور
 const HEADERS: [Col, string][] = [
   ['prevSite', 'المصنع السابق'],
   ['prevDriver', 'السائق السابق'],
   ['prevQty', 'الكمية السابقة'],
   ['days', 'عدد الايام'],
   ['kind', 'تشغيلي/انشائي'],
+  ['kind', 'الغرض'],
   ['shift', 'الشفت'],
+  ['driver', 'اسم السائق'],
   ['driver', 'السائق'],
+  ['plate', 'رقم السيارة'],
+  ['store', 'المخزن'],
+  ['tech', 'الفني'],
   ['vehicle', 'العربة'],
   ['qty', 'الكمية'],
 ];
 
 const center = (i: PdfItem) => i.x + i.w / 2;
 
-/** مواضع الأعمدة من سطر العناوين (التاريخان: الأيسر للحالي والأيمن للسابق) */
+/**
+ * مواضع الأعمدة من سطر العناوين. الأولوية: الكمية والعربة (إلزاميتان)،
+ * وبعدها ما وُجد من عدد الأيام والسائق والتاريخ وأعمدة «السابق» (التاريخان: الأيسر للحالي والأيمن للسابق).
+ */
 const readHeader = (line: PdfItem[]): Map<Col, number> | null => {
   const cols = new Map<Col, number>();
   const used = new Set<PdfItem>();
   for (const [col, label] of HEADERS) {
+    if (cols.has(col)) continue;
     const key = normalizeArabic(label);
     const hit = line.find(i => !used.has(i) && normalizeArabic(i.str) === key);
     if (hit) { cols.set(col, center(hit)); used.add(hit); }
@@ -101,8 +113,7 @@ const readHeader = (line: PdfItem[]): Map<Col, number> | null => {
   const dates = line.filter(i => normalizeArabic(i.str) === normalizeArabic('التاريخ')).sort((a, b) => a.x - b.x);
   if (dates.length >= 2) { cols.set('date', center(dates[0])); cols.set('prevDate', center(dates[dates.length - 1])); }
   else if (dates.length === 1) cols.set('date', center(dates[0]));
-  // الأساس: العربة والكمية والتاريخ؛ أعمدة «السابق» والسائق والشفت اختيارية (كشف تجهيز الكاز بلا «السابق»)
-  return cols.has('vehicle') && cols.has('qty') && cols.has('date') ? cols : null;
+  return cols.has('vehicle') && cols.has('qty') ? cols : null;
 };
 
 export interface VehicleSheet {
@@ -120,25 +131,6 @@ const dateInText = (s: string) => {
   return m ? toIsoDate(m[1]) : null;
 };
 
-// مستند تجهيز زيت الغاز (مستند واحد بعدة عربات): الغرض | الفني | اسم السائق | رقم السيارة | العربة | الكمية | المخزن | و القياس | اسم المادة
-type VCol = 'kind' | 'tech' | 'driver' | 'plate' | 'vehicle' | 'qty' | 'store';
-const VOUCHER_HEADERS: [VCol, string][] = [
-  ['driver', 'اسم السائق'],
-  ['plate', 'رقم السيارة'],
-  ['vehicle', 'العربة'],
-  ['qty', 'الكمية'],
-  ['store', 'المخزن'],
-  ['kind', 'الغرض'],
-  ['tech', 'الفني'],
-];
-const readVoucherHeader = (line: PdfItem[]): Map<VCol, number> | null => {
-  const cols = new Map<VCol, number>();
-  for (const [col, l] of VOUCHER_HEADERS) {
-    const hit = line.find(i => normalizeArabic(i.str) === normalizeArabic(l));
-    if (hit) cols.set(col, center(hit));
-  }
-  return cols.has('vehicle') && cols.has('qty') && cols.has('plate') ? cols : null;
-};
 
 /** كل عنصر في السطر يُنسب لأقرب عمود */
 const assign = <C extends string>(line: PdfItem[], cols: Map<C, number>) => {
@@ -154,7 +146,7 @@ const assign = <C extends string>(line: PdfItem[], cols: Map<C, number>) => {
 
 /**
  * يقرأ سطور الملف (صفحات → أسطر → عناصر) — منفصلة عن PDF لتُختبر.
- * يدعم «كشف مطابقة الكاز» و«مستند تجهيز زيت الغاز».
+ * يدعم «كشف مطابقة الكاز» و«كشف تجهيز الكاز» و«مستند تجهيز زيت الغاز» بنفس القاعدة.
  * التاريخ: تاريخ حقل «الملاحظات» أولًا (البيانات تُدخل أحيانًا في غير يومها)، وإلا تاريخ الملف/السطر.
  */
 export const parseVehicleSheet = (pages: PdfItem[][][]): VehicleSheet => {
@@ -168,7 +160,6 @@ export const parseVehicleSheet = (pages: PdfItem[][][]): VehicleSheet => {
 
   for (const lines of pages) {
     let cols: Map<Col, number> | null = null;
-    let vcols: Map<VCol, number> | null = null;
     for (const line of lines) {
       const text = normalizeArabic(line.map(i => i.str).join(' '));
       if (!site && line.some(i => isLabel(i, 'المصنع'))) {
@@ -187,56 +178,43 @@ export const parseVehicleSheet = (pages: PdfItem[][][]): VehicleSheet => {
         const n = line.filter(i => i.x < label.x && /^\d+$/.test(i.str.trim())).sort((a, b) => b.x - a.x)[0];
         if (n) docNo = n.str.trim();
       }
-      if (!docDate && !cols && !vcols && line.some(i => isLabel(i, 'تاريخ'))) {
+      if (!docDate && !cols && line.some(i => isLabel(i, 'تاريخ'))) {
         docDate = line.map(i => toIsoDate(i.str)).find(Boolean) || null;
       }
 
       const header = readHeader(line);
-      if (header) { cols = header; vcols = null; continue; }
-      const vheader = readVoucherHeader(line);
-      if (vheader) { vcols = vheader; cols = null; continue; }
-      if (!cols && !vcols) continue;
+      if (header) { cols = header; continue; }
+      if (!cols) continue;
       if (text.includes(normalizeArabic('المجموع'))) {
         const n = line.map(i => num(i.str)).filter((v): v is number => v !== null);
         if (n.length) total = Math.max(...n);
         continue;
       }
 
-      if (vcols) {
-        const cells = assign(line, vcols);
-        const get = (c: VCol) => clean((cells.get(c) || []).join(' '));
-        const qty = num(get('qty'));
-        const vehicle = get('vehicle').replace(/\s+/g, '');
-        if (qty === null || !vehicle) continue;
-        rows.push({
-          vehicle, driver: get('driver'), qty, date: '', days: null,
-          prevSite: '', prevDriver: '', prevQty: null, prevDate: '',
-          kind: get('kind'), plate: get('plate').replace(/\s+/g, ''),
-        });
-        continue;
-      }
-
-      const cells = assign(line, cols!);
+      const cells = assign(line, cols);
       const get = (c: Col) => clean((cells.get(c) || []).join(' '));
       // خلية التاريخ قد تلتصق بها وحدة القياس المجاورة («لتر»)
       const dateIn = (c: Col) => (cells.get(c) || []).map(toIsoDate).find(Boolean) || '';
       // وكذلك الأرقام: قد تلتصق بها «لتر» أو اسم المادة من عمود مجاور ليس له عنوان مقروء
       const numIn = (c: Col) => (cells.get(c) || []).map(num).find((v): v is number => v !== null) ?? null;
-      const date = dateIn('date');
+      // أولًا: الكمية والعربة — بدونهما السطر ليس تفويلة
       const qty = numIn('qty');
       const vehicle = get('vehicle').replace(/\s+/g, '');
-      if (!date || qty === null || !vehicle) continue;
+      if (qty === null || !vehicle) continue;
+      const plate = get('plate').replace(/\s+/g, '');
       rows.push({
         vehicle,
-        driver: get('driver'),
         qty,
-        date,
+        // بعدها: عدد الأيام والسائق والتاريخ إن وُجدت (التاريخ يُكمَل من الملاحظات/الملف أدناه)
         days: numIn('days'),
+        driver: get('driver'),
+        date: dateIn('date'),
         prevSite: get('prevSite'),
         prevDriver: get('prevDriver'),
         prevQty: numIn('prevQty'),
         prevDate: dateIn('prevDate'),
         kind: get('kind'),
+        ...(plate ? { plate } : {}),
       });
     }
   }
