@@ -97,8 +97,8 @@ export const TopVehicleCards: React.FC<{
                   onClick={() => { if (editing?.key !== c.key) setSelected(c.key); }}
                   onKeyDown={e => { if (e.key === 'Enter' && editing?.key !== c.key) setSelected(c.key); }}
                   className="group relative text-right rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-3 transition-all duration-300 ease-out hover:border-sky-400 dark:hover:border-sky-500 hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-500/10 hover:bg-white dark:hover:bg-slate-900 cursor-pointer"
-                  // تدرج 10% من أسفل الكارت
-                  style={{ backgroundImage: 'linear-gradient(to top, rgb(14 165 233 / 0.10), transparent 55%)' }}
+                  // تدرج 5% من أسفل الكارت بلون الثيم المختار (يتغير مع الثيم)
+                  style={{ backgroundImage: 'linear-gradient(to top, rgb(var(--app-accent-rgb, 14 165 233) / 0.05), transparent 55%)' }}
                 >
                   <div className="flex items-center justify-between gap-1">
                     {editing?.key === c.key ? (

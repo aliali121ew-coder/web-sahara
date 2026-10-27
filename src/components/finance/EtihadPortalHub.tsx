@@ -173,10 +173,16 @@ export const EtihadPortalHub: React.FC<EtihadPortalHubProps> = ({
       {/* ══════════════════════════════════════════════════════════════════════════ */}
       {/* 🌟 كارت الأم بتدريج ثلجي أبيض ناصع مع تمدد مرن لملء المساحة بتناسق كامل 🌟 */}
       {/* ══════════════════════════════════════════════════════════════════════════ */}
-      <div className="relative w-full mx-auto rounded-[28px] bg-gradient-to-b from-white/95 via-slate-50/90 to-slate-100/80 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-950/90 backdrop-blur-3xl border border-white dark:border-slate-800 shadow-[0_20px_50px_-10px_rgba(15,23,42,0.07)] dark:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)] p-5 sm:p-5.5 lg:p-6 flex-1 flex flex-col justify-between overflow-hidden">
+      <div className="relative isolate w-full mx-auto rounded-[28px] bg-gradient-to-b from-white/95 via-slate-50/90 to-slate-100/80 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-950/90 backdrop-blur-3xl border border-white dark:border-slate-800 shadow-[0_20px_50px_-10px_rgba(15,23,42,0.07)] dark:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)] p-5 sm:p-5.5 lg:p-6 flex-1 flex flex-col justify-between overflow-hidden">
         
         {/* ── 1. لمسة زجاجية علوية ناصعة (Top Glass Sheen) ── */}
         <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-white to-transparent pointer-events-none" />
+
+        {/* ── تدرج خفيف من الأعلى بلون الثيم المختار (يتغير مع الثيم) ── */}
+        <div
+          className="absolute top-0 inset-x-0 h-48 -z-10 pointer-events-none"
+          style={{ backgroundImage: 'linear-gradient(to bottom, rgb(var(--app-accent-rgb, 14 165 233) / 0.08), transparent)' }}
+        />
 
         {/* ── 2. ترويسة العنوان متضمنة داخل كارت الأم ── */}
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 mb-3 border-b border-slate-200/60 dark:border-slate-800/60 shrink-0">

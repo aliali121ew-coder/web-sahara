@@ -358,3 +358,10 @@ export const getTopEdgeColor = (baseColor: string, gradientCss: string, width: n
   }
   return `rgb(${acc.map(v => Math.round(v)).join(', ')})`;
 };
+
+/** لون الثيم الأساسي (أول طبقة في تدرج الخلفية) بصيغة «R G B» لاستخدامه في تلوين الكارتات؛ أزرق سماوي بلا تدرج */
+export const getThemeAccentRgb = (gradient: BgGradientTheme, mode: ThemeMode): string => {
+  const css = getAmbientGradientStyle(gradient, 'subtle', mode, 3);
+  const m = /rgba\(([\d.]+), ([\d.]+), ([\d.]+),/.exec(css);
+  return m ? `${m[1]} ${m[2]} ${m[3]}` : '14 165 233';
+};

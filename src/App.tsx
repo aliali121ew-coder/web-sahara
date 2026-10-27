@@ -3,7 +3,7 @@ import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { FuelDataProvider, useFuelData } from './context/FuelDataContext';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { QuickActionContext } from './context/QuickActionContext';
-import { getAmbientGradientStyle, getAmbientBgColor, getTopEdgeColor } from './lib/themeGradients';
+import { getAmbientGradientStyle, getAmbientBgColor, getTopEdgeColor, getThemeAccentRgb } from './lib/themeGradients';
 
 import { Header } from './components/layout/Header';
 import { DemoBanner } from './components/layout/DemoBanner';
@@ -228,6 +228,8 @@ const AppContent: React.FC = () => {
         // لون خلفية الصفحة لإطارها (الشريط العلوي والشريط الجانبي المطوي) فيبدو جزءًا منها
         ['--app-bg' as string]: getAmbientBgColor(bgGradient, themeMode, shadeLevel),
         ['--app-bg-image' as string]: getAmbientGradientStyle(bgGradient, gradientIntensity, themeMode, shadeLevel),
+        // لون الثيم للكارتات (يتغير مع تغيير الثيم)
+        ['--app-accent-rgb' as string]: getThemeAccentRgb(bgGradient, themeMode),
         backgroundAttachment: 'fixed',
         backgroundRepeat: 'no-repeat',
         backgroundSize: 'cover',
