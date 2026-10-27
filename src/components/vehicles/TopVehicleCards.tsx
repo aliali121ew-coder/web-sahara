@@ -96,7 +96,9 @@ export const TopVehicleCards: React.FC<{
                   tabIndex={0}
                   onClick={() => { if (editing?.key !== c.key) setSelected(c.key); }}
                   onKeyDown={e => { if (e.key === 'Enter' && editing?.key !== c.key) setSelected(c.key); }}
-                  className="group relative text-right rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-3 hover:border-sky-400 dark:hover:border-sky-500 hover:-translate-y-0.5 hover:shadow-lg transition-all cursor-pointer"
+                  className="group relative text-right rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-3 transition-all duration-300 ease-out hover:border-sky-400 dark:hover:border-sky-500 hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-500/10 hover:bg-white dark:hover:bg-slate-900 cursor-pointer"
+                  // تدرج 10% من أسفل الكارت
+                  style={{ backgroundImage: 'linear-gradient(to top, rgb(14 165 233 / 0.10), transparent 55%)' }}
                 >
                   <div className="flex items-center justify-between gap-1">
                     {editing?.key === c.key ? (
@@ -116,7 +118,7 @@ export const TopVehicleCards: React.FC<{
                         <button type="button" onClick={() => setEditing(null)} className="p-1 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 cursor-pointer" aria-label="إلغاء"><X className="w-3.5 h-3.5" /></button>
                       </form>
                     ) : (
-                      <span className="text-sm font-black text-slate-900 dark:text-white truncate">{c.label}</span>
+                      <span className="text-sm font-black text-slate-900 dark:text-white truncate transition-colors group-hover:text-sky-700 dark:group-hover:text-sky-300">{c.label}</span>
                     )}
                     <div className="flex items-center gap-1 shrink-0">
                       <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-sky-500/10 text-sky-700 dark:text-sky-300">{share}%</span>
@@ -149,7 +151,7 @@ export const TopVehicleCards: React.FC<{
                   <div className="relative h-20 mt-2">
                     {c.key === OTHER
                       ? <div className="absolute inset-0 flex items-center justify-center"><Truck className="w-10 h-10 text-slate-300 dark:text-slate-600" /></div>
-                      : <VehicleArt code={c.sample} className="absolute inset-0" />}
+                      : <VehicleArt code={c.sample} className="absolute inset-0 transition-transform duration-300 ease-out group-hover:scale-110" />}
                   </div>
                   <div className="mt-2 text-lg font-black text-slate-900 dark:text-white font-mono leading-none">{c.total.toLocaleString()} <span className="text-[10px] font-bold text-slate-400">لتر</span></div>
                   <div className="mt-1.5 h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
