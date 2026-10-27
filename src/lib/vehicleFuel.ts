@@ -520,6 +520,7 @@ const CATEGORY: Record<string, { label: string; image: string; door: [number, nu
   R: { label: 'رافعة شوكية', image: 'r', door: [0.75, 0.6], tilt: 0 },
   SR: { label: 'سحب مجاري', image: 'sr', door: [0.36, 0.42], tilt: -5 },
   HR: { label: 'حفارة', image: 'hr', door: [0.25, 0.6], tilt: 0 },
+  KB: { label: 'براد كيا', image: 'kb', door: [0.6, 0.5], tilt: 0 },
 };
 
 /** أرقام الشفلات الكبيرة (SF + رقم): الشفل الكبير والصغير لكل منهما تسلسله */
