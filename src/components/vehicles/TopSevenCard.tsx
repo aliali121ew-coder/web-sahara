@@ -11,18 +11,22 @@ const TOP = 7;
 const CARD_MIN = 68;
 const GAP = 8;
 
-// لون حلقة الترتيب: ذهبي، فضي، برونزي، ثم أزرق
-const RING = ['#d97706', '#64748b', '#c2410c'];
-const RING_DEFAULT = '#3b82f6';
+/** لون الحلقة متدرج حسب النسبة: فيروزي هادئ للنسب المنخفضة ← كهرماني ← أحمر للنسب العالية (60% فأكثر) */
+const shareColor = (pct: number) => {
+  const t = Math.min(1, Math.max(0, pct / 60));
+  const hue = Math.round(170 - 170 * t);
+  return { stroke: `hsl(${hue} 70% 45%)`, soft: `hsl(${hue} 70% 45% / 0.12)` };
+};
 
-/** حلقة النسبة: امتلاؤها ونصّها = نسبة العربة من استهلاك فئتها؛ لونها بحسب الترتيب */
-const ShareRing: React.FC<{ rank: number; pct: number }> = ({ rank, pct }) => {
+/** حلقة النسبة: امتلاؤها ونصّها = نسبة العربة من استهلاك فئتها؛ لونها متدرج حسب النسبة */
+const ShareRing: React.FC<{ pct: number }> = ({ pct }) => {
   const r = 15;
   const len = 2 * Math.PI * r;
-  const color = RING[rank - 1] || RING_DEFAULT;
+  const { stroke: color, soft } = shareColor(pct);
   return (
     <div className="relative w-11 h-11 shrink-0">
-      <svg viewBox="0 0 36 36" className="w-11 h-11 -rotate-90">
+      <span className="absolute inset-1 rounded-full" style={{ background: soft }} />
+      <svg viewBox="0 0 36 36" className="relative w-11 h-11 -rotate-90">
         <circle cx="18" cy="18" r={r} fill="none" stroke="rgb(148 163 184 / 0.25)" strokeWidth="3.5" />
         <circle cx="18" cy="18" r={r} fill="none" stroke={color} strokeWidth="3.5" strokeLinecap="round" strokeDasharray={len} strokeDashoffset={len * (1 - Math.min(1, Math.max(0.03, pct / 100)))} className="vehicle-gauge" />
       </svg>
@@ -87,7 +91,7 @@ export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | n
                 className="vehicle-kpi w-full flex items-center gap-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 px-2.5 py-2 hover:border-sky-400 dark:hover:border-sky-500 hover:bg-white dark:hover:bg-slate-900 hover:shadow-md transition-all text-right cursor-pointer"
                 style={{ animationDelay: `${i * 0.04}s` }}
               >
-                <ShareRing rank={i + 1} pct={share} />
+                <ShareRing pct={share} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className={`font-black text-sm text-slate-900 dark:text-white truncate ${prof?.name ? '' : 'font-mono'}`} dir={prof?.name ? undefined : 'ltr'}>{prof?.name || s.vehicle}</span>

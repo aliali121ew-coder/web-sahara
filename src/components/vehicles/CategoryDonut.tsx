@@ -5,18 +5,16 @@ import { PieChart as PieIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { VehicleStat } from '../../lib/vehicleFuel';
 import { groupByCategory, useCategoryNames, useVehicleNames } from './categories';
 
-// تدرّج لكل شريحة (من/إلى) بنفس روح دائرة «توزيع نسب الاستهلاك» في الرئيسية
 /** سطور الدليل في كل صفحة: الكارت يحافظ على حجمه، والباقي بالتنقل بين الصفحات */
 const LEGEND_PAGE = 6;
 /** الشرائح الملوّنة في الدائرة؛ الباقي شريحة رمادية واحدة (تجنّب مئات الشرائح الرفيعة) */
 const SLICES = 5;
-const REST: [string, string] = ['#94a3b8', '#cbd5e1'];
+const REST: [string, string] = ['#cbd5e1', '#e2e8f0'];
 
+// تدرّج ثابت ومريح بلون واحد (نيلي): الأكبر أغمق ثم يفتح تدريجيًا، والباقي رمادي هادئ
 const PALETTE: [string, string][] = [
-  ['#6d28d9', '#8b5cf6'], ['#1d4ed8', '#3b82f6'], ['#0d9488', '#2dd4bf'], ['#c2410c', '#fb923c'],
-  ['#be185d', '#f472b6'], ['#0369a1', '#38bdf8'], ['#4d7c0f', '#a3e635'], ['#b45309', '#fbbf24'],
-  ['#7c3aed', '#c4b5fd'], ['#0f766e', '#5eead4'], ['#9f1239', '#fb7185'], ['#1e40af', '#93c5fd'],
-  ['#15803d', '#86efac'], ['#a16207', '#fde047'], ['#475569', '#94a3b8'], ['#701a75', '#e879f9'],
+  ['#3730a3', '#4f46e5'], ['#4f46e5', '#6366f1'], ['#6366f1', '#818cf8'],
+  ['#818cf8', '#a5b4fc'], ['#a5b4fc', '#c7d2fe'], ['#c7d2fe', '#e0e7ff'],
 ];
 
 /** دائرة استهلاك فئات العربات (الإجمالي في الوسط، أعلى 5 والباقي رمادي) وتحتها جدول مرتب بأشرطة رفيعة باهتة */
