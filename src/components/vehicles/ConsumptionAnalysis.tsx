@@ -415,7 +415,6 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
                   return (
                     <div className="relative h-[200px] shrink-0 rounded-t-3xl">
                       <div className="va-appear absolute left-1/2 bottom-7 -translate-x-1/2 w-[min(330px,88%)] h-px z-10">
-                        <span className="absolute -bottom-2 inset-x-[10%] h-4 rounded-[50%] bg-[radial-gradient(closest-side,rgb(11_18_32/0.3),transparent)]" />
                         <img src={url} alt={`صورة العربة ${sel.display}`} className="absolute bottom-0 left-0 w-full h-auto max-w-none" style={{ transform: `translateY(${imageGround(url) * 100}%)` }} />
                       </div>
                   <span className="absolute z-20 top-3 right-3 inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-white/95 dark:bg-slate-900/90 shadow-sm text-xs font-bold text-slate-800 dark:text-slate-100">
