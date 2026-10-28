@@ -93,6 +93,24 @@ const Delta: React.FC<{ value: number | null; className?: string }> = ({ value, 
   )
 );
 
+/** كارت مؤشر موحّد: العنوان وأيقونته في الأعلى، القيمة، وسطر توضيح؛ يصبح زرًا إن كان له إجراء */
+const StatCard: React.FC<{ icon: React.ReactNode; tone: string; label: string; value: React.ReactNode; sub: React.ReactNode; onClick?: () => void; active?: boolean }> = ({ icon, tone, label, value, sub, onClick, active }) => {
+  const body = (
+    <>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 truncate">{label}</span>
+        <span className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${tone}`}>{icon}</span>
+      </div>
+      <div className="text-2xl font-black text-slate-900 dark:text-white leading-none mt-1">{value}</div>
+      <div className="flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-slate-400 truncate">{sub}</div>
+    </>
+  );
+  const cls = `vehicle-kpi w-full h-full flex flex-col justify-between gap-2 text-right rounded-3xl bg-white dark:bg-slate-900/90 border p-4 shadow-soft-card transition-all ${active ? 'border-slate-900 dark:border-white' : 'border-slate-200/80 dark:border-slate-800'}`;
+  return onClick
+    ? <button type="button" onClick={onClick} aria-pressed={active} className={`${cls} cursor-pointer hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400`}>{body}</button>
+    : <div className={cls}>{body}</div>;
+};
+
 /**
  * تحليل الاستهلاك: مقارنة كل عربة على آخر 4 فترات (يوم/أسبوع/شهر) لكشف التفويل العالي.
  * المقارنة على المعدل اليومي في أيام الكشوف فقط، حتى لا تُقارن فترة كاملة بفترة بدأت فيها الكشوف قبل يومين.
@@ -216,7 +234,6 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
   const curLabel = unit === 'day' ? 'آخر يوم' : unit === 'week' ? 'آخر أسبوع' : 'آخر شهر';
   const count = (s: Status) => rows.filter(r => r.status === s).length;
   const fmt = (n: number) => Math.round(n).toLocaleString();
-  const sparkMax = Math.max(1, ...k.totals);
   const firstData = cov.findIndex(c => c > 0);
 
   const flags = (r: Row) => {
@@ -258,38 +275,25 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
         </div>
       </div>
 
-      {/* الكارتات */}
+      {/* الكارتات: نفس الهيكل للخمسة — العنوان وأيقونته، القيمة، ثم سطر توضيح */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <div className="vehicle-kpi col-span-2 lg:col-span-1 rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 shadow-soft-card flex justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400"><Fuel className="w-3.5 h-3.5 text-indigo-500" />استهلاك {curLabel}</div>
-            <div className="text-2xl font-black text-slate-900 dark:text-white mt-1.5"><span className="font-mono">{fmt(k.totals[3])}</span> <span className="text-xs text-slate-400">لتر</span></div>
-            <div className="flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-slate-400 mt-1"><Delta value={k.delta} /> بالمعدل اليومي</div>
-          </div>
-          <div className="flex items-end gap-1 h-14 self-end" aria-hidden>
-            {k.totals.map((t, i) => <div key={i} className={`w-2.5 rounded ${i === 3 ? 'bg-indigo-500' : 'bg-indigo-200 dark:bg-indigo-900'}`} style={{ height: `${Math.max(6, (t / sparkMax) * 100)}%` }} />)}
-          </div>
-        </div>
-        <div className="vehicle-kpi rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 shadow-soft-card">
-          <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400"><Gauge className="w-3.5 h-3.5 text-violet-500" />متوسط العربة</div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white mt-1.5"><span className="font-mono">{fmt(k.avg)}</span> <span className="text-xs text-slate-400">لتر</span></div>
-          <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mt-1">على {k.active} عربة فوّلت</div>
-        </div>
-        <button type="button" onClick={() => { setFilter(filter === 'حرج' ? 'all' : 'حرج'); setPage(0); }} className="vehicle-kpi text-right rounded-3xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60 p-4 cursor-pointer hover:shadow-md transition-shadow">
-          <div className="flex items-center gap-1.5 text-[11px] font-bold text-rose-800 dark:text-rose-300"><AlertTriangle className="w-3.5 h-3.5" />تفويل عالٍ</div>
-          <div className="text-2xl font-black text-rose-900 dark:text-rose-200 mt-1.5"><span className="font-mono">{k.crit + k.high}</span> <span className="text-xs">عربات</span></div>
-          <div className="text-[11px] font-bold text-rose-800 dark:text-rose-300 mt-1">{k.crit} حرجة · {k.high} مرتفعة</div>
-        </button>
-        <button type="button" disabled={!k.top} onClick={() => k.top && onOpen(k.top.vehicle)} className="vehicle-kpi text-right rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 shadow-soft-card cursor-pointer hover:border-sky-400 disabled:cursor-default">
-          <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400"><TrendingUp className="w-3.5 h-3.5 text-rose-500" />أعلى ارتفاع</div>
-          <div className="text-2xl mt-1.5">{k.top ? <Delta value={k.top.change} /> : '—'}</div>
-          <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mt-1 truncate">{k.top ? <>العربة <bdi dir="ltr">{k.top.display}</bdi></> : 'لا توجد مقارنة'}</div>
-        </button>
-        <div className="vehicle-kpi rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 shadow-soft-card">
-          <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400"><Repeat2 className="w-3.5 h-3.5 text-amber-500" />تفويل متقارب</div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white mt-1.5"><span className="font-mono">{k.close}</span> <span className="text-xs text-slate-400">عربات</span></div>
-          <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mt-1">يومان متتاليان أو اليوم نفسه</div>
-        </div>
+        <StatCard icon={<Fuel className="w-4 h-4" />} tone="bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400" label={`استهلاك ${curLabel}`}
+          value={<><span className="font-mono">{fmt(k.totals[3])}</span> <span className="text-sm font-bold text-slate-400">لتر</span></>}
+          sub={<><Delta value={k.delta} /> عن معدل الفترات السابقة</>} />
+        <StatCard icon={<Gauge className="w-4 h-4" />} tone="bg-violet-50 text-violet-600 dark:bg-violet-950/50 dark:text-violet-400" label="متوسط العربة"
+          value={<><span className="font-mono">{fmt(k.avg)}</span> <span className="text-sm font-bold text-slate-400">لتر</span></>}
+          sub={<>لـ <bdi className="font-mono">{k.active}</bdi> عربة فوّلت</>} />
+        <StatCard icon={<AlertTriangle className="w-4 h-4" />} tone="bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400" label="تفويل عالٍ"
+          active={filter === 'حرج'} onClick={() => { setFilter(filter === 'حرج' ? 'all' : 'حرج'); setPage(0); }}
+          value={<><span className="font-mono text-rose-700 dark:text-rose-400">{k.crit + k.high}</span> <span className="text-sm font-bold text-slate-400">عربة</span></>}
+          sub={<>حرجة <bdi className="font-mono">{k.crit}</bdi> · مرتفعة <bdi className="font-mono">{k.high}</bdi></>} />
+        <StatCard icon={<TrendingUp className="w-4 h-4" />} tone="bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400" label="أعلى ارتفاع"
+          onClick={k.top ? () => onOpen(k.top!.vehicle) : undefined}
+          value={k.top ? <Delta value={k.top.change} /> : '—'}
+          sub={k.top ? <>العربة <bdi dir="ltr" className="font-mono">{k.top.display}</bdi></> : 'لا توجد مقارنة'} />
+        <StatCard icon={<Repeat2 className="w-4 h-4" />} tone="bg-sky-50 text-sky-600 dark:bg-sky-950/50 dark:text-sky-400" label="تفويل متقارب"
+          value={<><span className="font-mono">{k.close}</span> <span className="text-sm font-bold text-slate-400">عربة</span></>}
+          sub="يومان متتاليان أو اليوم نفسه" />
       </div>
 
       {/* الجدول 70% والجانب 30% */}
@@ -330,7 +334,7 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
                   <SortHead id="dev" className="text-center">عن الفئة</SortHead>
                   <th className="px-2 font-black text-center">تفويلات</th>
                   <th className="px-2 font-black text-center">أقل فاصل</th>
-                  <th className="px-2 font-black text-center">الحالة</th>
+                  <th className="px-2 font-black">الحالة</th>
                 </tr>
               </thead>
               <tbody>
@@ -368,12 +372,20 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
                       </td>
                       <td className={`px-2 text-center text-xs font-bold font-mono ${r.dev !== null && r.dev >= 25 ? 'text-rose-700 dark:text-rose-400' : 'text-slate-600 dark:text-slate-300'}`} dir="ltr">{r.dev === null ? '—' : `${r.dev > 0 ? '+' : ''}${Math.round(r.dev)}%`}</td>
                       <td className="px-2 text-center text-[13px] font-bold font-mono text-slate-700 dark:text-slate-200">{r.n || '—'}</td>
+                      {/* أقل فاصل والحالة: نص هادئ بنقطة لون صغيرة بدل الخلفيات الملونة */}
                       <td className="px-2 text-center">
-                        {r.multi > 0 ? <span className="inline-block text-xs font-black px-2 py-1 rounded-lg bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300">اليوم نفسه</span>
-                          : r.minGap === null ? <span className="text-xs text-slate-400">—</span>
-                          : <span className={`inline-block text-xs font-black px-2 py-1 rounded-lg ${r.minGap <= FREQUENT_DAYS ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300' : 'text-slate-600 dark:text-slate-300'}`}><bdi className="font-mono">{r.minGap}</bdi> يوم</span>}
+                        {r.multi === 0 && r.minGap === null ? <span className="text-xs text-slate-300 dark:text-slate-600">—</span> : (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                            {r.close && <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" aria-hidden />}
+                            {r.multi > 0 ? 'اليوم نفسه' : <><bdi className="font-mono">{r.minGap}</bdi> {r.minGap === 1 ? 'يوم' : 'أيام'}</>}
+                          </span>
+                        )}
                       </td>
-                      <td className="px-2 text-center"><span className={`inline-block text-[11px] font-black px-2.5 py-1 rounded-full ${TONE[r.status].pill}`}>{r.status}</span></td>
+                      <td className="px-2">
+                        <span className={`inline-flex items-center gap-1.5 text-xs whitespace-nowrap ${r.status === 'حرج' ? 'font-black text-slate-900 dark:text-white' : 'font-bold text-slate-600 dark:text-slate-300'}`}>
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${TONE[r.status].bar}`} aria-hidden />{r.status}
+                        </span>
+                      </td>
                     </tr>
                   );
                 })}
