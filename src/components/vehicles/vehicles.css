@@ -52,3 +52,20 @@
 [dir="ltr"] .vehicle-sheet-out { animation-name: vehicle-sheet-out-ltr; }
 @keyframes vehicle-sheet-in-ltr { from { transform: translateX(-100%); } }
 @keyframes vehicle-sheet-out-ltr { to { transform: translateX(-100%); } }
+
+/* تحليل الاستهلاك: ظهور متتابع، أعمدة تنمو، تبديل هادئ للكارت، ونبض للحرج */
+.va-rise { animation: vehicle-rise 0.5s cubic-bezier(.2,.8,.2,1) both; }
+.va-fade { animation: va-fade 0.45s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes va-fade { from { opacity: 0; transform: translateY(6px); } }
+.va-grow { transform-origin: bottom; animation: va-grow 0.6s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes va-grow { from { transform: scaleY(0); } }
+.va-track { transform-origin: right; animation: vehicle-grow 0.6s ease both; }
+.va-pulse { animation: va-pulse 2s infinite; }
+@keyframes va-pulse { 0% { box-shadow: 0 0 0 0 rgb(229 72 77 / .45); } 70% { box-shadow: 0 0 0 7px rgb(229 72 77 / 0); } 100% { box-shadow: 0 0 0 0 rgb(229 72 77 / 0); } }
+.va-row { transition: background-color .25s ease; }
+.va-row:hover .va-code { color: rgb(67 56 202); }
+.va-line { transition: bottom .5s cubic-bezier(.2,.8,.2,1); }
+@media (prefers-reduced-motion: reduce) {
+  .va-rise, .va-fade, .va-grow, .va-track, .va-pulse { animation: none; }
+  .va-row, .va-line { transition: none; }
+}
