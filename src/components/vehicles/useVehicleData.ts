@@ -44,12 +44,12 @@ export const useVehicleData = (scope: Scope | null) => {
     [allFills, prevDay]
   );
 
-  /** يرفع عدة ملفات: كشف نفس الموقع واليوم يستبدل السابق */
-  const upload = useCallback(async (list: File[]): Promise<UploadResult[]> => {
+  /** يرفع عدة ملفات: كشف نفس الموقع واليوم يستبدل السابق؛ fallbackDate لسطور الكشف التي بلا تاريخ */
+  const upload = useCallback(async (list: File[], fallbackDate = ''): Promise<UploadResult[]> => {
     const results: UploadResult[] = [];
     for (const f of list) {
       try {
-        const { file, refills: rows, total } = await readVehicleFile(f);
+        const { file, refills: rows, total } = await readVehicleFile(f, fallbackDate);
         setRefills(prev => [...prev.filter(r => r.fileId !== file.id), ...rows]);
         setFiles(prev => [file, ...prev.filter(x => x.id !== file.id)]);
         const mismatch = total !== null && total !== file.totalQty ? ` — تنبيه: مجموع الملف ${total.toLocaleString()} لا يطابق المقروء` : '';

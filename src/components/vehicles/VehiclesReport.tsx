@@ -1,14 +1,16 @@
 /* eslint-disable i18next/no-literal-string */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  CalendarDays, Truck, FileText, Fuel, Gauge, Trophy, TrendingUp, TrendingDown, Repeat2, Upload, X, Trash2, Loader2,
-  CheckCircle2, AlertTriangle,
+  CalendarDays, Truck, FileText, Fuel, Gauge, Trophy, TrendingUp, TrendingDown, Repeat2, Upload, Loader2, ChartLine,
 } from 'lucide-react';
 import { usePermissions } from '../../lib/usePermission';
 import { useFuelNav } from '../../context/FuelDataContext';
 import { FREQUENT_DAYS, formatDay } from '../../lib/vehicleFuel';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
-import { useVehicleData, type Scope, type UploadResult } from './useVehicleData';
+import { useVehicleData, type Scope } from './useVehicleData';
+import { UploadPanel, type QueueItem } from './UploadPanel';
+import { FilesDrawer } from './FilesDrawer';
+import { ConsumptionAnalysis } from './ConsumptionAnalysis';
 import { CategoryDonut } from './CategoryDonut';
 import { TopSevenCard } from './TopSevenCard';
 import { TopVehicleCards } from './TopVehicleCards';
@@ -38,33 +40,38 @@ export const VehiclesReport: React.FC = () => {
   const { recentFiles, dates, active, fills, stats, history, prevDay, prevTotal, allFills } = data;
 
   const [busy, setBusy] = useState(false);
-  // عدد الملفات المرفوعة يظهر لحظيًا بجانب زر الرفع ثم يُصفَّر
-  const [results, setResults] = useState<UploadResult[] | null>(null);
-  useEffect(() => {
-    if (!results) return;
-    const t = window.setTimeout(() => setResults(null), 5000);
-    return () => window.clearTimeout(t);
-  }, [results]);
+  // ملفات الرفع الحالية وحالة كل ملف: تظهر في لوحة الرفع وعددها على زر الرفع
+  const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
+  const [analysis, setAnalysis] = useState(false);
   const [vehicle, setVehicle] = useState<string | null>(null);
   const [rangeOpen, setRangeOpen] = useState(false);
   // الفئة المفتوحة في كارت الفئات: الدائرة وكارت الأعلى استهلاكًا يتبعانها
   const [category, setCategory] = useState<string | null>(null);
-  const [drag, setDrag] = useState(false);
-  const input = useRef<HTMLInputElement>(null);
-
-  const doUpload = async (list: FileList | File[] | null) => {
-    const pdfs = [...(list || [])].filter(f => /\.pdf$/i.test(f.name));
-    if (!pdfs.length) return;
+  /** يرفع الملفات واحدًا تلو الآخر ليظهر تقدّم كل ملف في لوحة الرفع */
+  const doUpload = async (pdfs: File[], fallbackDate: string) => {
+    if (busy) return;
     setBusy(true);
+    setQueue(pdfs.map(f => ({ name: f.name, state: 'wait', message: '' })));
     try {
-      setResults(await data.upload(pdfs));
+      for (let i = 0; i < pdfs.length; i++) {
+        setQueue(q => q.map((x, j) => (j === i ? { ...x, state: 'read' } : x)));
+        const [r] = await data.upload([pdfs[i]], fallbackDate);
+        setQueue(q => q.map((x, j) => (j === i ? { ...x, state: r.ok ? 'ok' : 'err', message: r.message } : x)));
+      }
       setScope(null);
     } finally {
       setBusy(false);
-      if (input.current) input.current.value = '';
     }
   };
+  // إغلاق اللوحة بعد اكتمال الرفع يمسح قائمة الملفات؛ وإن أُخفيت أثناء الرفع تُمسح بعد انتهائه بقليل
+  const closePanel = () => { setPanelOpen(false); if (!busy) setQueue([]); };
+  useEffect(() => {
+    if (busy || panelOpen || !queue.length) return;
+    const t = window.setTimeout(() => setQueue([]), 6000);
+    return () => window.clearTimeout(t);
+  }, [busy, panelOpen, queue.length]);
 
   const k = useMemo(() => {
     const total = fills.reduce((s, f) => s + f.qty, 0);
@@ -76,27 +83,20 @@ export const VehiclesReport: React.FC = () => {
 
   const selected = vehicle ? history.get(vehicle) : undefined;
 
-  // زر الرفع: يُضغط لاختيار الملفات أو تُسحب الملفات وتُفلت عليه
+  // زر الرفع المختصر: يفتح لوحة الرفع (وسحب الملفات فوقه يفتحها أيضًا)، ويعرض عدد ملفات الرفع الجارية
+  const queueDone = queue.filter(q => q.state === 'ok' || q.state === 'err').length;
   const uploadBtn = editable && (
-    <>
-      <input ref={input} type="file" accept="application/pdf,.pdf" multiple hidden onChange={e => doUpload(e.target.files)} />
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => input.current?.click()}
-        onDragOver={e => { e.preventDefault(); setDrag(true); }}
-        onDragLeave={() => setDrag(false)}
-        onDrop={e => { e.preventDefault(); setDrag(false); void doUpload(e.dataTransfer.files); }}
-        className={`flex items-center gap-2 px-4 py-2 rounded-2xl border-2 border-dashed text-sm font-black transition-all cursor-pointer disabled:opacity-60 ${
-          drag
-            ? 'border-sky-500 bg-sky-500 text-white scale-105 shadow-lg shadow-sky-500/30'
-            : 'border-sky-400/70 bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900/40'
-        }`}
-      >
-        {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-        {drag ? 'أفلت الملفات هنا' : 'رفع كشوف PDF أو اسحبها هنا'}
-      </button>
-    </>
+    <button
+      type="button"
+      aria-expanded={panelOpen}
+      onClick={() => setPanelOpen(true)}
+      onDragEnter={e => { e.preventDefault(); setPanelOpen(true); }}
+      className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl text-sm font-black text-white bg-sky-600 hover:bg-sky-700 shadow-sm shadow-sky-600/30 transition-all cursor-pointer ${panelOpen ? 'ring-4 ring-sky-500/20' : ''}`}
+    >
+      {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+      رفع الملفات
+      {queue.length > 0 && <span className="px-2 py-0.5 rounded-full bg-white/20 text-xs font-mono" role="status">{queueDone}/{queue.length}</span>}
+    </button>
   );
 
   const dateSet = useMemo(() => new Set(dates), [dates]);
@@ -114,6 +114,13 @@ export const VehiclesReport: React.FC = () => {
     const total = allFills.reduce((s, f) => s + f.qty, 0);
     return { total, avg: allFills.length ? Math.round(total / allFills.length) : 0 };
   }, [allFills]);
+
+  // صفحة تحليل الاستهلاك: مسار التنقل يعيد للتقرير (وصفحة العربة فوقها تعيد إليها)
+  useEffect(() => {
+    if (!analysis || selected) return;
+    setCurrentSubpage({ title: 'تحليل الاستهلاك', parentTab: 'vehicles-report', onBack: () => setAnalysis(false) });
+    return () => setCurrentSubpage(null);
+  }, [analysis, selected, setCurrentSubpage]);
 
   const vehicleRefills = useMemo(() => (vehicle ? data.refills.filter(r => r.vehicle === vehicle) : []), [data.refills, vehicle]);
 
@@ -133,10 +140,25 @@ export const VehiclesReport: React.FC = () => {
     );
   }
 
+  if (analysis && dates.length) {
+    const end = active.kind === 'day' ? active.date : active.kind === 'range' ? active.to : dates[dates.length - 1];
+    return <ConsumptionAnalysis allFills={allFills} endDate={end} onOpen={setVehicle} />;
+  }
+
   return (
     <div className="space-y-5 pb-12 font-cairo">
-      {/* أدوات الصفحة: التاريخ الموحّد، الملفات، الرفع */}
+      {/* أدوات الصفحة: تحليل الاستهلاك يمينًا، ثم التاريخ والملفات والرفع */}
       <div className="flex flex-wrap items-center gap-2">
+        {dates.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setAnalysis(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-black shadow-md shadow-indigo-600/30 transition-all hover:-translate-y-px cursor-pointer"
+          >
+            <ChartLine className="w-4 h-4" />تحليل الاستهلاك
+          </button>
+        )}
+        <div className="flex flex-wrap items-center gap-2 mr-auto">
         {dates.length > 0 && (
           <>
             {/* التاريخ: يوم واحد أو فترة «من – إلى» بنفس تقويم صفحة الوارد */}
@@ -176,23 +198,17 @@ export const VehiclesReport: React.FC = () => {
             </button>
           </>
         )}
-        <div className="flex items-center gap-2 mr-auto">
+          <span className="hidden sm:block w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
           <button type="button" onClick={() => setShowFiles(true)} className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-sky-400 cursor-pointer">
-            <FileText className="w-4 h-4 text-sky-500" />الملفات ({recentFiles.length})
+            <FileText className="w-4 h-4 text-sky-500" />الملفات
+            <span className="min-w-[22px] h-[22px] px-1.5 inline-flex items-center justify-center rounded-full bg-sky-100 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 text-xs font-black font-mono">{recentFiles.length}</span>
           </button>
-          {results && (
-            <span className="vehicle-kpi flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-black bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" role="status">
-              <CheckCircle2 className="w-4 h-4" />رُفع {results.filter(r => r.ok).length}
-              {results.some(r => !r.ok) && <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400 mr-1" title={results.filter(r => !r.ok).map(r => `${r.name}: ${r.message}`).join(' · ')}><AlertTriangle className="w-3.5 h-3.5" />تعذّر {results.filter(r => !r.ok).length}</span>}
-            </span>
-          )}
           {uploadBtn}
         </div>
       </div>
 
-
       {!allFills.length ? (
-        <div className={`rounded-3xl border-2 border-dashed p-12 text-center transition-colors ${drag ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/30' : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900'}`}>
+        <div className="rounded-3xl border-2 border-dashed p-12 text-center border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900">
           <div className="w-16 h-16 mx-auto rounded-3xl bg-gradient-to-tr from-sky-500 to-indigo-600 text-white flex items-center justify-center mb-4 shadow-lg shadow-sky-500/30 vehicle-float">
             <Upload className="w-7 h-7" />
           </div>
@@ -234,34 +250,24 @@ export const VehiclesReport: React.FC = () => {
         </>
       )}
 
-      {/* نافذة الملفات */}
       {showFiles && (
-        <div className="fixed inset-0 z-50 flex justify-start bg-slate-950/50 backdrop-blur-sm" onClick={() => setShowFiles(false)}>
-          <div className="vehicle-drawer w-full max-w-md h-full bg-white dark:bg-slate-900 shadow-2xl p-5 overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-black text-slate-900 dark:text-white">الكشوف المرفوعة</h3>
-              <button type="button" onClick={() => setShowFiles(false)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer" aria-label="إغلاق"><X className="w-5 h-5 text-slate-500" /></button>
-            </div>
-            <div className="space-y-2">
-              {[...recentFiles].sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt)).map(f => (
-                <div key={f.id} className="rounded-2xl border border-slate-200 dark:border-slate-800 p-3 flex items-start gap-3">
-                  <span className="p-2 rounded-xl bg-rose-500/10 text-rose-500"><FileText className="w-4 h-4" /></span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">{f.site} · <span className="font-mono">{f.reportDate}</span>{f.docNo && <span className="text-[10px] text-slate-400"> · مستند {f.docNo}</span>}{f.dateSource === 'notes' && <span className="mr-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300">التاريخ من الملاحظات</span>}</div>
-                    <div className="text-[11px] text-slate-500 truncate">{f.name}</div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">{f.rows} سطر · {f.totalQty.toLocaleString()} لتر · رُفع {new Date(f.uploadedAt).toLocaleString('en-GB')}{f.by ? ` · ${f.by}` : ''}</div>
-                  </div>
-                  {editable && (
-                    <button type="button" onClick={() => { if (window.confirm(`حذف كشف ${f.site} ليوم ${f.reportDate}؟`)) data.removeFile(f.id); }} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 cursor-pointer" aria-label="حذف"><Trash2 className="w-4 h-4" /></button>
-                  )}
-                </div>
-              ))}
-              {!recentFiles.length && <p className="text-sm text-slate-400 text-center py-8">لا توجد ملفات مرفوعة خلال آخر 24 ساعة</p>}
-            </div>
-          </div>
-        </div>
+        <FilesDrawer
+          files={recentFiles}
+          editable={editable}
+          onRemove={data.removeFile}
+          onUpload={() => { setShowFiles(false); setPanelOpen(true); }}
+          onClose={() => setShowFiles(false)}
+        />
       )}
-
+      {panelOpen && (
+        <UploadPanel
+          queue={queue}
+          busy={busy}
+          onFiles={(f, d) => void doUpload(f, d)}
+          onClose={closePanel}
+          onShowFiles={() => { closePanel(); setShowFiles(true); }}
+        />
+      )}
     </div>
   );
 };

@@ -149,7 +149,7 @@ const assign = <C extends string>(line: PdfItem[], cols: Map<C, number>) => {
  * يدعم «كشف مطابقة الكاز» و«كشف تجهيز الكاز» و«مستند تجهيز زيت الغاز» بنفس القاعدة.
  * التاريخ: تاريخ حقل «الملاحظات» أولًا (البيانات تُدخل أحيانًا في غير يومها)، وإلا تاريخ الملف/السطر.
  */
-export const parseVehicleSheet = (pages: PdfItem[][][]): VehicleSheet => {
+export const parseVehicleSheet = (pages: PdfItem[][][], fallbackDate = ''): VehicleSheet => {
   let site = '';
   let total: number | null = null;
   let docNo = '';
@@ -218,8 +218,8 @@ export const parseVehicleSheet = (pages: PdfItem[][][]): VehicleSheet => {
       });
     }
   }
-  // تاريخ الملاحظات أولًا، ثم تاريخ السطر أو المستند
-  for (const r of rows) r.date = notesDate || r.date || docDate || '';
+  // تاريخ الملاحظات أولًا، ثم تاريخ السطر أو المستند، وأخيرًا التاريخ الذي اختاره الرافع
+  for (const r of rows) r.date = notesDate || r.date || docDate || fallbackDate;
   const kept = rows.filter(r => r.date);
   return { site, rows: kept, total, docNo, dateSource: notesDate ? 'notes' : 'file' };
 };
@@ -231,10 +231,10 @@ const hash = (s: string) => {
 };
 
 /** يقرأ ملف PDF ويحوّله إلى ملف + تفويلات جاهزة للحفظ */
-export const readVehicleFile = async (file: File): Promise<{ file: VehicleFile; refills: VehicleRefill[]; total: number | null }> => {
+export const readVehicleFile = async (file: File, fallbackDate = ''): Promise<{ file: VehicleFile; refills: VehicleRefill[]; total: number | null }> => {
   const { pages, anyText } = await readPdfPages(file);
   if (!anyText) throw new Error('الملف لا يحتوي نصًا قابلًا للقراءة (صورة ممسوحة)');
-  const sheet = parseVehicleSheet(pages);
+  const sheet = parseVehicleSheet(pages, fallbackDate);
   if (!sheet.rows.length) throw new Error('لم يُعثر على جدول تفويل العربات في الملف');
   const site = sheet.site || 'غير محدد';
   const reportDate = sheet.rows.reduce((m, r) => (r.date > m ? r.date : m), '');
