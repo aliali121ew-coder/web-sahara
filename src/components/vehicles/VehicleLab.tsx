@@ -1,6 +1,6 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useMemo, useRef, useState } from 'react';
-import { Calendar, CalendarClock, FileSpreadsheet, Fuel, Gauge, Leaf, Loader2, MapPin, Trophy, Users, Wrench } from 'lucide-react';
+import { Calendar, CalendarClock, FlaskConical, FileSpreadsheet, Fuel, Gauge, Leaf, Loader2, MapPin, Trophy, Users, Wrench } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import {
   VEHICLE_PROFILES_KEY, daysBetween, imageGround, vehicleImage,
@@ -188,7 +188,7 @@ export const VehicleLab: React.FC<{
   }, [fills, lastDate, end, reg, registry, allFills, vehicle, refills]);
 
   const tone = {
-    warn: 'bg-rose-50 dark:bg-[#2A1420] text-rose-600 dark:text-[#FB7185]', info: 'bg-indigo-50 dark:bg-[#14203A] text-indigo-600 dark:text-[#A5B4FC]', ok: 'bg-emerald-50 dark:bg-[#0F2A24] text-emerald-700 dark:text-[#6EE7B7]', soon: 'bg-slate-100 dark:bg-[#1B2645] text-slate-500 dark:text-[#8090B0]',
+    warn: 'bg-rose-100 dark:bg-[#2A1420] text-rose-700 dark:text-[#FB7185]', info: 'bg-indigo-100 dark:bg-[#14203A] text-indigo-700 dark:text-[#A5B4FC]', ok: 'bg-emerald-100 dark:bg-[#0F2A24] text-emerald-800 dark:text-[#6EE7B7]', soon: 'bg-slate-100 dark:bg-[#1B2645] text-slate-600 dark:text-[#8090B0]',
   };
   const tags = { warn: 'تنبيه', info: 'تحليل', ok: 'جيد', soon: 'يحتاج بيانات' };
   const cards: { icon: React.ReactNode; t: keyof typeof tone; title: string; value: string; line: string; days?: number[] }[] = [
@@ -202,14 +202,14 @@ export const VehicleLab: React.FC<{
     { icon: <Calendar className="w-[18px] h-[18px]" />, t: 'info', title: 'نمط أيام الأسبوع', value: fills.length ? WEEKDAYS[insights.topDay] : '—', line: 'أكثر يوم تفويلًا', days: insights.byDay },
   ];
 
-  const field = 'flex items-center gap-2 h-10 px-3 rounded-xl border border-slate-200 dark:border-[#23304F] bg-slate-50 dark:bg-[#0A1020] focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20';
+  const field = 'flex items-center gap-2 h-10 px-3 rounded-xl border border-slate-300 dark:border-[#23304F] bg-white dark:bg-[#0A1020] shadow-sm dark:shadow-none focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20';
   const numInput = 'w-full bg-transparent outline-none text-slate-900 dark:text-white font-mono font-semibold placeholder:text-slate-400 dark:placeholder:text-[#5B6787]';
 
   return (
     <div className="vehicle-page font-cairo dark:rounded-[28px] bg-transparent dark:bg-[#070B16] text-slate-900 dark:text-[#E6EBF5] dark:p-4 dark:sm:p-6 space-y-5" dir="rtl">
       {/* العنوان */}
       <div className="va-rise flex flex-wrap items-end justify-between gap-3">
-        <h2 className="flex items-baseline gap-3 text-[28px] font-bold tracking-tight">مختبر العربة<span className="font-mono text-[22px] font-semibold text-indigo-600 dark:text-indigo-300" dir="ltr">{profile?.name || vehicle}</span></h2>
+        <h2 className="flex items-center gap-3 text-[28px] font-bold tracking-tight"><span className="w-11 h-11 rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-600/30 inline-flex items-center justify-center"><FlaskConical className="w-5 h-5" /></span>مختبر العربة<span className="font-mono text-[22px] font-semibold text-indigo-600 dark:text-indigo-300" dir="ltr">{profile?.name || vehicle}</span></h2>
         {lastDate && (
           <span className="inline-flex items-center gap-2 h-9 px-3.5 rounded-xl border border-slate-200/80 dark:border-[#1B2645] bg-white dark:bg-[#0C1224] text-xs font-semibold text-slate-600 dark:text-[#B6C2DC]">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />آخر تفويلة <bdi className="font-mono">{short(lastDate)}</bdi>
@@ -221,7 +221,7 @@ export const VehicleLab: React.FC<{
       <div className="va-rise grid grid-cols-1 lg:grid-cols-3 gap-4" style={{ animationDelay: '.05s' }}>
         <section aria-label="سجل الآلية" className={`${panel} p-5`}>
           <div className="flex items-center justify-between mb-3.5">
-            <span className="text-xs font-bold text-slate-500 dark:text-[#8090B0]">سجل الآلية</span>
+            <span className="text-xs font-bold text-slate-600 dark:text-[#8090B0]">سجل الآلية</span>
             {editable && (
               <>
                 <input ref={fileRef} type="file" accept=".xlsx,.xls" multiple hidden onChange={e => void importRegistry(e.target.files)} />
@@ -235,21 +235,21 @@ export const VehicleLab: React.FC<{
           {importing && <div className="mb-3 text-[11.5px] font-semibold text-indigo-700 dark:text-indigo-200">{importing}</div>}
           {reg ? (
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-[13px]">
-              <dt className="text-slate-500 dark:text-[#8090B0]">رقم الآلية</dt><dd className="font-mono font-semibold text-slate-900 dark:text-white" dir="ltr" style={{ textAlign: 'right' }}>{reg.plate || '—'}</dd>
-              <dt className="text-slate-500 dark:text-[#8090B0]">النوع</dt><dd className="font-semibold">{reg.type || '—'}</dd>
-              <dt className="text-slate-500 dark:text-[#8090B0]">المحافظة</dt><dd>{reg.governorate || '—'}</dd>
-              <dt className="text-slate-500 dark:text-[#8090B0]">المصنع</dt><dd>{reg.factory || '—'}</dd>
-              <dt className="text-slate-500 dark:text-[#8090B0]">المجموعة</dt><dd>{reg.group || '—'}</dd>
-              <dt className="text-slate-500 dark:text-[#8090B0]">المسؤول</dt><dd>{reg.supervisor || '—'}</dd>
-              <dt className="text-slate-500 dark:text-[#8090B0]">السائق</dt><dd className="truncate">{drivers.join('، ') || '—'}</dd>
+              <dt className="text-slate-600 dark:text-[#8090B0]">رقم الآلية</dt><dd className="font-mono font-semibold text-slate-900 dark:text-white" dir="ltr" style={{ textAlign: 'right' }}>{reg.plate || '—'}</dd>
+              <dt className="text-slate-600 dark:text-[#8090B0]">النوع</dt><dd className="font-semibold">{reg.type || '—'}</dd>
+              <dt className="text-slate-600 dark:text-[#8090B0]">المحافظة</dt><dd>{reg.governorate || '—'}</dd>
+              <dt className="text-slate-600 dark:text-[#8090B0]">المصنع</dt><dd>{reg.factory || '—'}</dd>
+              <dt className="text-slate-600 dark:text-[#8090B0]">المجموعة</dt><dd>{reg.group || '—'}</dd>
+              <dt className="text-slate-600 dark:text-[#8090B0]">المسؤول</dt><dd>{reg.supervisor || '—'}</dd>
+              <dt className="text-slate-600 dark:text-[#8090B0]">السائق</dt><dd className="truncate">{drivers.join('، ') || '—'}</dd>
             </dl>
           ) : (
-            <p className="text-[13px] leading-7 text-slate-500 dark:text-[#8090B0]">لا يوجد سطر لهذه العربة في ملف آليات الشركة. {editable ? 'استورد ملف «جميع آليات الشركة» (ويمكن رفع أكثر من ملف) لتظهر هنا رقم الآلية والنوع والمصنع والمجموعة.' : ''}</p>
+            <p className="text-[13px] leading-7 text-slate-600 dark:text-[#8090B0]">لا يوجد سطر لهذه العربة في ملف آليات الشركة. {editable ? 'استورد ملف «جميع آليات الشركة» (ويمكن رفع أكثر من ملف) لتظهر هنا رقم الآلية والنوع والمصنع والمجموعة.' : ''}</p>
           )}
         </section>
 
-        <section aria-label="العربة" className={`${panel} relative min-h-[300px] overflow-hidden flex items-end justify-center`}>
-          <span className="absolute left-1/2 bottom-6 -translate-x-1/2 w-[380px] max-w-[90%] h-28 rounded-[50%] bg-[radial-gradient(closest-side,rgb(99_102_241/0.35),transparent)]" />
+        <section aria-label="العربة" className={`${panel} relative min-h-[300px] overflow-hidden flex items-end justify-center !bg-gradient-to-b from-white to-indigo-50/80 dark:!bg-none`}>
+          <span className="absolute left-1/2 bottom-6 -translate-x-1/2 w-[380px] max-w-[90%] h-28 rounded-[50%] bg-[radial-gradient(closest-side,rgb(99_102_241/0.28),transparent)] dark:bg-[radial-gradient(closest-side,rgb(99_102_241/0.35),transparent)]" />
           <span className="absolute inset-x-6 bottom-10 h-px bg-slate-100 dark:bg-[#1B2645]" />
           <img src={url} alt={`صورة العربة ${code}`} className="relative w-[86%] max-w-[400px] h-auto mb-10" style={{ transform: `translateY(${imageGround(url) * 100}%)` }} />
           <div className="absolute top-4 right-4 flex gap-2">
@@ -260,7 +260,7 @@ export const VehicleLab: React.FC<{
 
         <section aria-label="الخزانات" className={`${panel} p-5 flex flex-col gap-4`}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 dark:text-[#8090B0]">الخزانات</span>
+            <span className="text-xs font-bold text-slate-600 dark:text-[#8090B0]">الخزانات</span>
             <span className="text-[11px] font-semibold text-slate-400 dark:text-[#5B6787]">آخر تفويلة مقابل السعة</span>
           </div>
           {tanks.map(t => {
@@ -275,7 +275,7 @@ export const VehicleLab: React.FC<{
                 <div className="flex flex-col gap-1.5 min-w-0">
                   <div className="text-[13.5px] font-bold">{t.name}{t.hint && <span className="mr-1.5 text-[11px] font-medium text-slate-400 dark:text-[#5B6787]">{t.hint}</span>}</div>
                   <label className={field}>
-                    <span className="text-[11.5px] text-slate-500 dark:text-[#8090B0] whitespace-nowrap">السعة</span>
+                    <span className="text-[11.5px] text-slate-600 dark:text-[#8090B0] whitespace-nowrap">السعة</span>
                     <input
                       key={`${vehicle}-${t.field}-${t.cap ?? ''}`}
                       type="number" inputMode="numeric" min={0} defaultValue={t.cap ?? ''} disabled={!editable} placeholder="باللتر" aria-label={`سعة ${t.name} باللتر`}
@@ -299,7 +299,7 @@ export const VehicleLab: React.FC<{
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <h3 className="text-base font-bold">الاستهلاك عبر الزمن</h3>
-            {firstDate && <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-[#1B2645] text-slate-500 dark:text-[#8090B0]">البيانات من <bdi className="font-mono">{short(firstDate)}</bdi></span>}
+            {firstDate && <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-[#1B2645] text-slate-600 dark:text-[#8090B0]">البيانات من <bdi className="font-mono">{short(firstDate)}</bdi></span>}
           </div>
           <div role="group" aria-label="المدى" className="flex gap-0.5 p-1 rounded-2xl bg-slate-50 dark:bg-[#0A1020] border border-slate-200/80 dark:border-[#1B2645]">
             {([['day', 'يوم'], ['week', 'أسبوع'], ['month', 'شهر'], ['q', '3 أشهر'], ['year', 'سنة']] as const).map(([k, l]) => (
@@ -315,7 +315,7 @@ export const VehicleLab: React.FC<{
             ['التفويلات', String(range === 'day' ? lastDayLines.length : buckets.filter(b => b.value > 0).length), ''],
           ].map(([l, v, u]) => (
             <div key={l}>
-              <div className="text-[11.5px] font-semibold text-slate-500 dark:text-[#8090B0]">{l}</div>
+              <div className="text-[11.5px] font-semibold text-slate-600 dark:text-[#8090B0]">{l}</div>
               <div className="mt-1 font-mono text-2xl font-semibold text-slate-900 dark:text-white">{v} <span className="font-cairo text-xs text-slate-400 dark:text-[#5B6787]">{u}</span></div>
             </div>
           ))}
@@ -326,8 +326,8 @@ export const VehicleLab: React.FC<{
               <defs><linearGradient id="lab-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#6366F1" stopOpacity=".38" /><stop offset="1" stopColor="#6366F1" stopOpacity="0" /></linearGradient></defs>
               {[55, 110, 165].map(y => <line key={y} x1="0" y1={y} x2="1000" y2={y} className="stroke-slate-100 dark:stroke-[#141D36]" />)}
               <path d={chart.area} fill="url(#lab-area)" />
-              <path d={`M0 ${chart.avgY.toFixed(1)} L1000 ${chart.avgY.toFixed(1)}`} fill="none" stroke="#475577" strokeWidth="1.5" strokeDasharray="6 6" />
-              <path d={chart.line} fill="none" stroke="#818CF8" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" className="va-draw" />
+              <path d={`M0 ${chart.avgY.toFixed(1)} L1000 ${chart.avgY.toFixed(1)}`} fill="none" strokeWidth="1.5" strokeDasharray="6 6" className="stroke-slate-300 dark:stroke-[#475577]" />
+              <path d={chart.line} fill="none" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" className="va-draw stroke-indigo-600 dark:stroke-[#818CF8]" />
               <circle cx={chart.peak[0]} cy={chart.peak[1]} r="5" fill="#F43F5E" strokeWidth="2" className="stroke-white dark:stroke-[#0C1224]" />
             </svg>
             <div className="flex justify-between mt-2 font-mono text-[11px] text-slate-400 dark:text-[#5B6787]">
@@ -345,7 +345,7 @@ export const VehicleLab: React.FC<{
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h3 className="text-base font-bold">محلل الصرف الحقيقي</h3>
-              <p className="mt-1 text-[12.5px] text-slate-500 dark:text-[#8090B0]">الاستهلاك يُحسب من المسافة والسرعة والتبريد، ويُقارن بالتفويل في الكشوف</p>
+              <p className="mt-1 text-[12.5px] text-slate-600 dark:text-[#8090B0]">الاستهلاك يُحسب من المسافة والسرعة والتبريد، ويُقارن بالتفويل في الكشوف</p>
             </div>
             <div role="group" aria-label="الفترة" className="flex gap-0.5 p-1 rounded-xl bg-slate-100 dark:bg-[#0A1020] border border-slate-200/80 dark:border-[#1B2645]">
               {([7, 30] as const).map(d => (
@@ -360,8 +360,8 @@ export const VehicleLab: React.FC<{
               ['ساعات تشغيل التبريد', 'hours', 'ساعة', '0'],
               ['سعر اللتر · اختياري', 'price', 'دينار', '0'],
             ] as const).map(([l, k, u, ph]) => (
-              <label key={k} className="flex flex-col gap-1 p-2.5 px-3 rounded-2xl border border-slate-200 dark:border-[#23304F] bg-slate-50 dark:bg-[#0A1020] focus-within:border-indigo-500">
-                <span className="text-[11.5px] font-semibold text-slate-500 dark:text-[#8090B0]">{l}</span>
+              <label key={k} className="flex flex-col gap-1 p-2.5 px-3 rounded-2xl border border-slate-300 dark:border-[#23304F] bg-white dark:bg-[#0A1020] shadow-sm dark:shadow-none focus-within:border-indigo-500">
+                <span className="text-[11.5px] font-semibold text-slate-600 dark:text-[#8090B0]">{l}</span>
                 <span className="flex items-baseline gap-1.5">
                   <input type="number" inputMode="decimal" min={0} value={trip[k]} onChange={e => setTrip(s => ({ ...s, [k]: e.target.value }))} placeholder={ph} className={`${numInput} text-lg`} />
                   <span className="text-[11.5px] text-slate-400 dark:text-[#5B6787] whitespace-nowrap">{u}</span>
@@ -372,8 +372,8 @@ export const VehicleLab: React.FC<{
               ['صرف القيادة عند 60 كم/س', 'refL100', 'لتر/100كم', ref],
               ['صرف التبريد للساعة', 'reeferLph', 'لتر/س', lph],
             ] as const).map(([l, k, u, v]) => (
-              <label key={k} className="flex flex-col gap-1 p-2.5 px-3 rounded-2xl border border-slate-200 dark:border-[#23304F] bg-slate-50 dark:bg-[#0A1020] focus-within:border-indigo-500">
-                <span className="text-[11.5px] font-semibold text-slate-500 dark:text-[#8090B0]">{l} <span className="text-[10px] text-slate-400 dark:text-[#5B6787]">· يُحفظ</span></span>
+              <label key={k} className="flex flex-col gap-1 p-2.5 px-3 rounded-2xl border border-slate-300 dark:border-[#23304F] bg-white dark:bg-[#0A1020] shadow-sm dark:shadow-none focus-within:border-indigo-500">
+                <span className="text-[11.5px] font-semibold text-slate-600 dark:text-[#8090B0]">{l} <span className="text-[10px] text-slate-400 dark:text-[#5B6787]">· يُحفظ</span></span>
                 <span className="flex items-baseline gap-1.5">
                   <input key={`${vehicle}-${k}-${v}`} type="number" inputMode="decimal" min={0} step="0.1" defaultValue={v || ''} disabled={!editable} placeholder="0" onBlur={e => { const x = num(e.target.value); if (x !== v) saveProfile({ [k]: x || null }); }} className={`${numInput} text-lg`} />
                   <span className="text-[11.5px] text-slate-400 dark:text-[#5B6787] whitespace-nowrap">{u}</span>
@@ -393,7 +393,7 @@ export const VehicleLab: React.FC<{
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="font-mono text-[26px] font-semibold text-slate-900 dark:text-white">{ready ? fmt(expected) : '—'}</span>
-                <span className="text-[10.5px] text-slate-500 dark:text-[#8090B0]">لتر استهلاك</span>
+                <span className="text-[10.5px] text-slate-600 dark:text-[#8090B0]">لتر استهلاك</span>
               </div>
             </div>
             <div className="min-w-0">
@@ -417,8 +417,8 @@ export const VehicleLab: React.FC<{
               ['الفرق', gap === null ? '—' : `${gap > 0 ? '+' : ''}${fmt(gap)}`, gapPct === null ? 'لتر' : `لتر · ${gapPct > 0 ? '+' : ''}${fmt(gapPct)}%`],
               ['زمن القيادة', speed && km ? fmt(km / speed, 1) : '—', 'ساعة'],
             ].map(([l, v, u]) => (
-              <div key={l} className="p-3 px-3.5 rounded-2xl bg-slate-50 dark:bg-[#0A1020] border border-slate-100 dark:border-[#141D36]">
-                <div className="text-[11.5px] font-semibold text-slate-500 dark:text-[#8090B0]">{l}</div>
+              <div key={l} className="p-3 px-3.5 rounded-2xl bg-indigo-50/60 dark:bg-[#0A1020] border border-indigo-100 dark:border-[#141D36]">
+                <div className="text-[11.5px] font-semibold text-slate-600 dark:text-[#8090B0]">{l}</div>
                 <div className="mt-1 font-mono text-lg font-semibold text-slate-900 dark:text-white">{v} <span className="font-cairo text-[11.5px] text-slate-400 dark:text-[#5B6787]">{u}</span></div>
               </div>
             ))}
@@ -426,17 +426,17 @@ export const VehicleLab: React.FC<{
           {/* المفوّل مقابل الاستهلاك (القيادة + التبريد) */}
           <div className="space-y-2">
             <div className="flex items-center gap-2.5">
-              <span className="w-16 text-[11.5px] font-semibold text-slate-500 dark:text-[#8090B0]">المفوّل</span>
+              <span className="w-16 text-[11.5px] font-semibold text-slate-600 dark:text-[#8090B0]">المفوّل</span>
               <div className="flex-1 h-2.5 rounded-full bg-slate-100 dark:bg-[#0A1020] overflow-hidden"><div className="h-full rounded-full bg-slate-400 dark:bg-slate-500 transition-[width] duration-500" style={{ width: `${(refilled / Math.max(refilled, expected, 1)) * 100}%` }} /></div>
             </div>
             <div className="flex items-center gap-2.5">
-              <span className="w-16 text-[11.5px] font-semibold text-slate-500 dark:text-[#8090B0]">الاستهلاك</span>
+              <span className="w-16 text-[11.5px] font-semibold text-slate-600 dark:text-[#8090B0]">الاستهلاك</span>
               <div className="flex-1 h-2.5 rounded-full bg-slate-100 dark:bg-[#0A1020] overflow-hidden flex">
                 <span className="h-full bg-indigo-400 transition-[width] duration-500" style={{ width: `${(drive / Math.max(refilled, expected, 1)) * 100}%` }} />
                 <span className="h-full bg-cyan-400 transition-[width] duration-500" style={{ width: `${(reefer / Math.max(refilled, expected, 1)) * 100}%` }} />
               </div>
             </div>
-            <div className="flex justify-end gap-4 text-[11.5px] text-slate-500 dark:text-[#8090B0]">
+            <div className="flex justify-end gap-4 text-[11.5px] text-slate-600 dark:text-[#8090B0]">
               <span><span className="inline-block w-2 h-2 rounded-sm bg-indigo-400 ml-1.5" />القيادة <bdi className="font-mono">{fmt(drive)}</bdi></span>
               <span><span className="inline-block w-2 h-2 rounded-sm bg-cyan-400 ml-1.5" />التبريد <bdi className="font-mono">{fmt(reefer)}</bdi></span>
             </div>
@@ -459,7 +459,7 @@ export const VehicleLab: React.FC<{
               </div>
               <div className="mt-3.5 text-[13.5px] font-bold">{c.title}</div>
               <div className="mt-1.5 font-mono text-[22px] font-semibold text-slate-900 dark:text-white" dir="ltr" style={{ textAlign: 'right' }}>{c.value}</div>
-              <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-[#8090B0]">{c.line}</div>
+              <div className="mt-1 text-xs leading-6 text-slate-600 dark:text-[#8090B0]">{c.line}</div>
               {c.days && (
                 <div className="grid grid-cols-7 gap-1 mt-2.5">
                   {c.days.map((v, d) => {
