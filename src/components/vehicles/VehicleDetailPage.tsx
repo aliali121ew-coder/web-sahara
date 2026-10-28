@@ -1,8 +1,8 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ArrowRight, ChevronRight, ChevronLeft, Fuel, Gauge, Trophy, Repeat2, Timer, Percent, Hash,
-  User, CheckCircle2, Route as RouteIcon, Layers, IdCard, ShieldCheck, Building2, Container,
+  ArrowRight, Calendar, ChevronRight, ChevronLeft, Fuel, Gauge, Trophy, Repeat2, Timer, Percent, Hash,
+  User, CheckCircle2, Route as RouteIcon, Layers, IdCard, ShieldCheck,
 } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import {
@@ -52,7 +52,7 @@ const Spec: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactN
 );
 
 /** صفحة كاملة لتفاصيل عربة: المواصفات، آخر رحلة تفويل، السائقون، الخريطة، الرسم، والسجل */
-export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, ranking, fleetAvg, fleetTotal, vehicles, editable, backLabel = 'تقرير العربات', onBack, onOpen }) => {
+export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, fleetAvg, fleetTotal, vehicles, editable, backLabel = 'تقرير العربات', onBack }) => {
   const [routes] = useSyncedStorage<VehicleRoute[]>(VEHICLE_ROUTES_KEY, []);
   const [tab, setTab] = useState<'all' | 'frequent' | 'multi' | 'violations'>('all');
   const [profiles, setProfiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
@@ -69,11 +69,7 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, ranking, fle
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, [stat.vehicle]);
 
-  const rank = ranking.indexOf(stat.vehicle);
-  const prevV = rank > 0 ? ranking[rank - 1] : null;
-  const nextV = rank >= 0 && rank < ranking.length - 1 ? ranking[rank + 1] : null;
   const share = fleetTotal ? Math.round((stat.total / fleetTotal) * 1000) / 10 : 0;
-  const vsFleet = fleetAvg ? Math.round(((stat.avg - fleetAvg) / fleetAvg) * 100) : 0;
 
   const myRoutes = useMemo(() => routes.filter(r => r.vehicle === stat.vehicle), [routes, stat.vehicle]);
   const km = myRoutes.reduce((s, r) => s + r.km, 0);
@@ -100,24 +96,6 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, ranking, fle
     : tab === 'multi' ? allRows.filter(f => f.parts > 1)
     : tab === 'violations' ? allRows.filter(f => violationDates.has(f.date))
     : allRows;
-  // السجل مجمّعًا حسب اليوم (الأحدث أولًا) مع إجمالي اليوم وتنبيهاته
-  const historyGroups = useMemo(() => {
-    const out: { date: string; day: string; total: number; multi: boolean; violation: boolean; overCap: boolean; rows: typeof rows }[] = [];
-    for (const f of rows) {
-      let g = out.find(x => x.date === f.date);
-      if (!g) {
-        const [y, m, d] = f.date.split('/').map(Number);
-        const day = new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('ar-IQ', { weekday: 'long', timeZone: 'UTC' });
-        g = { date: f.date, day, total: 0, multi: false, violation: violationDates.has(f.date), overCap: overCap.has(f.date), rows: [] };
-        out.push(g);
-      }
-      g.rows.push(f);
-      g.total += f.qty;
-      if (f.parts > 1) g.multi = true;
-    }
-    return out;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, checks]);
   const DAILY_PAGE = 7;
   // آخر تفويلة فقط: أحدث تاريخ للعربة في كل الملفات المرفوعة، وسطر لكل كمية في ذلك اليوم.
   // الكمية السابقة في الكشوف لا تُستخدم هنا؛ عدد الأيام = من تاريخ التفويل المرفوع الذي قبله
@@ -170,11 +148,6 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, ranking, fle
             <span className="flex items-center gap-1 text-xs font-black px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"><CheckCircle2 className="w-3.5 h-3.5" />منتظم</span>
           )}
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-slate-500 font-bold ml-1">الترتيب #{rank + 1} من {ranking.length}</span>
-          <button type="button" disabled={!prevV} onClick={() => prevV && onOpen(prevV)} title="الأعلى استهلاكًا قبلها" className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 disabled:opacity-30 cursor-pointer"><ChevronRight className="w-4 h-4" /></button>
-          <button type="button" disabled={!nextV} onClick={() => nextV && onOpen(nextV)} title="التالية" className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 disabled:opacity-30 cursor-pointer"><ChevronLeft className="w-4 h-4" /></button>
-        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
@@ -182,15 +155,6 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, ranking, fle
         <div className={`${card} xl:col-span-8 p-5`}>
           {/* ملف العربة */}
           <div className="flex flex-wrap items-center gap-2 mb-4">
-            {[
-              { icon: <Hash className="w-3.5 h-3.5" />, v: profile?.type || category?.label || 'النوع غير محدد', on: !!(profile?.type || category) },
-              { icon: <Container className="w-3.5 h-3.5" />, v: profile?.tankLiters ? `خزان ${profile.tankLiters.toLocaleString()} L` : 'سعة الخزان؟', on: !!profile?.tankLiters },
-              { icon: <ShieldCheck className="w-3.5 h-3.5" />, v: profile?.dailyLimit ? `حصة ${profile.dailyLimit.toLocaleString()} L/يوم` : 'بلا حصة يومية', on: !!profile?.dailyLimit },
-              { icon: <User className="w-3.5 h-3.5" />, v: profile?.driver || 'بلا سائق معتمد', on: !!profile?.driver },
-              { icon: <Building2 className="w-3.5 h-3.5" />, v: profile?.department || 'القسم؟', on: !!profile?.department },
-            ].map((c, i) => (
-              <span key={i} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold ${c.on ? 'bg-sky-500/10 text-sky-700 dark:text-sky-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>{c.icon}{c.v}</span>
-            ))}
             <button type="button" onClick={() => setEditing(true)} className="mr-auto flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-black hover:opacity-90 hover:-translate-x-0.5 transition-all cursor-pointer">
               <IdCard className="w-3.5 h-3.5" />تفاصيل العربة
             </button>
@@ -212,7 +176,6 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, ranking, fle
                 <VehicleArt code={profile?.name || stat.vehicle} className="w-full h-56 sm:h-64" />
               )}
               <div className="absolute top-2 left-2 flex flex-col gap-1.5">
-                <span className={`text-[11px] font-black px-2.5 py-1 rounded-xl ${vsFleet > 0 ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'}`} dir="ltr">{vsFleet > 0 ? '+' : ''}{vsFleet}% vs fleet</span>
                 {km > 0 && <span className="text-[11px] font-black px-2.5 py-1 rounded-xl bg-slate-900 text-white">{km.toLocaleString()} كم · {(stat.total / km).toFixed(2)} L/كم</span>}
               </div>
             </div>
@@ -300,51 +263,55 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, ranking, fle
           </div>
         </div>
         <div className="overflow-x-auto">
-          <div className="min-w-[820px]">
-            <div className="grid grid-cols-[120px_minmax(190px,1.4fr)_minmax(130px,1fr)_130px_minmax(210px,1.3fr)] items-center h-11 px-5 bg-slate-50/80 dark:bg-slate-950/40 border-b border-slate-100 dark:border-slate-800 text-[11.5px] font-bold text-slate-500 dark:text-slate-400">
-              <div>الكمية</div><div>السائق</div><div>الموقع</div><div>الفاصل</div><div>التفويلة السابقة</div>
-            </div>
-            {historyGroups.map(g => (
-              <div key={g.date}>
-                {/* رأس اليوم */}
-                <div className="flex items-center gap-3 h-11 px-5 border-b border-slate-100/80 dark:border-slate-800/60">
-                  <span className="text-[13px] font-bold text-slate-900 dark:text-white">{g.day}</span>
-                  <bdi className="font-mono text-xs text-slate-400">{g.date}</bdi>
-                  <span className="flex-1 h-px bg-slate-100 dark:bg-slate-800" />
-                  <span className="text-xs text-slate-500 dark:text-slate-400"><bdi className="font-mono font-semibold text-slate-900 dark:text-white">{g.total.toLocaleString()}</bdi> لتر · {g.rows.length === 1 ? 'تفويلة واحدة' : `${g.rows.length} تفويلات`}</span>
-                  {g.multi && <span className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-[11.5px] font-bold text-rose-700 dark:text-rose-300"><span className="w-1.5 h-1.5 rounded-full bg-rose-500" />مكرر باليوم</span>}
-                  {g.violation && <span className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-[11.5px] font-bold text-amber-800 dark:text-amber-300"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" />{g.overCap ? 'فوق سعة الخزان' : 'مخالفة الملف'}</span>}
-                </div>
-                {g.rows.map(f => {
-                  const driver = f.drivers.join('، ');
-                  const near = f.days !== null && f.days <= FREQUENT_DAYS;
-                  return (
-                    <div key={f.key} className="grid grid-cols-[120px_minmax(190px,1.4fr)_minmax(130px,1fr)_130px_minmax(210px,1.3fr)] items-center min-h-[60px] px-5 py-2 border-b border-slate-100/80 dark:border-slate-800/60 hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors">
-                      <div className="font-mono text-[15px] font-semibold text-slate-900 dark:text-white">{f.qty.toLocaleString()} <span className="font-cairo text-[11.5px] font-bold text-slate-400">لتر</span></div>
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        {driver ? <span className={`w-[30px] h-[30px] shrink-0 rounded-full inline-flex items-center justify-center text-xs font-bold ${avatarTone(driver)}`}>{driver.charAt(0)}</span> : null}
-                        <span className="text-[13.5px] font-semibold text-slate-800 dark:text-slate-100 truncate">{driver || '—'}</span>
+          {/* جدول مثل صفحات الوارد: رأس كحلي، تاريخ بأيقونة تقويم، صفوف متناوبة ومختصرة */}
+          <table className="w-full text-right text-xs border-collapse min-w-[860px]">
+            <thead>
+              <tr className="bg-gradient-to-r from-[#1c3b6f] via-[#244e91] to-[#1c3b6f] text-white font-black text-[11.5px] select-none">
+                {['التاريخ', 'الكمية', 'السائق', 'الموقع', 'الفاصل', 'التفويلة السابقة'].map(h => <th key={h} className="py-3 px-4 whitespace-nowrap font-cairo">{h}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((f, i) => {
+                const driver = f.drivers.join('، ');
+                const near = f.days !== null && f.days <= FREQUENT_DAYS;
+                return (
+                  <tr key={f.key} className={`border-b border-slate-100 dark:border-slate-800/60 hover:bg-sky-50/60 dark:hover:bg-slate-800/40 transition-colors ${i % 2 ? 'bg-slate-50/70 dark:bg-slate-900/40' : ''}`}>
+                    <td className="py-2 px-4 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5 font-sans text-slate-600 dark:text-slate-300">
+                        <Calendar className="w-3 h-3 text-slate-400 shrink-0" /><span>{f.date}</span>
+                        {f.parts > 1 && <span className="text-[10px] font-bold px-1.5 py-px rounded-md bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300" title="عدد تفويلات هذا اليوم">{f.parts} باليوم</span>}
+                        {overCap.has(f.date) ? <span className="text-[10px] font-bold px-1.5 py-px rounded-md bg-rose-500 text-white">فوق السعة</span>
+                          : violationDates.has(f.date) && <span className="text-[10px] font-bold px-1.5 py-px rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300">مخالفة</span>}
                       </div>
-                      <div className="text-[13px] text-slate-600 dark:text-slate-300 truncate">{f.sites.join('، ')}</div>
-                      <div className="flex items-center gap-2 text-[12.5px] font-semibold text-slate-700 dark:text-slate-200">
-                        {f.days !== null && <span className={`w-[7px] h-[7px] rounded-full shrink-0 ${near ? 'bg-rose-500' : 'bg-slate-300 dark:bg-slate-600'}`} />}
+                    </td>
+                    <td className="py-2 px-4 whitespace-nowrap font-mono text-[13px] font-semibold text-slate-900 dark:text-white">{f.qty.toLocaleString()} <span className="font-cairo text-[11px] font-bold text-slate-400">لتر</span></td>
+                    <td className="py-2 px-4">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {driver && <span className={`w-6 h-6 shrink-0 rounded-full inline-flex items-center justify-center text-[11px] font-bold ${avatarTone(driver)}`}>{driver.charAt(0)}</span>}
+                        <span className="font-semibold text-slate-800 dark:text-slate-100 truncate">{driver || '—'}</span>
+                      </div>
+                    </td>
+                    <td className="py-2 px-4 whitespace-nowrap text-slate-600 dark:text-slate-300">{f.sites.join('، ')}</td>
+                    <td className="py-2 px-4 whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-200">
+                        {f.days !== null && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${near ? 'bg-rose-500' : 'bg-slate-300 dark:bg-slate-600'}`} />}
                         {f.days === null ? <span className="text-slate-400">—</span> : f.days === 0 ? 'اليوم نفسه' : <>بعد <bdi className="font-mono">{f.days}</bdi> يوم</>}
-                      </div>
-                      <div className="min-w-0">
-                        {f.prevQty !== null || f.prevDate ? (
-                          <>
-                            <div className="text-[13px]"><bdi className="font-mono font-semibold text-slate-900 dark:text-white">{f.prevQty?.toLocaleString() ?? '—'}</bdi> <span className="text-slate-400">لتر ·</span> <bdi className="font-mono text-slate-500">{f.prevDate ? `${f.prevDate.slice(8)}/${f.prevDate.slice(5, 7)}` : '—'}</bdi></div>
-                            <div className="text-[11.5px] text-slate-400 truncate">{[f.prevDriver, f.prevSite].filter(Boolean).join(' · ') || '—'}</div>
-                          </>
-                        ) : <span className="text-slate-400">—</span>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-            {!rows.length && <div className="py-12 text-center text-sm text-slate-400">لا توجد تفويلات في هذا التبويب</div>}
-          </div>
+                      </span>
+                    </td>
+                    <td className="py-2 px-4 max-w-[320px]">
+                      {f.prevQty !== null || f.prevDate ? (
+                        <div className="truncate text-slate-500 dark:text-slate-400">
+                          <bdi className="font-mono font-semibold text-slate-800 dark:text-slate-100">{f.prevQty?.toLocaleString() ?? '—'}</bdi> لتر · <bdi className="font-mono">{f.prevDate || '—'}</bdi>
+                          {(f.prevDriver || f.prevSite) && <span className="text-slate-400"> · {[f.prevDriver, f.prevSite].filter(Boolean).join(' · ')}</span>}
+                        </div>
+                      ) : <span className="text-slate-400">—</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+              {!rows.length && <tr><td colSpan={6} className="py-12 text-center text-sm text-slate-400">لا توجد تفويلات في هذا التبويب</td></tr>}
+            </tbody>
+          </table>
         </div>
       </div>
 
