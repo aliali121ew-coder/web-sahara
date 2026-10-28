@@ -532,7 +532,7 @@ const CATEGORY: Record<string, { label: string; image: string; door: [number, nu
 /** المساحة الشفافة تحت العجلات في صورة كل فئة (نسبة من ارتفاع الصورة)، لإنزال العربة حتى تقف على الأرض */
 const IMAGE_GROUND: Record<string, number> = {
   a: 0.062, at: 0.048, bs: 0.082, head: 0.077, hf: 0.141, hr: 0.042, hw: 0.113, k: 0.048, ka: 0.238, kb: 0.026,
-  kh: 0.138, kn: 0.08, ks: 0.058, l: 0.044, m: 0.062, r: 0.062, sf: 0.046, sf1: 0.06, sl: 0.056, sr: 0.068,
+  kh: 0.138, kn: 0.08, ks: 0.058, l: 0.044, m: 0.062, r: 0.062, sf: 0.046, sf1: 0, sl: 0.056, sr: 0.068,
 };
 export const imageGround = (url: string) => IMAGE_GROUND[/\/types\/([\w-]+)\.webp$/.exec(url)?.[1] || ''] || 0;
 
