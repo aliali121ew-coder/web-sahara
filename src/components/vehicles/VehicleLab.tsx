@@ -69,7 +69,7 @@ const paths = (values: number[]) => {
   return { line, area, avgY: Y(avg), peak: pts[peak], peakValue: values[peak], avg };
 };
 
-const panel = 'rounded-3xl bg-[#0C1224] border border-[#1B2645]';
+const panel = 'rounded-3xl bg-white dark:bg-[#0C1224] border border-slate-200/80 dark:border-[#1B2645] shadow-soft-card dark:shadow-none';
 
 /**
  * مختبر العربة: صفحة تحليل متقدم بطابع داكن — سجل الآلية من ملف آليات الشركة، الخزانات وسعتها،
@@ -183,7 +183,7 @@ export const VehicleLab: React.FC<{
   }, [fills, lastDate, end, reg, registry, allFills, vehicle, refills]);
 
   const tone = {
-    warn: 'bg-[#2A1420] text-[#FB7185]', info: 'bg-[#14203A] text-[#A5B4FC]', ok: 'bg-[#0F2A24] text-[#6EE7B7]', soon: 'bg-[#1B2645] text-[#8090B0]',
+    warn: 'bg-rose-50 dark:bg-[#2A1420] text-rose-600 dark:text-[#FB7185]', info: 'bg-indigo-50 dark:bg-[#14203A] text-indigo-600 dark:text-[#A5B4FC]', ok: 'bg-emerald-50 dark:bg-[#0F2A24] text-emerald-700 dark:text-[#6EE7B7]', soon: 'bg-slate-100 dark:bg-[#1B2645] text-slate-500 dark:text-[#8090B0]',
   };
   const tags = { warn: 'تنبيه', info: 'تحليل', ok: 'جيد', soon: 'يحتاج بيانات' };
   const cards: { icon: React.ReactNode; t: keyof typeof tone; title: string; value: string; line: string; days?: number[] }[] = [
@@ -197,16 +197,16 @@ export const VehicleLab: React.FC<{
     { icon: <Calendar className="w-[18px] h-[18px]" />, t: 'info', title: 'نمط أيام الأسبوع', value: fills.length ? WEEKDAYS[insights.topDay] : '—', line: 'أكثر يوم تفويلًا', days: insights.byDay },
   ];
 
-  const field = 'flex items-center gap-2 h-10 px-3 rounded-xl border border-[#23304F] bg-[#0A1020] focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20';
-  const numInput = 'w-full bg-transparent outline-none text-white font-mono font-semibold placeholder:text-[#5B6787]';
+  const field = 'flex items-center gap-2 h-10 px-3 rounded-xl border border-slate-200 dark:border-[#23304F] bg-slate-50 dark:bg-[#0A1020] focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20';
+  const numInput = 'w-full bg-transparent outline-none text-slate-900 dark:text-white font-mono font-semibold placeholder:text-slate-400 dark:placeholder:text-[#5B6787]';
 
   return (
-    <div className="vehicle-page font-cairo rounded-[28px] bg-[#070B16] text-[#E6EBF5] p-4 sm:p-6 space-y-5" dir="rtl">
+    <div className="vehicle-page font-cairo dark:rounded-[28px] bg-transparent dark:bg-[#070B16] text-slate-900 dark:text-[#E6EBF5] dark:p-4 dark:sm:p-6 space-y-5" dir="rtl">
       {/* العنوان */}
       <div className="va-rise flex flex-wrap items-end justify-between gap-3">
-        <h2 className="flex items-baseline gap-3 text-[28px] font-bold tracking-tight">مختبر العربة<span className="font-mono text-[22px] font-semibold text-indigo-300" dir="ltr">{profile?.name || vehicle}</span></h2>
+        <h2 className="flex items-baseline gap-3 text-[28px] font-bold tracking-tight">مختبر العربة<span className="font-mono text-[22px] font-semibold text-indigo-600 dark:text-indigo-300" dir="ltr">{profile?.name || vehicle}</span></h2>
         {lastDate && (
-          <span className="inline-flex items-center gap-2 h-9 px-3.5 rounded-xl border border-[#1B2645] bg-[#0C1224] text-xs font-semibold text-[#B6C2DC]">
+          <span className="inline-flex items-center gap-2 h-9 px-3.5 rounded-xl border border-slate-200/80 dark:border-[#1B2645] bg-white dark:bg-[#0C1224] text-xs font-semibold text-slate-600 dark:text-[#B6C2DC]">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />آخر تفويلة <bdi className="font-mono">{short(lastDate)}</bdi>
           </span>
         )}
@@ -216,70 +216,70 @@ export const VehicleLab: React.FC<{
       <div className="va-rise grid grid-cols-1 lg:grid-cols-3 gap-4" style={{ animationDelay: '.05s' }}>
         <section aria-label="سجل الآلية" className={`${panel} p-5`}>
           <div className="flex items-center justify-between mb-3.5">
-            <span className="text-xs font-bold text-[#8090B0]">سجل الآلية</span>
+            <span className="text-xs font-bold text-slate-500 dark:text-[#8090B0]">سجل الآلية</span>
             {editable && (
               <>
                 <input ref={fileRef} type="file" accept=".xlsx,.xls" multiple hidden onChange={e => void importRegistry(e.target.files)} />
-                <button type="button" onClick={() => fileRef.current?.click()} disabled={!!importing && importing.startsWith('جارٍ')} className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-[#14203A] text-[11.5px] font-semibold text-indigo-200 hover:bg-[#1B2A4D] cursor-pointer disabled:opacity-60">
+                <button type="button" onClick={() => fileRef.current?.click()} disabled={!!importing && importing.startsWith('جارٍ')} className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-indigo-50 dark:bg-[#14203A] text-[11.5px] font-semibold text-indigo-700 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-[#1B2A4D] cursor-pointer disabled:opacity-60">
                   {importing?.startsWith('جارٍ') ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileSpreadsheet className="w-3.5 h-3.5" />}
                   {reg ? 'تحديث من Excel' : 'استيراد ملف الآليات'}
                 </button>
               </>
             )}
           </div>
-          {importing && <div className="mb-3 text-[11.5px] font-semibold text-indigo-200">{importing}</div>}
+          {importing && <div className="mb-3 text-[11.5px] font-semibold text-indigo-700 dark:text-indigo-200">{importing}</div>}
           {reg ? (
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-[13px]">
-              <dt className="text-[#8090B0]">رقم الآلية</dt><dd className="font-mono font-semibold text-white" dir="ltr" style={{ textAlign: 'right' }}>{reg.plate || '—'}</dd>
-              <dt className="text-[#8090B0]">النوع</dt><dd className="font-semibold">{reg.type || '—'}</dd>
-              <dt className="text-[#8090B0]">المحافظة</dt><dd>{reg.governorate || '—'}</dd>
-              <dt className="text-[#8090B0]">المصنع</dt><dd>{reg.factory || '—'}</dd>
-              <dt className="text-[#8090B0]">المجموعة</dt><dd>{reg.group || '—'}</dd>
-              <dt className="text-[#8090B0]">المسؤول</dt><dd>{reg.supervisor || '—'}</dd>
-              <dt className="text-[#8090B0]">السائق</dt><dd className="truncate">{drivers.join('، ') || '—'}</dd>
+              <dt className="text-slate-500 dark:text-[#8090B0]">رقم الآلية</dt><dd className="font-mono font-semibold text-slate-900 dark:text-white" dir="ltr" style={{ textAlign: 'right' }}>{reg.plate || '—'}</dd>
+              <dt className="text-slate-500 dark:text-[#8090B0]">النوع</dt><dd className="font-semibold">{reg.type || '—'}</dd>
+              <dt className="text-slate-500 dark:text-[#8090B0]">المحافظة</dt><dd>{reg.governorate || '—'}</dd>
+              <dt className="text-slate-500 dark:text-[#8090B0]">المصنع</dt><dd>{reg.factory || '—'}</dd>
+              <dt className="text-slate-500 dark:text-[#8090B0]">المجموعة</dt><dd>{reg.group || '—'}</dd>
+              <dt className="text-slate-500 dark:text-[#8090B0]">المسؤول</dt><dd>{reg.supervisor || '—'}</dd>
+              <dt className="text-slate-500 dark:text-[#8090B0]">السائق</dt><dd className="truncate">{drivers.join('، ') || '—'}</dd>
             </dl>
           ) : (
-            <p className="text-[13px] leading-7 text-[#8090B0]">لا يوجد سطر لهذه العربة في ملف آليات الشركة. {editable ? 'استورد ملف «جميع آليات الشركة» (ويمكن رفع أكثر من ملف) لتظهر هنا رقم الآلية والنوع والمصنع والمجموعة.' : ''}</p>
+            <p className="text-[13px] leading-7 text-slate-500 dark:text-[#8090B0]">لا يوجد سطر لهذه العربة في ملف آليات الشركة. {editable ? 'استورد ملف «جميع آليات الشركة» (ويمكن رفع أكثر من ملف) لتظهر هنا رقم الآلية والنوع والمصنع والمجموعة.' : ''}</p>
           )}
         </section>
 
         <section aria-label="العربة" className={`${panel} relative min-h-[300px] overflow-hidden flex items-end justify-center`}>
           <span className="absolute left-1/2 bottom-6 -translate-x-1/2 w-[380px] max-w-[90%] h-28 rounded-[50%] bg-[radial-gradient(closest-side,rgb(99_102_241/0.35),transparent)]" />
-          <span className="absolute inset-x-6 bottom-10 h-px bg-[#1B2645]" />
+          <span className="absolute inset-x-6 bottom-10 h-px bg-slate-100 dark:bg-[#1B2645]" />
           <img src={url} alt={`صورة العربة ${code}`} className="relative w-[86%] max-w-[400px] h-auto mb-10" style={{ transform: `translateY(${imageGround(url) * 100}%)` }} />
           <div className="absolute top-4 right-4 flex gap-2">
-            {reg && <span className="inline-flex items-center h-7 px-3 rounded-full bg-white/[0.06] text-xs font-semibold text-indigo-100">{reg.type}</span>}
-            {caps[1] ? <span className="inline-flex items-center h-7 px-3 rounded-full bg-white/[0.06] text-xs font-semibold text-indigo-100">خزانان</span> : null}
+            {reg && <span className="inline-flex items-center h-7 px-3 rounded-full bg-slate-100 dark:bg-white/[0.06] text-xs font-semibold text-slate-700 dark:text-indigo-100">{reg.type}</span>}
+            {caps[1] ? <span className="inline-flex items-center h-7 px-3 rounded-full bg-slate-100 dark:bg-white/[0.06] text-xs font-semibold text-slate-700 dark:text-indigo-100">خزانان</span> : null}
           </div>
         </section>
 
         <section aria-label="الخزانات" className={`${panel} p-5 flex flex-col gap-4`}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#8090B0]">الخزانات</span>
-            <span className="text-[11px] font-semibold text-[#5B6787]">آخر تفويلة مقابل السعة</span>
+            <span className="text-xs font-bold text-slate-500 dark:text-[#8090B0]">الخزانات</span>
+            <span className="text-[11px] font-semibold text-slate-400 dark:text-[#5B6787]">آخر تفويلة مقابل السعة</span>
           </div>
           {tanks.map(t => {
             const pct = t.cap ? (t.fill / t.cap) * 100 : null;
             const overT = pct !== null && pct > 100;
             return (
               <div key={t.field} className="grid grid-cols-[54px_1fr] gap-3.5 items-center">
-                <div className="relative w-[54px] h-[84px] rounded-xl border-[1.5px] border-[#2A3658] bg-[#0A1020] overflow-hidden">
+                <div className="relative w-[54px] h-[84px] rounded-xl border-[1.5px] border-slate-300 dark:border-[#2A3658] bg-slate-50 dark:bg-[#0A1020] overflow-hidden">
                   <span className={`va-grow absolute inset-x-0 bottom-0 ${overT ? 'bg-rose-500' : 'bg-indigo-500'}`} style={{ height: `${Math.min(100, pct || 0)}%` }} />
-                  <span className="absolute inset-0 flex items-center justify-center font-mono text-xs font-semibold text-white">{pct === null ? '؟' : `${Math.round(pct)}%`}</span>
+                  <span className="absolute inset-0 flex items-center justify-center font-mono text-xs font-semibold text-slate-900 dark:text-white">{pct === null ? '؟' : `${Math.round(pct)}%`}</span>
                 </div>
                 <div className="flex flex-col gap-1.5 min-w-0">
-                  <div className="text-[13.5px] font-bold">{t.name}{t.hint && <span className="mr-1.5 text-[11px] font-medium text-[#5B6787]">{t.hint}</span>}</div>
+                  <div className="text-[13.5px] font-bold">{t.name}{t.hint && <span className="mr-1.5 text-[11px] font-medium text-slate-400 dark:text-[#5B6787]">{t.hint}</span>}</div>
                   <label className={field}>
-                    <span className="text-[11.5px] text-[#8090B0] whitespace-nowrap">السعة</span>
+                    <span className="text-[11.5px] text-slate-500 dark:text-[#8090B0] whitespace-nowrap">السعة</span>
                     <input
                       key={`${vehicle}-${t.field}-${t.cap ?? ''}`}
                       type="number" inputMode="numeric" min={0} defaultValue={t.cap ?? ''} disabled={!editable} placeholder="باللتر" aria-label={`سعة ${t.name} باللتر`}
                       onBlur={e => { const v = num(e.target.value); if ((v || null) !== t.cap) saveProfile({ [t.field]: v || null }); }}
                       className={`${numInput} text-sm`}
                     />
-                    <span className="text-[11.5px] text-[#5B6787]">لتر</span>
+                    <span className="text-[11.5px] text-slate-400 dark:text-[#5B6787]">لتر</span>
                   </label>
-                  <div className={`text-[11.5px] font-semibold ${overT ? 'text-rose-400' : t.cap ? 'text-emerald-300' : 'text-[#5B6787]'}`}>
+                  <div className={`text-[11.5px] font-semibold ${overT ? 'text-rose-600 dark:text-rose-400' : t.cap ? 'text-emerald-600 dark:text-emerald-300' : 'text-slate-400 dark:text-[#5B6787]'}`}>
                     {!t.cap ? 'أدخل السعة لكشف التفويل فوق السعة' : overT ? `آخر تفويلة أكبر من السعة بـ ${fmt(t.fill - t.cap)} لتر` : t.fill ? `آخر تفويلة ${fmt(t.fill)} لتر ضمن السعة` : 'لا تفويلة مسجلة لهذا الخزان'}
                   </div>
                 </div>
@@ -294,11 +294,11 @@ export const VehicleLab: React.FC<{
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <h3 className="text-base font-bold">الاستهلاك عبر الزمن</h3>
-            {firstDate && <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#1B2645] text-[#8090B0]">البيانات من <bdi className="font-mono">{short(firstDate)}</bdi></span>}
+            {firstDate && <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-[#1B2645] text-slate-500 dark:text-[#8090B0]">البيانات من <bdi className="font-mono">{short(firstDate)}</bdi></span>}
           </div>
-          <div role="group" aria-label="المدى" className="flex gap-0.5 p-1 rounded-2xl bg-[#0A1020] border border-[#1B2645]">
+          <div role="group" aria-label="المدى" className="flex gap-0.5 p-1 rounded-2xl bg-slate-50 dark:bg-[#0A1020] border border-slate-200/80 dark:border-[#1B2645]">
             {([['day', 'يوم'], ['week', 'أسبوع'], ['month', 'شهر'], ['q', '3 أشهر'], ['year', 'سنة']] as const).map(([k, l]) => (
-              <button key={k} type="button" aria-pressed={range === k} onClick={() => setRange(k)} className={`h-8 px-3.5 rounded-xl text-xs font-semibold cursor-pointer transition-colors ${range === k ? 'bg-indigo-500 text-white' : 'text-[#8090B0] hover:text-white'}`}>{l}</button>
+              <button key={k} type="button" aria-pressed={range === k} onClick={() => setRange(k)} className={`h-8 px-3.5 rounded-xl text-xs font-semibold cursor-pointer transition-colors ${range === k ? 'bg-indigo-500 text-white' : 'text-slate-500 hover:text-slate-900 dark:text-[#8090B0] dark:hover:text-white'}`}>{l}</button>
             ))}
           </div>
         </div>
@@ -310,8 +310,8 @@ export const VehicleLab: React.FC<{
             ['التفويلات', String(range === 'day' ? lastDayLines.length : buckets.filter(b => b.value > 0).length), ''],
           ].map(([l, v, u]) => (
             <div key={l}>
-              <div className="text-[11.5px] font-semibold text-[#8090B0]">{l}</div>
-              <div className="mt-1 font-mono text-2xl font-semibold text-white">{v} <span className="font-cairo text-xs text-[#5B6787]">{u}</span></div>
+              <div className="text-[11.5px] font-semibold text-slate-500 dark:text-[#8090B0]">{l}</div>
+              <div className="mt-1 font-mono text-2xl font-semibold text-slate-900 dark:text-white">{v} <span className="font-cairo text-xs text-slate-400 dark:text-[#5B6787]">{u}</span></div>
             </div>
           ))}
         </div>
@@ -319,18 +319,18 @@ export const VehicleLab: React.FC<{
           <div key={range} className="mt-3">
             <svg viewBox="0 0 1000 220" preserveAspectRatio="none" className="block w-full h-[220px]" role="img" aria-label="رسم الاستهلاك">
               <defs><linearGradient id="lab-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#6366F1" stopOpacity=".38" /><stop offset="1" stopColor="#6366F1" stopOpacity="0" /></linearGradient></defs>
-              {[55, 110, 165].map(y => <line key={y} x1="0" y1={y} x2="1000" y2={y} stroke="#141D36" />)}
+              {[55, 110, 165].map(y => <line key={y} x1="0" y1={y} x2="1000" y2={y} className="stroke-slate-100 dark:stroke-[#141D36]" />)}
               <path d={chart.area} fill="url(#lab-area)" />
               <path d={`M0 ${chart.avgY.toFixed(1)} L1000 ${chart.avgY.toFixed(1)}`} fill="none" stroke="#475577" strokeWidth="1.5" strokeDasharray="6 6" />
               <path d={chart.line} fill="none" stroke="#818CF8" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" className="va-draw" />
-              <circle cx={chart.peak[0]} cy={chart.peak[1]} r="5" fill="#F43F5E" stroke="#0C1224" strokeWidth="2" />
+              <circle cx={chart.peak[0]} cy={chart.peak[1]} r="5" fill="#F43F5E" strokeWidth="2" className="stroke-white dark:stroke-[#0C1224]" />
             </svg>
-            <div className="flex justify-between mt-2 font-mono text-[11px] text-[#5B6787]">
+            <div className="flex justify-between mt-2 font-mono text-[11px] text-slate-400 dark:text-[#5B6787]">
               {buckets.filter((_, i) => i % Math.max(1, Math.round(buckets.length / 8)) === 0).map((b, i) => <span key={i}>{b.label}</span>)}
             </div>
           </div>
         ) : (
-          <div className="mt-6 py-12 text-center text-sm text-[#5B6787]">لا تفويلات في هذا المدى</div>
+          <div className="mt-6 py-12 text-center text-sm text-slate-400 dark:text-[#5B6787]">لا تفويلات في هذا المدى</div>
         )}
       </section>
 
@@ -339,7 +339,7 @@ export const VehicleLab: React.FC<{
         <section aria-label="مدخلات المحلل" className={`${panel} p-5 flex flex-col gap-3.5`}>
           <div>
             <h3 className="text-base font-bold">محلل الصرف الحقيقي</h3>
-            <p className="mt-1 text-[12.5px] text-[#8090B0]">اكتب المسافة والسرعة، ويُفصل صرف القيادة عن صرف التبريد</p>
+            <p className="mt-1 text-[12.5px] text-slate-500 dark:text-[#8090B0]">اكتب المسافة والسرعة، ويُفصل صرف القيادة عن صرف التبريد</p>
           </div>
           <div className="grid grid-cols-2 gap-2.5">
             {([
@@ -348,11 +348,11 @@ export const VehicleLab: React.FC<{
               ['متوسط السرعة', 'speed', 'كم/س', '0'],
               ['ساعات تشغيل التبريد', 'hours', 'ساعة', '0'],
             ] as const).map(([l, k, u, ph]) => (
-              <label key={k} className="flex flex-col gap-1 p-2.5 px-3 rounded-2xl border border-[#23304F] bg-[#0A1020] focus-within:border-indigo-500">
-                <span className="text-[11.5px] font-semibold text-[#8090B0]">{l}</span>
+              <label key={k} className="flex flex-col gap-1 p-2.5 px-3 rounded-2xl border border-slate-200 dark:border-[#23304F] bg-slate-50 dark:bg-[#0A1020] focus-within:border-indigo-500">
+                <span className="text-[11.5px] font-semibold text-slate-500 dark:text-[#8090B0]">{l}</span>
                 <span className="flex items-baseline gap-1.5">
                   <input type="number" inputMode="decimal" min={0} value={trip[k]} onChange={e => setTrip(s => ({ ...s, [k]: e.target.value }))} placeholder={ph} className={`${numInput} text-lg`} />
-                  <span className="text-[11.5px] text-[#5B6787] whitespace-nowrap">{u}</span>
+                  <span className="text-[11.5px] text-slate-400 dark:text-[#5B6787] whitespace-nowrap">{u}</span>
                 </span>
               </label>
             ))}
@@ -360,19 +360,19 @@ export const VehicleLab: React.FC<{
               ['صرف التبريد للساعة', 'reeferLph', 'لتر/س', lph],
               ['المعدل المرجعي للعربة', 'refL100', 'لتر/100كم', ref],
             ] as const).map(([l, k, u, v]) => (
-              <label key={k} className="flex flex-col gap-1 p-2.5 px-3 rounded-2xl border border-[#23304F] bg-[#0A1020] focus-within:border-indigo-500">
-                <span className="text-[11.5px] font-semibold text-[#8090B0]">{l} <span className="text-[10px] text-[#5B6787]">· يُحفظ</span></span>
+              <label key={k} className="flex flex-col gap-1 p-2.5 px-3 rounded-2xl border border-slate-200 dark:border-[#23304F] bg-slate-50 dark:bg-[#0A1020] focus-within:border-indigo-500">
+                <span className="text-[11.5px] font-semibold text-slate-500 dark:text-[#8090B0]">{l} <span className="text-[10px] text-slate-400 dark:text-[#5B6787]">· يُحفظ</span></span>
                 <span className="flex items-baseline gap-1.5">
                   <input key={`${vehicle}-${k}-${v}`} type="number" inputMode="decimal" min={0} step="0.1" defaultValue={v || ''} disabled={!editable} placeholder="0" onBlur={e => { const x = num(e.target.value); if (x !== v) saveProfile({ [k]: x || null }); }} className={`${numInput} text-lg`} />
-                  <span className="text-[11.5px] text-[#5B6787] whitespace-nowrap">{u}</span>
+                  <span className="text-[11.5px] text-slate-400 dark:text-[#5B6787] whitespace-nowrap">{u}</span>
                 </span>
               </label>
             ))}
-            <label className="col-span-2 flex flex-col gap-1 p-2.5 px-3 rounded-2xl border border-[#23304F] bg-[#0A1020] focus-within:border-indigo-500">
-              <span className="text-[11.5px] font-semibold text-[#8090B0]">سعر اللتر <span className="text-[10px] text-[#5B6787]">· اختياري</span></span>
+            <label className="col-span-2 flex flex-col gap-1 p-2.5 px-3 rounded-2xl border border-slate-200 dark:border-[#23304F] bg-slate-50 dark:bg-[#0A1020] focus-within:border-indigo-500">
+              <span className="text-[11.5px] font-semibold text-slate-500 dark:text-[#8090B0]">سعر اللتر <span className="text-[10px] text-slate-400 dark:text-[#5B6787]">· اختياري</span></span>
               <span className="flex items-baseline gap-1.5">
                 <input type="number" inputMode="decimal" min={0} value={trip.price} onChange={e => setTrip(s => ({ ...s, price: e.target.value }))} placeholder="0" className={`${numInput} text-lg`} />
-                <span className="text-[11.5px] text-[#5B6787]">دينار</span>
+                <span className="text-[11.5px] text-slate-400 dark:text-[#5B6787]">دينار</span>
               </span>
             </label>
           </div>
@@ -382,20 +382,20 @@ export const VehicleLab: React.FC<{
           <div className="flex items-center gap-5">
             <div className="relative w-[132px] h-[132px] shrink-0">
               <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90" aria-hidden>
-                <circle cx="60" cy="60" r="50" fill="none" stroke="#141D36" strokeWidth="10" />
+                <circle cx="60" cy="60" r="50" fill="none" strokeWidth="10" className="stroke-slate-100 dark:stroke-[#141D36]" />
                 <circle cx="60" cy="60" r="50" fill="none" stroke={ringColor} strokeWidth="10" strokeLinecap="round" strokeDasharray="314" strokeDashoffset={314 * (1 - ring)} className="transition-[stroke-dashoffset,stroke] duration-500" />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="font-mono text-[26px] font-semibold text-white">{per100 === null ? '—' : fmt(per100, 1)}</span>
-                <span className="text-[10.5px] text-[#8090B0]">لتر / 100 كم</span>
+                <span className="font-mono text-[26px] font-semibold text-slate-900 dark:text-white">{per100 === null ? '—' : fmt(per100, 1)}</span>
+                <span className="text-[10.5px] text-slate-500 dark:text-[#8090B0]">لتر / 100 كم</span>
               </div>
             </div>
             <div className="min-w-0">
-              <div className={`text-lg font-bold ${over ? 'text-rose-400' : under ? 'text-cyan-300' : diff === null ? 'text-[#B6C2DC]' : 'text-emerald-300'}`}>
+              <div className={`text-lg font-bold ${over ? 'text-rose-600 dark:text-rose-400' : under ? 'text-cyan-600 dark:text-cyan-300' : diff === null ? 'text-slate-600 dark:text-[#B6C2DC]' : 'text-emerald-600 dark:text-emerald-300'}`}>
                 {per100 === null ? 'أدخل المسافة' : diff === null ? 'أدخل المعدل المرجعي' : over ? 'أعلى من المرجع' : under ? 'أقل من المرجع' : 'ضمن المرجع'}
               </div>
               {diff !== null && (
-                <div className="mt-1.5 text-[13px] text-[#B6C2DC]">
+                <div className="mt-1.5 text-[13px] text-slate-600 dark:text-[#B6C2DC]">
                   <bdi className="font-mono">{diff > 0 ? '+' : ''}{fmt(diff)}%</bdi> عن <bdi className="font-mono">{fmt(ref, 1)}</bdi> لتر/100 كم
                   {over && <> · <bdi className="font-mono">{fmt(drive - (ref * km) / 100)}</bdi> لتر زائدة</>}
                 </div>
@@ -409,19 +409,19 @@ export const VehicleLab: React.FC<{
               ['زمن القيادة', speed ? fmt(km / speed, 1) : '—', 'ساعة'],
               [price ? 'الكلفة' : 'كلفة الكيلومتر', price ? fmt(fuel * price) : '—', price ? 'دينار' : 'أدخل سعر اللتر'],
             ].map(([l, v, u]) => (
-              <div key={l} className="p-3 px-3.5 rounded-2xl bg-[#0A1020] border border-[#141D36]">
-                <div className="text-[11.5px] font-semibold text-[#8090B0]">{l}</div>
-                <div className="mt-1 font-mono text-lg font-semibold text-white">{v} <span className="font-cairo text-[11.5px] text-[#5B6787]">{u}</span></div>
+              <div key={l} className="p-3 px-3.5 rounded-2xl bg-slate-50 dark:bg-[#0A1020] border border-slate-100 dark:border-[#141D36]">
+                <div className="text-[11.5px] font-semibold text-slate-500 dark:text-[#8090B0]">{l}</div>
+                <div className="mt-1 font-mono text-lg font-semibold text-slate-900 dark:text-white">{v} <span className="font-cairo text-[11.5px] text-slate-400 dark:text-[#5B6787]">{u}</span></div>
               </div>
             ))}
           </div>
-          {price > 0 && km > 0 && <div className="text-xs text-[#8090B0]">كلفة الكيلومتر <bdi className="font-mono text-white">{fmt((fuel * price) / km)}</bdi> دينار</div>}
+          {price > 0 && km > 0 && <div className="text-xs text-slate-500 dark:text-[#8090B0]">كلفة الكيلومتر <bdi className="font-mono text-slate-900 dark:text-white">{fmt((fuel * price) / km)}</bdi> دينار</div>}
           <div>
-            <div className="flex h-2.5 rounded-full overflow-hidden gap-[3px] bg-[#0A1020]">
+            <div className="flex h-2.5 rounded-full overflow-hidden gap-[3px] bg-slate-50 dark:bg-[#0A1020]">
               <span className="bg-indigo-400 transition-[flex] duration-500" style={{ flex: `${drive || 0.0001} 1 0` }} />
               <span className="bg-cyan-400 transition-[flex] duration-500" style={{ flex: `${reefer || 0.0001} 1 0` }} />
             </div>
-            <div className="flex justify-between mt-2 text-[11.5px] text-[#8090B0]">
+            <div className="flex justify-between mt-2 text-[11.5px] text-slate-500 dark:text-[#8090B0]">
               <span><span className="inline-block w-2 h-2 rounded-sm bg-indigo-400 ml-1.5" />القيادة {fuel ? `${Math.round((drive / fuel) * 100)}%` : '—'}</span>
               <span><span className="inline-block w-2 h-2 rounded-sm bg-cyan-400 ml-1.5" />التبريد {fuel ? `${Math.round((reefer / fuel) * 100)}%` : '—'}</span>
             </div>
@@ -433,26 +433,26 @@ export const VehicleLab: React.FC<{
       <section aria-label="مؤشرات إضافية" className="va-rise" style={{ animationDelay: '.2s' }}>
         <div className="flex items-baseline justify-between mb-3">
           <h3 className="text-base font-bold">ما يكشفه المختبر أيضًا</h3>
-          <span className="text-xs text-[#5B6787]"><Gauge className="inline w-3.5 h-3.5 ml-1" />من بيانات العربة الحقيقية</span>
+          <span className="text-xs text-slate-400 dark:text-[#5B6787]"><Gauge className="inline w-3.5 h-3.5 ml-1" />من بيانات العربة الحقيقية</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
           {cards.map((c, i) => (
-            <article key={c.title} className={`va-rise ${panel} !rounded-[20px] p-4 transition-all hover:-translate-y-0.5 hover:border-[#334169]`} style={{ animationDelay: `${0.25 + i * 0.05}s` }}>
+            <article key={c.title} className={`va-rise ${panel} !rounded-[20px] p-4 transition-all hover:-translate-y-0.5 hover:border-slate-300 dark:hover:border-[#334169]`} style={{ animationDelay: `${0.25 + i * 0.05}s` }}>
               <div className="flex items-center justify-between">
                 <span className={`w-9 h-9 rounded-[11px] flex items-center justify-center ${tone[c.t]}`}>{c.icon}</span>
                 <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${tone[c.t]}`}>{tags[c.t]}</span>
               </div>
               <div className="mt-3.5 text-[13.5px] font-bold">{c.title}</div>
-              <div className="mt-1.5 font-mono text-[22px] font-semibold text-white" dir="ltr" style={{ textAlign: 'right' }}>{c.value}</div>
-              <div className="mt-1 text-xs leading-6 text-[#8090B0]">{c.line}</div>
+              <div className="mt-1.5 font-mono text-[22px] font-semibold text-slate-900 dark:text-white" dir="ltr" style={{ textAlign: 'right' }}>{c.value}</div>
+              <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-[#8090B0]">{c.line}</div>
               {c.days && (
                 <div className="grid grid-cols-7 gap-1 mt-2.5">
                   {c.days.map((v, d) => {
                     const mx = Math.max(1, ...c.days!);
                     return (
                       <div key={d} className="flex flex-col items-center gap-1">
-                        <span className="block w-full h-[18px] rounded-[5px]" style={{ background: v ? `rgba(129,140,248,${0.2 + (v / mx) * 0.7})` : '#141D36' }} />
-                        <span className="text-[9.5px] text-[#5B6787]">{WEEKDAYS[d].charAt(0)}</span>
+                        <span className="block w-full h-[18px] rounded-[5px] bg-slate-100 dark:bg-[#141D36]" style={{ background: v ? `rgba(129,140,248,${0.2 + (v / mx) * 0.7})` : undefined }} />
+                        <span className="text-[9.5px] text-slate-400 dark:text-[#5B6787]">{WEEKDAYS[d].charAt(0)}</span>
                       </div>
                     );
                   })}
