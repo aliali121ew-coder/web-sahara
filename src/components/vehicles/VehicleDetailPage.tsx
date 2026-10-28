@@ -34,6 +34,15 @@ interface Props {
 
 const card = 'rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 shadow-soft-card';
 
+/** لون ثابت لكل سائق (من اسمه) لدائرة حرفه الأول في السجل */
+const AVATAR = [
+  'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300',
+  'bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300',
+  'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300',
+  'bg-pink-100 text-pink-800 dark:bg-pink-950/60 dark:text-pink-300',
+];
+const avatarTone = (name: string) => AVATAR[[...name].reduce((s, c) => s + c.charCodeAt(0), 0) % AVATAR.length];
+
 const Spec: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactNode; tone: string }> = ({ icon, label, value, tone }) => (
   <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 p-3">
     <div className={`w-7 h-7 rounded-lg flex items-center justify-center mb-2 ${tone}`}>{icon}</div>
@@ -91,6 +100,24 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, ranking, fle
     : tab === 'multi' ? allRows.filter(f => f.parts > 1)
     : tab === 'violations' ? allRows.filter(f => violationDates.has(f.date))
     : allRows;
+  // السجل مجمّعًا حسب اليوم (الأحدث أولًا) مع إجمالي اليوم وتنبيهاته
+  const historyGroups = useMemo(() => {
+    const out: { date: string; day: string; total: number; multi: boolean; violation: boolean; overCap: boolean; rows: typeof rows }[] = [];
+    for (const f of rows) {
+      let g = out.find(x => x.date === f.date);
+      if (!g) {
+        const [y, m, d] = f.date.split('/').map(Number);
+        const day = new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('ar-IQ', { weekday: 'long', timeZone: 'UTC' });
+        g = { date: f.date, day, total: 0, multi: false, violation: violationDates.has(f.date), overCap: overCap.has(f.date), rows: [] };
+        out.push(g);
+      }
+      g.rows.push(f);
+      g.total += f.qty;
+      if (f.parts > 1) g.multi = true;
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, checks]);
   const DAILY_PAGE = 7;
   // آخر تفويلة فقط: أحدث تاريخ للعربة في كل الملفات المرفوعة، وسطر لكل كمية في ذلك اليوم.
   // الكمية السابقة في الكشوف لا تُستخدم هنا؛ عدد الأيام = من تاريخ التفويل المرفوع الذي قبله
@@ -257,36 +284,67 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, ranking, fle
         </div>
       </div>
 
-      {/* السجل */}
+      {/* السجل: تبويبات بخط سفلي، والتفويلات مجمّعة حسب اليوم، وخمسة أعمدة (السابقة في خانة واحدة) */}
       <div className={`${card} overflow-hidden`}>
-        <div className="p-4 flex flex-wrap items-center gap-2 border-b border-slate-100 dark:border-slate-800">
-          <h3 className="text-sm font-black text-slate-900 dark:text-white ml-auto flex items-center gap-2"><Layers className="w-4 h-4 text-sky-500" />سجل التفويل</h3>
-          {([['all', `الكل (${allRows.length})`], ['frequent', `المتكرر (${allRows.filter(f => f.days !== null && f.days <= FREQUENT_DAYS).length})`], ['multi', `أكثر من تفويلة باليوم (${allRows.filter(f => f.parts > 1).length})`], ['violations', `مخالفات الملف (${violationDates.size})`]] as const).map(([k, l]) => (
-            <button key={k} type="button" onClick={() => setTab(k)} className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all ${tab === k ? 'bg-sky-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>{l}</button>
-          ))}
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 border-b border-slate-100 dark:border-slate-800">
+          <h3 className="text-[15px] font-bold text-slate-900 dark:text-white flex items-center gap-2"><Layers className="w-4 h-4 text-indigo-500" />سجل التفويل</h3>
+          <div role="tablist" aria-label="تصفية السجل" className="flex gap-5 overflow-x-auto vehicle-scroll">
+            {([['all', 'الكل', allRows.length], ['frequent', 'المتكرر', allRows.filter(f => f.days !== null && f.days <= FREQUENT_DAYS).length], ['multi', 'أكثر من تفويلة باليوم', allRows.filter(f => f.parts > 1).length], ['violations', 'مخالفات الملف', violationDates.size]] as const).map(([k, l, n]) => {
+              const on = tab === k;
+              return (
+                <button key={k} type="button" role="tab" aria-selected={on} onClick={() => setTab(k)} className={`h-14 inline-flex items-center gap-1.5 border-b-2 text-[13px] font-bold whitespace-nowrap cursor-pointer transition-colors ${on ? 'border-indigo-600 text-slate-900 dark:text-white' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}>
+                  {l}<span className={`px-1.5 py-px rounded-full text-[11px] font-mono transition-colors ${on ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>{n}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-right text-xs">
-            <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400">
-              <tr>{['التاريخ', 'الكمية', 'السائق', 'الموقع', 'الأيام', 'السابقة', 'تاريخها', 'السائق السابق', 'الموقع السابق'].map(h => <th key={h} className="py-2.5 px-3 font-bold whitespace-nowrap">{h}</th>)}</tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
-              {rows.map(f => (
-                <tr key={f.key} className={overCap.has(f.date) ? 'bg-rose-100/80 dark:bg-rose-950/40' : violationDates.has(f.date) ? 'bg-amber-50/70 dark:bg-amber-950/20' : f.days !== null && f.days <= FREQUENT_DAYS ? 'bg-rose-50/60 dark:bg-rose-950/20' : ''}>
-                  <td className="py-2.5 px-3 font-mono font-bold">{f.date}</td>
-                  <td className="py-2.5 px-3 font-mono font-black text-sky-700 dark:text-sky-400">{f.qty.toLocaleString()}{overCap.has(f.date) && <span className="mr-1 text-[9px] px-1 rounded bg-rose-500 text-white">فوق السعة</span>}{f.parts > 1 && <span className="mr-1 text-[9px] px-1 rounded bg-amber-500/15 text-amber-600" title="عدد تفويلات هذا اليوم">{f.parts} باليوم</span>}</td>
-                  <td className="py-2.5 px-3">{f.drivers.join('، ') || '—'}</td>
-                  <td className="py-2.5 px-3 text-slate-500">{f.sites.join('، ')}</td>
-                  <td className="py-2.5 px-3"><span className={`px-1.5 py-0.5 rounded-md font-mono font-bold ${f.days !== null && f.days <= FREQUENT_DAYS ? 'bg-rose-500/10 text-rose-600' : ''}`}>{f.days ?? '—'}</span></td>
-                  <td className="py-2.5 px-3 font-mono">{f.prevQty?.toLocaleString() ?? '—'}</td>
-                  <td className="py-2.5 px-3 font-mono text-slate-500">{f.prevDate || '—'}</td>
-                  <td className="py-2.5 px-3 text-slate-500">{f.prevDriver || '—'}</td>
-                  <td className="py-2.5 px-3 text-slate-500">{f.prevSite || '—'}</td>
-                </tr>
-              ))}
-              {!rows.length && <tr><td colSpan={9} className="py-8 text-center text-slate-400">لا توجد سطور</td></tr>}
-            </tbody>
-          </table>
+          <div className="min-w-[820px]">
+            <div className="grid grid-cols-[120px_minmax(190px,1.4fr)_minmax(130px,1fr)_130px_minmax(210px,1.3fr)] items-center h-11 px-5 bg-slate-50/80 dark:bg-slate-950/40 border-b border-slate-100 dark:border-slate-800 text-[11.5px] font-bold text-slate-500 dark:text-slate-400">
+              <div>الكمية</div><div>السائق</div><div>الموقع</div><div>الفاصل</div><div>التفويلة السابقة</div>
+            </div>
+            {historyGroups.map(g => (
+              <div key={g.date}>
+                {/* رأس اليوم */}
+                <div className="flex items-center gap-3 h-11 px-5 border-b border-slate-100/80 dark:border-slate-800/60">
+                  <span className="text-[13px] font-bold text-slate-900 dark:text-white">{g.day}</span>
+                  <bdi className="font-mono text-xs text-slate-400">{g.date}</bdi>
+                  <span className="flex-1 h-px bg-slate-100 dark:bg-slate-800" />
+                  <span className="text-xs text-slate-500 dark:text-slate-400"><bdi className="font-mono font-semibold text-slate-900 dark:text-white">{g.total.toLocaleString()}</bdi> لتر · {g.rows.length === 1 ? 'تفويلة واحدة' : `${g.rows.length} تفويلات`}</span>
+                  {g.multi && <span className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-[11.5px] font-bold text-rose-700 dark:text-rose-300"><span className="w-1.5 h-1.5 rounded-full bg-rose-500" />مكرر باليوم</span>}
+                  {g.violation && <span className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-[11.5px] font-bold text-amber-800 dark:text-amber-300"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" />{g.overCap ? 'فوق سعة الخزان' : 'مخالفة الملف'}</span>}
+                </div>
+                {g.rows.map(f => {
+                  const driver = f.drivers.join('، ');
+                  const near = f.days !== null && f.days <= FREQUENT_DAYS;
+                  return (
+                    <div key={f.key} className="grid grid-cols-[120px_minmax(190px,1.4fr)_minmax(130px,1fr)_130px_minmax(210px,1.3fr)] items-center min-h-[60px] px-5 py-2 border-b border-slate-100/80 dark:border-slate-800/60 hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors">
+                      <div className="font-mono text-[15px] font-semibold text-slate-900 dark:text-white">{f.qty.toLocaleString()} <span className="font-cairo text-[11.5px] font-bold text-slate-400">لتر</span></div>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {driver ? <span className={`w-[30px] h-[30px] shrink-0 rounded-full inline-flex items-center justify-center text-xs font-bold ${avatarTone(driver)}`}>{driver.charAt(0)}</span> : null}
+                        <span className="text-[13.5px] font-semibold text-slate-800 dark:text-slate-100 truncate">{driver || '—'}</span>
+                      </div>
+                      <div className="text-[13px] text-slate-600 dark:text-slate-300 truncate">{f.sites.join('، ')}</div>
+                      <div className="flex items-center gap-2 text-[12.5px] font-semibold text-slate-700 dark:text-slate-200">
+                        {f.days !== null && <span className={`w-[7px] h-[7px] rounded-full shrink-0 ${near ? 'bg-rose-500' : 'bg-slate-300 dark:bg-slate-600'}`} />}
+                        {f.days === null ? <span className="text-slate-400">—</span> : f.days === 0 ? 'اليوم نفسه' : <>بعد <bdi className="font-mono">{f.days}</bdi> يوم</>}
+                      </div>
+                      <div className="min-w-0">
+                        {f.prevQty !== null || f.prevDate ? (
+                          <>
+                            <div className="text-[13px]"><bdi className="font-mono font-semibold text-slate-900 dark:text-white">{f.prevQty?.toLocaleString() ?? '—'}</bdi> <span className="text-slate-400">لتر ·</span> <bdi className="font-mono text-slate-500">{f.prevDate ? `${f.prevDate.slice(8)}/${f.prevDate.slice(5, 7)}` : '—'}</bdi></div>
+                            <div className="text-[11.5px] text-slate-400 truncate">{[f.prevDriver, f.prevSite].filter(Boolean).join(' · ') || '—'}</div>
+                          </>
+                        ) : <span className="text-slate-400">—</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+            {!rows.length && <div className="py-12 text-center text-sm text-slate-400">لا توجد تفويلات في هذا التبويب</div>}
+          </div>
         </div>
       </div>
 
