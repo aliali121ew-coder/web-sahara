@@ -12,6 +12,7 @@ import { UploadPanel, type QueueItem } from './UploadPanel';
 import { FilesDrawer } from './FilesDrawer';
 import { ConsumptionAnalysis } from './ConsumptionAnalysis';
 import { VehicleCrumbs, type Crumb } from './VehicleCrumbs';
+import { VehicleLab } from './VehicleLab';
 import { useCategoryNames } from './categories';
 import { CategoryDonut } from './CategoryDonut';
 import { TopSevenCard } from './TopSevenCard';
@@ -47,6 +48,8 @@ export const VehiclesReport: React.FC = () => {
   const [panelOpen, setPanelOpen] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
   const [analysis, setAnalysis] = useState(false);
+  // مختبر العربة (من الكارت الجانبي في تحليل الاستهلاك)
+  const [lab, setLab] = useState<string | null>(null);
   const [vehicle, setVehicle] = useState<string | null>(null);
   const [rangeOpen, setRangeOpen] = useState(false);
   // الفئة المفتوحة في كارت الفئات: الدائرة وكارت الأعلى استهلاكًا يتبعانها
@@ -125,14 +128,33 @@ export const VehiclesReport: React.FC = () => {
   }, [analysis, selected, setCurrentSubpage]);
 
   const vehicleRefills = useMemo(() => (vehicle ? data.refills.filter(r => r.vehicle === vehicle) : []), [data.refills, vehicle]);
+  const labRefills = useMemo(() => (lab ? data.refills.filter(r => r.vehicle === lab) : []), [data.refills, lab]);
+  useEffect(() => {
+    if (!lab) return;
+    setCurrentSubpage({ title: `مختبر العربة ${lab}`, parentTab: 'vehicles-report', onBack: () => setLab(null) });
+    return () => setCurrentSubpage(null);
+  }, [lab, setCurrentSubpage]);
 
   // مسار الصفحات: تقرير العربات › [الفئة | تحليل الاستهلاك] › العربة
   const [catLabels] = useCategoryNames();
-  const home = () => { setVehicle(null); setAnalysis(false); setCategory(null); };
+  const home = () => { setVehicle(null); setAnalysis(false); setCategory(null); setLab(null); };
   const crumbs: Crumb[] = [{ label: 'تقرير العربات', onClick: home }];
-  if (analysis && dates.length) crumbs.push({ label: 'تحليل الاستهلاك', onClick: () => setVehicle(null) });
+  if (analysis && dates.length) crumbs.push({ label: 'تحليل الاستهلاك', onClick: () => { setVehicle(null); setLab(null); } });
   else if (category) crumbs.push({ label: catLabels[category] || categoryLabel(category) || 'أخرى', onClick: () => setVehicle(null) });
   if (selected) crumbs.push({ label: <>العربة <bdi dir="ltr" className="font-mono">{selected.vehicle}</bdi></> });
+  if (lab && !selected) crumbs.push(
+    { label: <>العربة <bdi dir="ltr" className="font-mono">{lab}</bdi></>, onClick: () => { setVehicle(lab); setLab(null); } },
+    { label: 'مختبر العربة' },
+  );
+
+  if (lab && !selected) {
+    return (
+      <div className="space-y-3 pb-12">
+        <VehicleCrumbs items={crumbs} />
+        <VehicleLab vehicle={lab} allFills={allFills} refills={labRefills} editable={editable} />
+      </div>
+    );
+  }
 
   if (selected) {
     return (
@@ -159,7 +181,7 @@ export const VehiclesReport: React.FC = () => {
     return (
       <div className="space-y-3">
         <VehicleCrumbs items={crumbs} />
-        <ConsumptionAnalysis allFills={allFills} endDate={end} onOpen={setVehicle} />
+        <ConsumptionAnalysis allFills={allFills} endDate={end} onOpen={setVehicle} onLab={setLab} />
       </div>
     );
   }

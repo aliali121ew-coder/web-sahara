@@ -73,3 +73,7 @@
 .va-appear { animation: va-appear .25s ease both; }
 @keyframes va-appear { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .va-appear { animation: none; } }
+/* مختبر العربة: رسم خط الاستهلاك */
+.va-draw { stroke-dasharray: 3000; animation: va-draw 1.2s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes va-draw { from { stroke-dashoffset: 3000; } to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .va-draw { animation: none; } }

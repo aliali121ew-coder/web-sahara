@@ -1,8 +1,9 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useMemo, useState } from 'react';
-import { ArrowDownLeft, ArrowDownWideNarrow, ArrowUpRight, ChevronLeft, ChevronRight, Repeat2, Search } from 'lucide-react';
+import { ArrowDownLeft, ArrowDownWideNarrow, ArrowUpRight, ChevronLeft, ChevronRight, FlaskConical, Repeat2, Search } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { FREQUENT_DAYS, VEHICLE_PROFILES_KEY, daysBetween, imageGround, vehicleCategory, vehicleImage, type DayFill, type VehicleProfile } from '../../lib/vehicleFuel';
+import { VEHICLE_REGISTRY_KEY, type VehicleRegistryEntry } from '../../lib/vehicleRegistry';
 import { useCategoryNames, useVehicleNames } from './categories';
 import { VehicleArt } from './VehicleArt';
 
@@ -99,7 +100,7 @@ const Delta: React.FC<{ value: number | null; className?: string }> = ({ value, 
  * المقارنة على المعدل اليومي في أيام الكشوف فقط، حتى لا تُقارن فترة كاملة بفترة بدأت فيها الكشوف قبل يومين.
  * الضغط على صف يفتح صفحة العربة، والمرور عليه يعرضها بالجانب.
  */
-export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: string; onOpen: (vehicle: string) => void }> = ({ allFills, endDate, onOpen }) => {
+export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: string; onOpen: (vehicle: string) => void; onLab: (vehicle: string) => void }> = ({ allFills, endDate, onOpen, onLab }) => {
   const [unit, setUnit] = useState<Unit>('week');
   const [filter, setFilter] = useState<Status | 'all'>('all');
   const [sort, setSort] = useState<SortKey>('change');
@@ -109,6 +110,7 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
   const names = useVehicleNames();
   const [labels] = useCategoryNames();
   const [profiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
+  const [registry] = useSyncedStorage<VehicleRegistryEntry[]>(VEHICLE_REGISTRY_KEY, []);
 
   const periods = useMemo(() => buildPeriods(endDate, unit), [endDate, unit]);
   const periodOf = (date: string) => periods.findIndex(p => date >= p.from && date <= p.to);
@@ -503,9 +505,38 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
                     ))}
                   </div>
 
-                  <button type="button" onClick={() => onOpen(sel.vehicle)} className="mt-auto shrink-0 w-full flex items-center justify-center gap-1.5 h-11 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-bold cursor-pointer transition-all hover:-translate-y-px hover:shadow-lg">
-                    صفحة العربة<ChevronLeft className="w-4 h-4" />
-                  </button>
+                  {/* مدخل مختبر العربة: كارت داكن بطابع صفحة المختبر */}
+                  {(() => {
+                    const prof = profiles.find(p => p.id === sel.vehicle);
+                    const reg = registry.find(r => r.id === sel.code.toUpperCase());
+                    const vals = sel.rate.map(v => v ?? 0);
+                    const mx = Math.max(1, ...vals);
+                    const pts = vals.map((v, i) => `${(1 - i / 3) * 360},${(40 - (v / mx) * 32).toFixed(1)}`).join(' ');
+                    return (
+                      <button type="button" onClick={() => onLab(sel.vehicle)} aria-label={`افتح مختبر العربة ${sel.display}`} className="group mt-auto shrink-0 relative overflow-hidden w-full text-right rounded-[20px] bg-[#0C1224] text-[#E6EBF5] p-4 cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_-18px_rgba(7,11,22,0.65)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+                        <span className="absolute -left-10 -bottom-16 w-56 h-36 rounded-[50%] bg-[radial-gradient(closest-side,rgb(99_102_241/0.45),transparent)]" />
+                        <span className="relative flex items-center justify-between">
+                          <span className="flex items-center gap-2.5">
+                            <span className="w-[34px] h-[34px] rounded-[10px] bg-[#1B2645] text-indigo-300 inline-flex items-center justify-center"><FlaskConical className="w-[18px] h-[18px]" /></span>
+                            <span>
+                              <span className="block text-[14.5px] font-bold">مختبر العربة</span>
+                              <span className="block text-[11.5px] text-[#8090B0]">من اليوم إلى سنة · الصرف الحقيقي</span>
+                            </span>
+                          </span>
+                          <ChevronLeft className="w-[18px] h-[18px] text-indigo-300 transition-transform group-hover:-translate-x-1" />
+                        </span>
+                        <svg viewBox="0 0 360 46" preserveAspectRatio="none" className="relative block w-full h-[46px] mt-3" aria-hidden>
+                          <polyline points={`${pts} 0,46 360,46`} fill="rgb(99 102 241 / 0.22)" stroke="none" />
+                          <polyline points={pts} fill="none" stroke="#818CF8" strokeWidth="2" strokeLinejoin="round" />
+                        </svg>
+                        <span className="relative grid grid-cols-3 gap-2 mt-2.5">
+                          <span><span className="block text-[10.5px] text-[#8090B0]">الخزانات</span><span className="block font-mono text-[15px] font-semibold">{prof?.tankLiters ? (prof.tank2Liters ? 2 : 1) : '؟'}</span></span>
+                          <span className="min-w-0"><span className="block text-[10.5px] text-[#8090B0]">رقم الآلية</span><span className="block font-mono text-[15px] font-semibold truncate" dir="ltr" style={{ textAlign: 'right' }}>{reg?.plate || '—'}</span></span>
+                          <span className="min-w-0"><span className="block text-[10.5px] text-[#8090B0]">المجموعة</span><span className="block text-[12.5px] font-semibold truncate">{reg?.group?.replace(/^اليات\s*/, '') || '—'}</span></span>
+                        </span>
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             ) : (

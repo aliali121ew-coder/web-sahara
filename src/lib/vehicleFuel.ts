@@ -421,6 +421,12 @@ export interface VehicleProfile {
   type: string;
   /** سعة الخزان (لتر): تفويلة أكبر منها مستحيلة */
   tankLiters: number | null;
+  /** سعة الخزان الثاني (لتر) — خزان وحدة التبريد في بعض البرادات */
+  tank2Liters?: number | null;
+  /** المعدل المرجعي للقيادة (لتر لكل 100 كم) — لمختبر العربة */
+  refL100?: number | null;
+  /** صرف وحدة التبريد (لتر لكل ساعة) — لمختبر العربة */
+  reeferLph?: number | null;
   /** الحصة اليومية المسموحة (لتر) */
   dailyLimit: number | null;
   /** السائق المعتمد للعربة */

@@ -1,0 +1,467 @@
+/* eslint-disable i18next/no-literal-string */
+import React, { useMemo, useRef, useState } from 'react';
+import { Calendar, CalendarClock, FileSpreadsheet, Fuel, Gauge, Leaf, Loader2, MapPin, Trophy, Users, Wrench } from 'lucide-react';
+import { useSyncedStorage } from '../../lib/useSyncedStorage';
+import {
+  VEHICLE_PROFILES_KEY, daysBetween, imageGround, vehicleImage,
+  type DayFill, type VehicleProfile, type VehicleRefill,
+} from '../../lib/vehicleFuel';
+import { VEHICLE_REGISTRY_KEY, readVehicleRegistry, type VehicleRegistryEntry } from '../../lib/vehicleRegistry';
+
+type Range = 'day' | 'week' | 'month' | 'q' | 'year';
+
+// التواريخ في الكشوف بصيغة YYYY/MM/DD
+const toMs = (d: string) => { const [y, m, dd] = d.split('/').map(Number); return Date.UTC(y, m - 1, dd); };
+const fromMs = (ms: number) => new Date(ms).toISOString().slice(0, 10).replace(/-/g, '/');
+const addDays = (d: string, n: number) => fromMs(toMs(d) + n * 86400000);
+const short = (d: string) => `${d.slice(8)}/${d.slice(5, 7)}`;
+const WEEKDAYS = ['أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'];
+const MONTHS = ['ك2', 'شباط', 'آذار', 'نيسان', 'أيار', 'حزيران', 'تموز', 'آب', 'أيلول', 'ت1', 'ت2', 'ك1'];
+/** كيلوغرام CO₂ لكل لتر ديزل */
+const CO2_PER_L = 2.68;
+
+const fmt = (x: number | null, d = 0) => (x === null || !isFinite(x) ? '—' : x.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d }));
+const num = (v: string) => { const x = parseFloat(v); return isFinite(x) ? x : 0; };
+
+interface Bucket { label: string; value: number }
+
+/** حاويات الرسم: يوم = سطور آخر يوم تفويل، أسبوع/شهر = أيام، 3 أشهر = أسابيع، سنة = أشهر */
+const buildBuckets = (range: Range, end: string, fills: DayFill[], lastDayLines: VehicleRefill[]): Bucket[] => {
+  const sum = (from: string, to: string) => fills.filter(f => f.date >= from && f.date <= to).reduce((s, f) => s + f.qty, 0);
+  if (range === 'day') return lastDayLines.map((r, i) => ({ label: `${i + 1}`, value: r.qty }));
+  if (range === 'week' || range === 'month') {
+    const n = range === 'week' ? 7 : 30;
+    return Array.from({ length: n }, (_, i) => {
+      const d = addDays(end, i - n + 1);
+      return { label: range === 'week' ? WEEKDAYS[new Date(toMs(d)).getUTCDay()] : d.slice(8), value: sum(d, d) };
+    });
+  }
+  if (range === 'q') {
+    return Array.from({ length: 13 }, (_, i) => {
+      const to = addDays(end, -(12 - i) * 7);
+      return { label: short(addDays(to, -6)), value: sum(addDays(to, -6), to) };
+    });
+  }
+  const [y, m] = end.split('/').map(Number);
+  return Array.from({ length: 12 }, (_, i) => {
+    const dt = new Date(Date.UTC(y, m - 1 - (11 - i), 1));
+    const from = fromMs(dt.getTime());
+    const to = fromMs(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 0));
+    return { label: MONTHS[dt.getUTCMonth()], value: sum(from, to) };
+  });
+};
+
+/** خط ومساحة الرسم (RTL: الأقدم يمينًا) */
+const paths = (values: number[]) => {
+  const n = values.length;
+  const max = Math.max(1, ...values) * 1.15;
+  const X = (i: number) => (n === 1 ? 500 : (1 - i / (n - 1)) * 1000);
+  const Y = (v: number) => 210 - (v / max) * 190;
+  const pts = values.map((v, i) => [X(i), Y(v)] as const);
+  let line = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1]; const [x1, y1] = pts[i]; const cx = (x0 + x1) / 2;
+    line += ` C${cx.toFixed(1)} ${y0.toFixed(1)} ${cx.toFixed(1)} ${y1.toFixed(1)} ${x1.toFixed(1)} ${y1.toFixed(1)}`;
+  }
+  const area = `${line} L${pts[n - 1][0].toFixed(1)} 220 L${pts[0][0].toFixed(1)} 220 Z`;
+  const avg = values.reduce((a, b) => a + b, 0) / n;
+  const peak = values.indexOf(Math.max(...values));
+  return { line, area, avgY: Y(avg), peak: pts[peak], peakValue: values[peak], avg };
+};
+
+const panel = 'rounded-3xl bg-[#0C1224] border border-[#1B2645]';
+
+/**
+ * مختبر العربة: صفحة تحليل متقدم بطابع داكن — سجل الآلية من ملف آليات الشركة، الخزانات وسعتها،
+ * الاستهلاك من اليوم إلى سنة، محلل الصرف الحقيقي (المسافة والسرعة وتشغيل التبريد)، ومؤشرات إضافية.
+ */
+export const VehicleLab: React.FC<{
+  vehicle: string;
+  allFills: DayFill[];
+  refills: VehicleRefill[];
+  editable: boolean;
+}> = ({ vehicle, allFills, refills, editable }) => {
+  const [profiles, setProfiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
+  const [registry, setRegistry] = useSyncedStorage<VehicleRegistryEntry[]>(VEHICLE_REGISTRY_KEY, []);
+  const profile = profiles.find(p => p.id === vehicle);
+  const code = (profile?.name || vehicle).trim();
+  const reg = registry.find(r => r.id === code.toUpperCase()) || registry.find(r => r.id === vehicle.toUpperCase());
+  const url = vehicleImage(code, profile?.photo);
+
+  const [range, setRange] = useState<Range>('month');
+  const [importing, setImporting] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const fills = useMemo(() => allFills.filter(f => f.vehicle === vehicle).sort((a, b) => a.date.localeCompare(b.date)), [allFills, vehicle]);
+  const end = useMemo(() => allFills.reduce((m, f) => (f.date > m ? f.date : m), ''), [allFills]);
+  const lastDate = fills.length ? fills[fills.length - 1].date : '';
+  const lastDayLines = useMemo(() => refills.filter(r => r.date === lastDate).sort((a, b) => b.qty - a.qty), [refills, lastDate]);
+  const drivers = useMemo(() => [...new Set(fills.flatMap(f => f.drivers))], [fills]);
+
+  // ── حفظ ملف العربة (السعات والمعدلات)
+  const saveProfile = (patch: Partial<VehicleProfile>) => setProfiles(prev => {
+    const base: VehicleProfile = prev.find(p => p.id === vehicle) || { id: vehicle, type: '', tankLiters: null, dailyLimit: null, driver: '', department: '', notes: '', photo: '', updatedAt: '', by: '' };
+    return [{ ...base, ...patch, updatedAt: new Date().toISOString() }, ...prev.filter(p => p.id !== vehicle)];
+  });
+
+  // ── استيراد ملفات آليات الشركة (يمكن رفع أكثر من ملف؛ كل ملف يحدّث عرباته فقط)
+  const importRegistry = async (list: FileList | null) => {
+    const files = [...(list || [])];
+    if (!files.length) return;
+    setImporting('جارٍ القراءة…');
+    try {
+      const rows = (await Promise.all(files.map(readVehicleRegistry))).flat();
+      setRegistry(prev => {
+        const map = new Map(prev.map(r => [r.id, r]));
+        rows.forEach(r => map.set(r.id, r));
+        return [...map.values()];
+      });
+      setImporting(`تم استيراد ${rows.length.toLocaleString()} آلية`);
+    } catch (e) {
+      setImporting(e instanceof Error ? e.message : 'تعذّرت قراءة الملف');
+    } finally {
+      if (fileRef.current) fileRef.current.value = '';
+      window.setTimeout(() => setImporting(null), 5000);
+    }
+  };
+
+  // ── الخزانات
+  const caps = [profile?.tankLiters ?? null, profile?.tank2Liters ?? null];
+  const biggest = lastDayLines[0]?.qty ?? 0;
+  const dayTotal = lastDayLines.reduce((s, r) => s + r.qty, 0);
+  const overCapLines = caps[0] ? refills.filter(r => r.qty > (caps[0] || 0) + (caps[1] || 0)).length : 0;
+  const tanks = [
+    { name: 'خزان المحرك', field: 'tankLiters' as const, cap: caps[0], fill: biggest },
+    { name: 'الخزان الثاني', hint: 'وحدة التبريد في البرادات', field: 'tank2Liters' as const, cap: caps[1], fill: caps[1] ? Math.max(0, dayTotal - biggest) : 0 },
+  ];
+
+  // ── الرسم
+  const buckets = useMemo(() => (end ? buildBuckets(range, range === 'day' ? lastDate : end, fills, lastDayLines) : []), [range, end, lastDate, fills, lastDayLines]);
+  const chart = buckets.length ? paths(buckets.map(b => b.value)) : null;
+  const total = buckets.reduce((s, b) => s + b.value, 0);
+  const firstDate = fills[0]?.date;
+
+  // ── محلل الصرف الحقيقي
+  const last7 = useMemo(() => (end ? fills.filter(f => f.date > addDays(end, -7)).reduce((s, f) => s + f.qty, 0) : 0), [fills, end]);
+  const [trip, setTrip] = useState({ fuel: '', km: '', speed: '', hours: '', price: '' });
+  const fuel = trip.fuel === '' ? last7 : num(trip.fuel);
+  const ref = profile?.refL100 ?? 0;
+  const lph = profile?.reeferLph ?? 0;
+  const km = num(trip.km); const speed = num(trip.speed); const hours = num(trip.hours); const price = num(trip.price);
+  const reefer = Math.min(fuel, hours * lph);
+  const drive = Math.max(0, fuel - reefer);
+  const per100 = km ? (drive / km) * 100 : null;
+  const diff = per100 !== null && ref ? ((per100 - ref) / ref) * 100 : null;
+  const over = diff !== null && diff > 10; const under = diff !== null && diff < -10;
+  const ring = per100 === null || !ref ? 0 : Math.min(1, per100 / (ref * 1.6));
+  const ringColor = over ? '#F43F5E' : under ? '#22D3EE' : '#34D399';
+
+  // ── مؤشرات إضافية
+  const insights = useMemo(() => {
+    const gaps = fills.slice(1).map((f, i) => daysBetween(fills[i].date, f.date)).filter(g => g > 0);
+    const avgGap = gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length : null;
+    const next = lastDate && avgGap ? addDays(lastDate, Math.max(1, Math.round(avgGap))) : null;
+    const month = end ? fills.filter(f => f.date > addDays(end, -30)).reduce((s, f) => s + f.qty, 0) : 0;
+    // ترتيبها بين عربات نفس النوع في سجل الآليات (الأقل استهلاكًا خلال 30 يومًا = الأفضل)
+    const sameType = reg ? new Set(registry.filter(r => r.type === reg.type).map(r => r.id)) : null;
+    let rank: string = '—';
+    if (sameType && end) {
+      const totals = new Map<string, number>();
+      for (const f of allFills) if (f.date > addDays(end, -30) && sameType.has(f.vehicle.toUpperCase())) totals.set(f.vehicle, (totals.get(f.vehicle) || 0) + f.qty);
+      const sorted = [...totals.entries()].sort((a, b) => b[1] - a[1]);
+      const i = sorted.findIndex(([v]) => v === vehicle);
+      if (i >= 0) rank = `${i + 1}/${sorted.length}`;
+    }
+    // الصيانة: ارتفاع متتالٍ لثلاثة أسابيع
+    const weeks = end ? [3, 2, 1, 0].map(w => fills.filter(f => f.date > addDays(end, -(w + 1) * 7) && f.date <= addDays(end, -w * 7)).reduce((s, f) => s + f.qty, 0)) : [];
+    const rising = weeks.length === 4 && weeks.every(v => v > 0) && weeks[1] > weeks[0] && weeks[2] > weeks[1] && weeks[3] > weeks[2];
+    const sites = new Set(refills.map(r => r.site));
+    const byDay = [0, 0, 0, 0, 0, 0, 0];
+    fills.forEach(f => { byDay[new Date(toMs(f.date)).getUTCDay()] += 1; });
+    const topDay = byDay.indexOf(Math.max(...byDay));
+    return { next, avgGap, month, rank, rising, weeksKnown: weeks.filter(v => v > 0).length, sites: sites.size, byDay, topDay };
+  }, [fills, lastDate, end, reg, registry, allFills, vehicle, refills]);
+
+  const tone = {
+    warn: 'bg-[#2A1420] text-[#FB7185]', info: 'bg-[#14203A] text-[#A5B4FC]', ok: 'bg-[#0F2A24] text-[#6EE7B7]', soon: 'bg-[#1B2645] text-[#8090B0]',
+  };
+  const tags = { warn: 'تنبيه', info: 'تحليل', ok: 'جيد', soon: 'يحتاج بيانات' };
+  const cards: { icon: React.ReactNode; t: keyof typeof tone; title: string; value: string; line: string; days?: number[] }[] = [
+    { icon: <CalendarClock className="w-[18px] h-[18px]" />, t: insights.next ? 'info' : 'soon', title: 'التفويلة القادمة المتوقعة', value: insights.next ? short(insights.next) : '—', line: insights.avgGap ? `حسب متوسط الفاصل بين تفويلاتها (${fmt(insights.avgGap, 1)} يوم)` : 'تحتاج تفويلتين على الأقل' },
+    { icon: <Fuel className="w-[18px] h-[18px]" />, t: !caps[0] ? 'soon' : overCapLines ? 'warn' : 'ok', title: 'التفويل فوق سعة الخزان', value: caps[0] ? String(overCapLines) : '—', line: caps[0] ? (overCapLines ? 'تفويلات أكبر من سعة خزاناتها' : 'كل التفويلات ضمن السعة') : 'أدخل سعة الخزان لتفعيله' },
+    { icon: <Users className="w-[18px] h-[18px]" />, t: drivers.length > 1 ? 'warn' : 'info', title: 'السائقون', value: String(drivers.length), line: drivers.length > 1 ? 'أكثر من سائق فوّلها — قارن صرف كل سائق' : drivers[0] || 'لا سائق مسجل' },
+    { icon: <Leaf className="w-[18px] h-[18px]" />, t: 'info', title: 'انبعاثات الكربون · 30 يومًا', value: fmt(insights.month * CO2_PER_L), line: `كغ CO₂ من ${fmt(insights.month)} لتر ديزل` },
+    { icon: <Trophy className="w-[18px] h-[18px]" />, t: reg ? 'info' : 'soon', title: 'ترتيبها بين نظيراتها', value: insights.rank, line: reg ? `بين عربات «${reg.type}» حسب استهلاك 30 يومًا` : 'يحتاج ملف آليات الشركة' },
+    { icon: <Wrench className="w-[18px] h-[18px]" />, t: insights.rising ? 'warn' : insights.weeksKnown < 4 ? 'soon' : 'ok', title: 'إنذار صيانة مبكر', value: insights.rising ? 'ارتفاع' : insights.weeksKnown < 4 ? '—' : 'مستقر', line: insights.rising ? 'الصرف يرتفع ثلاثة أسابيع متتالية' : 'يراقب ارتفاع الصرف لأسابيع متتالية' },
+    { icon: <MapPin className="w-[18px] h-[18px]" />, t: insights.sites > 1 ? 'warn' : 'ok', title: 'مواقع التفويل', value: String(insights.sites), line: insights.sites > 1 ? 'فُوّلت من أكثر من موقع' : 'موقع واحد' },
+    { icon: <Calendar className="w-[18px] h-[18px]" />, t: 'info', title: 'نمط أيام الأسبوع', value: fills.length ? WEEKDAYS[insights.topDay] : '—', line: 'أكثر يوم تفويلًا', days: insights.byDay },
+  ];
+
+  const field = 'flex items-center gap-2 h-10 px-3 rounded-xl border border-[#23304F] bg-[#0A1020] focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20';
+  const numInput = 'w-full bg-transparent outline-none text-white font-mono font-semibold placeholder:text-[#5B6787]';
+
+  return (
+    <div className="vehicle-page font-cairo rounded-[28px] bg-[#070B16] text-[#E6EBF5] p-4 sm:p-6 space-y-5" dir="rtl">
+      {/* العنوان */}
+      <div className="va-rise flex flex-wrap items-end justify-between gap-3">
+        <h2 className="flex items-baseline gap-3 text-[28px] font-bold tracking-tight">مختبر العربة<span className="font-mono text-[22px] font-semibold text-indigo-300" dir="ltr">{profile?.name || vehicle}</span></h2>
+        {lastDate && (
+          <span className="inline-flex items-center gap-2 h-9 px-3.5 rounded-xl border border-[#1B2645] bg-[#0C1224] text-xs font-semibold text-[#B6C2DC]">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />آخر تفويلة <bdi className="font-mono">{short(lastDate)}</bdi>
+          </span>
+        )}
+      </div>
+
+      {/* الهوية · العربة · الخزانات */}
+      <div className="va-rise grid grid-cols-1 lg:grid-cols-3 gap-4" style={{ animationDelay: '.05s' }}>
+        <section aria-label="سجل الآلية" className={`${panel} p-5`}>
+          <div className="flex items-center justify-between mb-3.5">
+            <span className="text-xs font-bold text-[#8090B0]">سجل الآلية</span>
+            {editable && (
+              <>
+                <input ref={fileRef} type="file" accept=".xlsx,.xls" multiple hidden onChange={e => void importRegistry(e.target.files)} />
+                <button type="button" onClick={() => fileRef.current?.click()} disabled={!!importing && importing.startsWith('جارٍ')} className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-[#14203A] text-[11.5px] font-semibold text-indigo-200 hover:bg-[#1B2A4D] cursor-pointer disabled:opacity-60">
+                  {importing?.startsWith('جارٍ') ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileSpreadsheet className="w-3.5 h-3.5" />}
+                  {reg ? 'تحديث من Excel' : 'استيراد ملف الآليات'}
+                </button>
+              </>
+            )}
+          </div>
+          {importing && <div className="mb-3 text-[11.5px] font-semibold text-indigo-200">{importing}</div>}
+          {reg ? (
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-[13px]">
+              <dt className="text-[#8090B0]">رقم الآلية</dt><dd className="font-mono font-semibold text-white" dir="ltr" style={{ textAlign: 'right' }}>{reg.plate || '—'}</dd>
+              <dt className="text-[#8090B0]">النوع</dt><dd className="font-semibold">{reg.type || '—'}</dd>
+              <dt className="text-[#8090B0]">المحافظة</dt><dd>{reg.governorate || '—'}</dd>
+              <dt className="text-[#8090B0]">المصنع</dt><dd>{reg.factory || '—'}</dd>
+              <dt className="text-[#8090B0]">المجموعة</dt><dd>{reg.group || '—'}</dd>
+              <dt className="text-[#8090B0]">المسؤول</dt><dd>{reg.supervisor || '—'}</dd>
+              <dt className="text-[#8090B0]">السائق</dt><dd className="truncate">{drivers.join('، ') || '—'}</dd>
+            </dl>
+          ) : (
+            <p className="text-[13px] leading-7 text-[#8090B0]">لا يوجد سطر لهذه العربة في ملف آليات الشركة. {editable ? 'استورد ملف «جميع آليات الشركة» (ويمكن رفع أكثر من ملف) لتظهر هنا رقم الآلية والنوع والمصنع والمجموعة.' : ''}</p>
+          )}
+        </section>
+
+        <section aria-label="العربة" className={`${panel} relative min-h-[300px] overflow-hidden flex items-end justify-center`}>
+          <span className="absolute left-1/2 bottom-6 -translate-x-1/2 w-[380px] max-w-[90%] h-28 rounded-[50%] bg-[radial-gradient(closest-side,rgb(99_102_241/0.35),transparent)]" />
+          <span className="absolute inset-x-6 bottom-10 h-px bg-[#1B2645]" />
+          <img src={url} alt={`صورة العربة ${code}`} className="relative w-[86%] max-w-[400px] h-auto mb-10" style={{ transform: `translateY(${imageGround(url) * 100}%)` }} />
+          <div className="absolute top-4 right-4 flex gap-2">
+            {reg && <span className="inline-flex items-center h-7 px-3 rounded-full bg-white/[0.06] text-xs font-semibold text-indigo-100">{reg.type}</span>}
+            {caps[1] ? <span className="inline-flex items-center h-7 px-3 rounded-full bg-white/[0.06] text-xs font-semibold text-indigo-100">خزانان</span> : null}
+          </div>
+        </section>
+
+        <section aria-label="الخزانات" className={`${panel} p-5 flex flex-col gap-4`}>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-[#8090B0]">الخزانات</span>
+            <span className="text-[11px] font-semibold text-[#5B6787]">آخر تفويلة مقابل السعة</span>
+          </div>
+          {tanks.map(t => {
+            const pct = t.cap ? (t.fill / t.cap) * 100 : null;
+            const overT = pct !== null && pct > 100;
+            return (
+              <div key={t.field} className="grid grid-cols-[54px_1fr] gap-3.5 items-center">
+                <div className="relative w-[54px] h-[84px] rounded-xl border-[1.5px] border-[#2A3658] bg-[#0A1020] overflow-hidden">
+                  <span className={`va-grow absolute inset-x-0 bottom-0 ${overT ? 'bg-rose-500' : 'bg-indigo-500'}`} style={{ height: `${Math.min(100, pct || 0)}%` }} />
+                  <span className="absolute inset-0 flex items-center justify-center font-mono text-xs font-semibold text-white">{pct === null ? '؟' : `${Math.round(pct)}%`}</span>
+                </div>
+                <div className="flex flex-col gap-1.5 min-w-0">
+                  <div className="text-[13.5px] font-bold">{t.name}{t.hint && <span className="mr-1.5 text-[11px] font-medium text-[#5B6787]">{t.hint}</span>}</div>
+                  <label className={field}>
+                    <span className="text-[11.5px] text-[#8090B0] whitespace-nowrap">السعة</span>
+                    <input
+                      key={`${vehicle}-${t.field}-${t.cap ?? ''}`}
+                      type="number" inputMode="numeric" min={0} defaultValue={t.cap ?? ''} disabled={!editable} placeholder="باللتر" aria-label={`سعة ${t.name} باللتر`}
+                      onBlur={e => { const v = num(e.target.value); if ((v || null) !== t.cap) saveProfile({ [t.field]: v || null }); }}
+                      className={`${numInput} text-sm`}
+                    />
+                    <span className="text-[11.5px] text-[#5B6787]">لتر</span>
+                  </label>
+                  <div className={`text-[11.5px] font-semibold ${overT ? 'text-rose-400' : t.cap ? 'text-emerald-300' : 'text-[#5B6787]'}`}>
+                    {!t.cap ? 'أدخل السعة لكشف التفويل فوق السعة' : overT ? `آخر تفويلة أكبر من السعة بـ ${fmt(t.fill - t.cap)} لتر` : t.fill ? `آخر تفويلة ${fmt(t.fill)} لتر ضمن السعة` : 'لا تفويلة مسجلة لهذا الخزان'}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </section>
+      </div>
+
+      {/* الاستهلاك عبر الزمن */}
+      <section aria-label="الاستهلاك عبر الزمن" className={`va-rise ${panel} p-5`} style={{ animationDelay: '.1s' }}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <h3 className="text-base font-bold">الاستهلاك عبر الزمن</h3>
+            {firstDate && <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#1B2645] text-[#8090B0]">البيانات من <bdi className="font-mono">{short(firstDate)}</bdi></span>}
+          </div>
+          <div role="group" aria-label="المدى" className="flex gap-0.5 p-1 rounded-2xl bg-[#0A1020] border border-[#1B2645]">
+            {([['day', 'يوم'], ['week', 'أسبوع'], ['month', 'شهر'], ['q', '3 أشهر'], ['year', 'سنة']] as const).map(([k, l]) => (
+              <button key={k} type="button" aria-pressed={range === k} onClick={() => setRange(k)} className={`h-8 px-3.5 rounded-xl text-xs font-semibold cursor-pointer transition-colors ${range === k ? 'bg-indigo-500 text-white' : 'text-[#8090B0] hover:text-white'}`}>{l}</button>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+          {[
+            ['الإجمالي', fmt(total), 'لتر'],
+            [range === 'day' ? 'متوسط التفويلة' : 'المتوسط', chart ? fmt(chart.avg, chart.avg < 10 ? 1 : 0) : '—', 'لتر'],
+            ['الذروة', chart ? fmt(chart.peakValue) : '—', 'لتر'],
+            ['التفويلات', String(range === 'day' ? lastDayLines.length : buckets.filter(b => b.value > 0).length), ''],
+          ].map(([l, v, u]) => (
+            <div key={l}>
+              <div className="text-[11.5px] font-semibold text-[#8090B0]">{l}</div>
+              <div className="mt-1 font-mono text-2xl font-semibold text-white">{v} <span className="font-cairo text-xs text-[#5B6787]">{u}</span></div>
+            </div>
+          ))}
+        </div>
+        {chart && total > 0 ? (
+          <div key={range} className="mt-3">
+            <svg viewBox="0 0 1000 220" preserveAspectRatio="none" className="block w-full h-[220px]" role="img" aria-label="رسم الاستهلاك">
+              <defs><linearGradient id="lab-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#6366F1" stopOpacity=".38" /><stop offset="1" stopColor="#6366F1" stopOpacity="0" /></linearGradient></defs>
+              {[55, 110, 165].map(y => <line key={y} x1="0" y1={y} x2="1000" y2={y} stroke="#141D36" />)}
+              <path d={chart.area} fill="url(#lab-area)" />
+              <path d={`M0 ${chart.avgY.toFixed(1)} L1000 ${chart.avgY.toFixed(1)}`} fill="none" stroke="#475577" strokeWidth="1.5" strokeDasharray="6 6" />
+              <path d={chart.line} fill="none" stroke="#818CF8" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" className="va-draw" />
+              <circle cx={chart.peak[0]} cy={chart.peak[1]} r="5" fill="#F43F5E" stroke="#0C1224" strokeWidth="2" />
+            </svg>
+            <div className="flex justify-between mt-2 font-mono text-[11px] text-[#5B6787]">
+              {buckets.filter((_, i) => i % Math.max(1, Math.round(buckets.length / 8)) === 0).map((b, i) => <span key={i}>{b.label}</span>)}
+            </div>
+          </div>
+        ) : (
+          <div className="mt-6 py-12 text-center text-sm text-[#5B6787]">لا تفويلات في هذا المدى</div>
+        )}
+      </section>
+
+      {/* محلل الصرف الحقيقي */}
+      <div className="va-rise grid grid-cols-1 lg:grid-cols-2 gap-4" style={{ animationDelay: '.15s' }}>
+        <section aria-label="مدخلات المحلل" className={`${panel} p-5 flex flex-col gap-3.5`}>
+          <div>
+            <h3 className="text-base font-bold">محلل الصرف الحقيقي</h3>
+            <p className="mt-1 text-[12.5px] text-[#8090B0]">اكتب المسافة والسرعة، ويُفصل صرف القيادة عن صرف التبريد</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            {([
+              ['الوقود المصروف', 'fuel', 'لتر', `آخر 7 أيام: ${fmt(last7)}`],
+              ['المسافة المقطوعة', 'km', 'كم', '0'],
+              ['متوسط السرعة', 'speed', 'كم/س', '0'],
+              ['ساعات تشغيل التبريد', 'hours', 'ساعة', '0'],
+            ] as const).map(([l, k, u, ph]) => (
+              <label key={k} className="flex flex-col gap-1 p-2.5 px-3 rounded-2xl border border-[#23304F] bg-[#0A1020] focus-within:border-indigo-500">
+                <span className="text-[11.5px] font-semibold text-[#8090B0]">{l}</span>
+                <span className="flex items-baseline gap-1.5">
+                  <input type="number" inputMode="decimal" min={0} value={trip[k]} onChange={e => setTrip(s => ({ ...s, [k]: e.target.value }))} placeholder={ph} className={`${numInput} text-lg`} />
+                  <span className="text-[11.5px] text-[#5B6787] whitespace-nowrap">{u}</span>
+                </span>
+              </label>
+            ))}
+            {([
+              ['صرف التبريد للساعة', 'reeferLph', 'لتر/س', lph],
+              ['المعدل المرجعي للعربة', 'refL100', 'لتر/100كم', ref],
+            ] as const).map(([l, k, u, v]) => (
+              <label key={k} className="flex flex-col gap-1 p-2.5 px-3 rounded-2xl border border-[#23304F] bg-[#0A1020] focus-within:border-indigo-500">
+                <span className="text-[11.5px] font-semibold text-[#8090B0]">{l} <span className="text-[10px] text-[#5B6787]">· يُحفظ</span></span>
+                <span className="flex items-baseline gap-1.5">
+                  <input key={`${vehicle}-${k}-${v}`} type="number" inputMode="decimal" min={0} step="0.1" defaultValue={v || ''} disabled={!editable} placeholder="0" onBlur={e => { const x = num(e.target.value); if (x !== v) saveProfile({ [k]: x || null }); }} className={`${numInput} text-lg`} />
+                  <span className="text-[11.5px] text-[#5B6787] whitespace-nowrap">{u}</span>
+                </span>
+              </label>
+            ))}
+            <label className="col-span-2 flex flex-col gap-1 p-2.5 px-3 rounded-2xl border border-[#23304F] bg-[#0A1020] focus-within:border-indigo-500">
+              <span className="text-[11.5px] font-semibold text-[#8090B0]">سعر اللتر <span className="text-[10px] text-[#5B6787]">· اختياري</span></span>
+              <span className="flex items-baseline gap-1.5">
+                <input type="number" inputMode="decimal" min={0} value={trip.price} onChange={e => setTrip(s => ({ ...s, price: e.target.value }))} placeholder="0" className={`${numInput} text-lg`} />
+                <span className="text-[11.5px] text-[#5B6787]">دينار</span>
+              </span>
+            </label>
+          </div>
+        </section>
+
+        <section aria-label="نتيجة المحلل" className={`${panel} p-5 flex flex-col gap-4`}>
+          <div className="flex items-center gap-5">
+            <div className="relative w-[132px] h-[132px] shrink-0">
+              <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90" aria-hidden>
+                <circle cx="60" cy="60" r="50" fill="none" stroke="#141D36" strokeWidth="10" />
+                <circle cx="60" cy="60" r="50" fill="none" stroke={ringColor} strokeWidth="10" strokeLinecap="round" strokeDasharray="314" strokeDashoffset={314 * (1 - ring)} className="transition-[stroke-dashoffset,stroke] duration-500" />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="font-mono text-[26px] font-semibold text-white">{per100 === null ? '—' : fmt(per100, 1)}</span>
+                <span className="text-[10.5px] text-[#8090B0]">لتر / 100 كم</span>
+              </div>
+            </div>
+            <div className="min-w-0">
+              <div className={`text-lg font-bold ${over ? 'text-rose-400' : under ? 'text-cyan-300' : diff === null ? 'text-[#B6C2DC]' : 'text-emerald-300'}`}>
+                {per100 === null ? 'أدخل المسافة' : diff === null ? 'أدخل المعدل المرجعي' : over ? 'أعلى من المرجع' : under ? 'أقل من المرجع' : 'ضمن المرجع'}
+              </div>
+              {diff !== null && (
+                <div className="mt-1.5 text-[13px] text-[#B6C2DC]">
+                  <bdi className="font-mono">{diff > 0 ? '+' : ''}{fmt(diff)}%</bdi> عن <bdi className="font-mono">{fmt(ref, 1)}</bdi> لتر/100 كم
+                  {over && <> · <bdi className="font-mono">{fmt(drive - (ref * km) / 100)}</bdi> لتر زائدة</>}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            {[
+              ['صرف القيادة', fmt(drive), 'لتر'],
+              ['صرف التبريد', fmt(reefer), 'لتر'],
+              ['زمن القيادة', speed ? fmt(km / speed, 1) : '—', 'ساعة'],
+              [price ? 'الكلفة' : 'كلفة الكيلومتر', price ? fmt(fuel * price) : '—', price ? 'دينار' : 'أدخل سعر اللتر'],
+            ].map(([l, v, u]) => (
+              <div key={l} className="p-3 px-3.5 rounded-2xl bg-[#0A1020] border border-[#141D36]">
+                <div className="text-[11.5px] font-semibold text-[#8090B0]">{l}</div>
+                <div className="mt-1 font-mono text-lg font-semibold text-white">{v} <span className="font-cairo text-[11.5px] text-[#5B6787]">{u}</span></div>
+              </div>
+            ))}
+          </div>
+          {price > 0 && km > 0 && <div className="text-xs text-[#8090B0]">كلفة الكيلومتر <bdi className="font-mono text-white">{fmt((fuel * price) / km)}</bdi> دينار</div>}
+          <div>
+            <div className="flex h-2.5 rounded-full overflow-hidden gap-[3px] bg-[#0A1020]">
+              <span className="bg-indigo-400 transition-[flex] duration-500" style={{ flex: `${drive || 0.0001} 1 0` }} />
+              <span className="bg-cyan-400 transition-[flex] duration-500" style={{ flex: `${reefer || 0.0001} 1 0` }} />
+            </div>
+            <div className="flex justify-between mt-2 text-[11.5px] text-[#8090B0]">
+              <span><span className="inline-block w-2 h-2 rounded-sm bg-indigo-400 ml-1.5" />القيادة {fuel ? `${Math.round((drive / fuel) * 100)}%` : '—'}</span>
+              <span><span className="inline-block w-2 h-2 rounded-sm bg-cyan-400 ml-1.5" />التبريد {fuel ? `${Math.round((reefer / fuel) * 100)}%` : '—'}</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {/* ما يكشفه المختبر أيضًا */}
+      <section aria-label="مؤشرات إضافية" className="va-rise" style={{ animationDelay: '.2s' }}>
+        <div className="flex items-baseline justify-between mb-3">
+          <h3 className="text-base font-bold">ما يكشفه المختبر أيضًا</h3>
+          <span className="text-xs text-[#5B6787]"><Gauge className="inline w-3.5 h-3.5 ml-1" />من بيانات العربة الحقيقية</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+          {cards.map((c, i) => (
+            <article key={c.title} className={`va-rise ${panel} !rounded-[20px] p-4 transition-all hover:-translate-y-0.5 hover:border-[#334169]`} style={{ animationDelay: `${0.25 + i * 0.05}s` }}>
+              <div className="flex items-center justify-between">
+                <span className={`w-9 h-9 rounded-[11px] flex items-center justify-center ${tone[c.t]}`}>{c.icon}</span>
+                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${tone[c.t]}`}>{tags[c.t]}</span>
+              </div>
+              <div className="mt-3.5 text-[13.5px] font-bold">{c.title}</div>
+              <div className="mt-1.5 font-mono text-[22px] font-semibold text-white" dir="ltr" style={{ textAlign: 'right' }}>{c.value}</div>
+              <div className="mt-1 text-xs leading-6 text-[#8090B0]">{c.line}</div>
+              {c.days && (
+                <div className="grid grid-cols-7 gap-1 mt-2.5">
+                  {c.days.map((v, d) => {
+                    const mx = Math.max(1, ...c.days!);
+                    return (
+                      <div key={d} className="flex flex-col items-center gap-1">
+                        <span className="block w-full h-[18px] rounded-[5px]" style={{ background: v ? `rgba(129,140,248,${0.2 + (v / mx) * 0.7})` : '#141D36' }} />
+                        <span className="text-[9.5px] text-[#5B6787]">{WEEKDAYS[d].charAt(0)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+};
