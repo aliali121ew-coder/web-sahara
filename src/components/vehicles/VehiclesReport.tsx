@@ -5,12 +5,14 @@ import {
 } from 'lucide-react';
 import { usePermissions } from '../../lib/usePermission';
 import { useFuelNav } from '../../context/FuelDataContext';
-import { FREQUENT_DAYS, formatDay } from '../../lib/vehicleFuel';
+import { FREQUENT_DAYS, categoryLabel, formatDay } from '../../lib/vehicleFuel';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
 import { useVehicleData, type Scope } from './useVehicleData';
 import { UploadPanel, type QueueItem } from './UploadPanel';
 import { FilesDrawer } from './FilesDrawer';
 import { ConsumptionAnalysis } from './ConsumptionAnalysis';
+import { VehicleCrumbs, type Crumb } from './VehicleCrumbs';
+import { useCategoryNames } from './categories';
 import { CategoryDonut } from './CategoryDonut';
 import { TopSevenCard } from './TopSevenCard';
 import { TopVehicleCards } from './TopVehicleCards';
@@ -124,29 +126,47 @@ export const VehiclesReport: React.FC = () => {
 
   const vehicleRefills = useMemo(() => (vehicle ? data.refills.filter(r => r.vehicle === vehicle) : []), [data.refills, vehicle]);
 
+  // مسار الصفحات: تقرير العربات › [الفئة | تحليل الاستهلاك] › العربة
+  const [catLabels] = useCategoryNames();
+  const home = () => { setVehicle(null); setAnalysis(false); setCategory(null); };
+  const crumbs: Crumb[] = [{ label: 'تقرير العربات', onClick: home }];
+  if (analysis && dates.length) crumbs.push({ label: 'تحليل الاستهلاك', onClick: () => setVehicle(null) });
+  else if (category) crumbs.push({ label: catLabels[category] || categoryLabel(category) || 'أخرى', onClick: () => setVehicle(null) });
+  if (selected) crumbs.push({ label: <>العربة <bdi dir="ltr" className="font-mono">{selected.vehicle}</bdi></> });
+
   if (selected) {
     return (
-      <VehicleDetailPage
-        stat={selected}
-        refills={vehicleRefills}
-        ranking={ranking}
-        fleetAvg={fleet.avg}
-        fleetTotal={fleet.total}
-        vehicles={ranking}
-        editable={editable}
-        onBack={() => setVehicle(null)}
-        onOpen={setVehicle}
-      />
+      <div className="space-y-3">
+        <VehicleCrumbs items={crumbs} />
+        <VehicleDetailPage
+          stat={selected}
+          refills={vehicleRefills}
+          ranking={ranking}
+          fleetAvg={fleet.avg}
+          fleetTotal={fleet.total}
+          vehicles={ranking}
+          editable={editable}
+          backLabel={analysis && dates.length ? 'تحليل الاستهلاك' : 'تقرير العربات'}
+          onBack={() => setVehicle(null)}
+          onOpen={setVehicle}
+        />
+      </div>
     );
   }
 
   if (analysis && dates.length) {
     const end = active.kind === 'day' ? active.date : active.kind === 'range' ? active.to : dates[dates.length - 1];
-    return <ConsumptionAnalysis allFills={allFills} endDate={end} onOpen={setVehicle} />;
+    return (
+      <div className="space-y-3">
+        <VehicleCrumbs items={crumbs} />
+        <ConsumptionAnalysis allFills={allFills} endDate={end} onOpen={setVehicle} />
+      </div>
+    );
   }
 
   return (
     <div className="space-y-5 pb-12 font-cairo">
+      <VehicleCrumbs items={crumbs} />
       {/* أدوات الصفحة: تحليل الاستهلاك يمينًا، ثم التاريخ والملفات والرفع */}
       <div className="flex flex-wrap items-center gap-2">
         {dates.length > 0 && (

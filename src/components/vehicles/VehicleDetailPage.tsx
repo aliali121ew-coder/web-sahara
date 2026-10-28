@@ -26,6 +26,8 @@ interface Props {
   fleetTotal: number;
   vehicles: string[];
   editable: boolean;
+  /** اسم الصفحة التي يعود إليها زر الرجوع */
+  backLabel?: string;
   onBack: () => void;
   onOpen: (v: string) => void;
 }
@@ -41,7 +43,7 @@ const Spec: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactN
 );
 
 /** صفحة كاملة لتفاصيل عربة: المواصفات، آخر رحلة تفويل، السائقون، الخريطة، الرسم، والسجل */
-export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, ranking, fleetAvg, fleetTotal, vehicles, editable, onBack, onOpen }) => {
+export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, ranking, fleetAvg, fleetTotal, vehicles, editable, backLabel = 'تقرير العربات', onBack, onOpen }) => {
   const [routes] = useSyncedStorage<VehicleRoute[]>(VEHICLE_ROUTES_KEY, []);
   const [tab, setTab] = useState<'all' | 'frequent' | 'multi' | 'violations'>('all');
   const [profiles, setProfiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
@@ -121,7 +123,7 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, ranking, fle
       {/* الشريط العلوي */}
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" onClick={onBack} className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-sky-400 cursor-pointer">
-          <ArrowRight className="w-4 h-4" />تقرير العربات
+          <ArrowRight className="w-4 h-4" />{backLabel}
         </button>
         <div className="flex items-center gap-3 ml-auto">
           <div>

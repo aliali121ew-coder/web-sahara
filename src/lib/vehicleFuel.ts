@@ -523,6 +523,9 @@ const CATEGORY: Record<string, { label: string; image: string; door: [number, nu
   KB: { label: 'براد كيا', image: 'kb', door: [0.6, 0.5], tilt: 0 },
 };
 
+/** الاسم الافتراضي لفئة من مفتاحها (لمسار الصفحات) */
+export const categoryLabel = (key: string) => CATEGORY[key]?.label || '';
+
 /** أرقام الشفلات الكبيرة (SF + رقم): الشفل الكبير والصغير لكل منهما تسلسله */
 export const BIG_SF_NUMBERS = new Set<number>();
 
