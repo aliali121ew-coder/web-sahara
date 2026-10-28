@@ -141,19 +141,24 @@ export const VehicleLab: React.FC<{
   const total = buckets.reduce((s, b) => s + b.value, 0);
   const firstDate = fills[0]?.date;
 
-  // ── محلل الصرف الحقيقي
-  const last7 = useMemo(() => (end ? fills.filter(f => f.date > addDays(end, -7)).reduce((s, f) => s + f.qty, 0) : 0), [fills, end]);
-  const [trip, setTrip] = useState({ fuel: '', km: '', speed: '', hours: '', price: '' });
-  const fuel = trip.fuel === '' ? last7 : num(trip.fuel);
+  // ── محلل الصرف الحقيقي: الكشوف تُبيّن التفويل فقط، فالاستهلاك يُحسب من المسافة والسرعة وتشغيل التبريد
+  //    ثم يُقارن بما فُوّل فعلًا في نفس الفترة
+  const [period, setPeriod] = useState<7 | 30>(7);
+  const refilled = useMemo(() => (end ? fills.filter(f => f.date > addDays(end, -period)).reduce((s, f) => s + f.qty, 0) : 0), [fills, end, period]);
+  const [trip, setTrip] = useState({ km: '', speed: '', hours: '', price: '' });
   const ref = profile?.refL100 ?? 0;
   const lph = profile?.reeferLph ?? 0;
   const km = num(trip.km); const speed = num(trip.speed); const hours = num(trip.hours); const price = num(trip.price);
-  const reefer = Math.min(fuel, hours * lph);
-  const drive = Math.max(0, fuel - reefer);
-  const per100 = km ? (drive / km) * 100 : null;
-  const diff = per100 !== null && ref ? ((per100 - ref) / ref) * 100 : null;
-  const over = diff !== null && diff > 10; const under = diff !== null && diff < -10;
-  const ring = per100 === null || !ref ? 0 : Math.min(1, per100 / (ref * 1.6));
+  // الصرف يرتفع كلما ابتعدت السرعة عن 60 كم/س (تقدير: +2.5% عند 70 و+22% عند 90، بحد أقصى +60%)
+  const speedFactor = speed ? Math.min(1.6, 1 + 0.00025 * (speed - 60) ** 2) : 1;
+  const drive = (km * ref / 100) * speedFactor;
+  const reefer = hours * lph;
+  const expected = drive + reefer;
+  const ready = km > 0 && ref > 0;
+  const gap = ready ? refilled - expected : null;
+  const gapPct = gap !== null && expected ? (gap / expected) * 100 : null;
+  const over = gapPct !== null && gapPct > 10; const under = gapPct !== null && gapPct < -10;
+  const ring = ready && refilled ? Math.min(1, expected / refilled) : 0;
   const ringColor = over ? '#F43F5E' : under ? '#22D3EE' : '#34D399';
 
   // ── مؤشرات إضافية
@@ -337,16 +342,23 @@ export const VehicleLab: React.FC<{
       {/* محلل الصرف الحقيقي */}
       <div className="va-rise grid grid-cols-1 lg:grid-cols-2 gap-4" style={{ animationDelay: '.15s' }}>
         <section aria-label="مدخلات المحلل" className={`${panel} p-5 flex flex-col gap-3.5`}>
-          <div>
-            <h3 className="text-base font-bold">محلل الصرف الحقيقي</h3>
-            <p className="mt-1 text-[12.5px] text-slate-500 dark:text-[#8090B0]">اكتب المسافة والسرعة، ويُفصل صرف القيادة عن صرف التبريد</p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-base font-bold">محلل الصرف الحقيقي</h3>
+              <p className="mt-1 text-[12.5px] text-slate-500 dark:text-[#8090B0]">الاستهلاك يُحسب من المسافة والسرعة والتبريد، ويُقارن بالتفويل في الكشوف</p>
+            </div>
+            <div role="group" aria-label="الفترة" className="flex gap-0.5 p-1 rounded-xl bg-slate-100 dark:bg-[#0A1020] border border-slate-200/80 dark:border-[#1B2645]">
+              {([7, 30] as const).map(d => (
+                <button key={d} type="button" aria-pressed={period === d} onClick={() => setPeriod(d)} className={`h-7 px-3 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${period === d ? 'bg-indigo-500 text-white' : 'text-slate-500 hover:text-slate-900 dark:text-[#8090B0] dark:hover:text-white'}`}>آخر {d} يومًا</button>
+              ))}
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-2.5">
             {([
-              ['الوقود المصروف', 'fuel', 'لتر', `آخر 7 أيام: ${fmt(last7)}`],
               ['المسافة المقطوعة', 'km', 'كم', '0'],
               ['متوسط السرعة', 'speed', 'كم/س', '0'],
               ['ساعات تشغيل التبريد', 'hours', 'ساعة', '0'],
+              ['سعر اللتر · اختياري', 'price', 'دينار', '0'],
             ] as const).map(([l, k, u, ph]) => (
               <label key={k} className="flex flex-col gap-1 p-2.5 px-3 rounded-2xl border border-slate-200 dark:border-[#23304F] bg-slate-50 dark:bg-[#0A1020] focus-within:border-indigo-500">
                 <span className="text-[11.5px] font-semibold text-slate-500 dark:text-[#8090B0]">{l}</span>
@@ -357,8 +369,8 @@ export const VehicleLab: React.FC<{
               </label>
             ))}
             {([
+              ['صرف القيادة عند 60 كم/س', 'refL100', 'لتر/100كم', ref],
               ['صرف التبريد للساعة', 'reeferLph', 'لتر/س', lph],
-              ['المعدل المرجعي للعربة', 'refL100', 'لتر/100كم', ref],
             ] as const).map(([l, k, u, v]) => (
               <label key={k} className="flex flex-col gap-1 p-2.5 px-3 rounded-2xl border border-slate-200 dark:border-[#23304F] bg-slate-50 dark:bg-[#0A1020] focus-within:border-indigo-500">
                 <span className="text-[11.5px] font-semibold text-slate-500 dark:text-[#8090B0]">{l} <span className="text-[10px] text-slate-400 dark:text-[#5B6787]">· يُحفظ</span></span>
@@ -368,14 +380,8 @@ export const VehicleLab: React.FC<{
                 </span>
               </label>
             ))}
-            <label className="col-span-2 flex flex-col gap-1 p-2.5 px-3 rounded-2xl border border-slate-200 dark:border-[#23304F] bg-slate-50 dark:bg-[#0A1020] focus-within:border-indigo-500">
-              <span className="text-[11.5px] font-semibold text-slate-500 dark:text-[#8090B0]">سعر اللتر <span className="text-[10px] text-slate-400 dark:text-[#5B6787]">· اختياري</span></span>
-              <span className="flex items-baseline gap-1.5">
-                <input type="number" inputMode="decimal" min={0} value={trip.price} onChange={e => setTrip(s => ({ ...s, price: e.target.value }))} placeholder="0" className={`${numInput} text-lg`} />
-                <span className="text-[11.5px] text-slate-400 dark:text-[#5B6787]">دينار</span>
-              </span>
-            </label>
           </div>
+          <p className="text-[11.5px] leading-6 text-slate-400 dark:text-[#5B6787]">السرعة ترفع الصرف كلما ابتعدت عن 60 كم/س (عند 90 كم/س حوالي +22%). صرف التبريد يُضاف للبرادات فقط.</p>
         </section>
 
         <section aria-label="نتيجة المحلل" className={`${panel} p-5 flex flex-col gap-4`}>
@@ -386,28 +392,30 @@ export const VehicleLab: React.FC<{
                 <circle cx="60" cy="60" r="50" fill="none" stroke={ringColor} strokeWidth="10" strokeLinecap="round" strokeDasharray="314" strokeDashoffset={314 * (1 - ring)} className="transition-[stroke-dashoffset,stroke] duration-500" />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="font-mono text-[26px] font-semibold text-slate-900 dark:text-white">{per100 === null ? '—' : fmt(per100, 1)}</span>
-                <span className="text-[10.5px] text-slate-500 dark:text-[#8090B0]">لتر / 100 كم</span>
+                <span className="font-mono text-[26px] font-semibold text-slate-900 dark:text-white">{ready ? fmt(expected) : '—'}</span>
+                <span className="text-[10.5px] text-slate-500 dark:text-[#8090B0]">لتر استهلاك</span>
               </div>
             </div>
             <div className="min-w-0">
-              <div className={`text-lg font-bold ${over ? 'text-rose-600 dark:text-rose-400' : under ? 'text-cyan-600 dark:text-cyan-300' : diff === null ? 'text-slate-600 dark:text-[#B6C2DC]' : 'text-emerald-600 dark:text-emerald-300'}`}>
-                {per100 === null ? 'أدخل المسافة' : diff === null ? 'أدخل المعدل المرجعي' : over ? 'أعلى من المرجع' : under ? 'أقل من المرجع' : 'ضمن المرجع'}
+              <div className={`text-lg font-bold ${over ? 'text-rose-600 dark:text-rose-400' : under ? 'text-cyan-600 dark:text-cyan-300' : !ready ? 'text-slate-600 dark:text-[#B6C2DC]' : 'text-emerald-600 dark:text-emerald-300'}`}>
+                {!km ? 'أدخل المسافة' : !ref ? 'أدخل صرف القيادة للعربة' : over ? 'التفويل أكثر من الاستهلاك' : under ? 'التفويل أقل من الاستهلاك' : 'التفويل يطابق الاستهلاك'}
               </div>
-              {diff !== null && (
-                <div className="mt-1.5 text-[13px] text-slate-600 dark:text-[#B6C2DC]">
-                  <bdi className="font-mono">{diff > 0 ? '+' : ''}{fmt(diff)}%</bdi> عن <bdi className="font-mono">{fmt(ref, 1)}</bdi> لتر/100 كم
-                  {over && <> · <bdi className="font-mono">{fmt(drive - (ref * km) / 100)}</bdi> لتر زائدة</>}
+              {gap !== null && (
+                <div className="mt-1.5 text-[13px] leading-6 text-slate-600 dark:text-[#B6C2DC]">
+                  {over ? <><bdi className="font-mono">{fmt(gap)}</bdi> لتر فُوّلت ولا تفسرها المسافة</>
+                    : under ? <>ينقص <bdi className="font-mono">{fmt(-gap)}</bdi> لتر — ربما فُوّلت خارج الكشوف</>
+                    : <>الفرق <bdi className="font-mono">{fmt(Math.abs(gap))}</bdi> لتر ضمن 10%</>}
+                  {price > 0 && (over || under) && <> · <bdi className="font-mono">{fmt(Math.abs(gap) * price)}</bdi> دينار</>}
                 </div>
               )}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2.5">
             {[
-              ['صرف القيادة', fmt(drive), 'لتر'],
-              ['صرف التبريد', fmt(reefer), 'لتر'],
-              ['زمن القيادة', speed ? fmt(km / speed, 1) : '—', 'ساعة'],
-              [price ? 'الكلفة' : 'كلفة الكيلومتر', price ? fmt(fuel * price) : '—', price ? 'دينار' : 'أدخل سعر اللتر'],
+              ['المفوّل في الكشوف', fmt(refilled), 'لتر'],
+              ['الاستهلاك المحسوب', ready ? fmt(expected) : '—', 'لتر'],
+              ['الفرق', gap === null ? '—' : `${gap > 0 ? '+' : ''}${fmt(gap)}`, gapPct === null ? 'لتر' : `لتر · ${gapPct > 0 ? '+' : ''}${fmt(gapPct)}%`],
+              ['زمن القيادة', speed && km ? fmt(km / speed, 1) : '—', 'ساعة'],
             ].map(([l, v, u]) => (
               <div key={l} className="p-3 px-3.5 rounded-2xl bg-slate-50 dark:bg-[#0A1020] border border-slate-100 dark:border-[#141D36]">
                 <div className="text-[11.5px] font-semibold text-slate-500 dark:text-[#8090B0]">{l}</div>
@@ -415,15 +423,22 @@ export const VehicleLab: React.FC<{
               </div>
             ))}
           </div>
-          {price > 0 && km > 0 && <div className="text-xs text-slate-500 dark:text-[#8090B0]">كلفة الكيلومتر <bdi className="font-mono text-slate-900 dark:text-white">{fmt((fuel * price) / km)}</bdi> دينار</div>}
-          <div>
-            <div className="flex h-2.5 rounded-full overflow-hidden gap-[3px] bg-slate-50 dark:bg-[#0A1020]">
-              <span className="bg-indigo-400 transition-[flex] duration-500" style={{ flex: `${drive || 0.0001} 1 0` }} />
-              <span className="bg-cyan-400 transition-[flex] duration-500" style={{ flex: `${reefer || 0.0001} 1 0` }} />
+          {/* المفوّل مقابل الاستهلاك (القيادة + التبريد) */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2.5">
+              <span className="w-16 text-[11.5px] font-semibold text-slate-500 dark:text-[#8090B0]">المفوّل</span>
+              <div className="flex-1 h-2.5 rounded-full bg-slate-100 dark:bg-[#0A1020] overflow-hidden"><div className="h-full rounded-full bg-slate-400 dark:bg-slate-500 transition-[width] duration-500" style={{ width: `${(refilled / Math.max(refilled, expected, 1)) * 100}%` }} /></div>
             </div>
-            <div className="flex justify-between mt-2 text-[11.5px] text-slate-500 dark:text-[#8090B0]">
-              <span><span className="inline-block w-2 h-2 rounded-sm bg-indigo-400 ml-1.5" />القيادة {fuel ? `${Math.round((drive / fuel) * 100)}%` : '—'}</span>
-              <span><span className="inline-block w-2 h-2 rounded-sm bg-cyan-400 ml-1.5" />التبريد {fuel ? `${Math.round((reefer / fuel) * 100)}%` : '—'}</span>
+            <div className="flex items-center gap-2.5">
+              <span className="w-16 text-[11.5px] font-semibold text-slate-500 dark:text-[#8090B0]">الاستهلاك</span>
+              <div className="flex-1 h-2.5 rounded-full bg-slate-100 dark:bg-[#0A1020] overflow-hidden flex">
+                <span className="h-full bg-indigo-400 transition-[width] duration-500" style={{ width: `${(drive / Math.max(refilled, expected, 1)) * 100}%` }} />
+                <span className="h-full bg-cyan-400 transition-[width] duration-500" style={{ width: `${(reefer / Math.max(refilled, expected, 1)) * 100}%` }} />
+              </div>
+            </div>
+            <div className="flex justify-end gap-4 text-[11.5px] text-slate-500 dark:text-[#8090B0]">
+              <span><span className="inline-block w-2 h-2 rounded-sm bg-indigo-400 ml-1.5" />القيادة <bdi className="font-mono">{fmt(drive)}</bdi></span>
+              <span><span className="inline-block w-2 h-2 rounded-sm bg-cyan-400 ml-1.5" />التبريد <bdi className="font-mono">{fmt(reefer)}</bdi></span>
             </div>
           </div>
         </section>
