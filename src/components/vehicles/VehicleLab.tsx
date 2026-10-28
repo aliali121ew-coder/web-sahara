@@ -1,9 +1,9 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useMemo, useRef, useState } from 'react';
-import { Calendar, CalendarClock, FlaskConical, FileSpreadsheet, Fuel, Gauge, Leaf, Loader2, MapPin, Trophy, Users, Wrench } from 'lucide-react';
+import { FlaskConical, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import {
-  VEHICLE_PROFILES_KEY, daysBetween, imageGround, vehicleImage,
+  VEHICLE_PROFILES_KEY, imageGround, vehicleImage,
   type DayFill, type VehicleProfile, type VehicleRefill,
 } from '../../lib/vehicleFuel';
 import { VEHICLE_REGISTRY_KEY, readVehicleRegistry, type VehicleRegistryEntry } from '../../lib/vehicleRegistry';
@@ -17,8 +17,6 @@ const addDays = (d: string, n: number) => fromMs(toMs(d) + n * 86400000);
 const short = (d: string) => `${d.slice(8)}/${d.slice(5, 7)}`;
 const WEEKDAYS = ['أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'];
 const MONTHS = ['ك2', 'شباط', 'آذار', 'نيسان', 'أيار', 'حزيران', 'تموز', 'آب', 'أيلول', 'ت1', 'ت2', 'ك1'];
-/** كيلوغرام CO₂ لكل لتر ديزل */
-const CO2_PER_L = 2.68;
 
 const fmt = (x: number | null, d = 0) => (x === null || !isFinite(x) ? '—' : x.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d }));
 const num = (v: string) => { const x = parseFloat(v); return isFinite(x) ? x : 0; };
@@ -127,12 +125,15 @@ export const VehicleLab: React.FC<{
 
   // ── الخزانات
   const caps = [profile?.tankLiters ?? null, profile?.tank2Liters ?? null];
-  const biggest = lastDayLines[0]?.qty ?? 0;
+  // تفويلة اليوم تملأ خزان المحرك أولًا، والباقي يعبر إلى الخزان الثاني؛ ما يزيد على مجموع السعتين = فوق السعة
   const dayTotal = lastDayLines.reduce((s, r) => s + r.qty, 0);
-  const overCapLines = caps[0] ? refills.filter(r => r.qty > (caps[0] || 0) + (caps[1] || 0)).length : 0;
+  const capSum = (caps[0] || 0) + (caps[1] || 0);
+  const fill1 = caps[0] ? Math.min(dayTotal, caps[0]) : dayTotal;
+  const fill2 = caps[0] && caps[1] ? Math.min(Math.max(0, dayTotal - caps[0]), caps[1]) : 0;
+  const overflow = caps[0] ? Math.max(0, dayTotal - capSum) : 0;
   const tanks = [
-    { name: 'خزان المحرك', field: 'tankLiters' as const, cap: caps[0], fill: biggest },
-    { name: 'الخزان الثاني', hint: 'وحدة التبريد في البرادات', field: 'tank2Liters' as const, cap: caps[1], fill: caps[1] ? Math.max(0, dayTotal - biggest) : 0 },
+    { name: 'خزان المحرك', field: 'tankLiters' as const, cap: caps[0], fill: fill1, extra: caps[1] ? 0 : overflow },
+    { name: 'الخزان الثاني', hint: 'وحدة التبريد في البرادات', field: 'tank2Liters' as const, cap: caps[1], fill: fill2, extra: caps[1] ? overflow : 0 },
   ];
 
   // ── الرسم
@@ -160,47 +161,6 @@ export const VehicleLab: React.FC<{
   const over = gapPct !== null && gapPct > 10; const under = gapPct !== null && gapPct < -10;
   const ring = ready && refilled ? Math.min(1, expected / refilled) : 0;
   const ringColor = over ? '#F43F5E' : under ? '#22D3EE' : '#34D399';
-
-  // ── مؤشرات إضافية
-  const insights = useMemo(() => {
-    const gaps = fills.slice(1).map((f, i) => daysBetween(fills[i].date, f.date)).filter(g => g > 0);
-    const avgGap = gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length : null;
-    const next = lastDate && avgGap ? addDays(lastDate, Math.max(1, Math.round(avgGap))) : null;
-    const month = end ? fills.filter(f => f.date > addDays(end, -30)).reduce((s, f) => s + f.qty, 0) : 0;
-    // ترتيبها بين عربات نفس النوع في سجل الآليات (الأقل استهلاكًا خلال 30 يومًا = الأفضل)
-    const sameType = reg ? new Set(registry.filter(r => r.type === reg.type).map(r => r.id)) : null;
-    let rank: string = '—';
-    if (sameType && end) {
-      const totals = new Map<string, number>();
-      for (const f of allFills) if (f.date > addDays(end, -30) && sameType.has(f.vehicle.toUpperCase())) totals.set(f.vehicle, (totals.get(f.vehicle) || 0) + f.qty);
-      const sorted = [...totals.entries()].sort((a, b) => b[1] - a[1]);
-      const i = sorted.findIndex(([v]) => v === vehicle);
-      if (i >= 0) rank = `${i + 1}/${sorted.length}`;
-    }
-    // الصيانة: ارتفاع متتالٍ لثلاثة أسابيع
-    const weeks = end ? [3, 2, 1, 0].map(w => fills.filter(f => f.date > addDays(end, -(w + 1) * 7) && f.date <= addDays(end, -w * 7)).reduce((s, f) => s + f.qty, 0)) : [];
-    const rising = weeks.length === 4 && weeks.every(v => v > 0) && weeks[1] > weeks[0] && weeks[2] > weeks[1] && weeks[3] > weeks[2];
-    const sites = new Set(refills.map(r => r.site));
-    const byDay = [0, 0, 0, 0, 0, 0, 0];
-    fills.forEach(f => { byDay[new Date(toMs(f.date)).getUTCDay()] += 1; });
-    const topDay = byDay.indexOf(Math.max(...byDay));
-    return { next, avgGap, month, rank, rising, weeksKnown: weeks.filter(v => v > 0).length, sites: sites.size, byDay, topDay };
-  }, [fills, lastDate, end, reg, registry, allFills, vehicle, refills]);
-
-  const tone = {
-    warn: 'bg-rose-100 dark:bg-[#2A1420] text-rose-700 dark:text-[#FB7185]', info: 'bg-indigo-100 dark:bg-[#14203A] text-indigo-700 dark:text-[#A5B4FC]', ok: 'bg-emerald-100 dark:bg-[#0F2A24] text-emerald-800 dark:text-[#6EE7B7]', soon: 'bg-slate-100 dark:bg-[#1B2645] text-slate-600 dark:text-[#8090B0]',
-  };
-  const tags = { warn: 'تنبيه', info: 'تحليل', ok: 'جيد', soon: 'يحتاج بيانات' };
-  const cards: { icon: React.ReactNode; t: keyof typeof tone; title: string; value: string; line: string; days?: number[] }[] = [
-    { icon: <CalendarClock className="w-[18px] h-[18px]" />, t: insights.next ? 'info' : 'soon', title: 'التفويلة القادمة المتوقعة', value: insights.next ? short(insights.next) : '—', line: insights.avgGap ? `حسب متوسط الفاصل بين تفويلاتها (${fmt(insights.avgGap, 1)} يوم)` : 'تحتاج تفويلتين على الأقل' },
-    { icon: <Fuel className="w-[18px] h-[18px]" />, t: !caps[0] ? 'soon' : overCapLines ? 'warn' : 'ok', title: 'التفويل فوق سعة الخزان', value: caps[0] ? String(overCapLines) : '—', line: caps[0] ? (overCapLines ? 'تفويلات أكبر من سعة خزاناتها' : 'كل التفويلات ضمن السعة') : 'أدخل سعة الخزان لتفعيله' },
-    { icon: <Users className="w-[18px] h-[18px]" />, t: drivers.length > 1 ? 'warn' : 'info', title: 'السائقون', value: String(drivers.length), line: drivers.length > 1 ? 'أكثر من سائق فوّلها — قارن صرف كل سائق' : drivers[0] || 'لا سائق مسجل' },
-    { icon: <Leaf className="w-[18px] h-[18px]" />, t: 'info', title: 'انبعاثات الكربون · 30 يومًا', value: fmt(insights.month * CO2_PER_L), line: `كغ CO₂ من ${fmt(insights.month)} لتر ديزل` },
-    { icon: <Trophy className="w-[18px] h-[18px]" />, t: reg ? 'info' : 'soon', title: 'ترتيبها بين نظيراتها', value: insights.rank, line: reg ? `بين عربات «${reg.type}» حسب استهلاك 30 يومًا` : 'يحتاج ملف آليات الشركة' },
-    { icon: <Wrench className="w-[18px] h-[18px]" />, t: insights.rising ? 'warn' : insights.weeksKnown < 4 ? 'soon' : 'ok', title: 'إنذار صيانة مبكر', value: insights.rising ? 'ارتفاع' : insights.weeksKnown < 4 ? '—' : 'مستقر', line: insights.rising ? 'الصرف يرتفع ثلاثة أسابيع متتالية' : 'يراقب ارتفاع الصرف لأسابيع متتالية' },
-    { icon: <MapPin className="w-[18px] h-[18px]" />, t: insights.sites > 1 ? 'warn' : 'ok', title: 'مواقع التفويل', value: String(insights.sites), line: insights.sites > 1 ? 'فُوّلت من أكثر من موقع' : 'موقع واحد' },
-    { icon: <Calendar className="w-[18px] h-[18px]" />, t: 'info', title: 'نمط أيام الأسبوع', value: fills.length ? WEEKDAYS[insights.topDay] : '—', line: 'أكثر يوم تفويلًا', days: insights.byDay },
-  ];
 
   const field = 'flex items-center gap-2 h-10 px-3 rounded-xl border border-slate-300 dark:border-[#23304F] bg-white dark:bg-[#0A1020] shadow-sm dark:shadow-none focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20';
   const numInput = 'w-full bg-transparent outline-none text-slate-900 dark:text-white font-mono font-semibold placeholder:text-slate-400 dark:placeholder:text-[#5B6787]';
@@ -264,8 +224,8 @@ export const VehicleLab: React.FC<{
             <span className="text-[11px] font-semibold text-slate-400 dark:text-[#5B6787]">آخر تفويلة مقابل السعة</span>
           </div>
           {tanks.map(t => {
-            const pct = t.cap ? (t.fill / t.cap) * 100 : null;
-            const overT = pct !== null && pct > 100;
+            const pct = t.cap ? ((t.fill + t.extra) / t.cap) * 100 : null;
+            const overT = t.extra > 0;
             return (
               <div key={t.field} className="grid grid-cols-[54px_1fr] gap-3.5 items-center">
                 <div className="relative w-[54px] h-[84px] rounded-xl border-[1.5px] border-slate-300 dark:border-[#2A3658] bg-slate-50 dark:bg-[#0A1020] overflow-hidden">
@@ -285,7 +245,7 @@ export const VehicleLab: React.FC<{
                     <span className="text-[11.5px] text-slate-400 dark:text-[#5B6787]">لتر</span>
                   </label>
                   <div className={`text-[11.5px] font-semibold ${overT ? 'text-rose-600 dark:text-rose-400' : t.cap ? 'text-emerald-600 dark:text-emerald-300' : 'text-slate-400 dark:text-[#5B6787]'}`}>
-                    {!t.cap ? 'أدخل السعة لكشف التفويل فوق السعة' : overT ? `آخر تفويلة أكبر من السعة بـ ${fmt(t.fill - t.cap)} لتر` : t.fill ? `آخر تفويلة ${fmt(t.fill)} لتر ضمن السعة` : 'لا تفويلة مسجلة لهذا الخزان'}
+                    {!t.cap ? 'أدخل السعة لكشف التفويل فوق السعة' : overT ? `تفويلة ${fmt(dayTotal)} لتر أكبر من السعة بـ ${fmt(t.extra)} لتر` : t.fill ? `دخله ${fmt(t.fill)} لتر من تفويلة ${fmt(dayTotal)} لتر` : 'لم يصله شيء من آخر تفويلة'}
                   </div>
                 </div>
               </div>
@@ -444,39 +404,6 @@ export const VehicleLab: React.FC<{
         </section>
       </div>
 
-      {/* ما يكشفه المختبر أيضًا */}
-      <section aria-label="مؤشرات إضافية" className="va-rise" style={{ animationDelay: '.2s' }}>
-        <div className="flex items-baseline justify-between mb-3">
-          <h3 className="text-base font-bold">ما يكشفه المختبر أيضًا</h3>
-          <span className="text-xs text-slate-400 dark:text-[#5B6787]"><Gauge className="inline w-3.5 h-3.5 ml-1" />من بيانات العربة الحقيقية</span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-          {cards.map((c, i) => (
-            <article key={c.title} className={`va-rise ${panel} !rounded-[20px] p-4 transition-all hover:-translate-y-0.5 hover:border-slate-300 dark:hover:border-[#334169]`} style={{ animationDelay: `${0.25 + i * 0.05}s` }}>
-              <div className="flex items-center justify-between">
-                <span className={`w-9 h-9 rounded-[11px] flex items-center justify-center ${tone[c.t]}`}>{c.icon}</span>
-                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${tone[c.t]}`}>{tags[c.t]}</span>
-              </div>
-              <div className="mt-3.5 text-[13.5px] font-bold">{c.title}</div>
-              <div className="mt-1.5 font-mono text-[22px] font-semibold text-slate-900 dark:text-white" dir="ltr" style={{ textAlign: 'right' }}>{c.value}</div>
-              <div className="mt-1 text-xs leading-6 text-slate-600 dark:text-[#8090B0]">{c.line}</div>
-              {c.days && (
-                <div className="grid grid-cols-7 gap-1 mt-2.5">
-                  {c.days.map((v, d) => {
-                    const mx = Math.max(1, ...c.days!);
-                    return (
-                      <div key={d} className="flex flex-col items-center gap-1">
-                        <span className="block w-full h-[18px] rounded-[5px] bg-slate-100 dark:bg-[#141D36]" style={{ background: v ? `rgba(129,140,248,${0.2 + (v / mx) * 0.7})` : undefined }} />
-                        <span className="text-[9.5px] text-slate-400 dark:text-[#5B6787]">{WEEKDAYS[d].charAt(0)}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </article>
-          ))}
-        </div>
-      </section>
     </div>
   );
 };
