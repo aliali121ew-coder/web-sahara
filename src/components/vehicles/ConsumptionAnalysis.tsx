@@ -7,7 +7,7 @@ import { useCategoryNames, useVehicleNames } from './categories';
 import { VehicleArt } from './VehicleArt';
 
 type Unit = 'day' | 'week' | 'month';
-type Status = 'حرج' | 'مرتفع' | 'طبيعي' | 'منخفض' | 'جديد';
+type Status = 'حرج' | 'مرتفع' | 'طبيعي' | 'منخفض' | 'جديد' | 'بلا تفويل';
 type SortKey = 'change' | 'current' | 'dev';
 
 const PAGE = 10;
@@ -19,6 +19,7 @@ const TONE: Record<Status, { pill: string; bar: string; text: string }> = {
   'مرتفع': { pill: 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300', bar: 'bg-amber-500', text: 'text-amber-700 dark:text-amber-400' },
   'طبيعي': { pill: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300', bar: 'bg-slate-500', text: 'text-slate-700 dark:text-slate-200' },
   'منخفض': { pill: 'bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300', bar: 'bg-teal-500', text: 'text-teal-700 dark:text-teal-400' },
+  'بلا تفويل': { pill: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400', bar: 'bg-slate-400', text: 'text-slate-500' },
   'جديد': { pill: 'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300', bar: 'bg-sky-500', text: 'text-sky-700 dark:text-sky-400' },
 };
 
@@ -104,7 +105,8 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
       const code = names.get(vehicle) || vehicle;
       const cat = vehicleCategory(code);
       const prevAvg = (v.p[0] + v.p[1] + v.p[2]) / 3;
-      const change = prevAvg ? ((v.p[3] - prevAvg) / prevAvg) * 100 : null;
+      // بلا تفويل في الفترة الأخيرة = لا مقارنة (وليس انخفاضًا 100%)
+      const change = prevAvg && v.p[3] ? ((v.p[3] - prevAvg) / prevAvg) * 100 : null;
       const prof = profiles.find(p => p.id === vehicle);
       return {
         vehicle, code, display: prof?.name || vehicle,
@@ -121,7 +123,7 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
       const catAvg = list.length ? list.reduce((s, x) => s + x, 0) / list.length : 0;
       const dev = catAvg && r.p[3] ? ((r.p[3] - catAvg) / catAvg) * 100 : null;
       const c = r.change;
-      const status: Status = c === null ? 'جديد'
+      const status: Status = !r.p[3] ? 'بلا تفويل' : c === null ? 'جديد'
         : c >= 30 || (r.minGap !== null && r.minGap <= FREQUENT_DAYS && c >= 20) ? 'حرج'
         : c >= 15 ? 'مرتفع' : c <= -10 ? 'منخفض' : 'طبيعي';
       return { ...r, catAvg, dev, status };
@@ -171,7 +173,8 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
     else if (r.change !== null && r.change >= 15) out.push({ text: 'ارتفاع ملحوظ عن متوسط الفترات السابقة', tone: 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300' });
     if (r.minGap !== null && r.minGap <= FREQUENT_DAYS) out.push({ text: r.minGap === 0 ? 'أكثر من تفويلة في اليوم نفسه' : 'تفويلتان خلال يوم واحد', tone: 'bg-rose-50 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300' });
     if (r.dev !== null && r.dev >= 25) out.push({ text: `أعلى من متوسط فئته بـ ${Math.round(r.dev)}%`, tone: 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300' });
-    if (r.change === null) out.push({ text: 'لا توجد تفويلات في الفترات السابقة للمقارنة', tone: 'bg-sky-50 text-sky-800 dark:bg-sky-950/40 dark:text-sky-300' });
+    if (r.status === 'بلا تفويل') out.push({ text: 'لم تفوّل في الفترة الأخيرة', tone: 'bg-slate-50 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300' });
+    if (r.status === 'جديد') out.push({ text: 'لا توجد تفويلات في الفترات السابقة للمقارنة', tone: 'bg-sky-50 text-sky-800 dark:bg-sky-950/40 dark:text-sky-300' });
     if (!out.length) out.push({ text: 'لا توجد مؤشرات تفويل عالٍ', tone: 'bg-teal-50 text-teal-800 dark:bg-teal-950/40 dark:text-teal-300' });
     return out;
   };
@@ -234,7 +237,7 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
       </div>
 
       {/* الجدول 70% والجانب 30% */}
-      <div className="grid grid-cols-1 lg:grid-cols-10 gap-5 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-10 gap-5 items-stretch">
         <section aria-label="جدول المقارنة" className="lg:col-span-7 rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 shadow-soft-card overflow-hidden">
           <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2">
@@ -242,7 +245,7 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
               <span className="text-[11px] text-slate-400">{rows.length} عربة</span>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
-              {(['all', 'حرج', 'مرتفع', 'منخفض', 'جديد'] as const).map(s => (s === 'all' || count(s) > 0) && (
+              {(['all', 'حرج', 'مرتفع', 'منخفض', 'جديد', 'بلا تفويل'] as const).map(s => (s === 'all' || count(s) > 0) && (
                 <button key={s} type="button" aria-pressed={filter === s} onClick={() => { setFilter(s); setPage(0); }} className={`h-8 px-3 rounded-xl text-xs font-black cursor-pointer transition-colors ${filter === s ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-400'}`}>
                   {s === 'all' ? 'الكل' : s} <span className="opacity-60 font-mono">{s === 'all' ? rows.length : count(s)}</span>
                 </button>
@@ -338,12 +341,13 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
           </div>
         </section>
 
-        {/* الجانب: العربة المحددة ورسم آخر 4 فترات */}
-        <div className="lg:col-span-3 flex flex-col gap-5 lg:sticky lg:top-4">
+        {/* الجانب: العربة المحددة ورسم آخر 4 فترات — ينتهي مع نهاية كارت الجدول (يأخذ ارتفاعه ولا يحدده) */}
+        <div className="lg:col-span-3 relative lg:min-h-[760px]">
+        <div className="flex flex-col gap-5 lg:absolute lg:inset-0">
           {sel ? (
             <>
-              <section aria-label="تفاصيل العربة" className="rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 shadow-soft-card overflow-hidden">
-                <div className="relative h-36 bg-slate-100 dark:bg-slate-800/60">
+              <section aria-label="تفاصيل العربة" className="shrink-0 rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 shadow-soft-card overflow-hidden">
+                <div className="relative h-28 bg-slate-100 dark:bg-slate-800/60">
                   <VehicleArt key={sel.vehicle} code={sel.code} photo={profiles.find(p => p.id === sel.vehicle)?.photo} className="absolute inset-x-8 inset-y-3 vehicle-truck-in" />
                   <span className={`absolute top-3 right-3 text-[11px] font-black px-2.5 py-1 rounded-full ${TONE[sel.status].pill}`}>{sel.status}</span>
                 </div>
@@ -379,11 +383,10 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
                   <button type="button" onClick={() => onOpen(sel.vehicle)} className="w-full flex items-center justify-center gap-1.5 h-10 mt-3.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-black cursor-pointer hover:opacity-90">
                     <Truck className="w-4 h-4" />فتح صفحة العربة
                   </button>
-                  <p className="text-[10.5px] text-slate-400 text-center mt-2">مرّر على أي صف للمعاينة · اضغط لفتح صفحته</p>
                 </div>
               </section>
 
-              <section aria-label="رسم آخر 4 فترات" className="rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 shadow-soft-card p-4">
+              <section aria-label="رسم آخر 4 فترات" className="flex-1 min-h-[260px] flex flex-col rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 shadow-soft-card p-4">
                 <div className="flex items-center justify-between">
                   <h3 className="font-black text-sm text-slate-900 dark:text-white">استهلاك آخر 4 {unitInfo[2]}</h3>
                   <span className="flex items-center gap-1.5 text-[10.5px] text-slate-500 dark:text-slate-400"><span className="w-4 border-t-2 border-dashed border-slate-500" />متوسط السابقة</span>
@@ -393,7 +396,7 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
                   const step = sel.p[2] ? ((sel.p[3] - sel.p[2]) / sel.p[2]) * 100 : null;
                   return (
                     <>
-                      <div className="relative h-44 mt-4 flex items-end gap-3 px-1 border-b border-slate-200 dark:border-slate-700">
+                      <div className="relative flex-1 min-h-[110px] mt-4 flex items-end gap-3 px-1 border-b border-slate-200 dark:border-slate-700">
                         {sel.prevAvg > 0 && <div className="absolute inset-x-0 border-t-2 border-dashed border-slate-400 dark:border-slate-500 z-10" style={{ bottom: `${(sel.prevAvg / top) * 100}%` }} />}
                         {sel.p.map((v, i) => (
                           <div key={i} className="flex-1 h-full flex flex-col items-center justify-end gap-1">
@@ -417,6 +420,7 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
           ) : (
             <div className="rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-8 text-center text-sm text-slate-400">لا توجد تفويلات في الفترات المختارة</div>
           )}
+        </div>
         </div>
       </div>
 
