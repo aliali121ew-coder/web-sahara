@@ -101,10 +101,12 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
       if (!v.last || f.date > v.last.date) v.last = f;
       by.set(f.vehicle, v);
     }
+    // الفترات السابقة التي فيها كشوف أصلًا: فترة بلا أي بيانات لا تُحسب صفرًا في المتوسط
+    const prevIdx = [0, 1, 2].filter(i => [...by.values()].some(v => v.p[i] > 0));
     const base = [...by.entries()].map(([vehicle, v]) => {
       const code = names.get(vehicle) || vehicle;
       const cat = vehicleCategory(code);
-      const prevAvg = (v.p[0] + v.p[1] + v.p[2]) / 3;
+      const prevAvg = prevIdx.length ? prevIdx.reduce((s, i) => s + v.p[i], 0) / prevIdx.length : 0;
       // بلا تفويل في الفترة الأخيرة = لا مقارنة (وليس انخفاضًا 100%)
       const change = prevAvg && v.p[3] ? ((v.p[3] - prevAvg) / prevAvg) * 100 : null;
       const prof = profiles.find(p => p.id === vehicle);
@@ -227,7 +229,7 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
         <button type="button" disabled={!k.top} onClick={() => k.top && onOpen(k.top.vehicle)} className="vehicle-kpi text-right rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 shadow-soft-card cursor-pointer hover:border-sky-400 disabled:cursor-default">
           <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400"><TrendingUp className="w-3.5 h-3.5 text-rose-500" />أعلى ارتفاع</div>
           <div className="text-2xl font-black text-rose-700 dark:text-rose-400 mt-1.5 font-mono" dir="ltr">{k.top ? pct(k.top.change) : '—'}</div>
-          <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mt-1 truncate">{k.top ? <><span dir="ltr">{k.top.display}</span> مقابل متوسط 3 فترات</> : 'لا توجد مقارنة'}</div>
+          <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mt-1 truncate">{k.top ? <><span dir="ltr">{k.top.display}</span> مقابل الفترات السابقة</> : 'لا توجد مقارنة'}</div>
         </button>
         <div className="vehicle-kpi rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 shadow-soft-card">
           <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400"><Repeat2 className="w-3.5 h-3.5 text-amber-500" />تفويلات متقاربة</div>
@@ -364,7 +366,7 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
                   </div>
                   <div className="grid grid-cols-2 gap-2 mt-3.5">
                     {[
-                      ['متوسط 3 فترات سابقة', <><span className="font-mono">{fmt(sel.prevAvg)}</span> لتر</>, ''],
+                      ['متوسط الفترات السابقة', <><span className="font-mono">{fmt(sel.prevAvg)}</span> لتر</>, ''],
                       ['نسبة التغير', <span className="font-mono" dir="ltr">{pct(sel.change)}</span>, changeTone(sel.change)],
                       ['متوسط الفئة', <><span className="font-mono">{fmt(sel.catAvg)}</span> لتر</>, ''],
                       ['الانحراف عن الفئة', <span className="font-mono" dir="ltr">{sel.dev === null ? '—' : `${sel.dev > 0 ? '+' : ''}${Math.round(sel.dev)}%`}</span>, sel.dev !== null && sel.dev >= 25 ? 'text-rose-700 dark:text-rose-400' : ''],
