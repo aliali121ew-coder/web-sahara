@@ -290,7 +290,7 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
 
       {/* الجدول 70% والجانب 30% */}
       {/* مسافة أعلى الصف حتى تبرز العربة فوق حافة الكارت الجانبي */}
-      <div className="grid grid-cols-1 lg:grid-cols-10 gap-5 items-stretch pt-12">
+      <div className="grid grid-cols-1 lg:grid-cols-10 gap-5 items-stretch pt-3">
         <section aria-label="جدول المقارنة" className="va-rise lg:col-span-7 flex flex-col rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 shadow-soft-card overflow-hidden" style={{ animationDelay: '.15s' }}>
           <div className="flex flex-wrap items-center justify-between gap-3 px-5 border-b border-slate-100 dark:border-slate-800">
             <div role="tablist" aria-label="تصفية الحالة" className="flex gap-5 overflow-x-auto vehicle-scroll">
@@ -413,7 +413,7 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
                 {(() => {
                   const url = vehicleImage(sel.code, profiles.find(p => p.id === sel.vehicle)?.photo);
                   return (
-                    <div className="relative h-[200px] shrink-0 rounded-t-3xl">
+                    <div className="relative h-[230px] shrink-0 rounded-t-3xl">
                       <div className="va-appear absolute left-1/2 bottom-7 -translate-x-1/2 w-[min(330px,88%)] h-px z-10">
                         <img src={url} alt={`صورة العربة ${sel.display}`} className="absolute bottom-0 left-0 w-full h-auto max-w-none" style={{ transform: `translateY(${imageGround(url) * 100}%)` }} />
                       </div>
