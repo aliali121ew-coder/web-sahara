@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowDownLeft, ArrowDownWideNarrow, ArrowUpRight, ChevronLeft, ChevronRight, Repeat2, Search } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
-import { FREQUENT_DAYS, VEHICLE_PROFILES_KEY, daysBetween, vehicleCategory, type DayFill, type VehicleProfile } from '../../lib/vehicleFuel';
+import { FREQUENT_DAYS, VEHICLE_PROFILES_KEY, daysBetween, imageGround, vehicleCategory, vehicleImage, type DayFill, type VehicleProfile } from '../../lib/vehicleFuel';
 import { useCategoryNames, useVehicleNames } from './categories';
 import { VehicleArt } from './VehicleArt';
 
@@ -289,7 +289,8 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
       </section>
 
       {/* الجدول 70% والجانب 30% */}
-      <div className="grid grid-cols-1 lg:grid-cols-10 gap-5 items-stretch">
+      {/* مسافة أعلى الصف حتى تبرز العربة فوق حافة الكارت الجانبي */}
+      <div className="grid grid-cols-1 lg:grid-cols-10 gap-5 items-stretch pt-12">
         <section aria-label="جدول المقارنة" className="va-rise lg:col-span-7 flex flex-col rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 shadow-soft-card overflow-hidden" style={{ animationDelay: '.15s' }}>
           <div className="flex flex-wrap items-center justify-between gap-3 px-5 border-b border-slate-100 dark:border-slate-800">
             <div role="tablist" aria-label="تصفية الحالة" className="flex gap-5 overflow-x-auto vehicle-scroll">
@@ -405,17 +406,24 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
 
         {/* الجانب: العربة المحددة — ينتهي مع نهاية كارت الجدول (يأخذ ارتفاعه ولا يحدده) */}
         <div className="lg:col-span-3 relative lg:min-h-[760px]">
-          <aside aria-label="العربة المحددة" className="va-rise lg:absolute lg:inset-0 flex flex-col rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 shadow-soft-card overflow-hidden" style={{ animationDelay: '.25s' }}>
+          <aside aria-label="العربة المحددة" className="va-rise lg:absolute lg:inset-0 flex flex-col rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 shadow-soft-card" style={{ animationDelay: '.25s' }}>
             {sel ? (
               <div key={sel.vehicle} className="flex flex-col flex-1 min-h-0">
-                {/* الصورة والحالة */}
-                <div className="relative h-32 shrink-0 bg-slate-100/80 dark:bg-slate-800/50">
-                  <span className="absolute bottom-5 inset-x-1/4 h-2.5 rounded-[50%] bg-slate-900/10 dark:bg-black/30" />
-                  <VehicleArt code={sel.code} photo={profiles.find(p => p.id === sel.vehicle)?.photo} className="absolute inset-x-12 inset-y-3 vehicle-truck-in" />
-                  <span className="absolute top-3 right-3 inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-white/95 dark:bg-slate-900/90 shadow-sm text-xs font-bold text-slate-800 dark:text-slate-100">
+                {/* العربة كبيرة وثابتة على أرضية بيضاء، أعلاها يبرز فوق حافة الكارت، وعجلاتها على الأرض */}
+                {(() => {
+                  const url = vehicleImage(sel.code, profiles.find(p => p.id === sel.vehicle)?.photo);
+                  return (
+                    <div className="relative h-[200px] shrink-0 rounded-t-3xl">
+                      <div className="va-appear absolute left-1/2 bottom-7 -translate-x-1/2 w-[min(330px,88%)] h-px z-10">
+                        <span className="absolute -bottom-2 inset-x-[10%] h-4 rounded-[50%] bg-[radial-gradient(closest-side,rgb(11_18_32/0.3),transparent)]" />
+                        <img src={url} alt={`صورة العربة ${sel.display}`} className="absolute bottom-0 left-0 w-full h-auto max-w-none" style={{ transform: `translateY(${imageGround(url) * 100}%)` }} />
+                      </div>
+                  <span className="absolute z-20 top-3 right-3 inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-white/95 dark:bg-slate-900/90 shadow-sm text-xs font-bold text-slate-800 dark:text-slate-100">
                     <span className={`w-1.5 h-1.5 rounded-full ${DOT[sel.status]}`} />{sel.status}
                   </span>
-                </div>
+                    </div>
+                  );
+                })()}
 
                 <div className="flex-1 min-h-0 flex flex-col gap-4 p-5">
                   <div className="va-fade">
@@ -441,8 +449,8 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
                   {(() => {
                     const top = Math.max(1, ...sel.rate.map(r => r ?? 0), sel.prevRate) * 1.25;
                     return (
-                      <div className="flex-1 min-h-[120px] flex flex-col">
-                        <div className="relative flex-1 min-h-[80px] flex items-end gap-3 border-b border-slate-200 dark:border-slate-700">
+                      <div className="shrink-0 flex flex-col">
+                        <div className="relative h-16 flex items-end gap-3 border-b border-slate-200 dark:border-slate-700">
                           {sel.prevRate > 0 && <div className="va-line absolute inset-x-0 border-t-[1.5px] border-dashed border-slate-400/80 z-10" style={{ bottom: `${(sel.prevRate / top) * 100}%` }} />}
                           {sel.rate.map((v, i) => (
                             <div key={i} className="flex-1 h-full flex flex-col items-center justify-end gap-1">
@@ -496,7 +504,7 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
                     ))}
                   </div>
 
-                  <button type="button" onClick={() => onOpen(sel.vehicle)} className="shrink-0 w-full flex items-center justify-center gap-1.5 h-11 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-bold cursor-pointer transition-all hover:-translate-y-px hover:shadow-lg">
+                  <button type="button" onClick={() => onOpen(sel.vehicle)} className="mt-auto shrink-0 w-full flex items-center justify-center gap-1.5 h-11 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-bold cursor-pointer transition-all hover:-translate-y-px hover:shadow-lg">
                     صفحة العربة<ChevronLeft className="w-4 h-4" />
                   </button>
                 </div>

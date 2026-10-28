@@ -69,3 +69,7 @@
   .va-rise, .va-fade, .va-grow, .va-track, .va-pulse { animation: none; }
   .va-row, .va-line { transition: none; }
 }
+/* كارت العربة: تبديل العربة بتلاشٍ سريع بلا حركة */
+.va-appear { animation: va-appear .25s ease both; }
+@keyframes va-appear { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .va-appear { animation: none; } }
