@@ -208,8 +208,8 @@ export const SaharaGasSection: React.FC = () => {
                 </div>
                 <span>{t('dashboard:sahara.balance')}</span>
               </div>
-              <div className="flex items-baseline gap-2 mt-1.5">
-                <span className="text-3xl sm:text-4xl lg:text-[36px] font-black text-slate-900 dark:text-white font-mono tracking-tight">
+              <div className="flex flex-wrap items-baseline gap-x-2 mt-1.5">
+                <span className="text-[clamp(1.3rem,6.2vw,1.875rem)] sm:text-4xl lg:text-[36px] whitespace-nowrap font-black text-slate-900 dark:text-white font-mono tracking-tight">
                   {formatNumber(actualBalance)}
                 </span>
                 <span className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">{t('common:units.liter')}</span>

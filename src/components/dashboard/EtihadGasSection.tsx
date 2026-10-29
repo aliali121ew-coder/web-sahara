@@ -148,6 +148,8 @@ export const EtihadGasSection: React.FC = () => {
   // رسم الوارد والاستهلاك بنفس تصميم البنزين: مدة 7 / 14 / شهر، ومنحنى أو أعمدة، وإخفاء أي خط من المفتاح
   const [chartMode, setChartMode] = React.useState<'waves' | 'bars'>('bars');
   const [timeRange, setTimeRange] = React.useState<7 | 14 | 30>(7);
+  // الهاتف: أسماء الأيام العربية كاملة لا تتسع لسبعة أعمدة بخط 10px فتتلاصق، فيصغر خط المحور قليلًا
+  const axisFont = (size: number) => (timeRange === 7 && typeof window !== 'undefined' && window.innerWidth < 640 ? 8.5 : size);
   const [showInbound, setShowInbound] = React.useState(true);
   const [showConsumption, setShowConsumption] = React.useState(true);
   // عمود اليوم المحدد (المرور عليه) بلونه الكامل وحلقة في أعلاه، والبقية فاتحة؛ بلا مرور = آخر يوم
@@ -207,8 +209,8 @@ export const EtihadGasSection: React.FC = () => {
                 </div>
                 <span>{t('dashboard:etihad.totalBalance')}</span>
               </div>
-              <div className="flex items-baseline gap-2 mt-1.5">
-                <span className="text-[clamp(1.5rem,7.6vw,1.875rem)] sm:text-4xl lg:text-[36px] font-black font-mono tracking-tight text-slate-900 dark:text-white">
+              <div className="flex flex-wrap items-baseline gap-x-2 mt-1.5">
+                <span className="text-[clamp(1.3rem,6.2vw,1.875rem)] sm:text-4xl lg:text-[36px] whitespace-nowrap font-black font-mono tracking-tight text-slate-900 dark:text-white">
                   {formatNumber(etihadTotalBalance)}
                 </span>
                 <span className="text-base sm:text-lg font-bold text-teal-600 dark:text-teal-400">{t('common:units.liter')}</span>
@@ -333,7 +335,7 @@ export const EtihadGasSection: React.FC = () => {
 
           {/* 3 Internal Metrics: الوارد - الاستهلاك - المبيعات */}
           {/* 3 Internal Metrics: الوارد - الاستهلاك - المبيعات */}
-          <div className="kpi-wrap pt-3.5 border-t border-slate-100 dark:border-slate-800"><div className="kpi-grid kpi-grid-2 gap-3">
+          <div className="kpi-wrap pt-3.5 border-t border-slate-100 dark:border-slate-800"><div className="kpi-grid kpi-grid-3 kpi-2col gap-3">
             
             {/* 1. الوارد */}
             <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/50 flex flex-col justify-between hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors min-w-0">
@@ -444,7 +446,7 @@ export const EtihadGasSection: React.FC = () => {
             </div>
             {/* أرقام الأسبوع في ثلاث خانات: العنوان كاملًا فوق، والرقم كبيرًا تحته، وفي الأسفل مؤشر:
                شريطا الوارد والاستهلاك بنسبة كل منهما للأكبر (يُقارنان بنظرة)، والمتوسط بنسبة اليوم إليه */}
-            <div className="grid grid-cols-3 divide-x rtl:divide-x-reverse divide-slate-100 dark:divide-slate-800">
+            <div className="grid grid-cols-2 sm:grid-cols-3 divide-x rtl:divide-x-reverse divide-slate-100 dark:divide-slate-800">
               {[
                 { key: 'in', label: t('dashboard:etihad.weeklyInbound'), value: weekInbound, dot: 'bg-emerald-500', num: 'text-emerald-700 dark:text-emerald-300', bar: 'from-emerald-400 to-emerald-600' },
                 { key: 'out', label: t('dashboard:etihad.weeklyConsumption'), value: weekOutflow, dot: 'bg-blue-500', num: 'text-blue-700 dark:text-blue-300', bar: 'from-blue-400 to-blue-600' },
@@ -461,7 +463,7 @@ export const EtihadGasSection: React.FC = () => {
                   </span>
                 </div>
               ))}
-              <div className="px-3 sm:px-3.5 py-1.5 flex flex-col gap-1 min-w-0 bg-teal-50/50 dark:bg-teal-950/20">
+              <div className="col-span-2 sm:col-span-1 border-t sm:border-t-0 border-slate-100 dark:border-slate-800 px-3 sm:px-3.5 py-1.5 flex flex-col gap-1 min-w-0 bg-teal-50/50 dark:bg-teal-950/20">
                 <span className="text-[10.5px] font-bold leading-tight text-teal-700 dark:text-teal-300">{t('dashboard:sahara.weekAvg')}</span>
                 <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
                   <span className="font-mono font-black text-[15px] sm:text-base leading-none tabular-nums text-slate-900 dark:text-white">
@@ -551,7 +553,7 @@ export const EtihadGasSection: React.FC = () => {
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 4" vertical={false} stroke="#94a3b8" strokeOpacity={0.12} />
-                      <XAxis dataKey="label" axisLine={false} tickLine={false} interval={timeRange === 30 ? 4 : timeRange === 14 ? 1 : 0} tick={{ fill: '#64748b', fontSize: 10.5, fontWeight: 700 }} dy={6} tickFormatter={(val) => enumText(val, 'short')} />
+                      <XAxis dataKey="label" axisLine={false} tickLine={false} interval={timeRange === 30 ? 4 : timeRange === 14 ? 1 : 0} tick={{ fill: '#64748b', fontSize: axisFont(10.5), fontWeight: 700 }} dy={6} tickFormatter={(val) => enumText(val, 'short')} />
                       <YAxis axisLine={false} tickLine={false} domain={[0, (dataMax: number) => Math.max(10, Math.ceil(dataMax * 1.1))]} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700, fontFamily: 'monospace' }} tickFormatter={compactAxis} />
                       <Tooltip content={<FlowTooltip />} cursor={{ stroke: '#14b8a6', strokeWidth: 1.5, strokeDasharray: '3 3', strokeOpacity: 0.85 }} wrapperStyle={{ pointerEvents: 'none', zIndex: 100 }} isAnimationActive={false} />
                       {showInbound && <Area type="monotone" dataKey="inbound" name={t('dashboard:flow.inbound')} stroke="url(#etStrokeIn)" strokeWidth={3} fillOpacity={1} fill="url(#etAreaIn)" filter="url(#etGlowIn)" activeDot={{ r: 6.5, stroke: '#10b981', strokeWidth: 3, fill: '#ffffff' }} />}
@@ -569,7 +571,7 @@ export const EtihadGasSection: React.FC = () => {
                         <linearGradient id="etBarOutOff" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3b82f6" stopOpacity={0.28} /><stop offset="100%" stopColor="#3b82f6" stopOpacity={0.06} /></linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 4" vertical={false} stroke="#94a3b8" strokeOpacity={0.14} />
-                      <XAxis dataKey="label" axisLine={false} tickLine={false} interval={timeRange === 30 ? 4 : timeRange === 14 ? 1 : 0} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }} dy={6} tickFormatter={(val) => enumText(val, 'short')} />
+                      <XAxis dataKey="label" axisLine={false} tickLine={false} interval={timeRange === 30 ? 4 : timeRange === 14 ? 1 : 0} tick={{ fill: '#64748b', fontSize: axisFont(10), fontWeight: 700 }} dy={6} tickFormatter={(val) => enumText(val, 'short')} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} tickFormatter={compactAxis} />
                       <Tooltip content={<FlowTooltip />} cursor={false} wrapperStyle={{ pointerEvents: 'none', zIndex: 100 }} isAnimationActive={false} />
                       {(['inbound', 'consumption'] as const).filter(k => (k === 'inbound' ? showInbound : showConsumption)).map(k => {

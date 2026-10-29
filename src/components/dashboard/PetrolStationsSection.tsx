@@ -74,6 +74,8 @@ export const PetrolStationsSection: React.FC = () => {
   // Chart Presentation Mode Switch: Neon Waves | 3D Bars
   const [chartMode, setChartMode] = useState<ChartMode>('neon-waves');
   const [timeRange, setTimeRange] = useState<TimeRange>('7d');
+  // الهاتف: أسماء الأيام العربية كاملة لا تتسع لسبعة أعمدة بخط 10px فتتلاصق، فيصغر خط المحور قليلًا
+  const axisFont = (size: number) => (timeRange === '7d' && typeof window !== 'undefined' && window.innerWidth < 640 ? 8.5 : size);
   const [showInbound, setShowInbound] = useState(true);
   const [showConsumption, setShowConsumption] = useState(true);
   // عمود اليوم المحدد (المرور عليه) بلونه الكامل وحلقة في أعلاه، والبقية فاتحة؛ بلا مرور = آخر يوم (نفس أعمدة الاتحاد)
@@ -522,7 +524,7 @@ export const PetrolStationsSection: React.FC = () => {
                     axisLine={false}
                     tickLine={false}
                     interval={timeRange === '30d' ? 4 : timeRange === '14d' ? 1 : 0}
-                    tick={{ fill: '#64748b', fontSize: 10.5, fontWeight: 700 }}
+                    tick={{ fill: '#64748b', fontSize: axisFont(10.5), fontWeight: 700 }}
                     dy={6}
                     tickFormatter={(val) => enumText(val, 'short')}
                   />
@@ -602,7 +604,7 @@ export const PetrolStationsSection: React.FC = () => {
                     <linearGradient id="ptBarOutOff" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#f97316" stopOpacity={0.3} /><stop offset="100%" stopColor="#f97316" stopOpacity={0.07} /></linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 4" vertical={false} stroke="#94a3b8" strokeOpacity={0.14} />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} interval={timeRange === '30d' ? 4 : timeRange === '14d' ? 1 : 0} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }} dy={6} tickFormatter={(val) => enumText(val, 'short')} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} interval={timeRange === '30d' ? 4 : timeRange === '14d' ? 1 : 0} tick={{ fill: '#64748b', fontSize: axisFont(10), fontWeight: 700 }} dy={6} tickFormatter={(val) => enumText(val, 'short')} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} tickFormatter={formatAxis} />
                   <Tooltip content={<CustomHologramTooltip />} cursor={false} wrapperStyle={{ pointerEvents: 'none', zIndex: 100 }} isAnimationActive={false} />
                   {(['inbound', 'consumption'] as const).filter(k => (k === 'inbound' ? showInbound : showConsumption)).map(k => {
