@@ -80,13 +80,15 @@
 /* مختبر العربة: الرقم الكبير بتدرج أبيض ونقش مائل كأنه منقوش في البطاقة */
 .lab-code {
   color: transparent;
-  background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0) 0 6px, rgba(148,163,184,.18) 6px 7px), linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 38%, #E3E7EE 72%, #C9D0DB 100%);
+  background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0) 0 6px, rgba(100,116,139,.22) 6px 7px), linear-gradient(180deg, #FFFFFF 0%, #F4F6FA 30%, #CBD3DF 70%, #A7B2C3 100%);
   -webkit-background-clip: text; background-clip: text;
-  filter: drop-shadow(0 6px 14px rgba(11,18,32,.10)) drop-shadow(0 1px 0 rgba(255,255,255,.9));
+  -webkit-text-stroke: 1.5px rgba(100,116,139,.45);
+  filter: drop-shadow(0 8px 16px rgba(11,18,32,.18)) drop-shadow(0 1px 0 rgba(255,255,255,.9));
   animation: lab-mark .9s cubic-bezier(.2,.8,.2,1) both;
 }
 .dark .lab-code {
-  background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0) 0 6px, rgba(148,163,184,.10) 6px 7px), linear-gradient(180deg, rgba(255,255,255,.22) 0%, rgba(255,255,255,.14) 45%, rgba(255,255,255,.05) 100%);
+  background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0) 0 6px, rgba(148,163,184,.14) 6px 7px), linear-gradient(180deg, rgba(255,255,255,.38) 0%, rgba(255,255,255,.24) 45%, rgba(255,255,255,.10) 100%);
+  -webkit-text-stroke: 1.5px rgba(148,163,184,.35);
   filter: drop-shadow(0 6px 14px rgba(0,0,0,.35));
 }
 @keyframes lab-mark { from { opacity: 0; letter-spacing: .3em; } }

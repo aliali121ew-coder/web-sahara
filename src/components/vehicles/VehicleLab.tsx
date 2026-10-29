@@ -82,10 +82,7 @@ const GLASS_BOTTOM = 11.28;
 const GLASS_HEIGHT = 71.27;
 
 /** حجم رقم العربة الكبير حسب طوله حتى لا يخرج من البطاقة */
-const codeSize = (code: string, wide: boolean) => (wide
-  // العربات الطويلة (براد قاطرة…) تحتاج عرضًا أكبر، فيصغر الرقم بجانبها
-  ? (code.length <= 3 ? 'text-[110px] sm:text-[170px]' : code.length === 4 ? 'text-[90px] sm:text-[140px]' : 'text-[76px] sm:text-[118px]')
-  : (code.length <= 3 ? 'text-[150px] sm:text-[250px]' : code.length === 4 ? 'text-[120px] sm:text-[200px]' : 'text-[96px] sm:text-[160px]'));
+const codeSize = (code: string) => (code.length <= 3 ? 'text-[150px] sm:text-[250px]' : code.length === 4 ? 'text-[120px] sm:text-[200px]' : 'text-[96px] sm:text-[160px]');
 
 /**
  * مختبر العربة: واجهة عرض للعربة (صورتها الكبيرة ورقمها وسجلها)، ثم سجل الآلية والاستهلاك عبر الزمن
@@ -120,8 +117,6 @@ export const VehicleLab: React.FC<{
     ro.observe(stage); ro.observe(mark);
     return () => ro.disconnect();
   }, []);
-  // صور قُصّت أسفل عجلاتها في الأصل: تُنزل خلف شريط المواصفات حتى لا يظهر القص
-  const cutBottom = /\/lab\/at\.webp$/.test(url);
 
   const [range, setRange] = useState<Range>('month');
   const [importing, setImporting] = useState<string | null>(null);
@@ -257,7 +252,7 @@ export const VehicleLab: React.FC<{
           <div ref={codeRef} className="absolute top-8 sm:top-[46px] right-5 sm:right-10 text-right">
             <div className="text-[13px] font-bold tracking-[.04em] text-[#5B6577] dark:text-[#8090B0]">{typeLabel}</div>
             <div
-              className={`lab-code font-black leading-[.86] tracking-[-.03em] ${codeSize(profile?.name || vehicle, aspect > 1.45)}`}
+              className={`lab-code font-black leading-[.86] tracking-[-.03em] ${codeSize(profile?.name || vehicle)}`}
               style={{ fontFamily: '"Inter Variable", "Noto Kufi Arabic Variable", sans-serif' }}
               dir="ltr"
             >{profile?.name || vehicle}</div>
@@ -270,10 +265,10 @@ export const VehicleLab: React.FC<{
           {/* العربة بارتفاع ثابت فتخرج من حافة البطاقة العليا، وعرضها يتبع نسبة صورتها؛ تحتها ظل ناعم متلاشٍ */}
           <div
             key={url}
-            className={`lab-truck absolute z-[1] left-[3%] sm:left-[4%] ${cutBottom ? '-bottom-3' : 'bottom-5'}`}
+            className={`lab-truck absolute z-[1] left-[3%] sm:left-[4%] bottom-5`}
             style={{ '--ar': aspect, '--room': `${room || 700}px` } as React.CSSProperties}
           >
-            {!cutBottom && <span aria-hidden className="absolute -inset-x-[6%] -bottom-4 h-12 rounded-[50%] bg-[radial-gradient(closest-side,rgba(11,18,32,.34),rgba(11,18,32,.12)_55%,rgba(11,18,32,0))] dark:bg-[radial-gradient(closest-side,rgba(0,0,0,.7),rgba(0,0,0,.25)_55%,rgba(0,0,0,0))] blur-[6px]" />}
+            <span aria-hidden className="absolute -inset-x-[6%] -bottom-4 h-12 rounded-[50%] bg-[radial-gradient(closest-side,rgba(11,18,32,.34),rgba(11,18,32,.12)_55%,rgba(11,18,32,0))] dark:bg-[radial-gradient(closest-side,rgba(0,0,0,.7),rgba(0,0,0,.25)_55%,rgba(0,0,0,0))] blur-[6px]" />
             <img
               src={url}
               alt={`صورة العربة ${code}`}
