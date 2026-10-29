@@ -151,7 +151,7 @@ export const VehiclesReport: React.FC = () => {
     return (
       <div className="space-y-3 pb-12">
         <VehicleCrumbs items={crumbs} />
-        <VehicleLab vehicle={lab} allFills={allFills} refills={labRefills} editable={editable} />
+        <VehicleLab vehicle={lab} allFills={allFills} refills={labRefills} editable={editable} onSwitch={setLab} />
       </div>
     );
   }

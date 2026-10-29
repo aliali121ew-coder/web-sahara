@@ -77,3 +77,28 @@
 .va-draw { stroke-dasharray: 3000; animation: va-draw 1.2s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes va-draw { from { stroke-dashoffset: 3000; } to { stroke-dashoffset: 0; } }
 @media (prefers-reduced-motion: reduce) { .va-draw { animation: none; } }
+/* مختبر العربة: الرقم الكبير بتدرج أبيض ونقش مائل كأنه منقوش في البطاقة */
+.lab-code {
+  color: transparent;
+  background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0) 0 6px, rgba(148,163,184,.18) 6px 7px), linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 38%, #E3E7EE 72%, #C9D0DB 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 6px 14px rgba(11,18,32,.10)) drop-shadow(0 1px 0 rgba(255,255,255,.9));
+  animation: lab-mark .9s cubic-bezier(.2,.8,.2,1) both;
+}
+.dark .lab-code {
+  background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0) 0 6px, rgba(148,163,184,.10) 6px 7px), linear-gradient(180deg, rgba(255,255,255,.22) 0%, rgba(255,255,255,.14) 45%, rgba(255,255,255,.05) 100%);
+  filter: drop-shadow(0 6px 14px rgba(0,0,0,.35));
+}
+@keyframes lab-mark { from { opacity: 0; letter-spacing: .3em; } }
+/* العربة تدخل من الخلف وتخرج من حافة البطاقة */
+.lab-truck { animation: lab-in .8s .1s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes lab-in { from { opacity: 0; transform: translateY(18px) scale(.96); } }
+/* الوقود يُرى داخل زجاج رسم الخزان فقط */
+.lab-glass {
+  -webkit-mask-image: url(/trucks/tank/glass-mask.png); mask-image: url(/trucks/tank/glass-mask.png);
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+  mix-blend-mode: multiply;
+}
+.lab-slosh { animation: lab-slosh 3.5s linear infinite; }
+@keyframes lab-slosh { to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .lab-code, .lab-truck, .lab-slosh { animation: none; } }
