@@ -1,5 +1,5 @@
 /* eslint-disable i18next/no-literal-string */
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Building2, CalendarDays, ChevronLeft, ChevronRight, ClipboardList, Fuel, LineChart, Loader2, RefreshCw, UserRound, Users } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import {
@@ -82,7 +82,10 @@ const GLASS_BOTTOM = 11.28;
 const GLASS_HEIGHT = 71.27;
 
 /** حجم رقم العربة الكبير حسب طوله حتى لا يخرج من البطاقة */
-const codeSize = (code: string) => (code.length <= 3 ? 'text-[150px] sm:text-[250px]' : code.length === 4 ? 'text-[120px] sm:text-[200px]' : 'text-[96px] sm:text-[160px]');
+const codeSize = (code: string, wide: boolean) => (wide
+  // العربات الطويلة (براد قاطرة…) تحتاج عرضًا أكبر، فيصغر الرقم بجانبها
+  ? (code.length <= 3 ? 'text-[110px] sm:text-[170px]' : code.length === 4 ? 'text-[90px] sm:text-[140px]' : 'text-[76px] sm:text-[118px]')
+  : (code.length <= 3 ? 'text-[150px] sm:text-[250px]' : code.length === 4 ? 'text-[120px] sm:text-[200px]' : 'text-[96px] sm:text-[160px]'));
 
 /**
  * مختبر العربة: واجهة عرض للعربة (صورتها الكبيرة ورقمها وسجلها)، ثم سجل الآلية والاستهلاك عبر الزمن
@@ -102,6 +105,23 @@ export const VehicleLab: React.FC<{
   const code = (profile?.name || vehicle).trim();
   const reg = registry.find(r => r.id === code.toUpperCase()) || registry.find(r => r.id === vehicle.toUpperCase());
   const url = labImage(code, profile?.photo);
+  // نسبة عرض الصورة لارتفاعها (تُقرأ عند التحميل) لتحديد ارتفاع العربة دون أن تتجاوز عرض البطاقة
+  const [aspect, setAspect] = useState(1.6);
+  // العرض المتاح للعربة: عرض البطاقة ناقص الرقم الكبير، حتى تقف بجانبه ولا تغطيه
+  const stageRef = useRef<HTMLDivElement>(null);
+  const codeRef = useRef<HTMLDivElement>(null);
+  const [room, setRoom] = useState(0);
+  useEffect(() => {
+    const stage = stageRef.current, mark = codeRef.current;
+    if (!stage || !mark) return;
+    const measure = () => setRoom(Math.max(0, stage.clientWidth * 0.95 - mark.offsetWidth - 56));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(stage); ro.observe(mark);
+    return () => ro.disconnect();
+  }, []);
+  // صور قُصّت أسفل عجلاتها في الأصل: تُنزل خلف شريط المواصفات حتى لا يظهر القص
+  const cutBottom = /\/lab\/at\.webp$/.test(url);
 
   const [range, setRange] = useState<Range>('month');
   const [importing, setImporting] = useState<string | null>(null);
@@ -233,11 +253,11 @@ export const VehicleLab: React.FC<{
 
       {/* ١. واجهة العربة */}
       <section aria-label="العربة" className="va-rise relative mt-4 rounded-[28px] bg-[#E9ECF1] dark:bg-[#0F1830]" style={{ animationDelay: '.05s' }}>
-        <div className="relative h-[300px] sm:h-[400px] rounded-t-[28px]">
-          <div className="absolute top-8 sm:top-[46px] right-5 sm:right-10 text-right">
+        <div ref={stageRef} className="relative h-[300px] sm:h-[400px] rounded-t-[28px]">
+          <div ref={codeRef} className="absolute top-8 sm:top-[46px] right-5 sm:right-10 text-right">
             <div className="text-[13px] font-bold tracking-[.04em] text-[#5B6577] dark:text-[#8090B0]">{typeLabel}</div>
             <div
-              className={`lab-code font-black leading-[.86] tracking-[-.03em] ${codeSize(profile?.name || vehicle)}`}
+              className={`lab-code font-black leading-[.86] tracking-[-.03em] ${codeSize(profile?.name || vehicle, aspect > 1.45)}`}
               style={{ fontFamily: '"Inter Variable", "Noto Kufi Arabic Variable", sans-serif' }}
               dir="ltr"
             >{profile?.name || vehicle}</div>
@@ -247,15 +267,22 @@ export const VehicleLab: React.FC<{
               </div>
             )}
           </div>
-          <span aria-hidden className="absolute left-[13%] bottom-4 w-[min(560px,60%)] h-[34px] rounded-[50%] bg-[radial-gradient(closest-side,rgba(11,18,32,.3),rgba(11,18,32,0))] dark:bg-[radial-gradient(closest-side,rgba(0,0,0,.6),rgba(0,0,0,0))]" />
-          <img
+          {/* العربة بارتفاع ثابت فتخرج من حافة البطاقة العليا، وعرضها يتبع نسبة صورتها؛ تحتها ظل ناعم متلاشٍ */}
+          <div
             key={url}
-            src={url}
-            alt={`صورة العربة ${code}`}
-            className="lab-truck absolute left-[4%] sm:left-[11%] bottom-5 w-[min(580px,60%)] max-h-[440px] sm:max-h-[470px] object-contain object-bottom drop-shadow-[0_24px_24px_rgba(11,18,32,.18)]"
-          />
+            className={`lab-truck absolute z-[1] left-[3%] sm:left-[4%] ${cutBottom ? '-bottom-3' : 'bottom-5'}`}
+            style={{ '--ar': aspect, '--room': `${room || 700}px` } as React.CSSProperties}
+          >
+            {!cutBottom && <span aria-hidden className="absolute -inset-x-[6%] -bottom-4 h-12 rounded-[50%] bg-[radial-gradient(closest-side,rgba(11,18,32,.34),rgba(11,18,32,.12)_55%,rgba(11,18,32,0))] dark:bg-[radial-gradient(closest-side,rgba(0,0,0,.7),rgba(0,0,0,.25)_55%,rgba(0,0,0,0))] blur-[6px]" />}
+            <img
+              src={url}
+              alt={`صورة العربة ${code}`}
+              onLoad={e => { const im = e.currentTarget; if (im.naturalWidth && im.naturalHeight) setAspect(im.naturalWidth / im.naturalHeight); }}
+              className="relative block w-auto max-w-none h-[min(250px,calc(82vw/var(--ar)))] sm:h-[min(450px,calc(var(--room)/var(--ar)))] drop-shadow-[0_18px_18px_rgba(11,18,32,.16)]"
+            />
+          </div>
           {siblings.length > 1 && onSwitch && (
-            <div className="absolute top-5 left-5 sm:top-auto sm:left-auto sm:bottom-[30px] sm:right-10 flex items-center gap-2.5">
+            <div className="absolute z-[2] top-5 left-5 sm:top-auto sm:left-auto sm:bottom-[30px] sm:right-10 flex items-center gap-2.5">
               <button type="button" aria-label="العربة السابقة" onClick={() => go(-1)} className="w-11 h-11 rounded-[14px] bg-white/60 dark:bg-white/[0.06] text-[#3B4556] dark:text-[#B6C2DC] hover:bg-white hover:text-[#0B1220] dark:hover:bg-white/[0.12] dark:hover:text-white transition-colors cursor-pointer inline-flex items-center justify-center"><ChevronRight className="w-[18px] h-[18px]" /></button>
               <span className="font-mono text-xs font-semibold text-[#5B6577] dark:text-[#8090B0]"><bdi className="text-[#0B1220] dark:text-white">{pos + 1}</bdi> — {siblings.length}</span>
               <button type="button" aria-label="العربة التالية" onClick={() => go(1)} className="w-11 h-11 rounded-[14px] bg-white/60 dark:bg-white/[0.06] text-[#3B4556] dark:text-[#B6C2DC] hover:bg-white hover:text-[#0B1220] dark:hover:bg-white/[0.12] dark:hover:text-white transition-colors cursor-pointer inline-flex items-center justify-center"><ChevronLeft className="w-[18px] h-[18px]" /></button>
@@ -263,7 +290,7 @@ export const VehicleLab: React.FC<{
           )}
         </div>
         {/* شريط المواصفات */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-[3px] rounded-b-[28px] overflow-hidden">
+        <div className="relative z-[3] grid grid-cols-1 sm:grid-cols-3 gap-[3px] rounded-b-[28px] overflow-hidden">
           <div className="bg-white dark:bg-[#0C1224] px-[22px] py-4"><div className="text-[11.5px] font-semibold text-[#5B6577] dark:text-[#8090B0]">النوع</div><div className="mt-1 text-base font-bold">{typeLabel}</div></div>
           <div className="bg-white dark:bg-[#0C1224] px-[22px] py-4"><div className="text-[11.5px] font-semibold text-[#5B6577] dark:text-[#8090B0]">رقم الآلية</div><div className="mt-1 font-mono text-base font-semibold" dir="ltr" style={{ textAlign: 'right' }}>{reg?.plate || '—'}</div></div>
           <div className="bg-[#1C2F5E] text-white px-[22px] py-4"><div className="text-[11.5px] font-semibold text-[#B6C2DC]">آخر تفويلة</div><div className="mt-1 text-base font-bold">{lastDate ? <><bdi className="font-mono">{fmt(dayTotal)}</bdi> لتر · <bdi className="font-mono">{short(lastDate)}</bdi></> : '—'}</div></div>
