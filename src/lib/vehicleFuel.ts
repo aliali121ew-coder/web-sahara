@@ -561,7 +561,7 @@ export const vehicleCategory = (code: string): VehicleCategory | null => {
 export const vehicleImage = (code: string, photo?: string) => photo || vehicleCategory(code)?.image || '/trucks/semi_truck.jpg';
 
 /** صور أكبر وأدق خاصة بمختبر العربة (مقصوصة على حدودها، لا فراغ تحت العجلات)، وما لا صورة له يرجع لصورة فئته */
-const LAB_IMAGES = new Set(['head', 'kn', 'sf1']);
+const LAB_IMAGES = new Set(['head', 'kn', 'ks', 'sf1']);
 export const labImage = (code: string, photo?: string) => {
   if (photo) return photo;
   const key = vehicleCategory(code)?.key.toLowerCase();
