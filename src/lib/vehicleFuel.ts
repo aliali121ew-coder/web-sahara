@@ -532,7 +532,7 @@ const CATEGORY: Record<string, { label: string; image: string; door: [number, nu
 /** المساحة الشفافة تحت العجلات في صورة كل فئة (نسبة من ارتفاع الصورة)، لإنزال العربة حتى تقف على الأرض */
 const IMAGE_GROUND: Record<string, number> = {
   a: 0.062, at: 0.048, bs: 0.082, head: 0.077, hf: 0.141, hr: 0.042, hw: 0.113, k: 0.048, ka: 0.238, kb: 0.026,
-  kh: 0.138, kn: 0.08, ks: 0.058, l: 0.044, m: 0.062, r: 0.062, sf: 0.046, sf1: 0, sl: 0.056, sr: 0.068,
+  kh: 0.138, kn: 0.08, ks: 0.058, l: 0.044, m: 0.062, r: 0.062, sf: 0.046, sf1: 0.06, sl: 0.056, sr: 0.068,
 };
 export const imageGround = (url: string) => IMAGE_GROUND[/\/types\/([\w-]+)\.webp$/.exec(url)?.[1] || ''] || 0;
 
@@ -559,3 +559,11 @@ export const vehicleCategory = (code: string): VehicleCategory | null => {
 
 /** صورة العربة: صورتها الخاصة إن وُجدت، ثم صورة فئتها، ثم الصورة العامة */
 export const vehicleImage = (code: string, photo?: string) => photo || vehicleCategory(code)?.image || '/trucks/semi_truck.jpg';
+
+/** صور أكبر وأدق خاصة بمختبر العربة (مقصوصة على حدودها، لا فراغ تحت العجلات)، وما لا صورة له يرجع لصورة فئته */
+const LAB_IMAGES = new Set(['head', 'sf1']);
+export const labImage = (code: string, photo?: string) => {
+  if (photo) return photo;
+  const key = vehicleCategory(code)?.key.toLowerCase();
+  return key && LAB_IMAGES.has(key) ? `/trucks/lab/${key}.webp` : vehicleImage(code);
+};

@@ -3,7 +3,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { FlaskConical, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import {
-  VEHICLE_PROFILES_KEY, imageGround, vehicleImage,
+  VEHICLE_PROFILES_KEY, imageGround, labImage,
   type DayFill, type VehicleProfile, type VehicleRefill,
 } from '../../lib/vehicleFuel';
 import { VEHICLE_REGISTRY_KEY, readVehicleRegistry, type VehicleRegistryEntry } from '../../lib/vehicleRegistry';
@@ -84,7 +84,7 @@ export const VehicleLab: React.FC<{
   const profile = profiles.find(p => p.id === vehicle);
   const code = (profile?.name || vehicle).trim();
   const reg = registry.find(r => r.id === code.toUpperCase()) || registry.find(r => r.id === vehicle.toUpperCase());
-  const url = vehicleImage(code, profile?.photo);
+  const url = labImage(code, profile?.photo);
 
   const [range, setRange] = useState<Range>('month');
   const [importing, setImporting] = useState<string | null>(null);
