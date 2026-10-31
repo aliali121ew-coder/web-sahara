@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { Upload, X, CalendarDays, CheckCircle2, AlertTriangle, Loader2, FileText } from 'lucide-react';
 
 export type QueueState = 'wait' | 'read' | 'ok' | 'err';
-export interface QueueItem { name: string; state: QueueState; message: string }
+export interface QueueItem { name: string; state: QueueState; message: string; notes?: string[] }
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 const yesterdayIso = () => new Date(Date.now() - 86400000).toISOString().slice(0, 10);
@@ -113,6 +113,11 @@ export const UploadPanel: React.FC<{
                     <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 mt-1.5 overflow-hidden">
                       <div className={`h-full rounded-full transition-all duration-500 ${q.state === 'ok' ? 'w-full bg-emerald-500' : q.state === 'err' ? 'w-full bg-rose-400' : q.state === 'read' ? 'w-2/3 bg-sky-500 animate-pulse' : 'w-0'}`} />
                     </div>
+                    {!!q.notes?.length && (
+                      <ul className="mt-2 flex flex-col gap-1 text-[11px] leading-relaxed font-bold text-amber-700 dark:text-amber-400">
+                        {q.notes.map(n => <li key={n}>{n}</li>)}
+                      </ul>
+                    )}
                   </div>
                   {q.state === 'ok' ? <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
                     : q.state === 'err' ? <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0" />

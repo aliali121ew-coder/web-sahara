@@ -63,7 +63,7 @@ export const VehiclesReport: React.FC = () => {
       for (let i = 0; i < pdfs.length; i++) {
         setQueue(q => q.map((x, j) => (j === i ? { ...x, state: 'read' } : x)));
         const [r] = await data.upload([pdfs[i]], fallbackDate);
-        setQueue(q => q.map((x, j) => (j === i ? { ...x, state: r.ok ? 'ok' : 'err', message: r.message } : x)));
+        setQueue(q => q.map((x, j) => (j === i ? { ...x, state: r.ok ? 'ok' : 'err', message: r.message, notes: r.notes } : x)));
       }
       setScope(null);
     } finally {

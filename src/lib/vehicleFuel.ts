@@ -224,40 +224,62 @@ export const parseVehicleSheet = (pages: PdfItem[][][], fallbackDate = ''): Vehi
   return { site, rows: kept, total, docNo, dateSource: notesDate ? 'notes' : 'file' };
 };
 
+/**
+ * ملف مدموج يضم عدة كشوف: عنوان «المصنع» لا يتكرر إلا في أول صفحة من كل كشف،
+ * فكل صفحة فيها هذا العنوان تبدأ كشفًا جديدًا وما بعدها تتمة له.
+ */
+export const splitSheets = (pages: PdfItem[][][]): PdfItem[][][][] => {
+  const key = normalizeArabic('المصنع');
+  const sheets: PdfItem[][][][] = [];
+  for (const page of pages) {
+    const starts = page.some(line => line.some(i => normalizeArabic(i.str) === key));
+    if (starts || !sheets.length) sheets.push([page]);
+    else sheets[sheets.length - 1].push(page);
+  }
+  return sheets;
+};
+
 const hash = (s: string) => {
   let h = 5381;
   for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
   return (h >>> 0).toString(36);
 };
 
-/** يقرأ ملف PDF ويحوّله إلى ملف + تفويلات جاهزة للحفظ */
-export const readVehicleFile = async (file: File, fallbackDate = ''): Promise<{ file: VehicleFile; refills: VehicleRefill[]; total: number | null }> => {
+export interface VehicleUpload { file: VehicleFile; refills: VehicleRefill[]; total: number | null }
+
+/** يقرأ ملف PDF (كشف واحد أو عدة كشوف مدموجة) ويحوّل كل كشف إلى ملف + تفويلات جاهزة للحفظ */
+export const readVehicleFile = async (file: File, fallbackDate = ''): Promise<VehicleUpload[]> => {
   const { pages, anyText } = await readPdfPages(file);
   if (!anyText) throw new Error('الملف لا يحتوي نصًا قابلًا للقراءة (صورة ممسوحة)');
-  const sheet = parseVehicleSheet(pages, fallbackDate);
-  if (!sheet.rows.length) throw new Error('لم يُعثر على جدول تفويل العربات في الملف');
-  const site = sheet.site || 'غير محدد';
-  const reportDate = sheet.rows.reduce((m, r) => (r.date > m ? r.date : m), '');
-  // معرّف الملف: المستند برقمه، والكشف بموقعه وتاريخه — رفع نفس الملف مرة ثانية يستبدل الأول
-  const fileId = `vf-${hash(sheet.docNo ? `${site}|doc|${sheet.docNo}` : `${site}|${reportDate}`)}`;
   const p = getProfile();
-  const refills = sheet.rows.map((r, i) => ({ ...r, site, fileId, id: `${fileId}-${i}` }));
-  return {
-    file: {
-      id: fileId,
-      name: file.name,
-      uploadedAt: new Date().toISOString(),
-      by: p?.name || p?.username || '',
-      site,
-      reportDate,
-      rows: refills.length,
-      totalQty: refills.reduce((s, r) => s + r.qty, 0),
-      ...(sheet.docNo ? { docNo: sheet.docNo } : {}),
-      dateSource: sheet.dateSource,
-    },
-    refills,
-    total: sheet.total,
-  };
+  const uploads: VehicleUpload[] = [];
+  for (const sheetPages of splitSheets(pages)) {
+    const sheet = parseVehicleSheet(sheetPages, fallbackDate);
+    if (!sheet.rows.length) continue;
+    const site = sheet.site || 'غير محدد';
+    const reportDate = sheet.rows.reduce((m, r) => (r.date > m ? r.date : m), '');
+    // معرّف الملف: المستند برقمه، والكشف بموقعه وتاريخه — به يُكتشف الكشف المرفوع مسبقًا
+    const fileId = `vf-${hash(sheet.docNo ? `${site}|doc|${sheet.docNo}` : `${site}|${reportDate}`)}`;
+    const refills = sheet.rows.map((r, i) => ({ ...r, site, fileId, id: `${fileId}-${i}` }));
+    uploads.push({
+      file: {
+        id: fileId,
+        name: file.name,
+        uploadedAt: new Date().toISOString(),
+        by: p?.name || p?.username || '',
+        site,
+        reportDate,
+        rows: refills.length,
+        totalQty: refills.reduce((s, r) => s + r.qty, 0),
+        ...(sheet.docNo ? { docNo: sheet.docNo } : {}),
+        dateSource: sheet.dateSource,
+      },
+      refills,
+      total: sheet.total,
+    });
+  }
+  if (!uploads.length) throw new Error('لم يُعثر على جدول تفويل العربات في الملف');
+  return uploads;
 };
 
 // ───── التحليل ─────
