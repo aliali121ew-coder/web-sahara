@@ -2,16 +2,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight, CalendarDays, ChevronRight, ChevronLeft, ChevronDown, Fuel, Gauge, Trophy, Timer, Hash, Container, X,
-  User, Route as RouteIcon, IdCard, ShieldCheck,
+  User, Route as RouteIcon, IdCard,
 } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import {
-  FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, checkFills, daysBetween, disciplineScore, vehicleCategory, vehicleStats,
+  FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, checkFills, daysBetween, vehicleCategory, vehicleStats,
   type CheckKind, type VehicleProfile, type VehicleRefill, type VehicleRoute, type VehicleStat,
 } from '../../lib/vehicleFuel';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
 import { VehicleProfileEditor } from './VehicleProfileEditor';
-import { ScoreGauge } from './ScoreGauge';
 import { VehicleArt } from './VehicleArt';
 import { useCategoryNames } from './categories';
 import { RefillTrend, SiteDonut, vehicleCard as card } from './VehicleCharts';
@@ -23,8 +22,6 @@ interface Props {
   refills: VehicleRefill[];
   /** ترتيب العربات (الأعلى استهلاكًا أولًا) للتنقل بين العربات */
   ranking: string[];
-  /** متوسط التفويلة في كل الأسطول */
-  fleetAvg: number;
   editable: boolean;
   /** اسم الصفحة التي يعود إليها زر الرجوع */
   backLabel?: string;
@@ -46,8 +43,8 @@ const Spec: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactN
   </div>
 );
 
-/** صفحة كاملة لتفاصيل عربة: المواصفات، آخر تفويلة، المؤشر، الرسوم، والسجل؛ والتاريخ يحدد كل شيء عدا آخر تفويلة */
-export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, fleetAvg, editable, backLabel = 'تقرير العربات', onBack }) => {
+/** صفحة كاملة لتفاصيل عربة: المواصفات، آخر تفويلة، الرسوم، والسجل؛ والتاريخ يحدد كل شيء عدا آخر تفويلة */
+export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, editable, backLabel = 'تقرير العربات', onBack }) => {
   const [routes] = useSyncedStorage<VehicleRoute[]>(VEHICLE_ROUTES_KEY, []);
   const [profiles, setProfiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
   const [editing, setEditing] = useState(false);
@@ -120,11 +117,6 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, fleetAvg, ed
   }, [refills]);
   const dailyPages = Math.max(1, Math.ceil(entries.length / DAILY_PAGE));
   const dailyView = entries.slice(dailyPage * DAILY_PAGE, dailyPage * DAILY_PAGE + DAILY_PAGE);
-
-  // ملاحظات تلقائية
-
-  const disc = view ? disciplineScore(view, checks, fleetAvg) : null;
-
 
   return (
     <div className="space-y-5 pb-12 font-cairo vehicle-page">
@@ -249,28 +241,6 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, fleetAvg, ed
                 <button type="button" disabled={dailyPage >= dailyPages - 1} onClick={() => setDailyPage(p => p + 1)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer" aria-label="التالية"><ChevronLeft className="w-4 h-4" /></button>
               </div>
             )}
-          </div>
-
-          {/* مؤشر الانضباط للفترة المختارة */}
-          <div className="mt-5 rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
-            <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-emerald-500" />مؤشر الانضباط</h3>
-            {disc ? (
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-5 items-center">
-                <ScoreGauge score={disc.score} grade={disc.grade} />
-                <div className="space-y-1.5">
-                  {disc.factors.map(f => (
-                    <div key={f.label} className="flex items-center gap-2 text-xs">
-                      <span className="flex-1 text-slate-600 dark:text-slate-300 font-bold">{f.label}</span>
-                      <span className="font-mono font-black text-rose-500">-{f.points}</span>
-                    </div>
-                  ))}
-                  {!disc.factors.length && <p className="text-xs text-emerald-600 font-bold">بلا خصومات</p>}
-                  {!profile?.tankLiters && editable && (
-                    <button type="button" onClick={() => setEditing(true)} className="mt-1 text-[11px] font-bold text-sky-600 hover:underline cursor-pointer">أضف سعة الخزان لكشف التفويل الأكبر من الخزان</button>
-                  )}
-                </div>
-              </div>
-            ) : <p className="mt-3 text-sm text-slate-400">لا توجد تفويلات في هذه الفترة</p>}
           </div>
         </div>
 

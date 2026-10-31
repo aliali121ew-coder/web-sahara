@@ -482,26 +482,6 @@ export const checkFills = (fills: DayFill[], profile: VehicleProfile | undefined
   return out;
 };
 
-/** وزن كل نوع مخالفة في مؤشر الانضباط */
-const PENALTY: Record<CheckKind, number> = { capacity: 30, limit: 15, driver: 8, frequent: 12, multi: 10 };
-
-/**
- * مؤشر الانضباط 0–100: يبدأ من 100 ويُخصم لكل مخالفة (نسبةً لعدد التفويلات)،
- * ولزيادة متوسط التفويلة عن متوسط الأسطول.
- */
-export const disciplineScore = (stat: VehicleStat, checks: FillCheck[], fleetAvg: number) => {
-  const factors: { label: string; points: number }[] = [];
-  const kinds: CheckKind[] = ['capacity', 'limit', 'driver', 'frequent', 'multi'];
-  const labels: Record<CheckKind, string> = { capacity: 'تجاوز سعة الخزان', limit: 'تجاوز الحصة اليومية', driver: 'سائق غير معتمد', frequent: 'تفويل متكرر', multi: 'أكثر من تفويلة باليوم' };
-  for (const k of kinds) {
-    const n = checks.filter(c => c.kind === k).length;
-    if (n) factors.push({ label: labels[k], points: Math.round(PENALTY[k] * Math.min(3, n) * Math.max(0.5, n / stat.count)) });
-  }
-  if (fleetAvg && stat.avg > fleetAvg * 1.25) factors.push({ label: 'أعلى من متوسط الأسطول', points: Math.min(20, Math.round(((stat.avg / fleetAvg) - 1) * 10)) });
-  const score = Math.max(0, 100 - factors.reduce((s, f) => s + f.points, 0));
-  return { score, factors, grade: score >= 85 ? 'ممتاز' : score >= 70 ? 'جيد' : score >= 50 ? 'يحتاج متابعة' : 'مخالف' };
-};
-
 /** تصغير الصورة قبل حفظها مع ملف العربة (عرض 640 بكسل، JPEG) */
 export const shrinkImage = (file: File, max = 640): Promise<string> => new Promise((resolve, reject) => {
   const img = new Image();

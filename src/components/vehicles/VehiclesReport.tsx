@@ -115,10 +115,6 @@ export const VehiclesReport: React.FC = () => {
   }, [selected?.vehicle, setCurrentSubpage]);
 
   const ranking = useMemo(() => [...history.values()].sort((a, b) => b.total - a.total).map(s => s.vehicle), [history]);
-  const fleetAvg = useMemo(
-    () => (allFills.length ? Math.round(allFills.reduce((s, f) => s + f.qty, 0) / allFills.length) : 0),
-    [allFills]
-  );
 
   // صفحة تحليل الاستهلاك: مسار التنقل يعيد للتقرير (وصفحة العربة فوقها تعيد إليها)
   useEffect(() => {
@@ -164,7 +160,6 @@ export const VehiclesReport: React.FC = () => {
           stat={selected}
           refills={vehicleRefills}
           ranking={ranking}
-          fleetAvg={fleetAvg}
           editable={editable}
           backLabel={analysis && dates.length ? 'تحليل الاستهلاك' : 'تقرير العربات'}
           onBack={() => setVehicle(null)}
