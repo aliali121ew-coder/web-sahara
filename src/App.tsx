@@ -3,7 +3,7 @@ import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { FuelDataProvider, useFuelData } from './context/FuelDataContext';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { QuickActionContext } from './context/QuickActionContext';
-import { getAmbientGradientStyle, getAmbientBgColor } from './lib/themeGradients';
+import { getAmbientGradientStyle, getAmbientBgColor, getTopEdgeColor, getThemeAccentRgb } from './lib/themeGradients';
 
 import { Header } from './components/layout/Header';
 import { DemoBanner } from './components/layout/DemoBanner';
@@ -38,12 +38,14 @@ const ChatApp = lazyPage(() => import('./components/chat/ChatApp'), 'ChatApp');
 const SettingsView = lazyPage(() => import('./components/settings/SettingsView'), 'SettingsView');
 const ProfileView = lazyPage(() => import('./components/settings/ProfileView'), 'ProfileView');
 const ReportAlertsView = lazyPage(() => import('./components/alerts/ReportAlertsView'), 'ReportAlertsView');
+const VehiclesReport = lazyPage(() => import('./components/vehicles/VehiclesReport'), 'VehiclesReport');
 
 const PAGE_PRELOADERS: Record<string, { preload: () => void }> = {
   dashboard: MainDashboard, tanks: TanksOverview, prices: PricesView, suppliers: SuppliersView,
   deliveries: InboundDeliveries, 'deliveries-sahara': InboundDeliveries, 'deliveries-etihad': InboundDeliveries,
   finance: FinanceBalance, 'finance-etihad': FinanceBalance, 'finance-sahara': FinanceBalance,
   managers: SiteManagers, tasks: TasksLogistics, reports: ReportsAnalytics, chat: ChatApp, settings: SettingsView, profile: ProfileView, alerts: ReportAlertsView,
+  'vehicles-report': VehiclesReport,
 };
 
 const AppContent: React.FC = () => {
@@ -61,9 +63,21 @@ const AppContent: React.FC = () => {
   const { direction } = useLanguage();
 
   // شريط عنوان نافذة التطبيق المثبّت (theme-color) بلون خلفية الصفحة نفسه، ويتبع الوضع الداكن وخلفية الإعدادات
+  // اللون المحسوب = اللون الأساسي مع طبقات التدرج عند الحافة العليا (كما يظهر رأس الصفحة فعلًا)، ويُعاد عند تغيير حجم النافذة
   useEffect(() => {
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', getAmbientBgColor(bgGradient, themeMode, shadeLevel));
-  }, [bgGradient, themeMode, shadeLevel]);
+    const apply = () => {
+      const color = getTopEdgeColor(
+        getAmbientBgColor(bgGradient, themeMode, shadeLevel),
+        getAmbientGradientStyle(bgGradient, gradientIntensity, themeMode, shadeLevel),
+        window.innerWidth,
+        window.innerHeight
+      );
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color);
+    };
+    apply();
+    window.addEventListener('resize', apply);
+    return () => window.removeEventListener('resize', apply);
+  }, [bgGradient, gradientIntensity, themeMode, shadeLevel]);
 
   // جلب باقي الصفحات في الخلفية وقت الخمول (صفحة المستخدم الحالية أولاً) فيصبح التنقل فورياً
   useEffect(() => {
@@ -197,6 +211,8 @@ const AppContent: React.FC = () => {
         return <ProfileView />;
       case 'alerts':
         return <ReportAlertsView />;
+      case 'vehicles-report':
+        return <VehiclesReport />;
       default:
         return <MainDashboard />;
     }
@@ -212,6 +228,8 @@ const AppContent: React.FC = () => {
         // لون خلفية الصفحة لإطارها (الشريط العلوي والشريط الجانبي المطوي) فيبدو جزءًا منها
         ['--app-bg' as string]: getAmbientBgColor(bgGradient, themeMode, shadeLevel),
         ['--app-bg-image' as string]: getAmbientGradientStyle(bgGradient, gradientIntensity, themeMode, shadeLevel),
+        // لون الثيم للكارتات (يتغير مع تغيير الثيم)
+        ['--app-accent-rgb' as string]: getThemeAccentRgb(bgGradient, themeMode),
         backgroundAttachment: 'fixed',
         backgroundRepeat: 'no-repeat',
         backgroundSize: 'cover',

@@ -15,6 +15,8 @@ const LABEL_KEY: Record<(typeof SINGLE_PAGE_TABS)[number], string> = {
   'finance-sahara': 'nav:items.financeSahara',
   chat: 'nav:items.chat',
   settings: 'nav:items.settings',
+  alerts: 'nav:items.alerts',
+  'vehicles-report': 'nav:items.vehiclesReport',
 };
 
 /**

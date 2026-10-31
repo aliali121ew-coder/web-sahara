@@ -96,7 +96,8 @@ const VALID_TABS: NavTabId[] = [
   'chat',
   'settings',
   'profile',
-  'alerts'
+  'alerts',
+  'vehicles-report'
 ];
 
 /** معرّف فريد للشحنة (الاستيراد يضيف عشرات الشحنات في نفس الجزء من الثانية، فالوقت + رقم عشوائي صغير كان يتكرر) */

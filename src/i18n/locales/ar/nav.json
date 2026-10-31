@@ -15,7 +15,8 @@
     "settings": "إعدادات المنظومة",
     "profile": "الملف الشخصي",
     "alerts": "سجل التنبيهات",
-    "suppliers": "الموردين"
+    "suppliers": "الموردين",
+    "vehiclesReport": "تقرير العربات"
   },
   "sidebar": {
     "label": "التنقل الرئيسي",

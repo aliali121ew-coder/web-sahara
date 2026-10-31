@@ -42,8 +42,10 @@ export const TAB_SECTION: Record<string, { section?: string; group?: string }> =
   reports: { section: 'reports' },
   chat: { section: 'chat' },
   settings: { section: 'settings' },
-  // سجل التنبيهات: لمن يرى أحد الأقسام الأربعة (كاز الصحاري، كاز الاتحاد، البنزين، النفط الأسود)
-  alerts: {},
+  // سجل التنبيهات: صلاحيته الخاصة + أحد الأقسام الأربعة (كاز الصحاري، كاز الاتحاد، البنزين، النفط الأسود)
+  alerts: { section: 'alerts' },
+  // تقرير العربات: صلاحيته الخاصة (البيانات حسب صلاحية الواردات)
+  'vehicles-report': { section: 'vehicles-report' },
   // الملف الشخصي لكل حساب بلا صلاحية (آخر القائمة: صفحة البداية لحساب بلا أقسام)
   profile: {},
 };
@@ -55,7 +57,8 @@ export const useCanOpenTab = () => {
     // حساب مقيَّد بصفحة واحدة: لا يفتح غيرها (الباقي يتبع الصلاحيات كالمعتاد)
     if (p.singlePage && tab !== p.singlePage) return false;
     if (tab === 'profile') return true;
-    if (tab === 'alerts') return Object.values(CHECK_SECTION_PERM).some(s => p.canView(s));
+    // بلا أي قسم تحقق تكون الصفحة فارغة، فلا تُفتح
+    if (tab === 'alerts') return p.canView('alerts') && Object.values(CHECK_SECTION_PERM).some(s => p.canView(s));
     const t = TAB_SECTION[tab];
     if (!t) return p.isAdmin;
     if (t.group === 'deliveries') return p.canView('deliveries-sahara') || p.canView('deliveries-etihad');
