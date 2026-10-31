@@ -40,7 +40,7 @@ export const VehiclesReport: React.FC = () => {
   const editable = canEdit('vehicles-report');
   const [scope, setScope] = useState<Scope | null>(null);
   const data = useVehicleData(scope);
-  const { recentFiles, dates, active, fills, stats, history, prevDay, prevTotal, allFills } = data;
+  const { files, dates, active, fills, stats, history, prevDay, prevTotal, allFills } = data;
 
   const [busy, setBusy] = useState(false);
   // ملفات الرفع الحالية وحالة كل ملف: تظهر في لوحة الرفع وعددها على زر الرفع
@@ -243,7 +243,7 @@ export const VehiclesReport: React.FC = () => {
           <span className="hidden sm:block w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
           <button type="button" onClick={() => setShowFiles(true)} className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-sky-400 cursor-pointer">
             <FileText className="w-4 h-4 text-sky-500" />الملفات
-            <span className="min-w-[22px] h-[22px] px-1.5 inline-flex items-center justify-center rounded-full bg-sky-100 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 text-xs font-black font-mono">{recentFiles.length}</span>
+            <span className="min-w-[22px] h-[22px] px-1.5 inline-flex items-center justify-center rounded-full bg-sky-100 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 text-xs font-black font-mono">{files.length}</span>
           </button>
           {uploadBtn}
         </div>
@@ -294,7 +294,7 @@ export const VehiclesReport: React.FC = () => {
 
       {showFiles && (
         <FilesDrawer
-          files={recentFiles}
+          files={files}
           editable={editable}
           onRemove={data.removeFile}
           onUpload={() => { setShowFiles(false); setPanelOpen(true); }}

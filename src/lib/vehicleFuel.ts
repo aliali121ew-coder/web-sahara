@@ -245,6 +245,26 @@ const hash = (s: string) => {
   return (h >>> 0).toString(36);
 };
 
+/**
+ * قائمة الملفات كانت تُصفَّر كل 24 ساعة فبقيت تفويلات بلا سجل ملف:
+ * تُعاد لها كروت من سطورها حتى تُرى وتُحذف (بلا اسم ملف ولا رافع ولا وقت رفع).
+ */
+export const withOrphanFiles = (files: VehicleFile[], refills: VehicleRefill[]): VehicleFile[] => {
+  const known = new Set(files.map(f => f.id));
+  const orphans = new Map<string, VehicleFile>();
+  for (const r of refills) {
+    if (known.has(r.fileId)) continue;
+    const f = orphans.get(r.fileId) ?? {
+      id: r.fileId, name: 'ملف سابق', uploadedAt: '', by: '', site: r.site, reportDate: '', rows: 0, totalQty: 0,
+    };
+    f.rows += 1;
+    f.totalQty += r.qty;
+    if (r.date > f.reportDate) f.reportDate = r.date;
+    orphans.set(r.fileId, f);
+  }
+  return [...files, ...orphans.values()];
+};
+
 export interface VehicleUpload { file: VehicleFile; refills: VehicleRefill[]; total: number | null }
 
 /** يقرأ ملف PDF (كشف واحد أو عدة كشوف مدموجة) ويحوّل كل كشف إلى ملف + تفويلات جاهزة للحفظ */

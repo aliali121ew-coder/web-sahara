@@ -24,7 +24,7 @@ const dayLabel = (iso: string) => {
 };
 const timeLabel = (iso: string) => new Date(iso).toLocaleTimeString('ar-IQ-u-nu-latn', { hour: '2-digit', minute: '2-digit' });
 
-/** الملفات المرفوعة (آخر 24 ساعة): كارت لكل ملف بمن رفعه ومتى، مجمّعة حسب اليوم مع بحث وفلترة بالمستخدم */
+/** الملفات المرفوعة: كارت لكل ملف بمن رفعه ومتى، مجمّعة حسب يوم الرفع مع بحث وفلترة بالمستخدم */
 export const FilesDrawer: React.FC<{
   files: VehicleFile[];
   editable: boolean;
@@ -35,7 +35,8 @@ export const FilesDrawer: React.FC<{
   const [q, setQ] = useState('');
   const [user, setUser] = useState<string | null>(null);
 
-  const sorted = useMemo(() => [...files].sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt)), [files]);
+  // الكروت المستعادة بلا وقت رفع تأتي آخر القائمة، الأحدث كشفًا أولًا
+  const sorted = useMemo(() => [...files].sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt) || b.reportDate.localeCompare(a.reportDate)), [files]);
   const users = useMemo(() => {
     const m = new Map<string, number>();
     for (const f of sorted) m.set(f.by || 'غير معروف', (m.get(f.by || 'غير معروف') || 0) + 1);
@@ -49,9 +50,9 @@ export const FilesDrawer: React.FC<{
       && (!needle || `${f.name} ${f.site} ${f.by} ${f.reportDate}`.toLowerCase().includes(needle)));
     const out: { key: string; label: string; files: VehicleFile[] }[] = [];
     for (const f of list) {
-      const k = dayKey(f.uploadedAt);
+      const k = f.uploadedAt ? dayKey(f.uploadedAt) : 'old';
       const g = out.find(x => x.key === k);
-      if (g) g.files.push(f); else out.push({ key: k, label: dayLabel(f.uploadedAt), files: [f] });
+      if (g) g.files.push(f); else out.push({ key: k, label: f.uploadedAt ? dayLabel(f.uploadedAt) : 'ملفات سابقة', files: [f] });
     }
     return out;
   }, [sorted, q, user]);
@@ -106,8 +107,10 @@ export const FilesDrawer: React.FC<{
                         <div className="flex items-center gap-2 mt-2 text-xs text-slate-500 dark:text-slate-400">
                           <span className={`w-6 h-6 rounded-full inline-flex items-center justify-center text-[11px] font-black ${avatarTone(by)}`}>{by.charAt(0)}</span>
                           <span className="font-bold text-slate-800 dark:text-slate-200 truncate">{by}</span>
-                          <span className="text-slate-300 dark:text-slate-600">•</span>
-                          <span className="shrink-0">رُفع {timeLabel(f.uploadedAt)}</span>
+                          {f.uploadedAt && <>
+                            <span className="text-slate-300 dark:text-slate-600">•</span>
+                            <span className="shrink-0">رُفع {timeLabel(f.uploadedAt)}</span>
+                          </>}
                         </div>
                       </div>
                       {editable && (
@@ -124,7 +127,7 @@ export const FilesDrawer: React.FC<{
               })}
             </div>
           ))}
-          {!groups.length && <p className="text-sm text-slate-400 text-center py-10">{files.length ? 'لا نتائج مطابقة' : 'لا توجد ملفات مرفوعة خلال آخر 24 ساعة'}</p>}
+          {!groups.length && <p className="text-sm text-slate-400 text-center py-10">{files.length ? 'لا نتائج مطابقة' : 'لا توجد ملفات مرفوعة'}</p>}
         </div>
 
         <div className="flex items-center justify-between gap-3 px-4 py-3.5 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
@@ -132,7 +135,7 @@ export const FilesDrawer: React.FC<{
             {users.slice(0, 4).map(([u], i) => (
               <span key={u} title={u} className={`w-7 h-7 rounded-full inline-flex items-center justify-center text-[11px] font-black ring-2 ring-white dark:ring-slate-900 ${avatarTone(u)} ${i ? '-mr-2' : ''}`}>{u.charAt(0)}</span>
             ))}
-            <span className="text-xs text-slate-500 dark:text-slate-400 mr-2 truncate">{users.length ? `شارك ${users.length} في الرفع` : 'تُعرض ملفات آخر 24 ساعة'}</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 mr-2 truncate">{users.length ? `شارك ${users.length} في الرفع` : 'تبقى الملفات محفوظة'}</span>
           </div>
           {editable && (
             <button type="button" onClick={onUpload} className="flex items-center gap-1.5 h-10 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-sm font-black cursor-pointer"><Upload className="w-4 h-4" />رفع ملفات</button>

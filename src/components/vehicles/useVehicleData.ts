@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import {
-  VEHICLE_FILES_KEY, VEHICLE_REFILLS_KEY, groupDayFills, previousDate, readVehicleFile, vehicleStats,
+  VEHICLE_FILES_KEY, VEHICLE_REFILLS_KEY, groupDayFills, previousDate, readVehicleFile, vehicleStats, withOrphanFiles,
   type VehicleFile, type VehicleRefill,
 } from '../../lib/vehicleFuel';
 
@@ -17,14 +17,8 @@ export const useVehicleData = (scope: Scope | null) => {
   const latestRefills = useRef(refills);
   useEffect(() => { latestRefills.current = refills; }, [refills]);
 
-  // قائمة الملفات تُصفَّر كل 24 ساعة: يُحذف سجل الملف فقط وتبقى تفويلاته المخزنة
-  const DAY_MS = 24 * 60 * 60 * 1000;
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => { const t = window.setInterval(() => setNow(Date.now()), 60_000); return () => window.clearInterval(t); }, []);
-  const recentFiles = useMemo(() => files.filter(f => now - Date.parse(f.uploadedAt) < DAY_MS), [files, now, DAY_MS]);
-  useEffect(() => {
-    if (recentFiles.length !== files.length) setFiles(prev => prev.filter(f => Date.now() - Date.parse(f.uploadedAt) < DAY_MS));
-  }, [recentFiles.length, files.length, setFiles, DAY_MS]);
+  // الملفات تبقى محفوظة لتُقارن الأيام وتُصحَّح الكشوف القديمة، ومنها ما يُستعاد من تفويلاته (انظر withOrphanFiles)
+  const allFiles = useMemo(() => withOrphanFiles(files, refills), [files, refills]);
 
   const allFills = useMemo(() => groupDayFills(refills), [refills]);
   const dates = useMemo(() => [...new Set(allFills.map(f => f.date))].sort(), [allFills]);
@@ -49,7 +43,7 @@ export const useVehicleData = (scope: Scope | null) => {
 
   /**
    * يرفع عدة ملفات، وكل ملف قد يضم عدة كشوف مدموجة. الكشف المرفوع مسبقًا (نفس الموقع والتاريخ، أو نفس رقم المستند)
-   * يُتخطى مع تنبيه، ويُقارن بالتفويلات لأن قائمة الملفات تُصفَّر كل 24 ساعة؛ fallbackDate لسطور الكشف التي بلا تاريخ
+   * يُتخطى مع تنبيه، ويُقارن بالتفويلات لأنها الأصل؛ fallbackDate لسطور الكشف التي بلا تاريخ
    */
   const upload = useCallback(async (list: File[], fallbackDate = ''): Promise<UploadResult[]> => {
     const results: UploadResult[] = [];
@@ -89,5 +83,5 @@ export const useVehicleData = (scope: Scope | null) => {
     setFiles(prev => prev.filter(f => f.id !== id));
   }, [setFiles, setRefills]);
 
-  return { files, recentFiles, refills, allFills, dates, active, fills, stats, history, prevDay, prevTotal, upload, removeFile };
+  return { files: allFiles, refills, allFills, dates, active, fills, stats, history, prevDay, prevTotal, upload, removeFile };
 };

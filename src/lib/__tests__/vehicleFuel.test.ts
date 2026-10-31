@@ -1,11 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { parseVehicleSheet, splitSheets } from '../vehicleFuel';
+import { parseVehicleSheet, splitSheets, withOrphanFiles, type VehicleFile, type VehicleRefill } from '../vehicleFuel';
 import type { PdfItem } from '../saharaReportFile';
 
 const item = (str: string, x: number): PdfItem => ({ str, x, y: 0, w: 10 });
 const siteLine = (site: string) => [item('المصنع', 500), item(site, 400)];
 const header = [item('الكمية', 300), item('العربة', 200), item('التاريخ', 100)];
 const row = (vehicle: string, qty: string, date: string) => [item(qty, 300), item(vehicle, 200), item(date, 100)];
+
+describe('withOrphanFiles', () => {
+  it('يعيد كارتًا للتفويلات التي فقدت سجل ملفها، ولا يكرر الموجود', () => {
+    const refill = (fileId: string, qty: number, date: string) => ({ fileId, qty, date, site: 'سما كربلاء' }) as VehicleRefill;
+    const kept = { id: 'a', site: 'سما الريف', reportDate: '2026/10/30', rows: 1, totalQty: 10 } as VehicleFile;
+    const list = withOrphanFiles([kept], [refill('a', 10, '2026/10/30'), refill('b', 5, '2026/10/28'), refill('b', 7, '2026/10/29')]);
+    expect(list.map(f => [f.id, f.rows, f.totalQty, f.reportDate])).toEqual([
+      ['a', 1, 10, '2026/10/30'],
+      ['b', 2, 12, '2026/10/29'],
+    ]);
+  });
+});
 
 describe('splitSheets', () => {
   it('يبدأ كشفًا جديدًا عند كل صفحة فيها عنوان المصنع، وما بعدها تتمة له', () => {
