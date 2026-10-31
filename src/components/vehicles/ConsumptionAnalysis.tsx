@@ -505,34 +505,27 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
                     ))}
                   </div>
 
-                  {/* مدخل مختبر العربة: كارت داكن بطابع صفحة المختبر */}
+                  {/* مدخل مختبر العربة: كارت فاتح من نفس طابع اللوحة الجانبية */}
                   {(() => {
                     const prof = profiles.find(p => p.id === sel.vehicle);
                     const reg = registry.find(r => r.id === sel.code.toUpperCase());
-                    const vals = sel.rate.map(v => v ?? 0);
-                    const mx = Math.max(1, ...vals);
-                    const pts = vals.map((v, i) => `${(1 - i / 3) * 360},${(40 - (v / mx) * 32).toFixed(1)}`).join(' ');
+                    const label = 'block text-[11px] font-bold text-slate-500 dark:text-slate-400';
                     return (
-                      <button type="button" onClick={() => onLab(sel.vehicle)} aria-label={`افتح مختبر العربة ${sel.display}`} className="group mt-auto shrink-0 relative overflow-hidden w-full text-right rounded-[20px] bg-[#0C1224] text-[#E6EBF5] p-4 cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_-18px_rgba(7,11,22,0.65)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
-                        <span className="absolute -left-10 -bottom-16 w-56 h-36 rounded-[50%] bg-[radial-gradient(closest-side,rgb(99_102_241/0.45),transparent)]" />
-                        <span className="relative flex items-center justify-between">
-                          <span className="flex items-center gap-2.5">
-                            <span className="w-[34px] h-[34px] rounded-[10px] bg-[#1B2645] text-indigo-300 inline-flex items-center justify-center"><FlaskConical className="w-[18px] h-[18px]" /></span>
-                            <span>
-                              <span className="block text-[14.5px] font-bold">مختبر العربة</span>
-                              <span className="block text-[11.5px] text-[#8090B0]">من اليوم إلى سنة · الصرف الحقيقي</span>
+                      <button type="button" onClick={() => onLab(sel.vehicle)} aria-label={`افتح مختبر العربة ${sel.display}`} className="group mt-auto shrink-0 w-full text-right rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 cursor-pointer transition-colors duration-200 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+                        <span className="flex items-center justify-between gap-3 px-4 py-3">
+                          <span className="flex items-center gap-2.5 min-w-0">
+                            <span className="w-9 h-9 shrink-0 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-300 inline-flex items-center justify-center"><FlaskConical className="w-[18px] h-[18px]" /></span>
+                            <span className="min-w-0">
+                              <span className="block text-sm font-black text-slate-900 dark:text-white">مختبر العربة</span>
+                              <span className="block text-[11.5px] text-slate-500 dark:text-slate-400 truncate">من اليوم إلى سنة · الصرف الحقيقي</span>
                             </span>
                           </span>
-                          <ChevronLeft className="w-[18px] h-[18px] text-indigo-300 transition-transform group-hover:-translate-x-1" />
+                          <ChevronLeft className="w-[18px] h-[18px] shrink-0 text-indigo-500 transition-transform group-hover:-translate-x-1" />
                         </span>
-                        <svg viewBox="0 0 360 46" preserveAspectRatio="none" className="relative block w-full h-[46px] mt-3" aria-hidden>
-                          <polyline points={`${pts} 0,46 360,46`} fill="rgb(99 102 241 / 0.22)" stroke="none" />
-                          <polyline points={pts} fill="none" stroke="#818CF8" strokeWidth="2" strokeLinejoin="round" />
-                        </svg>
-                        <span className="relative grid grid-cols-3 gap-2 mt-2.5">
-                          <span><span className="block text-[10.5px] text-[#8090B0]">الخزانات</span><span className="block font-mono text-[15px] font-semibold">{prof?.tankLiters ? (prof.tank2Liters ? 2 : 1) : '؟'}</span></span>
-                          <span className="min-w-0"><span className="block text-[10.5px] text-[#8090B0]">رقم الآلية</span><span className="block font-mono text-[15px] font-semibold truncate" dir="ltr" style={{ textAlign: 'right' }}>{reg?.plate || '—'}</span></span>
-                          <span className="min-w-0"><span className="block text-[10.5px] text-[#8090B0]">المجموعة</span><span className="block text-[12.5px] font-semibold truncate">{reg?.group?.replace(/^اليات\s*/, '') || '—'}</span></span>
+                        <span className="grid grid-cols-[1.1fr_1.3fr_0.7fr] border-t border-slate-100 dark:border-slate-800 px-4 py-2.5">
+                          <span className="min-w-0"><span className={label}>رقم الآلية</span><span className="block font-mono text-[13.5px] font-semibold text-slate-900 dark:text-white truncate" dir="ltr" style={{ textAlign: 'right' }}>{reg?.plate || '—'}</span></span>
+                          <span className="min-w-0 border-r border-slate-100 dark:border-slate-800 pr-3"><span className={label}>المجموعة</span><span className="block text-[12.5px] font-bold text-slate-900 dark:text-white truncate">{reg?.group?.replace(/^اليات\s*/, '').replace(/[\s-]+$/, '') || '—'}</span></span>
+                          <span className="border-r border-slate-100 dark:border-slate-800 pr-3"><span className={label}>الخزانات</span><span className="block font-mono text-[13.5px] font-semibold text-slate-900 dark:text-white">{prof?.tankLiters ? (prof.tank2Liters ? 2 : 1) : '—'}</span></span>
                         </span>
                       </button>
                     );
