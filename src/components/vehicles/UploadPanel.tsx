@@ -106,7 +106,7 @@ export const UploadPanel: React.FC<{
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 text-xs font-bold">
                       <span className="truncate text-slate-800 dark:text-slate-100">{q.name}</span>
-                      <span className={`shrink-0 truncate max-w-[55%] ${q.state === 'ok' ? 'text-emerald-700 dark:text-emerald-400' : q.state === 'err' ? 'text-rose-600 dark:text-rose-400' : 'text-sky-700 dark:text-sky-300'}`} title={q.message}>
+                      <span className={`shrink-0 truncate max-w-[70%] ${q.state === 'ok' ? 'text-emerald-700 dark:text-emerald-400' : q.state === 'err' ? 'text-rose-600 dark:text-rose-400' : 'text-sky-700 dark:text-sky-300'}`} title={q.message}>
                         {q.state === 'wait' ? 'في الانتظار' : q.state === 'read' ? 'جارٍ قراءة الصفوف…' : q.message}
                       </span>
                     </div>
