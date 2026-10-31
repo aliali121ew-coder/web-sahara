@@ -82,7 +82,7 @@ const GLASS_BOTTOM = 11.28;
 const GLASS_HEIGHT = 71.27;
 
 /** حجم رقم العربة الكبير حسب طوله حتى لا يخرج من البطاقة */
-const codeSize = (code: string) => (code.length <= 3 ? 'text-[150px] sm:text-[250px]' : code.length === 4 ? 'text-[120px] sm:text-[200px]' : 'text-[96px] sm:text-[160px]');
+const codeSize = (code: string) => (code.length <= 3 ? 'text-[150px] sm:text-[min(250px,17vw)]' : code.length === 4 ? 'text-[120px] sm:text-[min(200px,14vw)]' : 'text-[96px] sm:text-[min(160px,11vw)]');
 
 /**
  * مختبر العربة: واجهة عرض للعربة (صورتها الكبيرة ورقمها وسجلها)، ثم سجل الآلية والاستهلاك عبر الزمن
@@ -111,7 +111,7 @@ export const VehicleLab: React.FC<{
   useEffect(() => {
     const stage = stageRef.current, mark = codeRef.current;
     if (!stage || !mark) return;
-    const measure = () => setRoom(Math.max(0, stage.clientWidth * 0.95 - mark.offsetWidth - 56));
+    const measure = () => setRoom(Math.max(stage.clientWidth * 0.45, stage.clientWidth * 0.95 - mark.offsetWidth - 56));
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(stage); ro.observe(mark);
@@ -273,7 +273,7 @@ export const VehicleLab: React.FC<{
               src={url}
               alt={`صورة العربة ${code}`}
               onLoad={e => { const im = e.currentTarget; if (im.naturalWidth && im.naturalHeight) setAspect(im.naturalWidth / im.naturalHeight); }}
-              className="relative block w-auto max-w-none h-[min(250px,calc(82vw/var(--ar)))] sm:h-[min(450px,calc(var(--room)/var(--ar)))] drop-shadow-[0_18px_18px_rgba(11,18,32,.16)]"
+              className="relative block w-auto max-w-none h-[min(250px,calc(82vw/var(--ar)))] sm:h-[min(500px,calc(var(--room)/var(--ar)))] drop-shadow-[0_18px_18px_rgba(11,18,32,.16)]"
             />
           </div>
           {siblings.length > 1 && onSwitch && (
