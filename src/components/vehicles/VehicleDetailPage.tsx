@@ -1,19 +1,21 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ArrowRight, Calendar, ChevronRight, ChevronLeft, Fuel, Gauge, Trophy, Repeat2, Timer, Percent, Hash,
-  User, CheckCircle2, Route as RouteIcon, Layers, IdCard, ShieldCheck,
+  ArrowRight, CalendarDays, ChevronRight, ChevronLeft, ChevronDown, Fuel, Gauge, Trophy, Timer, Hash, Container, X,
+  User, Route as RouteIcon, IdCard, ShieldCheck,
 } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import {
-  FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, checkFills, daysBetween, disciplineScore, vehicleCategory,
+  FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, checkFills, daysBetween, disciplineScore, vehicleCategory, vehicleStats,
   type CheckKind, type VehicleProfile, type VehicleRefill, type VehicleRoute, type VehicleStat,
 } from '../../lib/vehicleFuel';
+import { DateRangeCalendar } from '../ui/DateRangeCalendar';
 import { VehicleProfileEditor } from './VehicleProfileEditor';
 import { ScoreGauge } from './ScoreGauge';
 import { VehicleArt } from './VehicleArt';
 import { useCategoryNames } from './categories';
-import { VehicleMap } from './VehicleMap';
+import { RefillTrend, SiteDonut, vehicleCard as card } from './VehicleCharts';
+import { VehicleRefillTable } from './VehicleRefillTable';
 
 interface Props {
   stat: VehicleStat;
@@ -23,8 +25,6 @@ interface Props {
   ranking: string[];
   /** متوسط التفويلة في كل الأسطول */
   fleetAvg: number;
-  fleetTotal: number;
-  vehicles: string[];
   editable: boolean;
   /** اسم الصفحة التي يعود إليها زر الرجوع */
   backLabel?: string;
@@ -32,44 +32,47 @@ interface Props {
   onOpen: (v: string) => void;
 }
 
-const card = 'rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 shadow-soft-card';
-
-/** لون ثابت لكل سائق (من اسمه) لدائرة حرفه الأول في السجل */
-const AVATAR = [
-  'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300',
-  'bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300',
-  'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300',
-  'bg-pink-100 text-pink-800 dark:bg-pink-950/60 dark:text-pink-300',
-];
-const avatarTone = (name: string) => AVATAR[[...name].reduce((s, c) => s + c.charCodeAt(0), 0) % AVATAR.length];
-
-const Spec: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactNode; tone: string }> = ({ icon, label, value, tone }) => (
-  <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 p-3">
-    <div className={`w-7 h-7 rounded-lg flex items-center justify-center mb-2 ${tone}`}>{icon}</div>
-    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-bold">{label}</div>
-    <div className="text-base font-black text-slate-900 dark:text-white font-mono mt-0.5 truncate">{value}</div>
+/** كارت رقم موحّد: العنوان والأيقونة في صف، وتحته القيمة ووحدتها بنفس الارتفاع في كل الكارتات */
+const Spec: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactNode; unit?: string; tone: string }> = ({ icon, label, value, unit, tone }) => (
+  <div className="h-[92px] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/70 px-3.5 py-3 flex flex-col justify-between">
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-[11.5px] text-slate-500 dark:text-slate-400 font-bold truncate">{label}</span>
+      <span className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center ${tone}`}>{icon}</span>
+    </div>
+    <div className="flex items-baseline gap-1.5 min-w-0">
+      <span className="text-xl leading-none font-black text-slate-900 dark:text-white font-mono">{value}</span>
+      {unit && <span className="text-[11px] font-bold text-slate-400 truncate">{unit}</span>}
+    </div>
   </div>
 );
 
-/** صفحة كاملة لتفاصيل عربة: المواصفات، آخر رحلة تفويل، السائقون، الخريطة، الرسم، والسجل */
-export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, fleetAvg, fleetTotal, vehicles, editable, backLabel = 'تقرير العربات', onBack }) => {
+/** صفحة كاملة لتفاصيل عربة: المواصفات، آخر تفويلة، المؤشر، الرسوم، والسجل؛ والتاريخ يحدد كل شيء عدا آخر تفويلة */
+export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, fleetAvg, editable, backLabel = 'تقرير العربات', onBack }) => {
   const [routes] = useSyncedStorage<VehicleRoute[]>(VEHICLE_ROUTES_KEY, []);
-  const [tab, setTab] = useState<'all' | 'frequent' | 'multi' | 'violations'>('all');
   const [profiles, setProfiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
   const [editing, setEditing] = useState(false);
   const [dailyPage, setDailyPage] = useState(0);
-  useEffect(() => setDailyPage(0), [stat.vehicle]);
+  const [range, setRange] = useState<{ from: string; to: string } | null>(null);
+  const [rangeOpen, setRangeOpen] = useState(false);
+  useEffect(() => { setDailyPage(0); setRange(null); }, [stat.vehicle]);
   const profile = profiles.find(p => p.id === stat.vehicle);
   // الاسم إن وُجد يحدد الفئة والصورة (يُعامل كرمز العربة)
   const [catLabels] = useCategoryNames();
   const baseCategory = vehicleCategory(profile?.name || stat.vehicle);
   const category = baseCategory ? { ...baseCategory, label: catLabels[baseCategory.key] || baseCategory.label } : null;
-  const checks = useMemo(() => checkFills(stat.fills, profile), [stat, profile]);
+  const fillDates = useMemo(() => new Set(stat.fills.map(f => f.date)), [stat]);
+  const sortedDates = useMemo(() => [...new Set(refills.map(r => r.date))].sort(), [refills]);
+  const fills = useMemo(() => (range ? stat.fills.filter(f => f.date >= range.from && f.date <= range.to) : stat.fills), [stat, range]);
+  const rangedRefills = useMemo(() => (range ? refills.filter(r => r.date >= range.from && r.date <= range.to) : refills), [refills, range]);
+  const view = useMemo(() => vehicleStats(fills)[0] ?? null, [fills]);
+  const checks = useMemo(() => checkFills(fills, profile), [fills, profile]);
   const saveProfile = (p: VehicleProfile) => { setProfiles(prev => [p, ...prev.filter(x => x.id !== p.id)]); setEditing(false); };
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, [stat.vehicle]);
 
-  const share = fleetTotal ? Math.round((stat.total / fleetTotal) * 1000) / 10 : 0;
+  const tanks = profile?.tankLiters ? (profile.tank2Liters ? 2 : 1) : null;
+  const capacity = (profile?.tankLiters || 0) + (profile?.tank2Liters || 0);
+  const periodLabel = !range ? 'كل الفترة' : range.from === range.to ? range.from : `${range.from} ← ${range.to}`;
 
   const myRoutes = useMemo(() => routes.filter(r => r.vehicle === stat.vehicle), [routes, stat.vehicle]);
   const km = myRoutes.reduce((s, r) => s + r.km, 0);
@@ -79,23 +82,23 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, fleetAvg, fl
   const SERIOUS: CheckKind[] = ['capacity', 'limit', 'driver'];
   const violationDates = new Set(checks.filter(c => SERIOUS.includes(c.kind)).map(c => c.date));
   const overCap = new Set(checks.filter(c => c.kind === 'capacity').map(c => c.date));
-  // السجل: كل تفويلة (كل كمية) في سطر مستقل كما في الملفات، مع عدد تفويلات يومها
-  const allRows = useMemo(() => {
+  // السجل: كل تفويلة (كل كمية) في سطر مستقل كما في الملفات، مع عدد تفويلات يومها.
+  // الفاصل من التاريخ المرفوع الذي قبله، لذا يُحسب من كل التفويلات لا من الفترة المختارة فقط
+  const rows = useMemo(() => {
     const perDay = new Map<string, number>();
     for (const r of refills) perDay.set(r.date, (perDay.get(r.date) || 0) + 1);
-    return [...refills]
+    return [...rangedRefills]
       .sort((a, b) => b.date.localeCompare(a.date) || b.qty - a.qty)
-      .map(r => ({
-        key: r.id, date: r.date, qty: r.qty, days: r.days,
-        drivers: r.driver ? [r.driver] : [], sites: [r.site],
-        prevQty: r.prevQty, prevDate: r.prevDate, prevDriver: r.prevDriver, prevSite: r.prevSite,
-        parts: perDay.get(r.date) || 1,
-      }));
-  }, [refills]);
-  const rows = tab === 'frequent' ? allRows.filter(f => f.days !== null && f.days <= FREQUENT_DAYS)
-    : tab === 'multi' ? allRows.filter(f => f.parts > 1)
-    : tab === 'violations' ? allRows.filter(f => violationDates.has(f.date))
-    : allRows;
+      .map(r => {
+        const parts = perDay.get(r.date) || 1;
+        const before = sortedDates[sortedDates.indexOf(r.date) - 1];
+        return {
+          key: r.id, date: r.date, qty: r.qty, days: r.days, driver: r.driver, site: r.site,
+          prevQty: r.prevQty, prevSite: r.prevSite, parts,
+          gap: parts > 1 ? 0 : before ? daysBetween(before, r.date) : null,
+        };
+      });
+  }, [refills, rangedRefills, sortedDates]);
   const DAILY_PAGE = 7;
   // آخر تفويلة فقط: أحدث تاريخ للعربة في كل الملفات المرفوعة، وسطر لكل كمية في ذلك اليوم.
   // الكمية السابقة في الكشوف لا تُستخدم هنا؛ عدد الأيام = من تاريخ التفويل المرفوع الذي قبله
@@ -120,32 +123,56 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, fleetAvg, fl
 
   // ملاحظات تلقائية
 
-  const disc = disciplineScore(stat, checks, fleetAvg);
+  const disc = view ? disciplineScore(view, checks, fleetAvg) : null;
 
 
   return (
     <div className="space-y-5 pb-12 font-cairo vehicle-page">
-      {/* الشريط العلوي */}
-      <div className="flex flex-wrap items-center gap-3">
-        <button type="button" onClick={onBack} className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-sky-400 cursor-pointer">
+      {/* الشريط العلوي: الرجوع واسم العربة والتاريخ داخل مستطيل واحد */}
+      <div className={`${card} relative z-20 flex flex-wrap items-center gap-x-4 gap-y-2.5 px-4 py-3`}>
+        <button type="button" onClick={onBack} className="flex items-center gap-1.5 h-10 px-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors cursor-pointer">
           <ArrowRight className="w-4 h-4" />{backLabel}
         </button>
-        <div className="flex items-center gap-3 ml-auto">
-          <div>
-            <div className="text-[11px] text-slate-500 font-bold">{category ? `العربة · ${category.label}` : 'العربة'}</div>
-            {/* الاسم إن وُجد يحل محل الرمز في العنوان، والرمز صغيرًا تحته */}
-            {profile?.name ? (
-              <>
-                <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-none">{profile.name}</div>
-              </>
-            ) : (
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono leading-none" dir="ltr">{stat.vehicle}</div>
-            )}
-          </div>
-          {stat.frequent > 0 ? (
-            <span className="flex items-center gap-1 text-xs font-black px-3 py-1 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"><Repeat2 className="w-3.5 h-3.5" />تفويل متكرر</span>
+        <span className="hidden sm:block w-px h-9 bg-slate-200 dark:bg-slate-700" />
+        <div className="min-w-0">
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 font-bold">{category ? `العربة · ${category.label}` : 'العربة'}</div>
+          {/* الاسم إن وُجد يحل محل الرمز في العنوان */}
+          {profile?.name ? (
+            <div className="mt-0.5 text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-none truncate">{profile.name}</div>
           ) : (
-            <span className="flex items-center gap-1 text-xs font-black px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"><CheckCircle2 className="w-3.5 h-3.5" />منتظم</span>
+            <div className="mt-0.5 text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono leading-none text-right" dir="ltr">{stat.vehicle}</div>
+          )}
+        </div>
+        <div className="relative mr-auto">
+          <button
+            type="button"
+            aria-label="تاريخ الصفحة"
+            onClick={() => setRangeOpen(o => !o)}
+            className={`flex items-center gap-1.5 h-10 px-3.5 rounded-xl border text-xs font-bold transition-colors cursor-pointer ${range ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-blue-400'}`}
+          >
+            <CalendarDays className={`w-4 h-4 ${range ? 'text-purple-600 dark:text-purple-400' : 'text-blue-600 dark:text-blue-400'}`} />
+            <span className={range ? 'font-mono' : ''}>{periodLabel}</span>
+            {range ? (
+              <span role="button" title="مسح التاريخ" onClick={e => { e.stopPropagation(); setRange(null); }} className="p-0.5 rounded hover:bg-purple-100 dark:hover:bg-purple-900/50"><X className="w-3 h-3" /></span>
+            ) : (
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${rangeOpen ? 'rotate-180' : ''}`} />
+            )}
+          </button>
+          {rangeOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setRangeOpen(false)} />
+              <div className="absolute z-50 top-full mt-2 left-0">
+                <DateRangeCalendar
+                  from={range?.from ?? ''}
+                  to={range?.to ?? ''}
+                  marked={fillDates}
+                  min={sortedDates[0]}
+                  max={sortedDates[sortedDates.length - 1]}
+                  onApply={(from, to) => { setRange({ from, to: to || from }); setRangeOpen(false); }}
+                  onClear={() => { setRange(null); setRangeOpen(false); }}
+                />
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -162,12 +189,12 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, fleetAvg, fl
           {profile?.notes && <p className="-mt-2 mb-4 text-xs text-slate-500 dark:text-slate-400 leading-6">{profile.notes}</p>}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-5 items-center">
             <div className="md:col-span-2 grid grid-cols-2 gap-2.5">
-              <Spec tone="bg-sky-500/10 text-sky-600" icon={<Fuel className="w-4 h-4" />} label="إجمالي الكمية" value={`${stat.total.toLocaleString()} L`} />
-              <Spec tone="bg-indigo-500/10 text-indigo-600" icon={<Hash className="w-4 h-4" />} label="عدد التفويلات" value={stat.count} />
-              <Spec tone="bg-violet-500/10 text-violet-600" icon={<Gauge className="w-4 h-4" />} label="متوسط التفويلة" value={`${stat.avg.toLocaleString()} L`} />
-              <Spec tone="bg-amber-500/10 text-amber-600" icon={<Trophy className="w-4 h-4" />} label="أعلى تفويلة" value={`${stat.max.toLocaleString()} L`} />
-              <Spec tone="bg-emerald-500/10 text-emerald-600" icon={<Timer className="w-4 h-4" />} label="متوسط الأيام بين التفويلات" value={stat.avgGap ?? '—'} />
-              <Spec tone="bg-rose-500/10 text-rose-600" icon={<Percent className="w-4 h-4" />} label="حصتها من الأسطول" value={`${share}%`} />
+              <Spec tone="bg-sky-500/10 text-sky-600" icon={<Fuel className="w-4 h-4" />} label="إجمالي الكمية" value={(view?.total ?? 0).toLocaleString()} unit="لتر" />
+              <Spec tone="bg-indigo-500/10 text-indigo-600" icon={<Hash className="w-4 h-4" />} label="عدد التفويلات" value={view?.count ?? 0} unit="تفويلة" />
+              <Spec tone="bg-violet-500/10 text-violet-600" icon={<Gauge className="w-4 h-4" />} label="متوسط التفويلة" value={(view?.avg ?? 0).toLocaleString()} unit="لتر" />
+              <Spec tone="bg-amber-500/10 text-amber-600" icon={<Trophy className="w-4 h-4" />} label="أعلى تفويلة" value={(view?.max ?? 0).toLocaleString()} unit="لتر" />
+              <Spec tone="bg-emerald-500/10 text-emerald-600" icon={<Timer className="w-4 h-4" />} label="متوسط الفاصل" value={view?.avgGap ?? '—'} unit="يوم" />
+              <Spec tone="bg-rose-500/10 text-rose-600" icon={<Container className="w-4 h-4" />} label="عدد الخزانات" value={tanks ?? '—'} unit={tanks ? `${capacity.toLocaleString()} لتر` : undefined} />
             </div>
             <div className="md:col-span-3 relative">
               {profile?.photo ? (
@@ -223,97 +250,38 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, fleetAvg, fl
               </div>
             )}
           </div>
-        </div>
 
-        {/* الخريطة + المؤشر + الملاحظات */}
-        <div className="xl:col-span-4 space-y-5">
-          <div className="h-[380px]"><VehicleMap date={null} vehicle={stat.vehicle} vehicles={vehicles} editable={editable} title="مسارات العربة" /></div>
-          <div className={`${card} p-4`}>
+          {/* مؤشر الانضباط للفترة المختارة */}
+          <div className="mt-5 rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
             <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-emerald-500" />مؤشر الانضباط</h3>
-            <div className="mt-3"><ScoreGauge score={disc.score} grade={disc.grade} /></div>
-            <div className="mt-4 space-y-1.5">
-              {disc.factors.map(f => (
-                <div key={f.label} className="flex items-center gap-2 text-xs">
-                  <span className="flex-1 text-slate-600 dark:text-slate-300 font-bold">{f.label}</span>
-                  <span className="font-mono font-black text-rose-500">-{f.points}</span>
+            {disc ? (
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-5 items-center">
+                <ScoreGauge score={disc.score} grade={disc.grade} />
+                <div className="space-y-1.5">
+                  {disc.factors.map(f => (
+                    <div key={f.label} className="flex items-center gap-2 text-xs">
+                      <span className="flex-1 text-slate-600 dark:text-slate-300 font-bold">{f.label}</span>
+                      <span className="font-mono font-black text-rose-500">-{f.points}</span>
+                    </div>
+                  ))}
+                  {!disc.factors.length && <p className="text-xs text-emerald-600 font-bold">بلا خصومات</p>}
+                  {!profile?.tankLiters && editable && (
+                    <button type="button" onClick={() => setEditing(true)} className="mt-1 text-[11px] font-bold text-sky-600 hover:underline cursor-pointer">أضف سعة الخزان لكشف التفويل الأكبر من الخزان</button>
+                  )}
                 </div>
-              ))}
-              {!disc.factors.length && <p className="text-xs text-emerald-600 font-bold text-center">بلا خصومات</p>}
-              {!profile?.tankLiters && editable && (
-                <button type="button" onClick={() => setEditing(true)} className="w-full mt-2 text-[11px] font-bold text-sky-600 hover:underline cursor-pointer">أضف سعة الخزان لكشف التفويل الأكبر من الخزان</button>
-              )}
-            </div>
+              </div>
+            ) : <p className="mt-3 text-sm text-slate-400">لا توجد تفويلات في هذه الفترة</p>}
           </div>
+        </div>
+
+        {/* توزيع المواقع + الرسم الخطي */}
+        <div className="xl:col-span-4 flex flex-col gap-5">
+          <SiteDonut refills={rangedRefills} />
+          <RefillTrend fills={fills} period={periodLabel} />
         </div>
       </div>
 
-      {/* السجل: تبويبات بخط سفلي، والتفويلات مجمّعة حسب اليوم، وخمسة أعمدة (السابقة في خانة واحدة) */}
-      <div className={`${card} overflow-hidden`}>
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 border-b border-slate-100 dark:border-slate-800">
-          <h3 className="text-[15px] font-bold text-slate-900 dark:text-white flex items-center gap-2"><Layers className="w-4 h-4 text-indigo-500" />سجل التفويل</h3>
-          <div role="tablist" aria-label="تصفية السجل" className="flex gap-5 overflow-x-auto vehicle-scroll">
-            {([['all', 'الكل', allRows.length], ['frequent', 'المتكرر', allRows.filter(f => f.days !== null && f.days <= FREQUENT_DAYS).length], ['multi', 'أكثر من تفويلة باليوم', allRows.filter(f => f.parts > 1).length], ['violations', 'مخالفات الملف', violationDates.size]] as const).map(([k, l, n]) => {
-              const on = tab === k;
-              return (
-                <button key={k} type="button" role="tab" aria-selected={on} onClick={() => setTab(k)} className={`h-14 inline-flex items-center gap-1.5 border-b-2 text-[13px] font-bold whitespace-nowrap cursor-pointer transition-colors ${on ? 'border-indigo-600 text-slate-900 dark:text-white' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}>
-                  {l}<span className={`px-1.5 py-px rounded-full text-[11px] font-mono transition-colors ${on ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>{n}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          {/* جدول مثل صفحات الوارد: رأس كحلي، تاريخ بأيقونة تقويم، صفوف متناوبة ومختصرة */}
-          <table className="w-full text-right text-xs border-collapse min-w-[860px]">
-            <thead>
-              <tr className="bg-gradient-to-r from-[#1c3b6f] via-[#244e91] to-[#1c3b6f] text-white font-black text-[11.5px] select-none">
-                {['التاريخ', 'الكمية', 'السائق', 'الموقع', 'الفاصل', 'التفويلة السابقة'].map(h => <th key={h} className="py-3 px-4 whitespace-nowrap font-cairo">{h}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((f, i) => {
-                const driver = f.drivers.join('، ');
-                const near = f.days !== null && f.days <= FREQUENT_DAYS;
-                return (
-                  <tr key={f.key} className={`border-b border-slate-100 dark:border-slate-800/60 hover:bg-sky-50/60 dark:hover:bg-slate-800/40 transition-colors ${i % 2 ? 'bg-slate-50/70 dark:bg-slate-900/40' : ''}`}>
-                    <td className="py-2 px-4 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5 font-sans text-slate-600 dark:text-slate-300">
-                        <Calendar className="w-3 h-3 text-slate-400 shrink-0" /><span>{f.date}</span>
-                        {f.parts > 1 && <span className="text-[10px] font-bold px-1.5 py-px rounded-md bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300" title="عدد تفويلات هذا اليوم">{f.parts} باليوم</span>}
-                        {overCap.has(f.date) ? <span className="text-[10px] font-bold px-1.5 py-px rounded-md bg-rose-500 text-white">فوق السعة</span>
-                          : violationDates.has(f.date) && <span className="text-[10px] font-bold px-1.5 py-px rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300">مخالفة</span>}
-                      </div>
-                    </td>
-                    <td className="py-2 px-4 whitespace-nowrap font-mono text-[13px] font-semibold text-slate-900 dark:text-white">{f.qty.toLocaleString()} <span className="font-cairo text-[11px] font-bold text-slate-400">لتر</span></td>
-                    <td className="py-2 px-4">
-                      <div className="flex items-center gap-2 min-w-0">
-                        {driver && <span className={`w-6 h-6 shrink-0 rounded-full inline-flex items-center justify-center text-[11px] font-bold ${avatarTone(driver)}`}>{driver.charAt(0)}</span>}
-                        <span className="font-semibold text-slate-800 dark:text-slate-100 truncate">{driver || '—'}</span>
-                      </div>
-                    </td>
-                    <td className="py-2 px-4 whitespace-nowrap text-slate-600 dark:text-slate-300">{f.sites.join('، ')}</td>
-                    <td className="py-2 px-4 whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-200">
-                        {f.days !== null && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${near ? 'bg-rose-500' : 'bg-slate-300 dark:bg-slate-600'}`} />}
-                        {f.days === null ? <span className="text-slate-400">—</span> : f.days === 0 ? 'اليوم نفسه' : <>بعد <bdi className="font-mono">{f.days}</bdi> يوم</>}
-                      </span>
-                    </td>
-                    <td className="py-2 px-4 max-w-[320px]">
-                      {f.prevQty !== null || f.prevDate ? (
-                        <div className="truncate text-slate-500 dark:text-slate-400">
-                          <bdi className="font-mono font-semibold text-slate-800 dark:text-slate-100">{f.prevQty?.toLocaleString() ?? '—'}</bdi> لتر · <bdi className="font-mono">{f.prevDate || '—'}</bdi>
-                          {(f.prevDriver || f.prevSite) && <span className="text-slate-400"> · {[f.prevDriver, f.prevSite].filter(Boolean).join(' · ')}</span>}
-                        </div>
-                      ) : <span className="text-slate-400">—</span>}
-                    </td>
-                  </tr>
-                );
-              })}
-              {!rows.length && <tr><td colSpan={6} className="py-12 text-center text-sm text-slate-400">لا توجد تفويلات في هذا التبويب</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <VehicleRefillTable key={stat.vehicle} rows={rows} vehicle={profile?.name || stat.vehicle} overCap={overCap} violationDates={violationDates} />
 
       {editing && (
         <VehicleProfileEditor
