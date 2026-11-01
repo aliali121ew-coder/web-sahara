@@ -31,7 +31,6 @@ const strength = (p: string) => {
 // تسمية كل مستوى في auth:strength.<n>
 const STRENGTH = ['#ef4444', '#f97316', '#ca8a04', '#16a34a', '#059669'].map(color => ({ color }));
 const USERNAME_RE = /^[a-z0-9._-]{3,32}$/;
-const REMEMBER_KEY = 'sahara_remember_me';
 const WELCOME_KEY = 'sahara_welcome_seen';
 /** رفض عرض تفعيل البصمة لهذا الحساب على هذا الجهاز */
 const BIO_DECLINED_KEY = BIO_DECLINED_PREFIX;
@@ -101,7 +100,7 @@ export const AppLogin: React.FC<{ onSuccess: () => void; unreachable?: boolean }
   const [confirm, setConfirm] = useState('');
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
-  const [remember, setRemember] = useState(() => localStorage.getItem(REMEMBER_KEY) !== '0');
+  const [remember, setRemember] = useState(true);
   const [show, setShow] = useState(false);
   const [caps, setCaps] = useState(false);
   const [btn, setBtn] = useState<BtnState>('idle');
@@ -222,7 +221,6 @@ export const AppLogin: React.FC<{ onSuccess: () => void; unreachable?: boolean }
     try {
       if (mode === 'setup') await setupSystem(code.trim(), { username: u, password, name: name.trim() });
       else await loginAccount(u, loginPassword, remember);
-      localStorage.setItem(REMEMBER_KEY, remember ? '1' : '0');
       setBtn('success');
       // بعد أول دخول بكلمة المرور على جهاز يدعم البصمة: نعرض تفعيلها (مرة لكل حساب)
       const offer = bioAvail && biometricUser() !== u && !localStorage.getItem(BIO_DECLINED_KEY + u);
