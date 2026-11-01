@@ -7,7 +7,7 @@
 // v3: أيقونة واسم جديدان (Sahara Fuel) — تجديد ذاكرة الملفات الثابتة
 // v4: ملف بناء محذوف (بعد نشر جديد) كان يرد بصفحة HTML فيُخزَّن مكان ملف JS ويبقى العطل حتى بعد التحديث؛
 //     تجديد الذاكرة لحذف ما خُزّن خطأً، ولا يُخزَّن بعد الآن إلا رد ليس HTML
-const VERSION = 'v4';
+const VERSION = 'v5';
 const SHELL = `sahara-shell-${VERSION}`;
 const ASSETS = `sahara-assets-${VERSION}`;
 const STATIC = `sahara-static-${VERSION}`;
