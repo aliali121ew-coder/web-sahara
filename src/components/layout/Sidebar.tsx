@@ -551,8 +551,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   title={t('common:brand.name')}
                   className="relative w-[46px] h-[46px] rounded-xl shadow-md shadow-slate-900/20 ring-1 ring-black/5 dark:ring-white/10 shrink-0 cursor-pointer transform transition-transform hover:scale-105 active:scale-95"
                 >
-                  {/* أيقونة البرنامج نفسها (نفس أيقونة التثبيت على الهاتف) */}
-                  <img src="/icon-192.png" alt="" draggable={false} className="w-full h-full rounded-xl object-cover" />
+                  {/* أيقونة البرنامج على بلاطة بيضاء (نسخة التثبيت مفرّغة بلا بلاطة) */}
+                  <img src="/app-tile-192.png" alt="" draggable={false} className="w-full h-full rounded-xl object-cover" />
                   <span
                     className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-[1.5px] ring-white dark:ring-slate-900"
                     title={t('common:status.online')}
