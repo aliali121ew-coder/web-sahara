@@ -138,7 +138,7 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, editable, ba
             <div className="mt-0.5 text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono leading-none text-right" dir="ltr">{stat.vehicle}</div>
           )}
         </div>
-        <button type="button" onClick={() => onLab(stat.vehicle)} className="mr-auto flex items-center gap-1.5 h-10 px-3.5 rounded-xl border border-indigo-100 dark:border-indigo-900/60 bg-gradient-to-l from-indigo-50 to-sky-50 dark:from-indigo-950/50 dark:to-sky-950/30 text-xs font-black text-indigo-700 dark:text-indigo-300 hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors cursor-pointer">
+        <button type="button" onClick={() => onLab(stat.vehicle)} className="mr-auto flex items-center gap-1.5 h-10 px-4 rounded-xl bg-gradient-to-l from-indigo-500 to-sky-500 text-xs font-black text-white shadow-sm shadow-indigo-500/25 hover:opacity-90 transition-opacity cursor-pointer outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2">
           <FlaskConical className="w-4 h-4" />بيانات عامة
         </button>
         <div className="relative">
