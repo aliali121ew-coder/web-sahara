@@ -11,7 +11,7 @@ import './index.css';
 import { i18nReady, i18nAllReady } from './i18n';
 import { initCloudSync } from './lib/cloudSync';
 import { AppLogin } from './components/auth/AppLogin';
-import { getProfile, refreshProfile } from './lib/session';
+import { AuthError, getProfile, refreshProfile, resumeLogin, savedLogin } from './lib/session';
 import { SyncBadge } from './components/auth/SyncBadge';
 // يلتقط طلب التثبيت (أندرويد) مبكرًا قبل عرض الواجهة
 import { InstallCard } from './components/layout/InstallCard';
@@ -22,12 +22,24 @@ navigator.storage?.persist?.().catch(() => {});
 
 const root = ReactDOM.createRoot(document.getElementById('root')!);
 
+let loginAttempt = 0;
+
 // سحب آخر نسخة من الخادم أولًا، ثم تحميل التطبيق حتى يقرأ البيانات المحدّثة
-const start = async () => {
+const start = async (resumed = false) => {
   // الترجمات الأساسية تُحمَّل قبل أول عرض حتى لا تظهر نصوص بلغة أخرى للحظة
   await i18nReady;
-  if ((await initCloudSync()) === 'need-login') {
-    root.render(<><AppLogin onSuccess={start} /><InstallCard /><LoginAutoUpdate /></>);
+  let result = await initCloudSync();
+  // ضاعت الجلسة والدخول المحفوظ ما زال صالحًا: تعود بلا سؤال المستخدم (مرة واحدة حتى لا تتكرر بلا نهاية)
+  if (result === 'need-login' && !resumed && savedLogin()) {
+    try {
+      await resumeLogin();
+      return start(true);
+    } catch (e) {
+      if (e instanceof AuthError && (e.code === 'offline' || e.code === 'network')) result = 'unreachable';
+    }
+  }
+  if (result !== 'ready') {
+    root.render(<><AppLogin key={++loginAttempt} unreachable={result === 'unreachable'} onSuccess={() => void start()} /><InstallCard /><LoginAutoUpdate /></>);
     return;
   }
   // الصلاحيات: بنسخة محفوظة يُعرض التطبيق فورًا وتُحدَّث في الخلفية (الصفحات تتبع حدث session-profile)،

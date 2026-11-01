@@ -2,13 +2,13 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import { DemoLoginBadge } from '../layout/DemoBanner';
 import {
   User, Lock, Eye, EyeOff, Loader2, AlertCircle, Clock, ArrowUpWideNarrow, KeyRound, ShieldCheck, UserCog,
-  Sun, Moon, ArrowRight, ArrowLeft, Check, Truck, Fuel, Building2, LockKeyhole, Fingerprint, ScanFace, X,
+  Sun, Moon, ArrowRight, ArrowLeft, Check, Truck, Fuel, Building2, LockKeyhole, Fingerprint, ScanFace, X, WifiOff,
 } from 'lucide-react';
 import { useTranslation, Trans } from 'react-i18next';
 import { errorText } from '../../i18n/errors';
 import { LangToggle } from './LangToggle';
 import {
-  authStatus, loginAccount, setupSystem, AuthError, LAST_USER_KEY, LAST_NAME_KEY,
+  authStatus, loginAccount, setupSystem, AuthError, LAST_USER_KEY, LAST_NAME_KEY, hasSession, clearSession,
   biometricAvailable, biometricUser, enableBiometric, loginWithBiometric, savedLogin, resumeLogin, forgetSavedLogin,
   prepareBioLogin, bioAnimationKind, type BioLoginOptions,
   BIO_DECLINED_PREFIX, type BioRegisterOptions,
@@ -87,13 +87,15 @@ const Field = React.forwardRef<HTMLInputElement, FieldProps>(({ label, icon: Ico
 Field.displayName = 'Field';
 
 // ═════ الشاشة ═════
-export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
+export const AppLogin: React.FC<{ onSuccess: () => void; unreachable?: boolean }> = ({ onSuccess, unreachable = false }) => {
   const { t, i18n } = useTranslation('auth');
   const pageDir = i18n.dir();
-  const [mode, setMode] = useState<Mode>('loading');
+  const [mode, setMode] = useState<Mode>(unreachable ? 'login' : 'loading');
   const [dark, setDark] = useState(() => localStorage.getItem('sahara_theme_mode') === 'dark');
-  // الدخول المحفوظ (72 ساعة من آخر إدخال لكلمة المرور): يكفي زر «تسجيل الدخول»
+  // الدخول المحفوظ: يكفي زر «تسجيل الدخول» بلا كلمة مرور
   const [saved, setSaved] = useState(savedLogin);
+  // وصل هنا بسبب ضعف الاتصال والجلسة ما زالت قائمة: الزر يعيد المحاولة فقط
+  const [retry, setRetry] = useState(() => unreachable && hasSession());
   const [username, setUsername] = useState(() => savedLogin() || localStorage.getItem(LAST_USER_KEY) || '');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -110,8 +112,9 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
   const passRef = useRef<HTMLInputElement>(null);
   const errId = useId();
   const phone = useIsPhone();
-  // الشرائح التعريفية أول مرة فقط، والترحيب في كل مرة يُطلب فيها تسجيل الدخول (كل 24 ساعة أو بعد الخروج)
-  const [phoneStep, setPhoneStepState] = useState<PhoneStep>(() => (localStorage.getItem(WELCOME_KEY) ? 'welcome' : 'intro'));
+  // الشرائح التعريفية أول مرة فقط، والترحيب بعد الخروج. اسم مستخدم محفوظ يعني أنه لم يخرج بنفسه (ضعف اتصال أو مشكلة):
+  // يصل مباشرة لنموذج الدخول مملوءًا
+  const [phoneStep, setPhoneStepState] = useState<PhoneStep>(() => (localStorage.getItem(LAST_USER_KEY) ? 'login' : localStorage.getItem(WELCOME_KEY) ? 'welcome' : 'intro'));
   const setPhoneStep = (s: PhoneStep) => {
     if (s === 'login' || s === 'support') { try { localStorage.setItem(WELCOME_KEY, '1'); } catch { /* تجاهل */ } }
     setPhoneStepState(s);
@@ -150,13 +153,22 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
     return () => clearInterval(t);
   }, [lockedUntil]);
   const lockLeft = Math.max(0, Math.ceil((lockedUntil - now) / 1000));
-  const useSaved = mode === 'login' && !!saved && username.trim().toLowerCase() === saved;
+  const useSaved = mode === 'login' && (retry || (!!saved && username.trim().toLowerCase() === saved));
   const forgetSaved = () => {
     forgetSavedLogin();
     setSaved('');
     setUsername('');
     setError('');
+    if (retry) { clearSession(); setRetry(false); }
   };
+
+  // عند عودة الاتصال يُفتح التطبيق بالجلسة نفسها دون انتظار ضغطة
+  useEffect(() => {
+    if (!retry) return;
+    const on = () => { setBtn('loading'); onSuccess(); };
+    window.addEventListener('online', on);
+    return () => window.removeEventListener('online', on);
+  }, [retry]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fail = (e: unknown) => {
     setError(errorText(e));
@@ -175,6 +187,11 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
     e.preventDefault();
     if (btn !== 'idle' || lockLeft) return; // منع الإرسال المكرر
     setError('');
+    if (retry) {
+      setBtn('loading');
+      onSuccess();
+      return;
+    }
     const u = username.trim().toLowerCase();
     const invalid = (msg: string) => { setError(msg); setShake(s => s + 1); };
     if (mode === 'setup') {
@@ -191,7 +208,7 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
         setTimeout(onSuccess, reducedMotion() ? 0 : 650);
       } catch (err) {
         setBtn('idle');
-        // انتهت مهلة الـ 72 ساعة أو أُلغي الدخول المحفوظ: يعود الحقل لطلب كلمة المرور
+        // انتهت المهلة أو أُلغي الدخول المحفوظ: يعود الحقل لطلب كلمة المرور
         if (err instanceof AuthError && err.code === 'resume_expired') setSaved('');
         fail(err);
       }
@@ -262,6 +279,12 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
   // نموذج الدخول نفسه (مشترك بين الحاسوب والهاتف)
   const renderForm = (phone: boolean) => (
     <>
+      {unreachable && (
+        <div role="status" className="mb-5 flex items-start gap-2.5 rounded-xl px-3.5 py-3 text-[13px] font-bold leading-6 bg-amber-50 text-amber-900 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/30">
+          <WifiOff className="w-[18px] h-[18px] shrink-0 mt-0.5" aria-hidden />
+          <span className="flex-1">{t('unreachable')}</span>
+        </div>
+      )}
       {!setup && bioAvail && bioUser && (
         <div className="mb-5 auth-fade">
           <button type="button" onClick={bioLogin} disabled={bioBusy || btn !== 'idle'} aria-busy={bioBusy}

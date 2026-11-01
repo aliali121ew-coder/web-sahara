@@ -17,12 +17,11 @@ export const SESSION_PROFILE_KEY = 'sahara_session_profile';
 export const LAST_USER_KEY = 'sahara_last_username';
 /** اسم آخر مستخدم لعبارة «مرحبًا مجددًا» (يبقى بعد انتهاء الجلسة) */
 export const LAST_NAME_KEY = 'sahara_last_name';
-/** وقت بدء الجلسة: تنتهي بعد 24 ساعة ويُطلب تسجيل الدخول من جديد */
+/** وقت بدء الجلسة (للعرض فقط): الجلسة لا تنتهي بالوقت بل بتسجيل الخروج أو برفض الخادم لها */
 const SESSION_STARTED_KEY = 'sahara_session_started';
-export const SESSION_MAX_MS = 24 * 3600_000;
 /**
- * الدخول المحفوظ بضغطة واحدة: اسم المستخدم ووقت انتهاء رمز المتابعة (72 ساعة من آخر إدخال لكلمة المرور).
- * الرمز نفسه في كوكي HttpOnly يديره الخادم؛ هذه مجرد علامة لتعرف شاشة الدخول أنه متاح
+ * الدخول المحفوظ: اسم المستخدم ووقت انتهاء رمز المتابعة.
+ * الرمز نفسه في كوكي HttpOnly يديره الخادم (كلمة المرور لا تُحفظ أبدًا)؛ هذه مجرد علامة ليعرف التطبيق أنه متاح
  */
 const RESUME_KEY = 'sahara_session_resume';
 /** بصمة هذا الجهاز: اسم المستخدم ومعرّف مفتاح البصمة المسجّل عليه */
@@ -58,16 +57,8 @@ export const getSessionUser = () => read(SESSION_USER_KEY);
 /** وقت بدء الجلسة الحالية (ms) أو 0 */
 export const getSessionStarted = () => Number(read(SESSION_STARTED_KEY)) || 0;
 
-/** هل توجد جلسة صالحة؟ الجلسة الأقدم من 24 ساعة تُمسح حتى بدون اتصال بالخادم */
-export const hasSession = () => {
-  if (!read(SESSION_USER_KEY)) return false;
-  const started = Number(read(SESSION_STARTED_KEY)) || 0;
-  if (Date.now() - started > SESSION_MAX_MS) {
-    clearSession();
-    return false;
-  }
-  return true;
-};
+/** هل توجد جلسة على هذا الجهاز؟ الخادم وحده يقرر انتهاءها (رد 401)، وانقطاع الاتصال لا يمسحها */
+export const hasSession = () => !!read(SESSION_USER_KEY);
 
 /** ترويسة معرّف الحساب: يطابقها الخادم مع كوكي الجلسة (ترويسة مخصّصة = حماية من تزوير الطلبات من مواقع أخرى) */
 export const sessionHeaders = (): Record<string, string> => ({
@@ -83,17 +74,25 @@ export class AuthError extends Error {
   constructor(message: string, public code?: string, public retryAt?: number, public detail?: string) { super(message); }
 }
 
+const POST_TIMEOUT_MS = 20_000;
+
 async function post<T>(path: string, body: unknown, headers: Record<string, string> = {}): Promise<T> {
   let res: Response;
+  // الاتصال الضعيف قد يُعلّق الطلب بلا رد: مهلة تُظهر رسالة انقطاع الاتصال بدل انتظار بلا نهاية
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), POST_TIMEOUT_MS);
   try {
     res = await fetch(path, {
       method: 'POST',
       cache: 'no-store',
       headers: { 'content-type': 'application/json', ...headers },
       body: JSON.stringify(body),
+      signal: ctrl.signal,
     });
   } catch {
     throw new AuthError(i18n.t('auth:errors.offline'), 'offline');
+  } finally {
+    clearTimeout(timer);
   }
   const data = (await res.json().catch(() => ({}))) as T & { error?: string; code?: string; retryAt?: number };
   if (!res.ok) throw new AuthError(serverText(data, i18n.t('server:errors.network')), data.code || (data.error ? undefined : 'network'), data.retryAt);
@@ -124,9 +123,15 @@ const setSavedLogin = (username: string, until?: number) => {
 
 /** هل النظام بحاجة لإعداد أول (لا توجد حسابات بعد)؟ */
 export async function authStatus(): Promise<{ setup: boolean; demo?: boolean }> {
-  const res = await fetch('/api/chat/auth/status', { cache: 'no-store' });
-  if (!res.ok) throw new AuthError('تعذّر الاتصال بالخادم', 'network');
-  return res.json();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const res = await fetch('/api/chat/auth/status', { cache: 'no-store', signal: ctrl.signal });
+    if (!res.ok) throw new AuthError('تعذّر الاتصال بالخادم', 'network');
+    return await res.json();
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function loginAccount(username: string, password: string, remember = true) {
@@ -136,7 +141,7 @@ export async function loginAccount(username: string, password: string, remember 
   setSavedLogin(username, r.resumeUntil);
 }
 
-/** الدخول المحفوظ: زر «تسجيل الدخول» فقط، بلا كلمة مرور، خلال 72 ساعة من آخر إدخال لها */
+/** الدخول المحفوظ بلا كلمة مرور: تلقائيًا عند فتح التطبيق إن ضاعت الجلسة، أو بزر «تسجيل الدخول» */
 export async function resumeLogin() {
   const username = savedLogin();
   try {
@@ -171,7 +176,9 @@ export async function sendSupportRequest(body: { name: string; phone: string; us
 /** جلب بيانات الحساب الحالي وتخزينها محليًا */
 export async function refreshProfile(): Promise<SessionProfile | null> {
   try {
-    const res = await fetch('/api/chat/auth/me', { cache: 'no-store', headers: sessionHeaders() });
+    // جلسة «تذكّرني» محفوظة في localStorage: الخادم يجدد عمر كوكيها مع كل فتح
+    const remembered = !!localStorage.getItem(SESSION_USER_KEY);
+    const res = await fetch('/api/chat/auth/me', { cache: 'no-store', headers: { ...sessionHeaders(), ...(remembered ? { 'x-session-remember': '1' } : {}) } });
     if (!res.ok) return getProfile();
     const { user } = (await res.json()) as { user: SessionProfile };
     localStorage.setItem(SESSION_PROFILE_KEY, JSON.stringify(user));
@@ -198,22 +205,16 @@ try {
   if (localStorage.getItem(LEGACY_SESSION_KEY) || sessionStorage.getItem(LEGACY_SESSION_KEY)) clearSession();
 } catch { /* تجاهل */ }
 
-/** تسجيل الخروج: إلغاء الجلسة على الخادم (ومسح الكوكي) ثم العودة لشاشة الدخول */
+/** تسجيل الخروج: إلغاء الجلسة والدخول المحفوظ على الخادم (ومسح الكوكيز) ثم العودة لشاشة دخول فارغة */
 export async function logout() {
-  try {
-    await fetch('/api/chat/auth/logout', { method: 'POST', headers: { 'content-type': 'application/json', ...sessionHeaders() }, body: '{}' });
-  } catch { /* الجلسة تُمسح محليًا في كل الأحوال */ }
-  // الدخول المحفوظ («تذكرني») يبقى بعد الخروج حتى نهاية مهلته (72 ساعة):
-  // شاشة الدخول تعرض «متابعة باسم…» بضغطة، ويُلغى من زر «دخول بحساب آخر»
+  await Promise.all([
+    forgetSavedLogin(),
+    fetch('/api/chat/auth/logout', { method: 'POST', headers: { 'content-type': 'application/json', ...sessionHeaders() }, body: '{}' })
+      .catch(() => { /* الجلسة تُمسح محليًا في كل الأحوال */ }),
+  ]);
   clearSession();
+  localStorage.removeItem(LAST_USER_KEY);
   location.reload();
-}
-
-/** مراقبة انتهاء الجلسة أثناء فتح البرنامج: بعد 24 ساعة يعود لشاشة الترحيب */
-export function watchSessionExpiry() {
-  const check = () => { if (!hasSession()) location.reload(); };
-  setInterval(check, 60_000);
-  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && check());
 }
 
 // ═════ الدخول بالبصمة / بصمة الوجه (WebAuthn) ═════
