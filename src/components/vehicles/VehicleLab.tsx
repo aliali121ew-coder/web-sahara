@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Building2, CalendarDays, ChevronLeft, ChevronRight, ClipboardList, Fuel, LineChart, Loader2, RefreshCw, UserRound, Users } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import {
-  VEHICLE_PROFILES_KEY, categoryLabel, labImage, vehicleCategory,
+  VEHICLE_PROFILES_KEY, categoryLabel, labImage, tankCountOf, vehicleCategory,
   type DayFill, type VehicleProfile, type VehicleRefill,
 } from '../../lib/vehicleFuel';
 import { VEHICLE_REGISTRY_KEY, readVehicleRegistry, type VehicleRegistryEntry } from '../../lib/vehicleRegistry';
@@ -78,6 +78,11 @@ const FUEL = {
   over: { body: 'linear-gradient(180deg,rgb(232,96,72),rgb(180,44,32))', top: 'rgb(232,96,72)', dot: '#DC2626' },
 };
 // الزجاج في رسم الخزان يبدأ من 11.28% من الأسفل ويرتفع 71.27% من الصورة
+const TANKS = [
+  { name: 'خزان المحرك', short: 'المحرك', color: '#4F46E5' },
+  { name: 'الخزان الثاني', short: 'الثاني', color: '#0EA5E9' },
+  { name: 'الخزان الثالث', short: 'الثالث', color: '#14B8A6' },
+];
 const GLASS_BOTTOM = 11.28;
 const GLASS_HEIGHT = 71.27;
 
@@ -169,19 +174,18 @@ export const VehicleLab: React.FC<{
   };
 
   // ── الخزانات
-  const caps = [profile?.tankLiters ?? null, profile?.tank2Liters ?? null, profile?.tank3Liters ?? null];
-  // تفويلة اليوم تملأ خزان المحرك أولًا، والباقي يعبر إلى ما بعده؛ ما يزيد على مجموع السعات = فوق السعة
+  // العدد والسعات تُحدد من تفاصيل العربة. تفويلة اليوم تملأ خزان المحرك أولًا، والباقي يعبر إلى ما بعده،
+  // وما يزيد على مجموع السعات = فوق السعة ويظهر على آخر خزان له سعة
   const dayTotal = lastDayLines.reduce((s, r) => s + r.qty, 0);
-  const capSum = (caps[0] || 0) + (caps[1] || 0) + (caps[2] || 0);
-  const fill1 = caps[0] ? Math.min(dayTotal, caps[0]) : dayTotal;
-  const fill2 = caps[0] && caps[1] ? Math.min(Math.max(0, dayTotal - caps[0]), caps[1]) : 0;
-  const fill3 = caps[0] && caps[2] ? Math.min(Math.max(0, dayTotal - caps[0] - (caps[1] || 0)), caps[2]) : 0;
+  const caps = [profile?.tankLiters ?? null, profile?.tank2Liters ?? null, profile?.tank3Liters ?? null].slice(0, tankCountOf(profile) ?? 1);
+  const capSum = caps.reduce<number>((s, c) => s + (c || 0), 0);
   const overflow = caps[0] ? Math.max(0, dayTotal - capSum) : 0;
-  const tanks = [
-    { name: 'خزان المحرك', field: 'tankLiters' as const, cap: caps[0], fill: fill1, extra: caps[1] || caps[2] ? 0 : overflow },
-    { name: 'الخزان الثاني', hint: 'وحدة التبريد في البرادات', field: 'tank2Liters' as const, cap: caps[1], fill: fill2, extra: caps[1] && !caps[2] ? overflow : 0 },
-    ...(caps[2] ? [{ name: 'الخزان الثالث', field: 'tank3Liters' as const, cap: caps[2], fill: fill3, extra: overflow }] : []),
-  ];
+  let left = dayTotal;
+  const tanks = caps.map((cap, i) => {
+    const fill = cap ? Math.min(left, cap) : i === 0 ? left : 0;
+    left -= fill;
+    return { ...TANKS[i], cap, fill, extra: cap && i === caps.reduce((m, c, j) => (c ? j : m), 0) ? overflow : 0 };
+  });
 
   // ── الرسم
   const buckets = useMemo(() => (end ? buildBuckets(range, range === 'day' ? lastDate : end, fills, lastDayLines) : []), [range, end, lastDate, fills, lastDayLines]);
@@ -217,6 +221,7 @@ export const VehicleLab: React.FC<{
     const tone = t.extra ? FUEL.over : full2 ? FUEL.deep : FUEL.amber;
     return { ...t, pct, tone, full2 };
   });
+  const tankShares: [string, number, string][] = [...tanks.map(t => [t.short, t.fill, t.color] as [string, number, string]), ['فوق السعة', overflow, '#E5484D']];
   const peakTag = chart ? {
     top: `max(0px, calc(${((chart.peak[1] / 220) * 100).toFixed(1)}% - 34px))`,
     left: `calc(${(chart.peak[0] / 10).toFixed(1)}% ${chart.peak[0] > 850 ? '- 104px' : chart.peak[0] < 150 ? '+ 8px' : '- 48px'})`,
@@ -396,15 +401,15 @@ export const VehicleLab: React.FC<{
             <div className="flex items-center gap-2.5"><span className={badge}><Fuel className="w-[18px] h-[18px]" /></span><h3 className="text-[14.5px] font-bold">الخزانات</h3></div>
             <span className="text-[11.5px] text-[#5B6577] dark:text-[#8090B0]">السعة الكلية <bdi className="font-mono font-semibold text-[#0B1220] dark:text-white">{capSum ? fmt(capSum) : '—'}</bdi> لتر</span>
           </div>
-          <div className={`grid gap-2 ${tankViews.length > 2 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+          <div className={`grid gap-2 ${tankViews.length > 2 ? 'grid-cols-3' : tankViews.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {tankViews.map(t => (
-              <div key={t.field} className="p-2.5 rounded-[14px] bg-[#F7F8FC] dark:bg-white/[0.04] min-w-0">
+              <div key={t.name} className="p-2.5 rounded-[14px] bg-[#F7F8FC] dark:bg-white/[0.04] min-w-0">
                 <div className="text-xs font-bold">{t.name}</div>
                 <div className={`mt-0.5 text-[10.5px] font-semibold truncate ${t.extra ? 'text-[#C0362F] dark:text-rose-400' : t.cap ? 'text-[#0E7F72] dark:text-teal-300' : 'text-[#8A94A6]'}`}>
-                  {!t.cap ? (t.hint || 'أدخل السعة') : t.extra ? `أكبر من السعة بـ ${fmt(t.extra)} لتر` : t.fill ? `دخله ${fmt(t.fill)} لتر` : 'لم يصله شيء'}
+                  {!t.cap ? 'السعة من تفاصيل العربة' : t.extra ? `أكبر من السعة بـ ${fmt(t.extra)} لتر` : t.fill ? `دخله ${fmt(t.fill)} لتر` : 'لم يصله شيء'}
                 </div>
                 {/* رسم الخزان فارغًا، والوقود يُصب داخل الزجاج فقط */}
-                <div className="relative w-full aspect-[920/470] mt-1.5 rounded-lg overflow-hidden bg-white">
+                <div className={`relative w-full aspect-[920/470] mt-1.5 rounded-lg overflow-hidden bg-white ${tankViews.length === 1 ? 'max-w-[320px] mx-auto' : ''}`}>
                   <img src="/trucks/tank/empty.webp" alt="" aria-hidden className="absolute inset-0 w-full h-full" />
                   <div className="lab-glass absolute inset-0">
                     <div className="absolute inset-x-0 transition-[height,background] duration-700" style={{ bottom: `${GLASS_BOTTOM}%`, height: `${(Math.min(100, t.pct || 0) * GLASS_HEIGHT / 100).toFixed(2)}%`, background: t.tone.body }}>
@@ -423,16 +428,6 @@ export const VehicleLab: React.FC<{
                     <span className="text-[10.5px] text-[#8A94A6] truncate">{fmt(t.fill + t.extra)} / {t.cap ? fmt(t.cap) : '—'}</span>
                   </span>
                 </div>
-                <label className="flex items-center gap-1 h-8 mt-2 px-2 rounded-[9px] border border-[#CBD2DC] dark:border-[#23304F] bg-white dark:bg-[#0A1020] focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20">
-                  <span className="text-[10.5px] text-[#5B6577] dark:text-[#8090B0]">السعة</span>
-                  <input
-                    key={`${vehicle}-${t.field}-${t.cap ?? ''}`}
-                    type="number" inputMode="numeric" min={0} defaultValue={t.cap ?? ''} disabled={!editable} placeholder="—" aria-label={`سعة ${t.name} باللتر`}
-                    onBlur={e => { const v = num(e.target.value); if ((v || null) !== t.cap) saveProfile({ [t.field]: v || null }); }}
-                    className={`${numInput} text-[13px]`}
-                  />
-                  <span className="text-[10.5px] text-[#8A94A6]">لتر</span>
-                </label>
               </div>
             ))}
           </div>
@@ -443,12 +438,10 @@ export const VehicleLab: React.FC<{
               <span><bdi className="font-mono font-semibold text-[#0B1220] dark:text-white">{fmt(dayTotal)}</bdi> لتر</span>
             </div>
             <div className="flex h-2.5 mt-2 rounded-full overflow-hidden gap-0.5 bg-[#F1F3F7] dark:bg-[#0A1020]">
-              {([[fill1, '#4F46E5'], [fill2, '#0EA5E9'], [overflow, '#E5484D']] as const).map(([x, c], i) => x > 0 && <span key={i} className="block h-full transition-[flex] duration-500" style={{ flex: `${x} 1 0`, background: c }} />)}
+              {tankShares.map(([, x, c]) => x > 0 && <span key={c} className="block h-full transition-[flex] duration-500" style={{ flex: `${x} 1 0`, background: c }} />)}
             </div>
             <div className="flex flex-wrap gap-3 mt-2 text-[11px] text-[#5B6577] dark:text-[#8090B0]">
-              <span><span className="inline-block w-2 h-2 rounded-sm bg-[#4F46E5] ml-1.5" />المحرك <bdi className="font-mono">{fmt(fill1)}</bdi></span>
-              <span><span className="inline-block w-2 h-2 rounded-sm bg-[#0EA5E9] ml-1.5" />الثاني <bdi className="font-mono">{fmt(fill2)}</bdi></span>
-              <span><span className="inline-block w-2 h-2 rounded-sm bg-[#E5484D] ml-1.5" />فوق السعة <bdi className="font-mono">{fmt(overflow)}</bdi></span>
+              {tankShares.map(([l, x, c]) => <span key={c}><span className="inline-block w-2 h-2 rounded-sm ml-1.5" style={{ background: c }} />{l} <bdi className="font-mono">{fmt(x)}</bdi></span>)}
             </div>
           </div>
         </section>

@@ -447,6 +447,8 @@ export interface VehicleProfile {
   tank2Liters?: number | null;
   /** سعة الخزان الثالث (لتر) */
   tank3Liters?: number | null;
+  /** عدد الخزانات المختار في تفاصيل العربة (يُحفظ ولو لم تُدخل السعات بعد) */
+  tankCount?: number | null;
   /** المعدل المرجعي للقيادة (لتر لكل 100 كم) — لمختبر العربة */
   refL100?: number | null;
   /** صرف وحدة التبريد (لتر لكل ساعة) — لمختبر العربة */
@@ -480,6 +482,9 @@ export const fileDayStart = (now: number) => {
 
 /** سعات خزانات العربة المسجلة بالترتيب */
 export const tankCaps = (p: VehicleProfile | undefined) => [p?.tankLiters, p?.tank2Liters, p?.tank3Liters].filter((c): c is number => !!c);
+
+/** عدد خزانات العربة: المختار في تفاصيلها، وللملفات الأقدم آخر خزان له سعة؛ null = غير محدد */
+export const tankCountOf = (p: VehicleProfile | undefined) => p?.tankCount || (p?.tank3Liters ? 3 : p?.tank2Liters ? 2 : p?.tankLiters ? 1 : null);
 
 export const checkFills = (fills: DayFill[], profile: VehicleProfile | undefined): FillCheck[] => {
   const out: FillCheck[] = [];

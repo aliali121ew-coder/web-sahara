@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowDownLeft, ArrowDownWideNarrow, ArrowUpRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, FlaskConical, Repeat2, Search, X } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
-import { FREQUENT_DAYS, VEHICLE_PROFILES_KEY, daysBetween, imageGround, tankCaps, vehicleCategory, vehicleImage, type DayFill, type VehicleProfile } from '../../lib/vehicleFuel';
+import { FREQUENT_DAYS, VEHICLE_PROFILES_KEY, daysBetween, imageGround, tankCountOf, vehicleCategory, vehicleImage, type DayFill, type VehicleProfile } from '../../lib/vehicleFuel';
 import { VEHICLE_REGISTRY_KEY, type VehicleRegistryEntry } from '../../lib/vehicleRegistry';
 import { useCategoryNames, useVehicleNames } from './categories';
 import { VehicleArt } from './VehicleArt';
@@ -564,7 +564,7 @@ export const ConsumptionAnalysis: React.FC<{
                         <span className="grid grid-cols-[1.1fr_1.3fr_0.7fr] border-t border-indigo-100 dark:border-indigo-900/50 px-4 py-2.5">
                           <span className="min-w-0"><span className={label}>رقم الآلية</span><span className="block font-mono text-[13.5px] font-semibold text-slate-900 dark:text-white truncate" dir="ltr" style={{ textAlign: 'right' }}>{reg?.plate || '—'}</span></span>
                           <span className="min-w-0 border-r border-indigo-100 dark:border-indigo-900/50 pr-3"><span className={label}>المجموعة</span><span className="block text-[12.5px] font-bold text-slate-900 dark:text-white truncate">{reg?.group?.replace(/^اليات\s*/, '').replace(/[\s-]+$/, '') || '—'}</span></span>
-                          <span className="border-r border-indigo-100 dark:border-indigo-900/50 pr-3"><span className={label}>الخزانات</span><span className="block font-mono text-[13.5px] font-semibold text-slate-900 dark:text-white">{tankCaps(prof).length || '—'}</span></span>
+                          <span className="border-r border-indigo-100 dark:border-indigo-900/50 pr-3"><span className={label}>الخزانات</span><span className="block font-mono text-[13.5px] font-semibold text-slate-900 dark:text-white">{tankCountOf(prof) ?? '—'}</span></span>
                         </span>
                       </button>
                     );

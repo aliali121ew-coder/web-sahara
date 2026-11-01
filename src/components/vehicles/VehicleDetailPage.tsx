@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import {
-  FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, checkFills, daysBetween, tankCaps, vehicleCategory, vehicleStats,
+  FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, checkFills, daysBetween, tankCaps, tankCountOf, vehicleCategory, vehicleStats,
   type CheckKind, type VehicleProfile, type VehicleRefill, type VehicleRoute, type VehicleStat,
 } from '../../lib/vehicleFuel';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
@@ -70,7 +70,7 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, editable, ba
   useEffect(() => { window.scrollTo(0, 0); }, [stat.vehicle]);
 
   const caps = tankCaps(profile);
-  const tanks = caps.length || null;
+  const tanks = tankCountOf(profile);
   const capacity = caps.reduce((s, c) => s + c, 0);
   const periodLabel = !range ? 'كل الفترة' : range.from === range.to ? range.from : `${range.from} ← ${range.to}`;
 
@@ -192,7 +192,7 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, editable, ba
               <Spec tone="bg-violet-500/10 text-violet-600" icon={<Gauge className="w-4 h-4" />} label="متوسط التفويلة" value={(view?.avg ?? 0).toLocaleString()} unit="لتر" />
               <Spec tone="bg-amber-500/10 text-amber-600" icon={<Trophy className="w-4 h-4" />} label="أعلى تفويلة" value={(view?.max ?? 0).toLocaleString()} unit="لتر" />
               <Spec tone="bg-emerald-500/10 text-emerald-600" icon={<Timer className="w-4 h-4" />} label="متوسط الفاصل" value={view?.avgGap ?? '—'} unit="يوم" />
-              <Spec tone="bg-rose-500/10 text-rose-600" icon={<Container className="w-4 h-4" />} label="عدد الخزانات" value={tanks ?? '—'} unit={tanks ? `${capacity.toLocaleString()} لتر` : undefined} />
+              <Spec tone="bg-rose-500/10 text-rose-600" icon={<Container className="w-4 h-4" />} label="عدد الخزانات" value={tanks ?? '—'} unit={capacity ? `${capacity.toLocaleString()} لتر` : undefined} />
             </div>
             <div className="md:col-span-3 relative">
               {profile?.photo ? (

@@ -6,7 +6,7 @@ import { getProfile } from '../../lib/session';
 import { VehicleArt } from './VehicleArt';
 import { useCategoryNames } from './categories';
 import { usePermissions } from '../../lib/usePermission';
-import { FREQUENT_DAYS, formatDay, shrinkImage, tankCaps, vehicleCategory, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
+import { FREQUENT_DAYS, formatDay, shrinkImage, tankCaps, tankCountOf, vehicleCategory, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
 
 export const emptyProfile = (vehicle: string): VehicleProfile => ({
   id: vehicle, name: '', type: '', tankLiters: null, dailyLimit: null, driver: '', department: '', notes: '', photo: '', updatedAt: '', by: '',
@@ -28,12 +28,9 @@ export const VehicleProfileEditor: React.FC<{
   onClose: () => void;
 }> = ({ stat, profile, editable, onSave, onClose }) => {
   const [p, setP] = useState<VehicleProfile>(profile || emptyProfile(stat.vehicle));
-  const [tankCount, setTankCount] = useState(profile?.tank3Liters ? 3 : profile?.tank2Liters ? 2 : 1);
+  const tankCount = tankCountOf(p) ?? 1;
   // تقليل العدد يلغي سعة الخزانات الزائدة
-  const pickTanks = (n: number) => {
-    setTankCount(n);
-    setP(x => ({ ...x, tank2Liters: n > 1 ? x.tank2Liters : null, tank3Liters: n > 2 ? x.tank3Liters : null }));
-  };
+  const pickTanks = (n: number) => setP(x => ({ ...x, tankCount: n, tank2Liters: n > 1 ? x.tank2Liters : null, tank3Liters: n > 2 ? x.tank3Liters : null }));
   const [catLabels] = useCategoryNames();
   // اسم العربة يعدّله مدير النظام فقط
   const { isAdmin } = usePermissions();
