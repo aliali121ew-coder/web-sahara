@@ -173,7 +173,7 @@ export const VehicleProfileEditor: React.FC<{
                 <textarea rows={3} disabled={!editable} value={p.notes} onChange={e => setP({ ...p, notes: e.target.value })} className={field} />
               </label>
               <p className="text-[11px] text-slate-500 leading-6 rounded-xl bg-sky-500/5 border border-sky-500/15 p-3">
-                سعة الخزان والحصة اليومية والسائق المعتمد تُستخدم لكشف التفويل المخالف تلقائيًا وحساب مؤشر الانضباط.
+                سعة الخزان والحصة اليومية والسائق المعتمد تُستخدم لكشف التفويل المخالف تلقائيًا.
               </p>
               {profile?.updatedAt && <p className="text-[10px] text-slate-400">آخر تعديل {new Date(profile.updatedAt).toLocaleString('en-GB')}{profile.by ? ` · ${profile.by}` : ''}</p>}
             </div>
