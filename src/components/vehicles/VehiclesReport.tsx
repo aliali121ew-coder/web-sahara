@@ -165,6 +165,7 @@ export const VehiclesReport: React.FC = () => {
           backLabel={analysis && dates.length ? 'تحليل الاستهلاك' : 'تقرير العربات'}
           onBack={() => setVehicle(null)}
           onOpen={setVehicle}
+          onLab={v => { setVehicle(null); setLab(v); }}
         />
       </div>
     );

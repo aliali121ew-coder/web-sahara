@@ -1,7 +1,7 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ArrowRight, CalendarDays, ChevronRight, ChevronLeft, ChevronDown, Fuel, Gauge, Trophy, Timer, Hash, Container, X,
+  ArrowRight, CalendarDays, ChevronRight, ChevronLeft, ChevronDown, FlaskConical, Fuel, Gauge, Trophy, Timer, Hash, Container, X,
   User, Route as RouteIcon, IdCard,
 } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
@@ -27,6 +27,8 @@ interface Props {
   backLabel?: string;
   onBack: () => void;
   onOpen: (v: string) => void;
+  /** يفتح مختبر العربة */
+  onLab: (v: string) => void;
 }
 
 /** كارت رقم موحّد: العنوان والأيقونة في صف، وتحته القيمة ووحدتها بنفس الارتفاع في كل الكارتات */
@@ -44,7 +46,7 @@ const Spec: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactN
 );
 
 /** صفحة كاملة لتفاصيل عربة: المواصفات، آخر تفويلة، الرسوم، والسجل؛ والتاريخ يحدد كل شيء عدا آخر تفويلة */
-export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, editable, backLabel = 'تقرير العربات', onBack }) => {
+export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, editable, backLabel = 'تقرير العربات', onBack, onLab }) => {
   const [routes] = useSyncedStorage<VehicleRoute[]>(VEHICLE_ROUTES_KEY, []);
   const [profiles, setProfiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
   const [editing, setEditing] = useState(false);
@@ -135,7 +137,10 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, editable, ba
             <div className="mt-0.5 text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono leading-none text-right" dir="ltr">{stat.vehicle}</div>
           )}
         </div>
-        <div className="relative mr-auto">
+        <button type="button" onClick={() => onLab(stat.vehicle)} className="mr-auto flex items-center gap-1.5 h-10 px-3.5 rounded-xl border border-indigo-100 dark:border-indigo-900/60 bg-gradient-to-l from-indigo-50 to-sky-50 dark:from-indigo-950/50 dark:to-sky-950/30 text-xs font-black text-indigo-700 dark:text-indigo-300 hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors cursor-pointer">
+          <FlaskConical className="w-4 h-4" />بيانات عامة
+        </button>
+        <div className="relative">
           <button
             type="button"
             aria-label="تاريخ الصفحة"
