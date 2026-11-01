@@ -116,7 +116,7 @@ export const ConsumptionAnalysis: React.FC<{
 }> = ({ allFills, endDate: initialEnd, category, categoryName, onClearCategory, onOpen, onLab }) => {
   const [endDate, setEndDate] = useState(initialEnd);
   const [dateOpen, setDateOpen] = useState(false);
-  const [unit, setUnit] = useState<Unit>('week');
+  const [unit, setUnit] = useState<Unit>('day');
   const [filter, setFilter] = useState<Status | 'all'>('all');
   const [sort, setSort] = useState<SortKey>('change');
   const [q, setQ] = useState('');
@@ -302,7 +302,7 @@ export const ConsumptionAnalysis: React.FC<{
           </div>
           <div role="group" aria-label="مدة كل عمود" className="flex gap-0.5 p-1 rounded-2xl bg-slate-200/70 dark:bg-slate-800">
             {UNITS.map(([u, l]) => (
-              <button key={u} type="button" aria-pressed={unit === u} onClick={() => { setUnit(u); setPage(0); }} className={`h-9 px-4 rounded-xl text-sm font-bold cursor-pointer transition-all duration-200 ${unit === u ? 'bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}>{l}</button>
+              <button key={u} type="button" aria-pressed={unit === u} onClick={() => { setUnit(u); setPage(0); }} className={`h-9 px-4 rounded-xl border text-sm font-bold cursor-pointer outline-hidden transition-all duration-200 focus-visible:ring-2 focus-visible:ring-indigo-400 ${unit === u ? 'border-indigo-100 dark:border-indigo-900/60 bg-gradient-to-l from-indigo-50 to-sky-50 dark:from-indigo-950/50 dark:to-sky-950/30 text-indigo-700 dark:text-indigo-300 shadow-sm' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}>{l}</button>
             ))}
           </div>
         </div>
