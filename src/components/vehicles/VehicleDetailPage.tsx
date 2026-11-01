@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import {
-  FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, checkFills, daysBetween, vehicleCategory, vehicleStats,
+  FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, checkFills, daysBetween, tankCaps, vehicleCategory, vehicleStats,
   type CheckKind, type VehicleProfile, type VehicleRefill, type VehicleRoute, type VehicleStat,
 } from '../../lib/vehicleFuel';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
@@ -69,8 +69,9 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, editable, ba
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, [stat.vehicle]);
 
-  const tanks = profile?.tankLiters ? (profile.tank2Liters ? 2 : 1) : null;
-  const capacity = (profile?.tankLiters || 0) + (profile?.tank2Liters || 0);
+  const caps = tankCaps(profile);
+  const tanks = caps.length || null;
+  const capacity = caps.reduce((s, c) => s + c, 0);
   const periodLabel = !range ? 'كل الفترة' : range.from === range.to ? range.from : `${range.from} ← ${range.to}`;
 
   const myRoutes = useMemo(() => routes.filter(r => r.vehicle === stat.vehicle), [routes, stat.vehicle]);
@@ -263,7 +264,6 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, editable, ba
           stat={stat}
           profile={profile}
           editable={editable}
-          drivers={[...new Set(stat.fills.flatMap(f => [...f.drivers, f.prevDriver]).filter(Boolean))]}
           onSave={saveProfile}
           onClose={() => setEditing(false)}
         />

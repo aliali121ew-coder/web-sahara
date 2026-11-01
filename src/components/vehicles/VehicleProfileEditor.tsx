@@ -1,12 +1,12 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, IdCard, Fuel, Hash, Timer, Repeat2, User, Container, ShieldCheck, Building2, StickyNote, Save, Tag, Camera, Trash2, Loader2 } from 'lucide-react';
+import { X, IdCard, Fuel, Hash, Timer, Repeat2, User, Container, Save, Camera, Trash2, Loader2 } from 'lucide-react';
 import { getProfile } from '../../lib/session';
 import { VehicleArt } from './VehicleArt';
 import { useCategoryNames } from './categories';
 import { usePermissions } from '../../lib/usePermission';
-import { FREQUENT_DAYS, VEHICLE_TYPES, formatDay, shrinkImage, vehicleCategory, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
+import { FREQUENT_DAYS, formatDay, shrinkImage, tankCaps, vehicleCategory, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
 
 export const emptyProfile = (vehicle: string): VehicleProfile => ({
   id: vehicle, name: '', type: '', tankLiters: null, dailyLimit: null, driver: '', department: '', notes: '', photo: '', updatedAt: '', by: '',
@@ -14,19 +14,26 @@ export const emptyProfile = (vehicle: string): VehicleProfile => ({
 
 type Tab = 'info' | 'fills';
 
+const TANK_FIELDS = ['tankLiters', 'tank2Liters', 'tank3Liters'] as const;
+
 /**
- * قائمة سحب جانبية «تفاصيل العربة»: بيانات العربة (النوع، سعة الخزان، الحصة، السائق المعتمد، القسم)
- * وسجل تفويلاتها. التعديل لمن يملك صلاحية التعديل، والعرض للبقية.
+ * قائمة سحب جانبية «تفاصيل العربة»: رقم العربة وعدد خزاناتها وسعاتها، وسجل تفويلاتها.
+ * التعديل لمن يملك صلاحية التعديل، والعرض للبقية.
  */
 export const VehicleProfileEditor: React.FC<{
   stat: VehicleStat;
   profile: VehicleProfile | undefined;
-  drivers: string[];
   editable: boolean;
   onSave: (p: VehicleProfile) => void;
   onClose: () => void;
-}> = ({ stat, profile, drivers, editable, onSave, onClose }) => {
+}> = ({ stat, profile, editable, onSave, onClose }) => {
   const [p, setP] = useState<VehicleProfile>(profile || emptyProfile(stat.vehicle));
+  const [tankCount, setTankCount] = useState(profile?.tank3Liters ? 3 : profile?.tank2Liters ? 2 : 1);
+  // تقليل العدد يلغي سعة الخزانات الزائدة
+  const pickTanks = (n: number) => {
+    setTankCount(n);
+    setP(x => ({ ...x, tank2Liters: n > 1 ? x.tank2Liters : null, tank3Liters: n > 2 ? x.tank3Liters : null }));
+  };
   const [catLabels] = useCategoryNames();
   // اسم العربة يعدّله مدير النظام فقط
   const { isAdmin } = usePermissions();
@@ -59,12 +66,13 @@ export const VehicleProfileEditor: React.FC<{
   const num = (v: string) => (v.trim() === '' ? null : Math.max(0, Number(v)) || null);
   const save = () => {
     const u = getProfile();
-    onSave({ ...p, name: (p.name || '').trim(), driver: p.driver.trim(), department: p.department.trim(), notes: p.notes.trim(), updatedAt: new Date().toISOString(), by: u?.name || u?.username || '' });
+    onSave({ ...p, name: (p.name || '').trim(), updatedAt: new Date().toISOString(), by: u?.name || u?.username || '' });
   };
 
-  const field = 'w-full px-3 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-100 focus:outline-hidden focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 disabled:bg-slate-50 dark:disabled:bg-slate-800/50 disabled:text-slate-500 transition-all';
-  const label = 'text-[11px] font-black text-slate-500 dark:text-slate-400 mb-1.5 flex items-center gap-1.5';
-  const overCap = (q: number) => !!p.tankLiters && q > p.tankLiters;
+  const box = 'rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4';
+  const label = 'text-[11px] font-black text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1.5';
+  const capacity = tankCaps(p).reduce((s, c) => s + c, 0);
+  const overCap = (q: number) => !!capacity && q > capacity;
 
   // على body مباشرة: حركة دخول الصفحة (transform) تجعل fixed نسبيًا لها فتُقص القائمة
   return createPortal(
@@ -136,45 +144,29 @@ export const VehicleProfileEditor: React.FC<{
         {/* المحتوى */}
         <div className="flex-1 overflow-y-auto p-5">
           {tab === 'info' ? (
-            <div className="space-y-4 vehicle-page">
-              {isAdmin && <label className="block">
-                <span className={label}><Tag className="w-3.5 h-3.5" />اسم العربة</span>
-                <input disabled={!editable} value={p.name || ''} onChange={e => setP({ ...p, name: e.target.value })} className={field} placeholder={`مثال: قلاب نقل الأسمدة — الرمز ${stat.vehicle} يبقى كما هو`} />
-              </label>}
-              <div>
-                <span className={label}><Hash className="w-3.5 h-3.5" />نوع العربة</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {VEHICLE_TYPES.map(t => (
-                    <button key={t} type="button" disabled={!editable} onClick={() => setP({ ...p, type: p.type === t ? '' : t })} className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer disabled:cursor-default ${p.type === t ? 'bg-sky-500 border-sky-500 text-white shadow-md shadow-sky-500/25' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 enabled:hover:border-sky-400'}`}>{t}</button>
+            <div className="space-y-3 vehicle-page">
+              {/* اسم العربة هو رقمها الظاهر، ويعدّله مدير النظام فقط */}
+              <label className={`block ${box}`}>
+                <span className={label}><Hash className="w-3.5 h-3.5 text-sky-500" />رقم العربة</span>
+                <input disabled={!editable || !isAdmin} dir="ltr" value={p.name || ''} onChange={e => setP({ ...p, name: e.target.value })} placeholder={stat.vehicle} className="w-full bg-transparent outline-hidden text-right font-mono text-xl font-black text-slate-900 dark:text-white placeholder:text-slate-900 dark:placeholder:text-white disabled:cursor-default" />
+              </label>
+              <div className={box}>
+                <span className={label}><Container className="w-3.5 h-3.5 text-sky-500" />عدد الخزانات</span>
+                <div role="group" aria-label="عدد الخزانات" className="grid grid-cols-3 gap-2">
+                  {[1, 2, 3].map(n => (
+                    <button key={n} type="button" disabled={!editable} aria-pressed={tankCount === n} onClick={() => pickTanks(n)} className={`h-11 rounded-xl border text-sm font-black font-mono transition-all cursor-pointer disabled:cursor-default ${tankCount === n ? 'bg-sky-500 border-sky-500 text-white shadow-md shadow-sky-500/25' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 enabled:hover:border-sky-400'}`}>{n}</button>
                   ))}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <label>
-                  <span className={label}><Container className="w-3.5 h-3.5" />سعة الخزان (لتر)</span>
-                  <input type="number" min={0} disabled={!editable} value={p.tankLiters ?? ''} onChange={e => setP({ ...p, tankLiters: num(e.target.value) })} className={field} placeholder="مثال: 400" />
-                </label>
-                <label>
-                  <span className={label}><ShieldCheck className="w-3.5 h-3.5" />الحصة اليومية (لتر)</span>
-                  <input type="number" min={0} disabled={!editable} value={p.dailyLimit ?? ''} onChange={e => setP({ ...p, dailyLimit: num(e.target.value) })} className={field} placeholder="اختياري" />
-                </label>
+              <div className={`grid gap-2.5 ${tankCount === 3 ? 'grid-cols-3' : tankCount === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                {TANK_FIELDS.slice(0, tankCount).map((f, i) => (
+                  <label key={f} className={`block min-w-0 ${box} focus-within:border-sky-500`}>
+                    <span className="block text-[11px] font-black text-slate-500 dark:text-slate-400 truncate">سعة خزان {i + 1}</span>
+                    <input type="number" min={0} inputMode="numeric" disabled={!editable} value={p[f] ?? ''} onChange={e => setP({ ...p, [f]: num(e.target.value) })} placeholder="—" className="mt-1.5 w-full bg-transparent outline-hidden font-mono text-lg font-black text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600" />
+                    <span className="block text-[10px] font-bold text-slate-400">لتر</span>
+                  </label>
+                ))}
               </div>
-              <label className="block">
-                <span className={label}><User className="w-3.5 h-3.5" />السائق المعتمد</span>
-                <input list="vehicle-profile-drivers" disabled={!editable} value={p.driver} onChange={e => setP({ ...p, driver: e.target.value })} className={field} placeholder="اختر من سائقي الكشوف أو اكتب" />
-                <datalist id="vehicle-profile-drivers">{drivers.map(d => <option key={d} value={d} />)}</datalist>
-              </label>
-              <label className="block">
-                <span className={label}><Building2 className="w-3.5 h-3.5" />القسم / الموقع</span>
-                <input disabled={!editable} value={p.department} onChange={e => setP({ ...p, department: e.target.value })} className={field} placeholder="مثال: قسم النقل" />
-              </label>
-              <label className="block">
-                <span className={label}><StickyNote className="w-3.5 h-3.5" />ملاحظات</span>
-                <textarea rows={3} disabled={!editable} value={p.notes} onChange={e => setP({ ...p, notes: e.target.value })} className={field} />
-              </label>
-              <p className="text-[11px] text-slate-500 leading-6 rounded-xl bg-sky-500/5 border border-sky-500/15 p-3">
-                سعة الخزان والحصة اليومية والسائق المعتمد تُستخدم لكشف التفويل المخالف تلقائيًا.
-              </p>
               {profile?.updatedAt && <p className="text-[10px] text-slate-400">آخر تعديل {new Date(profile.updatedAt).toLocaleString('en-GB')}{profile.by ? ` · ${profile.by}` : ''}</p>}
             </div>
           ) : (

@@ -445,6 +445,8 @@ export interface VehicleProfile {
   tankLiters: number | null;
   /** سعة الخزان الثاني (لتر) — خزان وحدة التبريد في بعض البرادات */
   tank2Liters?: number | null;
+  /** سعة الخزان الثالث (لتر) */
+  tank3Liters?: number | null;
   /** المعدل المرجعي للقيادة (لتر لكل 100 كم) — لمختبر العربة */
   refL100?: number | null;
   /** صرف وحدة التبريد (لتر لكل ساعة) — لمختبر العربة */
@@ -469,11 +471,15 @@ export type CheckKind = 'capacity' | 'limit' | 'driver' | 'frequent' | 'multi';
 export interface FillCheck { kind: CheckKind; date: string; text: string }
 
 /** مخالفات كل تفويلة مقابل ملف العربة */
+/** سعات خزانات العربة المسجلة بالترتيب */
+export const tankCaps = (p: VehicleProfile | undefined) => [p?.tankLiters, p?.tank2Liters, p?.tank3Liters].filter((c): c is number => !!c);
+
 export const checkFills = (fills: DayFill[], profile: VehicleProfile | undefined): FillCheck[] => {
   const out: FillCheck[] = [];
   const norm = (s: string) => normalizeArabic(s);
+  const capacity = tankCaps(profile).reduce((s, c) => s + c, 0);
   for (const f of fills) {
-    if (profile?.tankLiters && f.qty > profile.tankLiters) out.push({ kind: 'capacity', date: f.date, text: `${f.qty.toLocaleString()} لتر أكبر من سعة الخزان ${profile.tankLiters.toLocaleString()}` });
+    if (capacity && f.qty > capacity) out.push({ kind: 'capacity', date: f.date, text: `${f.qty.toLocaleString()} لتر أكبر من سعة الخزانات ${capacity.toLocaleString()}` });
     if (profile?.dailyLimit && f.qty > profile.dailyLimit) out.push({ kind: 'limit', date: f.date, text: `تجاوز الحصة اليومية بـ ${(f.qty - profile.dailyLimit).toLocaleString()} لتر` });
     if (profile?.driver && f.drivers.length && !f.drivers.some(d => norm(d) === norm(profile.driver))) out.push({ kind: 'driver', date: f.date, text: `فوّلها ${f.drivers.join('، ')} وليس السائق المعتمد` });
     if (f.days !== null && f.days <= FREQUENT_DAYS) out.push({ kind: 'frequent', date: f.date, text: `تفويل بعد ${f.days} يوم من السابقة` });

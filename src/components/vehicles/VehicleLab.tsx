@@ -168,16 +168,18 @@ export const VehicleLab: React.FC<{
   };
 
   // ── الخزانات
-  const caps = [profile?.tankLiters ?? null, profile?.tank2Liters ?? null];
-  // تفويلة اليوم تملأ خزان المحرك أولًا، والباقي يعبر إلى الخزان الثاني؛ ما يزيد على مجموع السعتين = فوق السعة
+  const caps = [profile?.tankLiters ?? null, profile?.tank2Liters ?? null, profile?.tank3Liters ?? null];
+  // تفويلة اليوم تملأ خزان المحرك أولًا، والباقي يعبر إلى ما بعده؛ ما يزيد على مجموع السعات = فوق السعة
   const dayTotal = lastDayLines.reduce((s, r) => s + r.qty, 0);
-  const capSum = (caps[0] || 0) + (caps[1] || 0);
+  const capSum = (caps[0] || 0) + (caps[1] || 0) + (caps[2] || 0);
   const fill1 = caps[0] ? Math.min(dayTotal, caps[0]) : dayTotal;
   const fill2 = caps[0] && caps[1] ? Math.min(Math.max(0, dayTotal - caps[0]), caps[1]) : 0;
+  const fill3 = caps[0] && caps[2] ? Math.min(Math.max(0, dayTotal - caps[0] - (caps[1] || 0)), caps[2]) : 0;
   const overflow = caps[0] ? Math.max(0, dayTotal - capSum) : 0;
   const tanks = [
-    { name: 'خزان المحرك', field: 'tankLiters' as const, cap: caps[0], fill: fill1, extra: caps[1] ? 0 : overflow },
-    { name: 'الخزان الثاني', hint: 'وحدة التبريد في البرادات', field: 'tank2Liters' as const, cap: caps[1], fill: fill2, extra: caps[1] ? overflow : 0 },
+    { name: 'خزان المحرك', field: 'tankLiters' as const, cap: caps[0], fill: fill1, extra: caps[1] || caps[2] ? 0 : overflow },
+    { name: 'الخزان الثاني', hint: 'وحدة التبريد في البرادات', field: 'tank2Liters' as const, cap: caps[1], fill: fill2, extra: caps[1] && !caps[2] ? overflow : 0 },
+    ...(caps[2] ? [{ name: 'الخزان الثالث', field: 'tank3Liters' as const, cap: caps[2], fill: fill3, extra: overflow }] : []),
   ];
 
   // ── الرسم
@@ -393,7 +395,7 @@ export const VehicleLab: React.FC<{
             <div className="flex items-center gap-2.5"><span className={badge}><Fuel className="w-[18px] h-[18px]" /></span><h3 className="text-[14.5px] font-bold">الخزانات</h3></div>
             <span className="text-[11.5px] text-[#5B6577] dark:text-[#8090B0]">السعة الكلية <bdi className="font-mono font-semibold text-[#0B1220] dark:text-white">{capSum ? fmt(capSum) : '—'}</bdi> لتر</span>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className={`grid gap-2 ${tankViews.length > 2 ? 'grid-cols-3' : 'grid-cols-2'}`}>
             {tankViews.map(t => (
               <div key={t.field} className="p-2.5 rounded-[14px] bg-[#F7F8FC] dark:bg-white/[0.04] min-w-0">
                 <div className="text-xs font-bold">{t.name}</div>
