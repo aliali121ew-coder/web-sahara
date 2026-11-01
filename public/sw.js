@@ -14,6 +14,37 @@ const STATIC = `sahara-static-${VERSION}`;
 const KEEP = [SHELL, ASSETS, STATIC];
 /** حد ملفات البناء المخزنة (تتراكم مع كل تحديث): الأقدم يُحذف أولًا */
 const MAX_ASSETS = 400;
+/**
+ * صور العربات تُخزَّن مسبقًا حتى تظهر مع النت الضعيف أو المقطوع، ولو لم تُعرض من قبل على هذا الجهاز.
+ * اختبار etihadCoverage.test.ts يتأكد أن القائمة تشمل كل ملفات public/trucks
+ */
+const typeImages = 'a at bs head hf hr hw k ka kb kh kn ks l m r sf sf1 sl sr'.split(' ');
+const labImages = 'a at bs head hf hr hw k ka kb kh kn ks l m r sf1 sl sr'.split(' ');
+const VEHICLE_IMAGES = [
+  '/trucks/semi_truck.jpg', '/trucks/tank/empty.webp', '/trucks/tank/glass-mask.png',
+  ...typeImages.map((k) => `/trucks/types/${k}.webp`),
+  ...labImages.map((k) => `/trucks/lab/${k}.webp`),
+];
+/** بديل صورة لم تُخزَّن بعد ولا يوجد اتصال: رسم شاحنة بسيط بدل أيقونة الصورة المكسورة */
+const TRUCK_FALLBACK = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80"><g fill="none" stroke="#94a3b8" stroke-width="4" stroke-linejoin="round"><path d="M12 54V22h58v32M70 34h20l16 16v4H70"/><circle cx="34" cy="60" r="8"/><circle cx="88" cy="60" r="8"/></g></svg>';
+
+/** يخزّن الناقص من صور العربات واحدة واحدة، حتى لا يزاحم التطبيق على نت ضعيف؛ ما يفشل يُعاد في الفتح التالي */
+const cacheVehicleImages = async () => {
+  const cache = await caches.open(STATIC);
+  for (const url of VEHICLE_IMAGES) {
+    if (await cache.match(url)) continue;
+    try {
+      const res = await fetch(url);
+      if (res.ok && (res.headers.get('content-type') || '').startsWith('image/')) await cache.put(url, res);
+    } catch {
+      return;
+    }
+  }
+};
+
+self.addEventListener('message', (event) => {
+  if (event.data === 'cache-vehicle-images') event.waitUntil(cacheVehicleImages());
+});
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(SHELL).then((c) => c.add(new Request('/', { cache: 'reload' }))).catch(() => {}));
@@ -79,6 +110,9 @@ self.addEventListener('fetch', (event) => {
       if (hit) {
         event.waitUntil(net.catch(() => {}));
         return hit;
+      }
+      if (url.pathname.startsWith('/trucks/')) {
+        return net.catch(() => new Response(TRUCK_FALLBACK, { headers: { 'Content-Type': 'image/svg+xml' } }));
       }
       return net;
     }))
