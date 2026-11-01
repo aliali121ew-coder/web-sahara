@@ -194,6 +194,8 @@ export const AppLogin: React.FC<{ onSuccess: () => void; unreachable?: boolean }
     }
     const u = username.trim().toLowerCase();
     const invalid = (msg: string) => { setError(msg); setShake(s => s + 1); };
+    // ما يملؤه مدير كلمات المرور في المتصفح قد لا يصل إلى password قبل الضغط، فيُقرأ من الحقل مباشرة
+    const loginPassword = passRef.current?.value || password;
     if (mode === 'setup') {
       if (!code.trim()) return invalid(t('validation.code'));
       if (!name.trim()) return invalid(t('validation.fullName'));
@@ -213,13 +215,13 @@ export const AppLogin: React.FC<{ onSuccess: () => void; unreachable?: boolean }
         fail(err);
       }
       return;
-    } else if (!u || !password) {
+    } else if (!u || !loginPassword) {
       return invalid(t('validation.credentials'));
     }
     setBtn('loading');
     try {
       if (mode === 'setup') await setupSystem(code.trim(), { username: u, password, name: name.trim() });
-      else await loginAccount(u, password, remember);
+      else await loginAccount(u, loginPassword, remember);
       localStorage.setItem(REMEMBER_KEY, remember ? '1' : '0');
       setBtn('success');
       // بعد أول دخول بكلمة المرور على جهاز يدعم البصمة: نعرض تفعيلها (مرة لكل حساب)

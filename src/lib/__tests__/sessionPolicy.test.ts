@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { hasSession, LAST_USER_KEY, logout, savedLogin, SESSION_USER_KEY } from '../session';
-import { sessionExpired } from '../../../worker/chat';
+import { sessionExpired } from '../../../worker/sessionPolicy';
 
 const RESUME_KEY = 'sahara_session_resume';
 const STARTED_KEY = 'sahara_session_started';

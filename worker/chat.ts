@@ -10,6 +10,7 @@
  */
 
 import { validDemoExpiry } from './demo';
+import { SESSION_MAX_MS, sessionExpired } from './sessionPolicy';
 import { checkPublicKey, parseClientData, randomChallenge, verifyAssertion } from './webauthn';
 import { ensureFileColumns, loadFile, removeFile, storeFile } from './storage/files';
 import { schemaGate } from './storage/schema';
@@ -257,13 +258,6 @@ const USERNAME_RE = /^[a-z0-9._-]{3,32}$/;
 const MIN_PASSWORD = 8;
 /** الحد الأقصى لحسابات المصادقة */
 const MAX_ACCOUNTS = 100;
-/**
- * الجلسة تنتهي بعد 7 أيام من آخر دخول مهما كان الجهاز نشطًا، فيعود المستخدم لشاشة الدخول ويكتب كلمة المرور.
- * الاستخدام لا يمدّدها، وتُلغى قبل ذلك بتسجيل الخروج أو تغيير كلمة المرور أو إيقاف الحساب
- */
-const SESSION_MAX_MS = 7 * 24 * 3600_000;
-/** هل مضت مدة الجلسة منذ آخر دخول؟ */
-export const sessionExpired = (createdAt: number, now: number) => now - createdAt > SESSION_MAX_MS;
 /** إضافة بصمة جديدة تتطلب تحققًا بكلمة المرور خلال آخر 10 دقائق (لا يكفي رمز جلسة مسروق) */
 const STEP_UP_MS = 10 * 60_000;
 const normUser = (v: unknown) => str(v, 40).trim().toLowerCase();
