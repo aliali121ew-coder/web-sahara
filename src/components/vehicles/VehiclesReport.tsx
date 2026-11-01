@@ -135,8 +135,9 @@ export const VehiclesReport: React.FC = () => {
   const [catLabels] = useCategoryNames();
   const home = () => { setVehicle(null); setAnalysis(false); setCategory(null); setLab(null); };
   const crumbs: Crumb[] = [{ label: 'تقرير العربات', onClick: home }];
+  const categoryName = category ? catLabels[category] || categoryLabel(category) || 'أخرى' : '';
+  if (category) crumbs.push({ label: categoryName, onClick: () => { setVehicle(null); setAnalysis(false); setLab(null); } });
   if (analysis && dates.length) crumbs.push({ label: 'تحليل الاستهلاك', onClick: () => { setVehicle(null); setLab(null); } });
-  else if (category) crumbs.push({ label: catLabels[category] || categoryLabel(category) || 'أخرى', onClick: () => setVehicle(null) });
   if (selected) crumbs.push({ label: <>العربة <bdi dir="ltr" className="font-mono">{selected.vehicle}</bdi></> });
   if (lab && !selected) crumbs.push(
     { label: <>العربة <bdi dir="ltr" className="font-mono">{lab}</bdi></>, onClick: () => { setVehicle(lab); setLab(null); } },
@@ -174,7 +175,7 @@ export const VehiclesReport: React.FC = () => {
     return (
       <div className="space-y-3">
         <VehicleCrumbs items={crumbs} />
-        <ConsumptionAnalysis allFills={allFills} endDate={end} onOpen={setVehicle} onLab={setLab} />
+        <ConsumptionAnalysis allFills={allFills} endDate={end} category={category} categoryName={categoryName} onClearCategory={() => setCategory(null)} onOpen={setVehicle} onLab={setLab} />
       </div>
     );
   }

@@ -1,7 +1,8 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useMemo, useState } from 'react';
-import { ArrowDownLeft, ArrowDownWideNarrow, ArrowUpRight, ChevronLeft, ChevronRight, FlaskConical, Repeat2, Search } from 'lucide-react';
+import { ArrowDownLeft, ArrowDownWideNarrow, ArrowUpRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, FlaskConical, Repeat2, Search, X } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
+import { DateRangeCalendar } from '../ui/DateRangeCalendar';
 import { FREQUENT_DAYS, VEHICLE_PROFILES_KEY, daysBetween, imageGround, vehicleCategory, vehicleImage, type DayFill, type VehicleProfile } from '../../lib/vehicleFuel';
 import { VEHICLE_REGISTRY_KEY, type VehicleRegistryEntry } from '../../lib/vehicleRegistry';
 import { useCategoryNames, useVehicleNames } from './categories';
@@ -12,6 +13,8 @@ type Status = 'حرج' | 'مرتفع' | 'طبيعي' | 'منخفض' | 'جديد'
 type SortKey = 'change' | 'current';
 
 const PAGE = 10;
+/** أرقام الصفحات الظاهرة، والباقي بالأسهم */
+const PAGE_BUTTONS = 5;
 const UNITS: [Unit, string][] = [['day', 'يومي'], ['week', 'أسبوعي'], ['month', 'شهري']];
 const MONTHS = ['كانون 2', 'شباط', 'آذار', 'نيسان', 'أيار', 'حزيران', 'تموز', 'آب', 'أيلول', 'تشرين 1', 'تشرين 2', 'كانون 1'];
 
@@ -99,8 +102,20 @@ const Delta: React.FC<{ value: number | null; className?: string }> = ({ value, 
  * تحليل الاستهلاك: مقارنة كل عربة على آخر 4 فترات (يوم/أسبوع/شهر) لكشف التفويل العالي.
  * المقارنة على المعدل اليومي في أيام الكشوف فقط، حتى لا تُقارن فترة كاملة بفترة بدأت فيها الكشوف قبل يومين.
  * الضغط على صف يفتح صفحة العربة، والمرور عليه يعرضها بالجانب.
+ * endDate هو اليوم الافتراضي للتحليل ويتغير من تقويم الصفحة. مع category تظهر عربات الفئة فقط،
+ * وأيام الكشوف تبقى محسوبة من كل الأسطول حتى يُعد يوم كشف لم تفوّل فيه الفئة يومًا بلا استهلاك.
  */
-export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: string; onOpen: (vehicle: string) => void; onLab: (vehicle: string) => void }> = ({ allFills, endDate, onOpen, onLab }) => {
+export const ConsumptionAnalysis: React.FC<{
+  allFills: DayFill[];
+  endDate: string;
+  category?: string | null;
+  categoryName?: string;
+  onClearCategory?: () => void;
+  onOpen: (vehicle: string) => void;
+  onLab: (vehicle: string) => void;
+}> = ({ allFills, endDate: initialEnd, category, categoryName, onClearCategory, onOpen, onLab }) => {
+  const [endDate, setEndDate] = useState(initialEnd);
+  const [dateOpen, setDateOpen] = useState(false);
   const [unit, setUnit] = useState<Unit>('week');
   const [filter, setFilter] = useState<Status | 'all'>('all');
   const [sort, setSort] = useState<SortKey>('change');
@@ -117,7 +132,7 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
 
   /** عدد أيام الكشوف في كل فترة (أي تاريخ فيه تفويلات لأي عربة) */
   const cov = useMemo(() => periods.map(p => new Set(allFills.filter(f => f.date >= p.from && f.date <= p.to).map(f => f.date)).size), [allFills, periods]);
-  const firstSheet = useMemo(() => allFills.reduce((m, f) => (!m || f.date < m ? f.date : m), ''), [allFills]);
+  const sheetDates = useMemo(() => new Set(allFills.map(f => f.date)), [allFills]);
 
   const rows = useMemo<Row[]>(() => {
     const byVehicle = new Map<string, DayFill[]>();
@@ -177,9 +192,9 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
         : c >= 30 || (r.close && c >= 20) ? 'حرج'
         : c >= 15 ? 'مرتفع' : c <= -10 ? 'منخفض' : 'طبيعي';
       return { ...r, catAvg, dev, status };
-    });
+    }).filter(r => !category || r.catKey === category);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allFills, periods, cov, names, labels, profiles]);
+  }, [allFills, periods, cov, names, labels, profiles, category]);
 
   const sorted = useMemo(() => {
     const key = (r: Row) => (sort === 'current' ? r.p[3] : r.change ?? -Infinity);
@@ -194,6 +209,8 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
   const pages = Math.max(1, Math.ceil(visible.length / PAGE));
   const cur = Math.min(page, pages - 1);
   const view = visible.slice(cur * PAGE, cur * PAGE + PAGE);
+  const pageCount = Math.min(PAGE_BUTTONS, pages);
+  const firstPage = Math.min(Math.max(0, cur - Math.floor(pageCount / 2)), pages - pageCount);
 
   const k = useMemo(() => {
     const totals = [0, 1, 2, 3].map(i => rows.reduce((s, r) => s + r.p[i], 0));
@@ -251,14 +268,38 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
   return (
     <div className="vehicle-page space-y-5 pb-12 font-cairo">
       {/* العنوان والأدوات */}
-      <div className="va-rise flex flex-wrap items-end justify-between gap-3">
-        <h2 className="text-2xl sm:text-[28px] font-black tracking-tight text-slate-900 dark:text-white">تحليل الاستهلاك</h2>
-        <div className="flex flex-wrap items-center gap-2.5">
-          {firstSheet && (
-            <span className="inline-flex items-center gap-2 h-10 px-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300">
-              <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />الكشوف من <bdi className="font-mono">{short(firstSheet)}</bdi>
+      <div className="va-rise relative z-30 flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="text-2xl sm:text-[28px] font-black tracking-tight text-slate-900 dark:text-white">تحليل الاستهلاك</h2>
+          {category && (
+            <span className="inline-flex items-center gap-1.5 h-8 pr-3 pl-1.5 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 text-xs font-black">
+              {categoryName}
+              <button type="button" onClick={onClearCategory} aria-label="إلغاء تحديد الفئة" title="كل الفئات" className="w-5 h-5 rounded-full inline-flex items-center justify-center hover:bg-indigo-100 dark:hover:bg-indigo-900/60 cursor-pointer"><X className="w-3 h-3" /></button>
             </span>
           )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="relative">
+            <button type="button" aria-label="تاريخ التحليل" onClick={() => setDateOpen(o => !o)} className="inline-flex items-center gap-2 h-10 px-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-xs font-bold font-mono text-slate-700 dark:text-slate-200 hover:border-sky-400 cursor-pointer">
+              <CalendarDays className="w-4 h-4 text-sky-600" />{endDate}
+              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${dateOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {dateOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setDateOpen(false)} />
+                <div className="absolute z-50 top-full mt-2 right-0 sm:right-auto sm:left-0">
+                  <DateRangeCalendar
+                    single
+                    from={endDate}
+                    to={endDate}
+                    marked={sheetDates}
+                    onApply={d => { setEndDate(d); setPage(0); setDateOpen(false); }}
+                    onClear={() => setDateOpen(false)}
+                  />
+                </div>
+              </>
+            )}
+          </div>
           <div role="group" aria-label="مدة كل عمود" className="flex gap-0.5 p-1 rounded-2xl bg-slate-200/70 dark:bg-slate-800">
             {UNITS.map(([u, l]) => (
               <button key={u} type="button" aria-pressed={unit === u} onClick={() => { setUnit(u); setPage(0); }} className={`h-9 px-4 rounded-xl text-sm font-bold cursor-pointer transition-all duration-200 ${unit === u ? 'bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}>{l}</button>
@@ -394,11 +435,8 @@ export const ConsumptionAnalysis: React.FC<{ allFills: DayFill[]; endDate: strin
             {pages > 1 && (
               <div className="flex items-center gap-1">
                 <button type="button" disabled={cur === 0} onClick={() => setPage(cur - 1)} aria-label="الصفحة السابقة" className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center disabled:opacity-40 cursor-pointer"><ChevronRight className="w-4 h-4" /></button>
-                {Array.from({ length: pages }, (_, i) => i).filter(i => i === 0 || i === pages - 1 || Math.abs(i - cur) <= 1).map((i, idx, arr) => (
-                  <React.Fragment key={i}>
-                    {idx > 0 && i - arr[idx - 1] > 1 && <span className="px-1">…</span>}
-                    <button type="button" aria-current={i === cur ? 'page' : undefined} onClick={() => setPage(i)} className={`w-8 h-8 rounded-lg text-xs font-bold font-mono cursor-pointer transition-colors ${i === cur ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-400'}`}>{i + 1}</button>
-                  </React.Fragment>
+                {Array.from({ length: pageCount }, (_, i) => firstPage + i).map(i => (
+                  <button key={i} type="button" aria-current={i === cur ? 'page' : undefined} onClick={() => setPage(i)} className={`w-8 h-8 rounded-lg text-xs font-bold font-mono cursor-pointer transition-colors ${i === cur ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-400'}`}>{i + 1}</button>
                 ))}
                 <button type="button" disabled={cur === pages - 1} onClick={() => setPage(cur + 1)} aria-label="الصفحة التالية" className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center disabled:opacity-40 cursor-pointer"><ChevronLeft className="w-4 h-4" /></button>
               </div>
