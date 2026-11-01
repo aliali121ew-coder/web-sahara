@@ -22,7 +22,7 @@ export const InstallCard: React.FC = () => {
   return createPortal(
     <div dir={i18n.dir()} className="no-print fixed z-[95] inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+12px)] sm:inset-x-auto sm:start-1/2 sm:-translate-x-1/2 rtl:sm:translate-x-1/2 sm:w-[380px] rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl p-4 font-cairo animate-in fade-in slide-in-from-bottom-4 duration-300">
       <div className="flex items-start gap-3">
-        <img src="/app-tile-192.png" alt="" className="w-12 h-12 rounded-2xl shrink-0 shadow-sm" />
+        <img src="/icon-192.png" alt="" className="w-12 h-12 rounded-2xl shrink-0 shadow-sm" />
         <div className="min-w-0 flex-1">
           <div className="font-black text-sm text-slate-900 dark:text-white">{t('install.title')}</div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('install.text')}</p>
