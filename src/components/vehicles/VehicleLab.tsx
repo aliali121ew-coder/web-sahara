@@ -98,6 +98,7 @@ export const VehicleLab: React.FC<{
 }> = ({ vehicle, allFills, refills, editable, onSwitch }) => {
   const [profiles, setProfiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
   const [registry, setRegistry] = useSyncedStorage<VehicleRegistryEntry[]>(VEHICLE_REGISTRY_KEY, []);
+  useEffect(() => { window.scrollTo(0, 0); }, [vehicle]);
   const profile = profiles.find(p => p.id === vehicle);
   const code = (profile?.name || vehicle).trim();
   const reg = registry.find(r => r.id === code.toUpperCase()) || registry.find(r => r.id === vehicle.toUpperCase());

@@ -1,5 +1,5 @@
 /* eslint-disable i18next/no-literal-string */
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowDownLeft, ArrowDownWideNarrow, ArrowUpRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, FlaskConical, Repeat2, Search, X } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
@@ -114,6 +114,7 @@ export const ConsumptionAnalysis: React.FC<{
   onOpen: (vehicle: string) => void;
   onLab: (vehicle: string) => void;
 }> = ({ allFills, endDate: initialEnd, category, categoryName, onClearCategory, onOpen, onLab }) => {
+  useEffect(() => { window.scrollTo(0, 0); }, []);
   const [endDate, setEndDate] = useState(initialEnd);
   const [dateOpen, setDateOpen] = useState(false);
   const [unit, setUnit] = useState<Unit>('day');

@@ -67,7 +67,7 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, editable, ba
   const checks = useMemo(() => checkFills(fills, profile), [fills, profile]);
   const saveProfile = (p: VehicleProfile) => { setProfiles(prev => [p, ...prev.filter(x => x.id !== p.id)]); setEditing(false); };
 
-  useEffect(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, [stat.vehicle]);
+  useEffect(() => { window.scrollTo(0, 0); }, [stat.vehicle]);
 
   const caps = tankCaps(profile);
   const tanks = caps.length || null;
