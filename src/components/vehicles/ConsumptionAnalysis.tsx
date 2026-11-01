@@ -549,10 +549,10 @@ export const ConsumptionAnalysis: React.FC<{
                     const reg = registry.find(r => r.id === sel.code.toUpperCase());
                     const label = 'block text-[11px] font-bold text-slate-500 dark:text-slate-400';
                     return (
-                      <button type="button" onClick={() => onLab(sel.vehicle)} aria-label={`افتح مختبر العربة ${sel.display}`} className="group mt-auto shrink-0 w-full text-right rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 cursor-pointer transition-colors duration-200 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+                      <button type="button" onClick={() => onLab(sel.vehicle)} aria-label={`افتح مختبر العربة ${sel.display}`} className="group mt-auto shrink-0 w-full text-right rounded-2xl border border-indigo-100 dark:border-indigo-900/60 bg-gradient-to-l from-indigo-50 to-sky-50 dark:from-indigo-950/50 dark:to-sky-950/30 cursor-pointer transition-all duration-200 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
                         <span className="flex items-center justify-between gap-3 px-4 py-3">
                           <span className="flex items-center gap-2.5 min-w-0">
-                            <span className="w-9 h-9 shrink-0 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-300 inline-flex items-center justify-center"><FlaskConical className="w-[18px] h-[18px]" /></span>
+                            <span className="w-9 h-9 shrink-0 rounded-xl bg-white dark:bg-slate-900/70 text-indigo-600 dark:text-indigo-300 inline-flex items-center justify-center"><FlaskConical className="w-[18px] h-[18px]" /></span>
                             <span className="min-w-0">
                               <span className="block text-sm font-black text-slate-900 dark:text-white">مختبر العربة</span>
                               <span className="block text-[11.5px] text-slate-500 dark:text-slate-400 truncate">من اليوم إلى سنة · الصرف الحقيقي</span>
@@ -560,10 +560,10 @@ export const ConsumptionAnalysis: React.FC<{
                           </span>
                           <ChevronLeft className="w-[18px] h-[18px] shrink-0 text-indigo-500 transition-transform group-hover:-translate-x-1" />
                         </span>
-                        <span className="grid grid-cols-[1.1fr_1.3fr_0.7fr] border-t border-slate-100 dark:border-slate-800 px-4 py-2.5">
+                        <span className="grid grid-cols-[1.1fr_1.3fr_0.7fr] border-t border-indigo-100 dark:border-indigo-900/50 px-4 py-2.5">
                           <span className="min-w-0"><span className={label}>رقم الآلية</span><span className="block font-mono text-[13.5px] font-semibold text-slate-900 dark:text-white truncate" dir="ltr" style={{ textAlign: 'right' }}>{reg?.plate || '—'}</span></span>
-                          <span className="min-w-0 border-r border-slate-100 dark:border-slate-800 pr-3"><span className={label}>المجموعة</span><span className="block text-[12.5px] font-bold text-slate-900 dark:text-white truncate">{reg?.group?.replace(/^اليات\s*/, '').replace(/[\s-]+$/, '') || '—'}</span></span>
-                          <span className="border-r border-slate-100 dark:border-slate-800 pr-3"><span className={label}>الخزانات</span><span className="block font-mono text-[13.5px] font-semibold text-slate-900 dark:text-white">{prof?.tankLiters ? (prof.tank2Liters ? 2 : 1) : '—'}</span></span>
+                          <span className="min-w-0 border-r border-indigo-100 dark:border-indigo-900/50 pr-3"><span className={label}>المجموعة</span><span className="block text-[12.5px] font-bold text-slate-900 dark:text-white truncate">{reg?.group?.replace(/^اليات\s*/, '').replace(/[\s-]+$/, '') || '—'}</span></span>
+                          <span className="border-r border-indigo-100 dark:border-indigo-900/50 pr-3"><span className={label}>الخزانات</span><span className="block font-mono text-[13.5px] font-semibold text-slate-900 dark:text-white">{prof?.tankLiters ? (prof.tank2Liters ? 2 : 1) : '—'}</span></span>
                         </span>
                       </button>
                     );
