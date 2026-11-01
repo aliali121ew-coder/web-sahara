@@ -562,10 +562,11 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     return request.headers.get('x-session-remember') === '1' ? withCookie(res, sessionCookie(str(readCookie(request, SESSION_COOKIE), 128), true)) : res;
   }
   if (path === '/auth/logout' && method === 'POST') {
-    // العميل يستدعي /auth/resume/forget معه (بلا شرط جلسة) فيُلغى الدخول المحفوظ أيضًا
+    // يُلغى رمز المتابعة هنا أيضًا حتى لا يعتمد على طلب /auth/resume/forget المنفصل (قد يضيع في اتصال ضعيف)
     await db.prepare('DELETE FROM chat_sessions WHERE token_hash = ?').bind(session.tokenHash).run();
+    await dropResume(db, request);
     await audit(db, request, authId, 'auth.logout');
-    return withCookie(json({ ok: true }), clearedCookie());
+    return withCookie(withCookie(json({ ok: true }), clearedCookie()), clearedResume());
   }
   // تغيير كلمة المرور: يُخرج كل الأجهزة الأخرى ويُبقي هذا الجهاز
   if (path === '/auth/password' && method === 'POST') {

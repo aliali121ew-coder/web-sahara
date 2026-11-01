@@ -171,8 +171,10 @@ const KEY_RULES: Rule[] = [
   // سجل التنبيهات (التحقق من اتصال التقارير): يقرؤه من يرى أحد الأقسام الأربعة، ويضيف إليه من يحفظ يومًا فيها،
   // ويعلّم التنبيه كمراجَع كل من يقرأ؛ تعديله وحذفه لمدير النظام
   { match: eq('sahara_report_alerts_v1'), read: ['sahara.balance', 'etihad.balance', 'sahara.petrol', 'sahara.black-oil', 'etihad.black-oil'], write: [], create: ['sahara.balance', 'etihad.balance', 'sahara.petrol', 'sahara.black-oil', 'etihad.black-oil'], markRead: true },
-  // نشاط المستخدمين على التقارير ومحادثات التصحيح: نفس من يرى سجل التنبيهات ويضيف إليه
-  { match: eq('sahara_report_activity_v1', 'sahara_report_threads_v1'), read: ['sahara.balance', 'etihad.balance', 'sahara.petrol', 'sahara.black-oil', 'etihad.black-oil'], write: [], create: ['sahara.balance', 'etihad.balance', 'sahara.petrol', 'sahara.black-oil', 'etihad.black-oil'] },
+  // نشاط المستخدمين على التقارير: نفس من يرى سجل التنبيهات ويضيف إليه
+  { match: eq('sahara_report_activity_v1'), read: ['sahara.balance', 'etihad.balance', 'sahara.petrol', 'sahara.black-oil', 'etihad.black-oil'], write: [], create: ['sahara.balance', 'etihad.balance', 'sahara.petrol', 'sahara.black-oil', 'etihad.black-oil'] },
+  // محادثات التصحيح: يردّ من يملك «تعديل» على سجل التنبيهات (worker/storage/reportLogs.ts يفحص كل رد)
+  { match: eq('sahara_report_threads_v1'), read: ['sahara.balance', 'etihad.balance', 'sahara.petrol', 'sahara.black-oil', 'etihad.black-oil'], write: [], create: ['alerts'] },
   // الإشعارات: يقرؤها الجميع ويعلّمونها كمقروءة؛ ينشئها من يسجّل واردًا أو طلب تجهيز؛ تعديلها وحذفها لمدير النظام
   { match: eq('sahara_notifications'), read: [COMMON], write: [], create: ['deliveries-sahara', 'deliveries-etihad', 'tasks'], markRead: true },
   // رسائل التوجيه القديمة: قراءة للجميع، والكتابة لمدير النظام
