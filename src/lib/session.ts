@@ -176,9 +176,7 @@ export async function sendSupportRequest(body: { name: string; phone: string; us
 /** جلب بيانات الحساب الحالي وتخزينها محليًا */
 export async function refreshProfile(): Promise<SessionProfile | null> {
   try {
-    // جلسة «تذكّرني» محفوظة في localStorage: الخادم يجدد عمر كوكيها مع كل فتح
-    const remembered = !!localStorage.getItem(SESSION_USER_KEY);
-    const res = await fetch('/api/chat/auth/me', { cache: 'no-store', headers: { ...sessionHeaders(), ...(remembered ? { 'x-session-remember': '1' } : {}) } });
+    const res = await fetch('/api/chat/auth/me', { cache: 'no-store', headers: sessionHeaders() });
     if (!res.ok) return getProfile();
     const { user } = (await res.json()) as { user: SessionProfile };
     localStorage.setItem(SESSION_PROFILE_KEY, JSON.stringify(user));

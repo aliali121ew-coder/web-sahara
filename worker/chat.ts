@@ -258,10 +258,12 @@ const MIN_PASSWORD = 8;
 /** الحد الأقصى لحسابات المصادقة */
 const MAX_ACCOUNTS = 100;
 /**
- * الجلسة تبقى مفتوحة حتى تسجيل الخروج: تُلغى فقط بعد 400 يوم بلا أي استخدام (أقصى عمر للكوكي في المتصفحات)،
- * أو بتغيير كلمة المرور أو إيقاف الحساب
+ * الجلسة تنتهي بعد 7 أيام من آخر دخول مهما كان الجهاز نشطًا، فيعود المستخدم لشاشة الدخول ويكتب كلمة المرور.
+ * الاستخدام لا يمدّدها، وتُلغى قبل ذلك بتسجيل الخروج أو تغيير كلمة المرور أو إيقاف الحساب
  */
-const SESSION_MAX_MS = 400 * 24 * 3600_000;
+const SESSION_MAX_MS = 7 * 24 * 3600_000;
+/** هل مضت مدة الجلسة منذ آخر دخول؟ */
+export const sessionExpired = (createdAt: number, now: number) => now - createdAt > SESSION_MAX_MS;
 /** إضافة بصمة جديدة تتطلب تحققًا بكلمة المرور خلال آخر 10 دقائق (لا يكفي رمز جلسة مسروق) */
 const STEP_UP_MS = 10 * 60_000;
 const normUser = (v: unknown) => str(v, 40).trim().toLowerCase();
@@ -286,7 +288,7 @@ const withPerms = (a: AccountRow | undefined) => a && { ...a, perms: parsePerms(
 // HttpOnly: لا تصل إليه سكربتات الصفحة. SameSite=Strict: لا يُرسل مع طلبات من مواقع أخرى. Path=/api: لا يُرسل مع الملفات الثابتة.
 const SESSION_COOKIE = 'sahara_session';
 const cookieAttrs = 'Path=/api; HttpOnly; Secure; SameSite=Strict';
-/** «تذكّرني»: الكوكي يبقى مدة الجلسة على الخادم (ويتجدد عند كل فتح من /auth/me)، وبدونه ينتهي بإغلاق المتصفح */
+/** «تذكّرني»: الكوكي يبقى مدة الجلسة على الخادم، وبدونه ينتهي بإغلاق المتصفح */
 const sessionCookie = (key: string, remember: boolean) =>
   `${SESSION_COOKIE}=${key}; ${cookieAttrs}${remember ? `; Max-Age=${SESSION_MAX_MS / 1000}` : ''}`;
 const clearedCookie = () => `${SESSION_COOKIE}=; ${cookieAttrs}; Max-Age=0`;
@@ -306,7 +308,8 @@ const withCookie = (res: Response, cookie: string) => {
 // مع «تذكّرني» يحصل الجهاز على رمز متابعة (كوكي HttpOnly منفصل) يعيد الجلسة إن ضاعت (مُسح كوكيها أو تعذّر الاتصال)
 // بلا طلب كلمة المرور: يستخدمه التطبيق تلقائيًا عند الفتح، وتكتفي شاشة الدخول بزر «تسجيل الدخول».
 // كلمة المرور نفسها لا تُحفظ على الجهاز أبدًا. الرمز لا يُستبدل عند الاستخدام (ضياع الرد في اتصال ضعيف كان سيبطله)
-// بل تتجدد مهلته فقط، ويُلغى بتسجيل الخروج أو تغيير كلمة المرور أو إيقاف الحساب.
+// ومهلته ثابتة من آخر دخول: الجلسة الناتجة عنه تنتهي معه ولا تمدّد الأيام السبعة،
+// ويُلغى قبلها بتسجيل الخروج أو تغيير كلمة المرور أو إيقاف الحساب.
 const RESUME_COOKIE = 'sahara_resume';
 const RESUME_MAX_MS = SESSION_MAX_MS;
 const resumeAttrs = 'Path=/api/chat/auth; HttpOnly; Secure; SameSite=Strict';
@@ -322,18 +325,15 @@ const dropResume = async (db: ChatDB, request: Request) => {
 /**
  * جلسة جديدة لهذا الجهاز: الرمز يصل للمتصفح في كوكي HttpOnly فقط ويُحفظ على الخادم كبصمة. pwAt = وقت التحقق بكلمة المرور (0 للبصمة).
  * resumeUntil: رمز متابعة جديد ينتهي في هذا الوقت. 0 = بلا رمز (ويُلغى أي رمز سابق على هذا الجهاز)، -1 = يبقى الرمز الحالي كما هو
- * resumeToken: يبقى هذا الرمز نفسه وتتجدد مهلته إلى resumeUntil
+ * resumeToken: يبقى هذا الرمز نفسه حتى resumeUntil. loginAt: وقت آخر دخول، ومنه تُحسب مدة الجلسة
  */
-const newSession = async (db: ChatDB, request: Request, userId: string, now: number, opts: { pwAt?: number; remember?: boolean; resumeUntil?: number; resumeToken?: string } = {}) => {
-  const { pwAt = 0, remember = true, resumeUntil = 0, resumeToken = '' } = opts;
+const newSession = async (db: ChatDB, request: Request, userId: string, now: number, opts: { pwAt?: number; remember?: boolean; resumeUntil?: number; resumeToken?: string; loginAt?: number } = {}) => {
+  const { pwAt = 0, remember = true, resumeUntil = 0, resumeToken = '', loginAt = now } = opts;
   const key = newKey();
-  await db.prepare('INSERT INTO chat_sessions (token_hash, user_id, created_at, last_used, pw_at) VALUES (?, ?, ?, ?, ?)').bind(await hashKey(key), userId, now, now, pwAt).run();
+  await db.prepare('INSERT INTO chat_sessions (token_hash, user_id, created_at, last_used, pw_at) VALUES (?, ?, ?, ?, ?)').bind(await hashKey(key), userId, loginAt, now, pwAt).run();
   const res = withCookie(json({ ok: true, id: userId, ...(resumeUntil > 0 ? { resumeUntil } : {}) }), sessionCookie(key, remember));
   if (resumeUntil === -1) return res;
-  if (resumeToken) {
-    await db.prepare('UPDATE chat_resume SET expires_at = ? WHERE token_hash = ?').bind(resumeUntil, await hashKey(resumeToken)).run();
-    return withCookie(res, resumeCookie(resumeToken, resumeUntil, now));
-  }
+  if (resumeToken) return withCookie(res, resumeCookie(resumeToken, resumeUntil, now));
   await dropResume(db, request);
   if (!resumeUntil) return withCookie(res, clearedResume());
   const token = newKey();
@@ -353,7 +353,7 @@ const authUser = async (request: Request, db: ChatDB) => {
   if (!s || s.id !== id) return null;
   // حساب تجربة انتهت مدته: تُرفض كل الطلبات فورًا (حتى الجلسات المفتوحة)
   if (isExpired(s.expires_at)) return null;
-  if (Date.now() - s.last_used > SESSION_MAX_MS) {
+  if (sessionExpired(s.created_at, Date.now())) {
     await db.prepare('DELETE FROM chat_sessions WHERE token_hash = ?').bind(s.token_hash).run();
     return null;
   }
@@ -514,6 +514,8 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     const expired = () => withCookie(json({ error: 'انتهت صلاحية الدخول المحفوظ، أدخل كلمة المرور', code: 'resume_expired' }, 401), clearedResume());
     if (!token) return expired();
     await db.prepare('DELETE FROM chat_resume WHERE expires_at < ?').bind(now).run();
+    // رموز صدرت قبل تحديد المدة بسبعة أيام (كانت حتى 400 يوم) تُقصَّر إليها
+    await db.prepare('UPDATE chat_resume SET expires_at = ?1 WHERE expires_at > ?1').bind(now + RESUME_MAX_MS).run();
     const { results } = await db.prepare(
       "SELECT r.user_id, r.expires_at, u.username, u.expires_at AS account_expires FROM chat_resume r JOIN chat_users u ON u.id = r.user_id WHERE r.token_hash = ? AND u.disabled = 0 AND u.pass_hash != ''",
     ).bind(await hashKey(token)).all<{ user_id: string; expires_at: number; username: string; account_expires: number }>();
@@ -526,7 +528,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     }
     await db.prepare('UPDATE chat_users SET last_seen = ? WHERE id = ?').bind(now, r.user_id).run();
     await audit(db, request, r.user_id, 'auth.login', 'دخول محفوظ', { username: r.username });
-    return newSession(db, request, r.user_id, now, { resumeUntil: now + RESUME_MAX_MS, resumeToken: token });
+    return newSession(db, request, r.user_id, now, { resumeUntil: r.expires_at, resumeToken: token, loginAt: r.expires_at - RESUME_MAX_MS });
   }
   // نسيان الدخول المحفوظ على هذا الجهاز («الدخول بحساب آخر»)
   if (path === '/auth/resume/forget' && method === 'POST') {
@@ -557,9 +559,7 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
   // ───── جلستي وحسابي ─────
   if (path === '/auth/me' && method === 'GET') {
     const { results } = await db.prepare(`SELECT ${ACCOUNT_COLS} FROM chat_users WHERE id = ?`).bind(authId).all<AccountRow>();
-    const res = json({ user: withPerms(results[0]) });
-    // عند كل فتح يتجدد عمر كوكي الجلسة (إن كانت مع «تذكّرني») حتى لا تنتهي ما دام الجهاز مستخدمًا
-    return request.headers.get('x-session-remember') === '1' ? withCookie(res, sessionCookie(str(readCookie(request, SESSION_COOKIE), 128), true)) : res;
+    return json({ user: withPerms(results[0]) });
   }
   if (path === '/auth/logout' && method === 'POST') {
     // يُلغى رمز المتابعة هنا أيضًا حتى لا يعتمد على طلب /auth/resume/forget المنفصل (قد يضيع في اتصال ضعيف)

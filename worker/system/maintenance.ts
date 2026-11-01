@@ -14,8 +14,8 @@ import { findOrphanFiles, migrateLegacyFiles, purgeTrash, verifyFiles } from '..
 const DAY = 86400_000;
 const NOTIF_KEEP_MS = 90 * DAY;
 const AUDIT_KEEP_MS = 180 * DAY;
-/** الجلسة تُحذف بعد هذه المدة بلا استخدام (نفس المدة في worker/chat.ts) */
-const SESSION_MAX_MS = 400 * DAY;
+/** الجلسة تُحذف بعد هذه المدة من آخر دخول (نفس المدة في worker/chat.ts) */
+const SESSION_MAX_MS = 7 * DAY;
 
 /** تشغيل مهمة مع تسجيلها في system_jobs (البداية، النهاية، الحالة، التفاصيل) */
 export const runJob = async <T>(env: Env, name: string, by: string, fn: () => Promise<T>): Promise<T> => {
@@ -132,7 +132,7 @@ export const cleanup = async (env: Env, now = Date.now()) => {
   const run = async (label: string, sql: string, ...args: unknown[]) => {
     try { const r = await env.DB.prepare(sql).bind(...args).run(); out[label] = r.meta?.changes ?? 0; } catch { out[label] = 0; }
   };
-  await run('expiredSessions', 'DELETE FROM chat_sessions WHERE last_used < ?', now - SESSION_MAX_MS);
+  await run('expiredSessions', 'DELETE FROM chat_sessions WHERE created_at < ?', now - SESSION_MAX_MS);
   await run('expiredResume', 'DELETE FROM chat_resume WHERE expires_at < ?', now);
   await run('expiredChallenges', 'DELETE FROM webauthn_challenges WHERE expires_at < ?', now);
   await run('orphanSaharaChunks', 'DELETE FROM sahara_file_chunks WHERE file_id NOT IN (SELECT id FROM sahara_files)');
