@@ -24,7 +24,7 @@ const dayLabel = (iso: string) => {
 };
 const timeLabel = (iso: string) => new Date(iso).toLocaleTimeString('ar-IQ-u-nu-latn', { hour: '2-digit', minute: '2-digit' });
 
-/** الملفات المرفوعة (آخر 24 ساعة): كارت لكل ملف بمن رفعه ومتى، مجمّعة حسب اليوم مع بحث وفلترة بالمستخدم */
+/** الملفات المرفوعة منذ الساعة 7 صباحًا: كارت لكل ملف بمن رفعه ومتى، مجمّعة حسب اليوم مع بحث وفلترة بالمستخدم */
 export const FilesDrawer: React.FC<{
   files: VehicleFile[];
   editable: boolean;
@@ -124,7 +124,7 @@ export const FilesDrawer: React.FC<{
               })}
             </div>
           ))}
-          {!groups.length && <p className="text-sm text-slate-400 text-center py-10">{files.length ? 'لا نتائج مطابقة' : 'لا توجد ملفات مرفوعة خلال آخر 24 ساعة'}</p>}
+          {!groups.length && <p className="text-sm text-slate-400 text-center py-10">{files.length ? 'لا نتائج مطابقة' : 'لا توجد ملفات مرفوعة منذ الساعة 7 صباحًا'}</p>}
         </div>
 
         <div className="flex items-center justify-between gap-3 px-4 py-3.5 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
@@ -132,7 +132,7 @@ export const FilesDrawer: React.FC<{
             {users.slice(0, 4).map(([u], i) => (
               <span key={u} title={u} className={`w-7 h-7 rounded-full inline-flex items-center justify-center text-[11px] font-black ring-2 ring-white dark:ring-slate-900 ${avatarTone(u)} ${i ? '-mr-2' : ''}`}>{u.charAt(0)}</span>
             ))}
-            <span className="text-xs text-slate-500 dark:text-slate-400 mr-2 truncate">{users.length ? `شارك ${users.length} في الرفع` : 'تُعرض ملفات آخر 24 ساعة'}</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 mr-2 truncate">{users.length ? `شارك ${users.length} في الرفع` : 'تُصفَّر القائمة كل يوم الساعة 7 صباحًا'}</span>
           </div>
           {editable && (
             <button type="button" onClick={onUpload} className="flex items-center gap-1.5 h-10 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-sm font-black cursor-pointer"><Upload className="w-4 h-4" />رفع ملفات</button>

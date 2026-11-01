@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import {
-  VEHICLE_FILES_KEY, VEHICLE_REFILLS_KEY, groupDayFills, previousDate, readVehicleFile, vehicleStats,
+  VEHICLE_FILES_KEY, VEHICLE_REFILLS_KEY, fileDayStart, groupDayFills, previousDate, readVehicleFile, vehicleStats,
   type VehicleFile, type VehicleRefill,
 } from '../../lib/vehicleFuel';
 
@@ -17,14 +17,13 @@ export const useVehicleData = (scope: Scope | null) => {
   const latestRefills = useRef(refills);
   useEffect(() => { latestRefills.current = refills; }, [refills]);
 
-  // قائمة الملفات تُصفَّر كل 24 ساعة: يُحذف سجل الملف فقط وتبقى تفويلاته المخزنة
-  const DAY_MS = 24 * 60 * 60 * 1000;
+  // قائمة الملفات تُصفَّر كل يوم الساعة 7 صباحًا: يُحذف سجل الملف فقط وتبقى تفويلاته المخزنة
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const t = window.setInterval(() => setNow(Date.now()), 60_000); return () => window.clearInterval(t); }, []);
-  const recentFiles = useMemo(() => files.filter(f => now - Date.parse(f.uploadedAt) < DAY_MS), [files, now, DAY_MS]);
+  const recentFiles = useMemo(() => files.filter(f => Date.parse(f.uploadedAt) >= fileDayStart(now)), [files, now]);
   useEffect(() => {
-    if (recentFiles.length !== files.length) setFiles(prev => prev.filter(f => Date.now() - Date.parse(f.uploadedAt) < DAY_MS));
-  }, [recentFiles.length, files.length, setFiles, DAY_MS]);
+    if (recentFiles.length !== files.length) setFiles(prev => prev.filter(f => Date.parse(f.uploadedAt) >= fileDayStart(Date.now())));
+  }, [recentFiles.length, files.length, setFiles]);
 
   const allFills = useMemo(() => groupDayFills(refills), [refills]);
   const dates = useMemo(() => [...new Set(allFills.map(f => f.date))].sort(), [allFills]);
@@ -49,7 +48,7 @@ export const useVehicleData = (scope: Scope | null) => {
 
   /**
    * يرفع عدة ملفات، وكل ملف قد يضم عدة كشوف مدموجة. الكشف المرفوع مسبقًا (نفس الموقع والتاريخ، أو نفس رقم المستند)
-   * يُتخطى مع تنبيه، ويُقارن بالتفويلات لأن قائمة الملفات تُصفَّر كل 24 ساعة؛ fallbackDate لسطور الكشف التي بلا تاريخ
+   * يُتخطى مع تنبيه، ويُقارن بالتفويلات لأن قائمة الملفات تُصفَّر كل يوم؛ fallbackDate لسطور الكشف التي بلا تاريخ
    */
   const upload = useCallback(async (list: File[], fallbackDate = ''): Promise<UploadResult[]> => {
     const results: UploadResult[] = [];

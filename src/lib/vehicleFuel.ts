@@ -471,6 +471,13 @@ export type CheckKind = 'capacity' | 'limit' | 'driver' | 'frequent' | 'multi';
 export interface FillCheck { kind: CheckKind; date: string; text: string }
 
 /** مخالفات كل تفويلة مقابل ملف العربة */
+/** بداية يوم قائمة الملفات: آخر الساعة 7 صباحًا بتوقيت العراق (UTC+3 طوال السنة) */
+export const fileDayStart = (now: number) => {
+  const d = new Date(now);
+  d.setUTCHours(4, 0, 0, 0);
+  return d.getTime() > now ? d.getTime() - 86400000 : d.getTime();
+};
+
 /** سعات خزانات العربة المسجلة بالترتيب */
 export const tankCaps = (p: VehicleProfile | undefined) => [p?.tankLiters, p?.tank2Liters, p?.tank3Liters].filter((c): c is number => !!c);
 
@@ -569,7 +576,7 @@ export const vehicleCategory = (code: string): VehicleCategory | null => {
 export const vehicleImage = (code: string, photo?: string) => photo || vehicleCategory(code)?.image || '/trucks/semi_truck.jpg';
 
 /** صور أكبر وأدق خاصة بمختبر العربة (مقصوصة على حدودها، لا فراغ تحت العجلات)، وما لا صورة له يرجع لصورة فئته */
-const LAB_IMAGES = new Set(['a', 'at', 'head', 'hf', 'hr', 'hw', 'k', 'ka', 'kb', 'kh', 'kn', 'ks', 'l', 'm', 'r', 'sf1', 'sl', 'sr']);
+const LAB_IMAGES = new Set(['a', 'at', 'bs', 'head', 'hf', 'hr', 'hw', 'k', 'ka', 'kb', 'kh', 'kn', 'ks', 'l', 'm', 'r', 'sf1', 'sl', 'sr']);
 export const labImage = (code: string, photo?: string) => {
   if (photo) return photo;
   const key = vehicleCategory(code)?.key.toLowerCase();

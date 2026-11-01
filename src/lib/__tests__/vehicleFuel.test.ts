@@ -1,11 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { parseVehicleSheet, splitSheets } from '../vehicleFuel';
+import { fileDayStart, parseVehicleSheet, splitSheets } from '../vehicleFuel';
 import type { PdfItem } from '../saharaReportFile';
 
 const item = (str: string, x: number): PdfItem => ({ str, x, y: 0, w: 10 });
 const siteLine = (site: string) => [item('المصنع', 500), item(site, 400)];
 const header = [item('الكمية', 300), item('العربة', 200), item('التاريخ', 100)];
 const row = (vehicle: string, qty: string, date: string) => [item(qty, 300), item(vehicle, 200), item(date, 100)];
+
+describe('fileDayStart', () => {
+  it('يبدأ يوم الملفات الساعة 7 صباحًا بتوقيت العراق', () => {
+    expect(fileDayStart(Date.parse('2026-11-01T08:00:00+03:00'))).toBe(Date.parse('2026-11-01T07:00:00+03:00'));
+    expect(fileDayStart(Date.parse('2026-11-01T07:00:00+03:00'))).toBe(Date.parse('2026-11-01T07:00:00+03:00'));
+    expect(fileDayStart(Date.parse('2026-11-01T06:59:00+03:00'))).toBe(Date.parse('2026-10-31T07:00:00+03:00'));
+    expect(fileDayStart(Date.parse('2026-11-01T02:00:00+03:00'))).toBe(Date.parse('2026-10-31T07:00:00+03:00'));
+  });
+});
 
 describe('splitSheets', () => {
   it('يبدأ كشفًا جديدًا عند كل صفحة فيها عنوان المصنع، وما بعدها تتمة له', () => {
