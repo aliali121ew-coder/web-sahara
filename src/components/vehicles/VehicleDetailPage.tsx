@@ -263,7 +263,7 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, editable, ba
 
         {/* توزيع المواقع + الرسم الخطي */}
         <div className="xl:col-span-4 flex flex-col gap-5">
-          <VehicleDonuts refills={rangedRefills} allRefills={refills} consumption={consumption} />
+          <VehicleDonuts refills={rangedRefills} allRefills={refills} consumption={consumption} period={periodLabel} />
           <RefillTrend fills={fills} consumption={consumption} period={periodLabel} />
         </div>
       </div>

@@ -6,9 +6,9 @@
     "hint": "Each refill quantity = what was used since the previous refill; remaining = previous minus new (for the last refill in the period)"
   },
   "donut": {
-    "fuelTitle": "Refills by site",
+    "fuelTitle": "Total refills",
     "fuelEmpty": "No refills in this period",
-    "consumptionTitle": "Consumption by site",
+    "consumptionTitle": "Total consumption",
     "consumptionEmpty": "Not enough data: consumption is calculated from the previous refill"
   },
   "trend": {

@@ -17,7 +17,7 @@ const liters = (v: number) => fmtNumber(v, { maximumFractionDigits: 1 });
 interface SiteRow { name: string; total: number }
 
 /** دائرة توزيع كمية على المواقع */
-const SiteDonut: React.FC<{ title: string; icon: React.ReactNode; empty: string; sites: SiteRow[]; colorOf: (site: string) => string }> = ({ title, icon, empty, sites, colorOf }) => {
+const SiteDonut: React.FC<{ title: string; icon: React.ReactNode; empty: string; period: string; sites: SiteRow[]; colorOf: (site: string) => string }> = ({ title, icon, empty, period, sites, colorOf }) => {
   const { t } = useTranslation('vehicles');
   const total = sites.reduce((s, x) => s + x.total, 0);
   const [active, setActive] = useState<number | null>(null);
@@ -26,6 +26,7 @@ const SiteDonut: React.FC<{ title: string; icon: React.ReactNode; empty: string;
   return (
     <div className={`${vehicleCard} p-4 min-w-0`}>
       <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">{icon}{title}</h3>
+      <p className="mt-1 text-[11px] font-bold text-slate-500 dark:text-slate-400 truncate"><bdi className="font-mono">{period}</bdi></p>
       {!sites.length ? (
         <div className="h-44 flex items-center justify-center text-center text-sm text-slate-400 px-2">{empty}</div>
       ) : (
@@ -48,7 +49,7 @@ const SiteDonut: React.FC<{ title: string; icon: React.ReactNode; empty: string;
             {sites.map((s, i) => (
               <li key={s.name} onMouseEnter={() => setActive(i)} onMouseLeave={() => setActive(null)} className={`grid grid-cols-[auto_1fr_auto_2.5rem] items-center gap-2 h-[26px] px-1.5 rounded-lg text-xs transition-colors ${active === i ? 'bg-slate-50 dark:bg-slate-800/60' : ''}`}>
                 <span className="w-2 h-2 rounded-full" style={{ background: colorOf(s.name) }} />
-                <span className="font-bold text-slate-700 dark:text-slate-200 truncate">{siteName(s.name)}</span>
+                <span title={siteName(s.name)} className="font-bold text-slate-700 dark:text-slate-200 truncate">{siteName(s.name)}</span>
                 <span className="font-mono text-slate-500 dark:text-slate-400">{liters(s.total)}</span>
                 <span className="font-mono font-black text-slate-700 dark:text-slate-200 text-left">{Math.round((s.total / total) * 100)}%</span>
               </li>
@@ -61,7 +62,7 @@ const SiteDonut: React.FC<{ title: string; icon: React.ReactNode; empty: string;
 };
 
 /** دائرتا التفويل والاستهلاك في الفترة المختارة؛ لون الموقع واحد في الدائرتين */
-export const VehicleDonuts: React.FC<{ refills: VehicleRefill[]; allRefills: VehicleRefill[]; consumption: FillConsumption[] }> = ({ refills, allRefills, consumption }) => {
+export const VehicleDonuts: React.FC<{ refills: VehicleRefill[]; allRefills: VehicleRefill[]; consumption: FillConsumption[]; period: string }> = ({ refills, allRefills, consumption, period }) => {
   const { t } = useTranslation('vehicles');
   const fuelSites = useMemo(() => {
     const by = new Map<string, number>();
@@ -76,8 +77,8 @@ export const VehicleDonuts: React.FC<{ refills: VehicleRefill[]; allRefills: Veh
 
   return (
     <div className="grid grid-cols-[repeat(auto-fit,minmax(13.5rem,1fr))] gap-5">
-      <SiteDonut title={t('donut.fuelTitle')} icon={<PieIcon className="w-4 h-4 text-indigo-500 shrink-0" />} empty={t('donut.fuelEmpty')} sites={fuelSites} colorOf={colorOf} />
-      <SiteDonut title={t('donut.consumptionTitle')} icon={<Flame className="w-4 h-4 text-teal-600 dark:text-teal-500 shrink-0" />} empty={t('donut.consumptionEmpty')} sites={usedSites} colorOf={colorOf} />
+      <SiteDonut title={t('donut.fuelTitle')} icon={<PieIcon className="w-4 h-4 text-indigo-500 shrink-0" />} empty={t('donut.fuelEmpty')} period={period} sites={fuelSites} colorOf={colorOf} />
+      <SiteDonut title={t('donut.consumptionTitle')} icon={<Flame className="w-4 h-4 text-teal-600 dark:text-teal-500 shrink-0" />} empty={t('donut.consumptionEmpty')} period={period} sites={usedSites} colorOf={colorOf} />
     </div>
   );
 };
