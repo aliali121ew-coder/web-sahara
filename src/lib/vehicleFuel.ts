@@ -398,6 +398,101 @@ export const vehicleStats = (fills: DayFill[]): VehicleStat[] => {
   });
 };
 
+// ───── الاستهلاك من تسلسل التفويلات ─────
+
+/**
+ * استهلاك تفويلة: على افتراض أن العربة تُملأ إلى نفس المستوى، كمية التفويلة الجديدة = ما صُرف منذ السابقة.
+ * مثال: 250 ثم 200 ← صُرف 200 وبقي 50.
+ */
+export interface FillConsumption {
+  /** تاريخ التفويلة التي كشفت الصرف */
+  date: string;
+  /** المصروف منذ التفويلة السابقة؛ null = لا تفويلة سابقة معروفة (أول تفويلة للعربة في البيانات والكشف) */
+  consumed: number | null;
+  /** تاريخ التفويلة السابقة (التي صُرف منها)؛ فارغ إن لم يُعرف */
+  prevDate: string;
+  prevQty: number | null;
+  /** موقع السابقة كما في الكشف، وإلا موقع هذه التفويلة */
+  prevSite: string;
+  /** السابقة ناقص الجديدة؛ null إذا لم تُعرف السابقة أو فاقتها الجديدة (كان في الخزان رصيد أقدم) */
+  remaining: number | null;
+}
+
+/** تاريخ قبل عدد من الأيام (YYYY/MM/DD) */
+const daysBefore = (date: string, days: number) => {
+  const [y, m, d] = date.split('/').map(Number);
+  return new Date(Date.UTC(y, m - 1, d - days)).toISOString().slice(0, 10).replace(/-/g, '/');
+};
+
+/**
+ * استهلاك كل تفويلات العربة (الأقدم أولًا). تُمرَّر كل تفويلاتها لا تفويلات الفترة فقط،
+ * فأول تفويلة في فترة مختارة تُحسب من التفويلة التي قبلها خارج الفترة.
+ * السابقة = التفويلة الأحدث قبلها في البيانات، أو ما سجّله الكشف إن كان أحدث منها (كشف لم يُرفع).
+ */
+export const fillConsumption = (fills: DayFill[]): FillConsumption[] => {
+  const sorted = [...fills].sort((a, b) => a.date.localeCompare(b.date));
+  return sorted.map((f, i) => {
+    const before: DayFill | undefined = sorted[i - 1];
+    const sheetDate = f.prevDate && f.prevDate < f.date ? f.prevDate : '';
+    const fromData = !!before && !(sheetDate > before.date);
+    const prevDate = fromData ? before.date : sheetDate || (f.days ? daysBefore(f.date, f.days) : '');
+    const prevQty = fromData ? before.qty : f.prevQty;
+    const known = !!prevDate || prevQty !== null;
+    return {
+      date: f.date,
+      consumed: known ? f.qty : null,
+      prevDate,
+      prevQty,
+      prevSite: (fromData ? before.sites.join('، ') : f.prevSite) || f.sites.join('، '),
+      remaining: known && prevQty !== null && prevQty >= f.qty ? prevQty - f.qty : null,
+    };
+  });
+};
+
+/** توزيع الاستهلاك على المواقع: المصروف يُنسب لموقع التفويلة التي صُرف منها، وبنسب كمياتها إن فُوّلت من أكثر من موقع */
+export const consumptionBySite = (list: FillConsumption[], refills: VehicleRefill[]) => {
+  const by = new Map<string, number>();
+  const add = (site: string, qty: number) => by.set(site, (by.get(site) || 0) + qty);
+  for (const c of list) {
+    if (c.consumed === null) continue;
+    const source = refills.filter(r => r.date === c.prevDate);
+    const base = source.reduce((s, r) => s + r.qty, 0);
+    if (!base) { add(c.prevSite, c.consumed); continue; }
+    for (const r of source) add(r.site, (c.consumed * r.qty) / base);
+  }
+  return [...by.entries()].map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total);
+};
+
+/** نقطة الرسم الخطي: كمية التفويل في تاريخها، وما صُرف من تلك التفويلة حتى التي بعدها */
+export interface TrendPoint {
+  date: string;
+  /** null = تاريخ من الكشف كميته غير معروفة */
+  qty: number | null;
+  /** تفويلة هذا اليوم؛ null = نقطة السابقة لأول تفويلة (خارج الفترة أو لم يُرفع كشفها) */
+  fill: DayFill | null;
+  consumed: number | null;
+  remaining: number | null;
+  /** تاريخ التفويلة التي كشفت الصرف */
+  until: string;
+  site: string;
+}
+
+/**
+ * نقاط الرسم الخطي. الاستهلاك يُرسم عند التفويلة التي صُرف منها لا عند التي كشفته:
+ * وإلا طابق خط التفويل تمامًا لأن الكميتين واحدة، أما هكذا فالفرق بين الخطين هو المتبقي.
+ * تفويلة بلا تاريخ سابق لا موضع لها على الخط، وتبقى محسوبة في الكارت والدائرة.
+ */
+export const consumptionTrend = (fills: DayFill[], list: FillConsumption[]): TrendPoint[] => {
+  const map = new Map<string, TrendPoint>();
+  for (const f of fills) map.set(f.date, { date: f.date, qty: f.qty, fill: f, consumed: null, remaining: null, until: '', site: f.sites.join('، ') });
+  for (const c of list) {
+    if (c.consumed === null || !c.prevDate) continue;
+    const p = map.get(c.prevDate) ?? { date: c.prevDate, qty: c.prevQty, fill: null, consumed: null, remaining: null, until: '', site: c.prevSite };
+    map.set(c.prevDate, { ...p, consumed: c.consumed, remaining: c.remaining, until: c.date });
+  }
+  return [...map.values()].sort((a, b) => a.date.localeCompare(b.date));
+};
+
 /** «اليوم السابق» لتاريخ معيّن من بين التواريخ المتوفرة */
 export const previousDate = (dates: string[], date: string) => dates.filter(d => d < date).sort().pop() || null;
 

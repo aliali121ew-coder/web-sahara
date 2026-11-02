@@ -1,6 +1,88 @@
 import { describe, expect, it } from 'vitest';
-import { fileDayStart, parseVehicleSheet, splitSheets } from '../vehicleFuel';
+import { consumptionBySite, consumptionTrend, fileDayStart, fillConsumption, parseVehicleSheet, splitSheets, type DayFill, type VehicleRefill } from '../vehicleFuel';
 import type { PdfItem } from '../saharaReportFile';
+
+const fill = (date: string, qty: number, over: Partial<DayFill> = {}): DayFill => ({
+  vehicle: 'SF1', date, qty, parts: 1, sites: ['سما كربلاء'], drivers: [], days: null, prevQty: null, prevDate: '', prevSite: '', prevDriver: '', ...over,
+});
+const refill = (date: string, qty: number, site: string): VehicleRefill => ({
+  id: `${date}-${site}`, fileId: 'f', site, vehicle: 'SF1', driver: '', qty, date, days: null, prevSite: '', prevDriver: '', prevQty: null, prevDate: '', kind: '',
+});
+
+describe('fillConsumption', () => {
+  it('250 ثم 200: صُرف 200 وبقي 50، وأول تفويلة بلا سابقة لا استهلاك لها', () => {
+    const [first, second] = fillConsumption([fill('2026/10/30', 200), fill('2026/10/28', 250)]);
+    expect(first).toMatchObject({ date: '2026/10/28', consumed: null, remaining: null });
+    expect(second).toMatchObject({ date: '2026/10/30', consumed: 200, prevDate: '2026/10/28', prevQty: 250, remaining: 50 });
+  });
+
+  it('تفويلة أكبر من السابقة: تُحسب كلها مصروفًا ولا يوجد متبقٍ سالب', () => {
+    const [, second] = fillConsumption([fill('2026/10/27', 200), fill('2026/11/01', 300)]);
+    expect(second).toMatchObject({ consumed: 300, remaining: null });
+  });
+
+  it('تفويلة واحدة يسجّل كشفها سابقة: تُحسب من الكشف', () => {
+    const [only] = fillConsumption([fill('2026/11/01', 28, { days: 2, prevDate: '2026/10/30', prevQty: 40, prevSite: 'سما الريف' })]);
+    expect(only).toMatchObject({ consumed: 28, prevDate: '2026/10/30', prevSite: 'سما الريف', remaining: 12 });
+  });
+
+  it('تفويلة واحدة بعدد أيام فقط: السابقة معروفة بتاريخها وكميتها مجهولة', () => {
+    const [only] = fillConsumption([fill('2026/11/01', 28, { days: 2 })]);
+    expect(only).toMatchObject({ consumed: 28, prevDate: '2026/10/30', prevQty: null, remaining: null });
+  });
+
+  it('تفويلة واحدة بلا أي سابقة: لا يوجد استهلاك', () => {
+    expect(fillConsumption([fill('2026/11/01', 28)])[0].consumed).toBeNull();
+  });
+
+  it('الكشف الأحدث من البيانات يتقدّم عليها (كشف لم يُرفع)، والأقدم منها يُهمل', () => {
+    const list = fillConsumption([
+      fill('2026/10/20', 100),
+      fill('2026/10/30', 80, { prevDate: '2026/10/25', prevQty: 90 }),
+      fill('2026/11/01', 60, { prevDate: '2026/10/20', prevQty: 100 }),
+    ]);
+    expect(list[1]).toMatchObject({ prevDate: '2026/10/25', prevQty: 90, remaining: 10 });
+    expect(list[2]).toMatchObject({ prevDate: '2026/10/30', prevQty: 80, remaining: 20 });
+  });
+
+  it('تاريخ سابق مساوٍ ليوم التفويلة (عدة تفويلات في اليوم) لا يُعد سابقة', () => {
+    expect(fillConsumption([fill('2026/11/01', 50, { days: 0, parts: 2, prevDate: '2026/11/01', prevQty: null })])[0].consumed).toBeNull();
+  });
+});
+
+describe('consumptionBySite', () => {
+  it('ينسب المصروف لموقع التفويلة التي صُرف منها وبنسب كمياتها', () => {
+    const fills = [fill('2026/10/28', 100, { sites: ['أ', 'ب'], parts: 2 }), fill('2026/10/30', 60, { sites: ['ج'] })];
+    const refills = [refill('2026/10/28', 75, 'أ'), refill('2026/10/28', 25, 'ب'), refill('2026/10/30', 60, 'ج')];
+    expect(consumptionBySite(fillConsumption(fills), refills)).toEqual([{ name: 'أ', total: 45 }, { name: 'ب', total: 15 }]);
+  });
+
+  it('بلا سطور للسابقة يعود لموقع الكشف، وبلا سابقة أصلًا لا شيء', () => {
+    expect(consumptionBySite(fillConsumption([fill('2026/11/01', 28, { prevDate: '2026/10/30', prevSite: 'سما الريف' })]), [])).toEqual([{ name: 'سما الريف', total: 28 }]);
+    expect(consumptionBySite(fillConsumption([fill('2026/11/01', 28)]), [])).toEqual([]);
+  });
+});
+
+describe('consumptionTrend', () => {
+  it('الخطان يختلفان: الاستهلاك عند التفويلة التي صُرف منها، وآخر تفويلة بلا استهلاك بعد', () => {
+    const fills = [fill('2026/10/28', 250), fill('2026/10/30', 200), fill('2026/11/01', 120)];
+    const points = consumptionTrend(fills, fillConsumption(fills));
+    expect(points.map(p => [p.date, p.qty, p.consumed, p.remaining, p.until])).toEqual([
+      ['2026/10/28', 250, 200, 50, '2026/10/30'],
+      ['2026/10/30', 200, 120, 80, '2026/11/01'],
+      ['2026/11/01', 120, null, null, ''],
+    ]);
+  });
+
+  it('فترة تبدأ بعد تفويلة سابقة: تظهر نقطة السابقة حتى يطابق الخط الكارت', () => {
+    const all = [fill('2026/10/28', 250), fill('2026/10/30', 200)];
+    const points = consumptionTrend([all[1]], fillConsumption(all).filter(c => c.date >= '2026/10/30'));
+    expect(points.map(p => [p.date, p.qty, p.consumed, p.fill?.date ?? null])).toEqual([
+      ['2026/10/28', 250, 200, null],
+      ['2026/10/30', 200, null, '2026/10/30'],
+    ]);
+  });
+});
 
 const item = (str: string, x: number): PdfItem => ({ str, x, y: 0, w: 10 });
 const siteLine = (site: string) => [item('المصنع', 500), item(site, 400)];

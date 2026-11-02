@@ -1,0 +1,39 @@
+{
+  "liter": "L",
+  "card": {
+    "consumption": "Consumption",
+    "remaining": "L · {{value}} left",
+    "hint": "Each refill quantity = what was used since the previous refill; remaining = previous minus new (for the last refill in the period)"
+  },
+  "donut": {
+    "fuelTitle": "Refills by site",
+    "fuelEmpty": "No refills in this period",
+    "consumptionTitle": "Consumption by site",
+    "consumptionEmpty": "Not enough data: consumption is calculated from the previous refill"
+  },
+  "trend": {
+    "title": "Refills over the period",
+    "enlarge": "Enlarge chart",
+    "enlargeShort": "Enlarge",
+    "close": "Close",
+    "empty": "No refills in this period",
+    "fuel": "Refills",
+    "consumption": "Consumption",
+    "noConsumption": "No consumption line yet: it needs a following refill to show what was used",
+    "hint": "Consumption is plotted at the refill it was used from; the gap between the lines is what remained",
+    "fills": "{{count}} refills",
+    "spentUntil": "{{value}} L used by {{date}}",
+    "remaining": "{{value}} L remaining",
+    "prevFill": "Earlier refill outside the period",
+    "summary": "Days: {{days}} · Refills {{fuel}} L · Consumption {{consumption}} L",
+    "col": {
+      "date": "Date",
+      "qty": "Quantity",
+      "consumed": "Used from it",
+      "remaining": "Remaining",
+      "parts": "Refills",
+      "site": "Site",
+      "driver": "Driver"
+    }
+  }
+}

@@ -1,19 +1,21 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowRight, CalendarDays, ChevronRight, ChevronLeft, ChevronDown, FlaskConical, Fuel, Gauge, Trophy, Timer, Hash, Container, X,
   User, Route as RouteIcon, IdCard,
 } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import {
-  FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, checkFills, daysBetween, tankCaps, tankCountOf, vehicleCategory, vehicleStats,
+  FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, checkFills, daysBetween, fillConsumption, tankCaps, tankCountOf, vehicleCategory, vehicleStats,
   type CheckKind, type VehicleProfile, type VehicleRefill, type VehicleRoute, type VehicleStat,
 } from '../../lib/vehicleFuel';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
 import { VehicleProfileEditor } from './VehicleProfileEditor';
 import { VehicleArt } from './VehicleArt';
 import { useCategoryNames } from './categories';
-import { RefillTrend, SiteDonut, vehicleCard as card } from './VehicleCharts';
+import { RefillTrend, VehicleDonuts, vehicleCard as card } from './VehicleCharts';
+import { fmtNumber } from '../../i18n/format';
 import { VehicleRefillTable } from './VehicleRefillTable';
 
 interface Props {
@@ -32,8 +34,8 @@ interface Props {
 }
 
 /** كارت رقم موحّد: العنوان والأيقونة في صف، وتحته القيمة ووحدتها بنفس الارتفاع في كل الكارتات */
-const Spec: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactNode; unit?: string; tone: string }> = ({ icon, label, value, unit, tone }) => (
-  <div className="h-[92px] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/70 px-3.5 py-3 flex flex-col justify-between">
+const Spec: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactNode; unit?: string; tone: string; title?: string }> = ({ icon, label, value, unit, tone, title }) => (
+  <div title={title} className="h-[92px] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/70 px-3.5 py-3 flex flex-col justify-between">
     <div className="flex items-center justify-between gap-2">
       <span className="text-[11.5px] text-slate-500 dark:text-slate-400 font-bold truncate">{label}</span>
       <span className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center ${tone}`}>{icon}</span>
@@ -47,6 +49,7 @@ const Spec: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactN
 
 /** صفحة كاملة لتفاصيل عربة: المواصفات، آخر تفويلة، الرسوم، والسجل؛ والتاريخ يحدد كل شيء عدا آخر تفويلة */
 export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, editable, backLabel = 'تقرير العربات', onBack, onLab }) => {
+  const { t } = useTranslation('vehicles');
   const [routes] = useSyncedStorage<VehicleRoute[]>(VEHICLE_ROUTES_KEY, []);
   const [profiles, setProfiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
   const [editing, setEditing] = useState(false);
@@ -65,6 +68,12 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, editable, ba
   const rangedRefills = useMemo(() => (range ? refills.filter(r => r.date >= range.from && r.date <= range.to) : refills), [refills, range]);
   const view = useMemo(() => vehicleStats(fills)[0] ?? null, [fills]);
   const checks = useMemo(() => checkFills(fills, profile), [fills, profile]);
+  // الاستهلاك يُحسب من كل تفويلات العربة ثم يُقص بالفترة، فأول تفويلة في الفترة تُحسب من التي قبلها
+  const allConsumption = useMemo(() => fillConsumption(stat.fills), [stat]);
+  const consumption = useMemo(() => (range ? allConsumption.filter(c => c.date >= range.from && c.date <= range.to) : allConsumption), [allConsumption, range]);
+  const counted = consumption.filter(c => c.consumed !== null);
+  const usedTotal = counted.reduce((s, c) => s + (c.consumed ?? 0), 0);
+  const lastRemaining = counted[counted.length - 1]?.remaining ?? null;
   const saveProfile = (p: VehicleProfile) => { setProfiles(prev => [p, ...prev.filter(x => x.id !== p.id)]); setEditing(false); };
 
   useEffect(() => { window.scrollTo(0, 0); }, [stat.vehicle]);
@@ -189,7 +198,7 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, editable, ba
             <div className="md:col-span-2 grid grid-cols-2 gap-2.5">
               <Spec tone="bg-sky-500/10 text-sky-600" icon={<Fuel className="w-4 h-4" />} label="إجمالي الكمية" value={(view?.total ?? 0).toLocaleString()} unit="لتر" />
               <Spec tone="bg-indigo-500/10 text-indigo-600" icon={<Hash className="w-4 h-4" />} label="عدد التفويلات" value={view?.count ?? 0} unit="تفويلة" />
-              <Spec tone="bg-violet-500/10 text-violet-600" icon={<Gauge className="w-4 h-4" />} label="متوسط التفويلة" value={(view?.avg ?? 0).toLocaleString()} unit="لتر" />
+              <Spec tone="bg-violet-500/10 text-violet-600" icon={<Gauge className="w-4 h-4" />} label={t('card.consumption')} title={t('card.hint')} value={counted.length ? fmtNumber(usedTotal) : '—'} unit={lastRemaining !== null ? t('card.remaining', { value: fmtNumber(lastRemaining) }) : t('liter')} />
               <Spec tone="bg-amber-500/10 text-amber-600" icon={<Trophy className="w-4 h-4" />} label="أعلى تفويلة" value={(view?.max ?? 0).toLocaleString()} unit="لتر" />
               <Spec tone="bg-emerald-500/10 text-emerald-600" icon={<Timer className="w-4 h-4" />} label="متوسط الفاصل" value={view?.avgGap ?? '—'} unit="يوم" />
               <Spec tone="bg-rose-500/10 text-rose-600" icon={<Container className="w-4 h-4" />} label="عدد الخزانات" value={tanks ?? '—'} unit={capacity ? `${capacity.toLocaleString()} لتر` : undefined} />
@@ -212,6 +221,7 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, editable, ba
               <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2"><RouteIcon className="w-4 h-4 text-sky-500" />آخر تفويلة</h3>
               <span className="text-[11px] text-slate-500 font-bold">{entries.length > 1 ? `${entries.length} مواقع · ${entries.reduce((t, e) => t + e.qty, 0).toLocaleString()} L` : `${entries.length} موقع`}</span>
             </div>
+            <div className="overflow-x-auto">
             <table className="w-full text-right text-xs">
               <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400">
                 <tr>{['الكمية', 'عدد الأيام', 'التاريخ', 'اسم السائق', 'الموقع'].map(h => <th key={h} className="py-2.5 px-4 font-bold">{h}</th>)}</tr>
@@ -240,6 +250,7 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, editable, ba
                 })}
               </tbody>
             </table>
+            </div>
             {dailyPages > 1 && (
               <div className="flex items-center justify-center gap-1 px-4 py-2.5 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500">
                 <button type="button" disabled={dailyPage === 0} onClick={() => setDailyPage(p => p - 1)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer" aria-label="السابقة"><ChevronRight className="w-4 h-4" /></button>
@@ -252,8 +263,8 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, editable, ba
 
         {/* توزيع المواقع + الرسم الخطي */}
         <div className="xl:col-span-4 flex flex-col gap-5">
-          <SiteDonut refills={rangedRefills} />
-          <RefillTrend fills={fills} period={periodLabel} />
+          <VehicleDonuts refills={rangedRefills} allRefills={refills} consumption={consumption} />
+          <RefillTrend fills={fills} consumption={consumption} period={periodLabel} />
         </div>
       </div>
 

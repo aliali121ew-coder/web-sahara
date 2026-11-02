@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowDownLeft, ArrowDownWideNarrow, ArrowUpRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, FlaskConical, Repeat2, Search, X } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
-import { FREQUENT_DAYS, VEHICLE_PROFILES_KEY, daysBetween, imageGround, tankCountOf, vehicleCategory, vehicleImage, type DayFill, type VehicleProfile } from '../../lib/vehicleFuel';
+import { FREQUENT_DAYS, VEHICLE_PROFILES_KEY, daysBetween, fillConsumption, imageGround, tankCaps, tankCountOf, vehicleCategory, vehicleImage, type DayFill, type VehicleProfile } from '../../lib/vehicleFuel';
 import { VEHICLE_REGISTRY_KEY, type VehicleRegistryEntry } from '../../lib/vehicleRegistry';
 import { useCategoryNames, useVehicleNames } from './categories';
 import { VehicleArt } from './VehicleArt';
@@ -28,6 +28,7 @@ const DOT: Record<Status, string> = {
   'بلا تفويل': 'bg-slate-300 dark:bg-slate-600',
 };
 const RULES = 'حرج: ارتفاع 30% فأكثر، أو 20% مع تفويل متقارب · مرتفع: 15% فأكثر · منخفض: انخفاض 10% فأكثر — على المعدل اليومي في أيام الكشوف';
+const USED_RULE = 'مجموع تفويلات الفترات الأربع، لأن كل تفويلة تملأ الخزان فتساوي ما صُرف قبلها. أول تفويلة بلا سابقة لا تُحسب، والتفويلة الأكبر من السعة تُقص عندها، والرقم تحته = سعة الخزان ناقص الاستهلاك';
 
 // التواريخ في الكشوف بصيغة YYYY/MM/DD
 const toMs = (d: string) => { const [y, m, dd] = d.split('/').map(Number); return Date.UTC(y, m - 1, dd); };
@@ -67,6 +68,10 @@ interface Row {
   driver: string;
   /** الكمية في كل فترة */
   p: number[];
+  /** مجموع سعات الخزانات (0 = غير مسجلة) */
+  capacity: number;
+  /** الاستهلاك في الفترات الأربع؛ null = السعة غير مسجلة */
+  used: number | null;
   /** المعدل اليومي لكل فترة على أيام الكشوف (null = فترة بلا كشوف) */
   rate: (number | null)[];
   prevRate: number;
@@ -172,11 +177,15 @@ export const ConsumptionAnalysis: React.FC<{
       const cat = vehicleCategory(code);
       const prof = profiles.find(x => x.id === vehicle);
       const lastFill = last as DayFill | null;
+      const capacity = tankCaps(prof).reduce((s, c) => s + c, 0);
+      const used = capacity
+        ? fillConsumption(list).reduce((s, c) => (c.consumed !== null && periodOf(c.date) >= 0 ? s + Math.min(c.consumed, capacity) : s), 0)
+        : null;
       return [{
         vehicle, code, display: prof?.name || vehicle,
         catKey: cat?.key || 'OTHER', cat: (cat && labels[cat.key]) || cat?.label || 'أخرى',
         driver: lastFill?.drivers[0] || prof?.driver || '',
-        p, rate, prevRate, curRate, change, n: recent.length, minGap, multi,
+        p, capacity, used, rate, prevRate, curRate, change, n: recent.length, minGap, multi,
         close: (minGap !== null && minGap <= FREQUENT_DAYS) || multi > 0,
         recent: recent.reverse(),
       }];
@@ -356,7 +365,7 @@ export const ConsumptionAnalysis: React.FC<{
           </div>
 
           <div className="flex-1 overflow-x-auto">
-            <table className="w-full min-w-[800px] text-right">
+            <table className="w-full min-w-[880px] text-right">
               <thead>
                 <tr className="h-14 text-[11.5px] text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">
                   <th className="px-5 font-bold">العربة</th>
@@ -371,6 +380,7 @@ export const ConsumptionAnalysis: React.FC<{
                       </div>
                     </th>
                   ))}
+                  <th className="px-2 font-bold text-center" title={USED_RULE}>الاستهلاك</th>
                   <th className="px-2 font-bold">
                     <button type="button" onClick={() => { setSort('change'); setPage(0); }} className={`inline-flex items-center gap-1 cursor-pointer ${sort === 'change' ? 'text-slate-900 dark:text-white' : ''}`}>التغير{sort === 'change' && <ArrowDownWideNarrow className="w-3 h-3" />}</button>
                   </th>
@@ -408,6 +418,16 @@ export const ConsumptionAnalysis: React.FC<{
                           {!cov[i] ? '·' : v ? fmt(v) : '—'}
                         </td>
                       ))}
+                      <td className="px-2">
+                        {r.used === null ? <div className="text-center text-slate-400" title="سعة الخزان غير مسجلة">—</div> : (
+                          <div className="flex flex-col items-center gap-0.5" title={`استهلاك ${fmt(r.used)} لتر · سعة الخزان ${fmt(r.capacity)} لتر`}>
+                            <span className="inline-flex items-center justify-center min-w-9 h-9 px-1.5 rounded-full bg-indigo-50 dark:bg-indigo-950/50 ring-1 ring-indigo-300 dark:ring-indigo-700 text-[12.5px] font-mono font-bold text-indigo-700 dark:text-indigo-300">{fmt(r.used)}</span>
+                            <span className={`text-[10px] font-medium whitespace-nowrap ${r.used > r.capacity ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'}`}>
+                              {r.used > r.capacity ? 'فوق السعة' : 'متبقي'} <bdi className="font-mono">{fmt(Math.abs(r.capacity - r.used))}</bdi>
+                            </span>
+                          </div>
+                        )}
+                      </td>
                       <td className="px-2"><Delta value={r.change} className="text-[13px]" /></td>
                       <td className="px-2">
                         <div className="flex items-end gap-[3px] h-[26px]" aria-hidden>
@@ -426,7 +446,7 @@ export const ConsumptionAnalysis: React.FC<{
                     </tr>
                   );
                 })}
-                {!view.length && <tr><td colSpan={8} className="text-center text-sm text-slate-400 py-12">لا توجد عربات مطابقة</td></tr>}
+                {!view.length && <tr><td colSpan={9} className="text-center text-sm text-slate-400 py-12">لا توجد عربات مطابقة</td></tr>}
               </tbody>
             </table>
           </div>
