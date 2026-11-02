@@ -570,12 +570,12 @@ export const ConsumptionAnalysis: React.FC<{
                     const reg = registry.find(r => r.id === sel.code.toUpperCase());
                     const label = 'block text-[11px] font-bold text-slate-500 dark:text-slate-400';
                     return (
-                      <button type="button" onClick={() => onLab(sel.vehicle)} aria-label={`افتح مختبر العربة ${sel.display}`} className="group mt-auto shrink-0 w-full text-right rounded-2xl border border-indigo-100 dark:border-indigo-900/60 bg-gradient-to-l from-indigo-50 to-sky-50 dark:from-indigo-950/50 dark:to-sky-950/30 cursor-pointer transition-all duration-200 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+                      <button type="button" onClick={() => onLab(sel.vehicle)} aria-label={`افتح بيانات عامة للعربة ${sel.display}`} className="group mt-auto shrink-0 w-full text-right rounded-2xl border border-indigo-100 dark:border-indigo-900/60 bg-gradient-to-l from-indigo-50 to-sky-50 dark:from-indigo-950/50 dark:to-sky-950/30 cursor-pointer transition-all duration-200 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
                         <span className="flex items-center justify-between gap-3 px-4 py-3">
                           <span className="flex items-center gap-2.5 min-w-0">
                             <span className="w-9 h-9 shrink-0 rounded-xl bg-white dark:bg-slate-900/70 text-indigo-600 dark:text-indigo-300 inline-flex items-center justify-center"><FlaskConical className="w-[18px] h-[18px]" /></span>
                             <span className="min-w-0">
-                              <span className="block text-sm font-black text-slate-900 dark:text-white">مختبر العربة</span>
+                              <span className="block text-sm font-black text-slate-900 dark:text-white">بيانات عامة</span>
                               <span className="block text-[11.5px] text-slate-500 dark:text-slate-400 truncate">من اليوم إلى سنة · الصرف الحقيقي</span>
                             </span>
                           </span>

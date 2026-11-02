@@ -127,7 +127,7 @@ export const VehiclesReport: React.FC = () => {
   const labRefills = useMemo(() => (lab ? data.refills.filter(r => r.vehicle === lab) : []), [data.refills, lab]);
   useEffect(() => {
     if (!lab) return;
-    setCurrentSubpage({ title: `مختبر العربة ${lab}`, parentTab: 'vehicles-report', onBack: () => setLab(null) });
+    setCurrentSubpage({ title: `بيانات عامة ${lab}`, parentTab: 'vehicles-report', onBack: () => setLab(null) });
     return () => setCurrentSubpage(null);
   }, [lab, setCurrentSubpage]);
 
@@ -141,7 +141,7 @@ export const VehiclesReport: React.FC = () => {
   if (selected) crumbs.push({ label: <>العربة <bdi dir="ltr" className="font-mono">{selected.vehicle}</bdi></> });
   if (lab && !selected) crumbs.push(
     { label: <>العربة <bdi dir="ltr" className="font-mono">{lab}</bdi></>, onClick: () => { setVehicle(lab); setLab(null); } },
-    { label: 'مختبر العربة' },
+    { label: 'بيانات عامة' },
   );
 
   if (lab && !selected) {
