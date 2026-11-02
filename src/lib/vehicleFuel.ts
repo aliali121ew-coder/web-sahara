@@ -449,6 +449,16 @@ export const fillConsumption = (fills: DayFill[]): FillConsumption[] => {
   });
 };
 
+/**
+ * الاستهلاك على سعة الخزان (معادلة تحليل الاستهلاك وصفحة العربة): التفويلة الأكبر من السعة تُقص عندها،
+ * والمتبقي = السعة ناقص المصروف. بلا سعة مسجلة لا يُحسب استهلاك.
+ */
+export const capConsumption = (list: FillConsumption[], capacity: number): FillConsumption[] => list.map(c => {
+  if (c.consumed === null || !capacity) return { ...c, consumed: null, remaining: null };
+  const consumed = Math.min(c.consumed, capacity);
+  return { ...c, consumed, remaining: capacity - consumed };
+});
+
 /** توزيع الاستهلاك على المواقع: المصروف يُنسب لموقع التفويلة التي صُرف منها، وبنسب كمياتها إن فُوّلت من أكثر من موقع */
 export const consumptionBySite = (list: FillConsumption[], refills: VehicleRefill[]) => {
   const by = new Map<string, number>();
@@ -479,7 +489,7 @@ export interface TrendPoint {
 
 /**
  * نقاط الرسم الخطي. الاستهلاك يُرسم عند التفويلة التي صُرف منها لا عند التي كشفته:
- * وإلا طابق خط التفويل تمامًا لأن الكميتين واحدة، أما هكذا فالفرق بين الخطين هو المتبقي.
+ * وإلا طابق خط التفويل تمامًا لأن الكميتين واحدة، أما هكذا فيظهر ما صُرف من كل تفويلة.
  * تفويلة بلا تاريخ سابق لا موضع لها على الخط، وتبقى محسوبة في الكارت والدائرة.
  */
 export const consumptionTrend = (fills: DayFill[], list: FillConsumption[]): TrendPoint[] => {

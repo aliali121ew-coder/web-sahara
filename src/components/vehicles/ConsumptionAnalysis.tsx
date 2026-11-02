@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowDownLeft, ArrowDownWideNarrow, ArrowUpRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, FlaskConical, Repeat2, Search, X } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
-import { FREQUENT_DAYS, VEHICLE_PROFILES_KEY, daysBetween, fillConsumption, imageGround, tankCaps, tankCountOf, vehicleCategory, vehicleImage, type DayFill, type VehicleProfile } from '../../lib/vehicleFuel';
+import { FREQUENT_DAYS, VEHICLE_PROFILES_KEY, capConsumption, daysBetween, fillConsumption, imageGround, tankCaps, tankCountOf, vehicleCategory, vehicleImage, type DayFill, type VehicleProfile } from '../../lib/vehicleFuel';
 import { VEHICLE_REGISTRY_KEY, type VehicleRegistryEntry } from '../../lib/vehicleRegistry';
 import { useCategoryNames, useVehicleNames } from './categories';
 import { VehicleArt } from './VehicleArt';
@@ -179,7 +179,7 @@ export const ConsumptionAnalysis: React.FC<{
       const lastFill = last as DayFill | null;
       const capacity = tankCaps(prof).reduce((s, c) => s + c, 0);
       const used = capacity
-        ? fillConsumption(list).reduce((s, c) => (c.consumed !== null && periodOf(c.date) >= 0 ? s + Math.min(c.consumed, capacity) : s), 0)
+        ? capConsumption(fillConsumption(list), capacity).reduce((s, c) => (c.consumed !== null && periodOf(c.date) >= 0 ? s + c.consumed : s), 0)
         : null;
       return [{
         vehicle, code, display: prof?.name || vehicle,

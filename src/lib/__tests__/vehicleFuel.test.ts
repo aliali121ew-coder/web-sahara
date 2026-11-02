@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { consumptionBySite, consumptionTrend, fileDayStart, fillConsumption, parseVehicleSheet, splitSheets, type DayFill, type VehicleRefill } from '../vehicleFuel';
+import { capConsumption, consumptionBySite, consumptionTrend, fileDayStart, fillConsumption, parseVehicleSheet, splitSheets, type DayFill, type VehicleRefill } from '../vehicleFuel';
 import type { PdfItem } from '../saharaReportFile';
 
 const fill = (date: string, qty: number, over: Partial<DayFill> = {}): DayFill => ({
@@ -47,6 +47,22 @@ describe('fillConsumption', () => {
 
   it('تاريخ سابق مساوٍ ليوم التفويلة (عدة تفويلات في اليوم) لا يُعد سابقة', () => {
     expect(fillConsumption([fill('2026/11/01', 50, { days: 0, parts: 2, prevDate: '2026/11/01', prevQty: null })])[0].consumed).toBeNull();
+  });
+});
+
+describe('capConsumption', () => {
+  const list = fillConsumption([fill('2026/10/30', 40, { days: 2 }), fill('2026/11/01', 68)]);
+
+  it('يقص التفويلة عند السعة والمتبقي من السعة', () => {
+    expect(capConsumption(list, 50).map(c => [c.consumed, c.remaining])).toEqual([[40, 10], [50, 0]]);
+  });
+
+  it('بلا سعة مسجلة لا يُحسب استهلاك', () => {
+    expect(capConsumption(list, 0).map(c => [c.consumed, c.remaining])).toEqual([[null, null], [null, null]]);
+  });
+
+  it('أول تفويلة بلا سابقة تبقى خارج الحساب', () => {
+    expect(capConsumption(fillConsumption([fill('2026/11/01', 28)]), 60)[0].consumed).toBeNull();
   });
 });
 

@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import {
-  FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, checkFills, daysBetween, fillConsumption, tankCaps, tankCountOf, vehicleCategory, vehicleStats,
+  FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, capConsumption, checkFills, daysBetween, fillConsumption, tankCaps, tankCountOf, vehicleCategory, vehicleStats,
   type CheckKind, type VehicleProfile, type VehicleRefill, type VehicleRoute, type VehicleStat,
 } from '../../lib/vehicleFuel';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
@@ -68,19 +68,17 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, editable, ba
   const rangedRefills = useMemo(() => (range ? refills.filter(r => r.date >= range.from && r.date <= range.to) : refills), [refills, range]);
   const view = useMemo(() => vehicleStats(fills)[0] ?? null, [fills]);
   const checks = useMemo(() => checkFills(fills, profile), [fills, profile]);
-  // الاستهلاك يُحسب من كل تفويلات العربة ثم يُقص بالفترة، فأول تفويلة في الفترة تُحسب من التي قبلها
-  const allConsumption = useMemo(() => fillConsumption(stat.fills), [stat]);
+  const capacity = tankCaps(profile).reduce((s, c) => s + c, 0);
+  // الاستهلاك بمعادلة تحليل الاستهلاك: يُحسب من كل تفويلات العربة ثم يُقص بالفترة، فأول تفويلة في الفترة تُحسب من التي قبلها
+  const allConsumption = useMemo(() => capConsumption(fillConsumption(stat.fills), capacity), [stat, capacity]);
   const consumption = useMemo(() => (range ? allConsumption.filter(c => c.date >= range.from && c.date <= range.to) : allConsumption), [allConsumption, range]);
   const counted = consumption.filter(c => c.consumed !== null);
   const usedTotal = counted.reduce((s, c) => s + (c.consumed ?? 0), 0);
-  const lastRemaining = counted[counted.length - 1]?.remaining ?? null;
   const saveProfile = (p: VehicleProfile) => { setProfiles(prev => [p, ...prev.filter(x => x.id !== p.id)]); setEditing(false); };
 
   useEffect(() => { window.scrollTo(0, 0); }, [stat.vehicle]);
 
-  const caps = tankCaps(profile);
   const tanks = tankCountOf(profile);
-  const capacity = caps.reduce((s, c) => s + c, 0);
   const periodLabel = !range ? 'كل الفترة' : range.from === range.to ? range.from : `${range.from} ← ${range.to}`;
 
   const myRoutes = useMemo(() => routes.filter(r => r.vehicle === stat.vehicle), [routes, stat.vehicle]);
@@ -198,7 +196,7 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, editable, ba
             <div className="md:col-span-2 grid grid-cols-2 gap-2.5">
               <Spec tone="bg-sky-500/10 text-sky-600" icon={<Fuel className="w-4 h-4" />} label="إجمالي الكمية" value={(view?.total ?? 0).toLocaleString()} unit="لتر" />
               <Spec tone="bg-indigo-500/10 text-indigo-600" icon={<Hash className="w-4 h-4" />} label="عدد التفويلات" value={view?.count ?? 0} unit="تفويلة" />
-              <Spec tone="bg-violet-500/10 text-violet-600" icon={<Gauge className="w-4 h-4" />} label={t('card.consumption')} title={t('card.hint')} value={counted.length ? fmtNumber(usedTotal) : '—'} unit={lastRemaining !== null ? t('card.remaining', { value: fmtNumber(lastRemaining) }) : t('liter')} />
+              <Spec tone="bg-violet-500/10 text-violet-600" icon={<Gauge className="w-4 h-4" />} label={t('card.consumption')} title={t('card.hint')} value={counted.length ? fmtNumber(usedTotal) : '—'} unit={!counted.length ? t('liter') : t(usedTotal > capacity ? 'card.over' : 'card.remaining', { value: fmtNumber(Math.abs(capacity - usedTotal)) })} />
               <Spec tone="bg-amber-500/10 text-amber-600" icon={<Trophy className="w-4 h-4" />} label="أعلى تفويلة" value={(view?.max ?? 0).toLocaleString()} unit="لتر" />
               <Spec tone="bg-emerald-500/10 text-emerald-600" icon={<Timer className="w-4 h-4" />} label="متوسط الفاصل" value={view?.avgGap ?? '—'} unit="يوم" />
               <Spec tone="bg-rose-500/10 text-rose-600" icon={<Container className="w-4 h-4" />} label="عدد الخزانات" value={tanks ?? '—'} unit={capacity ? `${capacity.toLocaleString()} لتر` : undefined} />
