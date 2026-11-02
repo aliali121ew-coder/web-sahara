@@ -1,7 +1,8 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useEffect, useMemo, useState } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, Layers, Search } from 'lucide-react';
+import { Calendar, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Layers, Search, X } from 'lucide-react';
 import { FREQUENT_DAYS } from '../../lib/vehicleFuel';
+import { DateRangeCalendar } from '../ui/DateRangeCalendar';
 import { vehicleCard } from './VehicleCharts';
 
 export interface RefillRow {
@@ -36,7 +37,11 @@ const Select: React.FC<{ label: string; value: string; options: string[]; onChan
 );
 
 /** سجل التفويل: تبويبات وفلاتر بطابع صفحة الوارد، وكل صفحة 15 سطرًا */
-export const VehicleRefillTable: React.FC<{ rows: RefillRow[]; vehicle: string; overCap: Set<string>; violationDates: Set<string> }> = ({ rows, vehicle, overCap, violationDates }) => {
+export const VehicleRefillTable: React.FC<{ rows: RefillRow[]; vehicle: string; overCap: Set<string>; violationDates: Set<string> }> = ({ rows: allRows, vehicle, overCap, violationDates }) => {
+  const [range, setRange] = useState<{ from: string; to: string } | null>(null);
+  const [rangeOpen, setRangeOpen] = useState(false);
+  const rows = useMemo(() => (range ? allRows.filter(r => r.date >= range.from && r.date <= range.to) : allRows), [allRows, range]);
+  const dates = useMemo(() => new Set(allRows.map(r => r.date)), [allRows]);
   const [tab, setTab] = useState<Tab>('all');
   const [search, setSearch] = useState('');
   const [site, setSite] = useState(ALL);
@@ -66,7 +71,8 @@ export const VehicleRefillTable: React.FC<{ rows: RefillRow[]; vehicle: string; 
   const pageBtn = (off: boolean) => `px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1 transition-all ${off ? 'opacity-40 cursor-not-allowed border-slate-200 dark:border-slate-700 text-slate-400' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 cursor-pointer'}`;
 
   return (
-    <div className={`${vehicleCard} overflow-hidden`}>
+    // القص يُرفع والتقويم مفتوح حتى لا تُخفي حافة الكارت أسفله
+    <div className={`${vehicleCard} ${rangeOpen ? '' : 'overflow-hidden'}`}>
       <div className="flex flex-wrap items-center justify-between gap-3 px-5 border-b border-slate-100 dark:border-slate-800">
         <h3 className="text-[15px] font-bold text-slate-900 dark:text-white flex items-center gap-2"><Layers className="w-4 h-4 text-indigo-500" />سجل التفويل</h3>
         <div role="tablist" aria-label="تصفية السجل" className="flex gap-5 overflow-x-auto vehicle-scroll">
@@ -90,6 +96,33 @@ export const VehicleRefillTable: React.FC<{ rows: RefillRow[]; vehicle: string; 
         <div className="flex flex-wrap items-center gap-2">
           <Select label="الموقع:" value={site} options={sites} onChange={setSite} />
           <Select label="السائق:" value={driver} options={drivers} onChange={setDriver} />
+          <div className="relative">
+            <button type="button" aria-label="تاريخ سجل التفويل" onClick={() => setRangeOpen(o => !o)} className="flex items-center gap-1.5 bg-white dark:bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs cursor-pointer hover:border-blue-400 transition-colors">
+              <CalendarDays className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span className="font-bold text-slate-400">التاريخ:</span>
+              <span className={`font-bold text-slate-800 dark:text-slate-200 ${range ? 'font-mono' : ''}`}>{!range ? ALL : range.from === range.to ? range.from : `${range.from} ← ${range.to}`}</span>
+              {range ? (
+                <span role="button" title="مسح التاريخ" onClick={e => { e.stopPropagation(); setRange(null); }} className="p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800"><X className="w-3 h-3" /></span>
+              ) : (
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform ${rangeOpen ? 'rotate-180' : ''}`} />
+              )}
+            </button>
+            {rangeOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setRangeOpen(false)} />
+                <div className="absolute z-50 top-full mt-2 right-0 sm:right-auto sm:left-0">
+                  <DateRangeCalendar
+                    from={range?.from ?? ''}
+                    to={range?.to ?? ''}
+                    marked={dates}
+                    max={[...dates].sort().pop()}
+                    onApply={(from, to) => { setRange({ from, to: to || from }); setRangeOpen(false); }}
+                    onClear={() => { setRange(null); setRangeOpen(false); }}
+                  />
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 

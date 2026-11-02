@@ -28,7 +28,7 @@ const DOT: Record<Status, string> = {
   'بلا تفويل': 'bg-slate-300 dark:bg-slate-600',
 };
 const RULES = 'حرج: ارتفاع 30% فأكثر، أو 20% مع تفويل متقارب · مرتفع: 15% فأكثر · منخفض: انخفاض 10% فأكثر — على المعدل اليومي في أيام الكشوف';
-const USED_RULE = 'مجموع تفويلات الفترات الأربع، لأن كل تفويلة تملأ الخزان فتساوي ما صُرف قبلها. أول تفويلة بلا سابقة لا تُحسب، والتفويلة الأكبر من السعة تُقص عندها، والرقم تحته = سعة الخزان ناقص الاستهلاك';
+const USED_RULE = 'مجموع تفويلات الفترات الأربع (أو الفترة المختارة من وإلى)، لأن كل تفويلة تملأ الخزان فتساوي ما صُرف قبلها. أول تفويلة بلا سابقة لا تُحسب، والتفويلة الأكبر من السعة تُقص عندها، والرقم تحته = سعة الخزان ناقص الاستهلاك';
 
 // التواريخ في الكشوف بصيغة YYYY/MM/DD
 const toMs = (d: string) => { const [y, m, dd] = d.split('/').map(Number); return Date.UTC(y, m - 1, dd); };
@@ -56,6 +56,17 @@ const buildPeriods = (end: string, unit: Unit): Period[] => [3, 2, 1, 0].map(bac
   const to = last > end ? end : last;
   return { from, to, name: MONTHS[dt.getUTCMonth()], range: `${dt.getUTCFullYear()}/${String(dt.getUTCMonth() + 1).padStart(2, '0')}` };
 });
+
+/** فترة مختارة (من/إلى): العمود الأخير هي، وقبلها ثلاث فترات بطولها للمقارنة */
+const buildRangePeriods = (from: string, to: string): Period[] => {
+  const n = daysBetween(from, to) + 1;
+  return [3, 2, 1, 0].map(back => {
+    const end = addDays(to, -back * n);
+    const start = addDays(end, 1 - n);
+    const name = `${short(start)}–${short(end)}`;
+    return { from: start, to: end, name, range: name };
+  });
+};
 
 interface RecentFill { date: string; qty: number; gap: number | null; parts: number }
 
@@ -121,6 +132,8 @@ export const ConsumptionAnalysis: React.FC<{
 }> = ({ allFills, endDate: initialEnd, category, categoryName, onClearCategory, onOpen, onLab }) => {
   useEffect(() => { window.scrollTo(0, 0); }, []);
   const [endDate, setEndDate] = useState(initialEnd);
+  /** بداية الفترة المختارة؛ null = يوم نهاية واحد بالوحدة المختارة */
+  const [fromDate, setFromDate] = useState<string | null>(null);
   const [dateOpen, setDateOpen] = useState(false);
   const [unit, setUnit] = useState<Unit>('day');
   const [filter, setFilter] = useState<Status | 'all'>('all');
@@ -133,7 +146,7 @@ export const ConsumptionAnalysis: React.FC<{
   const [profiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
   const [registry] = useSyncedStorage<VehicleRegistryEntry[]>(VEHICLE_REGISTRY_KEY, []);
 
-  const periods = useMemo(() => buildPeriods(endDate, unit), [endDate, unit]);
+  const periods = useMemo(() => (fromDate ? buildRangePeriods(fromDate, endDate) : buildPeriods(endDate, unit)), [fromDate, endDate, unit]);
   const periodOf = (date: string) => periods.findIndex(p => date >= p.from && date <= p.to);
 
   /** عدد أيام الكشوف في كل فترة (أي تاريخ فيه تفويلات لأي عربة) */
@@ -179,7 +192,7 @@ export const ConsumptionAnalysis: React.FC<{
       const lastFill = last as DayFill | null;
       const capacity = tankCaps(prof).reduce((s, c) => s + c, 0);
       const used = capacity
-        ? capConsumption(fillConsumption(list), capacity).reduce((s, c) => (c.consumed !== null && periodOf(c.date) >= 0 ? s + c.consumed : s), 0)
+        ? capConsumption(fillConsumption(list), capacity).reduce((s, c) => (c.consumed !== null && periodOf(c.date) >= (fromDate ? 3 : 0) ? s + c.consumed : s), 0)
         : null;
       return [{
         vehicle, code, display: prof?.name || vehicle,
@@ -291,7 +304,7 @@ export const ConsumptionAnalysis: React.FC<{
         <div className="flex flex-wrap items-center gap-2.5">
           <div className="relative">
             <button type="button" aria-label="تاريخ التحليل" onClick={() => setDateOpen(o => !o)} className="inline-flex items-center gap-2 h-10 px-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-xs font-bold font-mono text-slate-700 dark:text-slate-200 hover:border-sky-400 cursor-pointer">
-              <CalendarDays className="w-4 h-4 text-sky-600" />{endDate}
+              <CalendarDays className="w-4 h-4 text-sky-600" />{fromDate ? `${fromDate} ← ${endDate}` : endDate}
               <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${dateOpen ? 'rotate-180' : ''}`} />
             </button>
             {dateOpen && (
@@ -299,12 +312,12 @@ export const ConsumptionAnalysis: React.FC<{
                 <div className="fixed inset-0 z-40" onClick={() => setDateOpen(false)} />
                 <div className="absolute z-50 top-full mt-2 right-0 sm:right-auto sm:left-0">
                   <DateRangeCalendar
-                    single
-                    from={endDate}
+                    from={fromDate ?? endDate}
                     to={endDate}
                     marked={sheetDates}
-                    onApply={d => { setEndDate(d); setPage(0); setDateOpen(false); }}
-                    onClear={() => setDateOpen(false)}
+                    max={[...sheetDates].sort().pop()}
+                    onApply={(from, to) => { setFromDate(from < to ? from : null); setEndDate(to); setPage(0); setDateOpen(false); }}
+                    onClear={() => { setFromDate(null); setEndDate(initialEnd); setPage(0); setDateOpen(false); }}
                   />
                 </div>
               </>
@@ -312,7 +325,7 @@ export const ConsumptionAnalysis: React.FC<{
           </div>
           <div role="group" aria-label="مدة كل عمود" className="flex gap-0.5 p-1 rounded-2xl bg-slate-200/70 dark:bg-slate-800">
             {UNITS.map(([u, l]) => (
-              <button key={u} type="button" aria-pressed={unit === u} onClick={() => { setUnit(u); setPage(0); }} className={`h-9 px-4 rounded-xl border text-sm font-bold cursor-pointer outline-hidden transition-all duration-200 focus-visible:ring-2 focus-visible:ring-indigo-400 ${unit === u ? 'border-indigo-100 dark:border-indigo-900/60 bg-gradient-to-l from-indigo-50 to-sky-50 dark:from-indigo-950/50 dark:to-sky-950/30 text-indigo-700 dark:text-indigo-300 shadow-sm' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}>{l}</button>
+              <button key={u} type="button" aria-pressed={!fromDate && unit === u} onClick={() => { setFromDate(null); setUnit(u); setPage(0); }} className={`h-9 px-4 rounded-xl border text-sm font-bold cursor-pointer outline-hidden transition-all duration-200 focus-visible:ring-2 focus-visible:ring-indigo-400 ${!fromDate && unit === u ? 'border-indigo-100 dark:border-indigo-900/60 bg-gradient-to-l from-indigo-50 to-sky-50 dark:from-indigo-950/50 dark:to-sky-950/30 text-indigo-700 dark:text-indigo-300 shadow-sm' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}>{l}</button>
             ))}
           </div>
         </div>
@@ -376,7 +389,7 @@ export const ConsumptionAnalysis: React.FC<{
                         : <span className="text-slate-600 dark:text-slate-300">{p.name}</span>}
                       <div className="flex items-center gap-1 mt-0.5 text-[10.5px] font-medium text-slate-400">
                         <span className={`w-1.5 h-1.5 rounded-full ${cov[i] ? 'bg-teal-500' : 'border border-slate-300 dark:border-slate-600'}`} />
-                        {cov[i] ? (unit === 'day' ? 'كشف' : `${cov[i]} يوم`) : 'لا كشوف'}
+                        {cov[i] ? (unit === 'day' && !fromDate ? 'كشف' : `${cov[i]} يوم`) : 'لا كشوف'}
                       </div>
                     </th>
                   ))}
