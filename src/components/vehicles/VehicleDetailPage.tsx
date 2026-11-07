@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import {
-  FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, capConsumption, checkFills, daysBetween, fillConsumption, tankCaps, tankCountOf, vehicleCategory, vehicleStats,
+  FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, capConsumption, checkFills, daysBetween, fillConsumption, tankCaps, tankCountOf, vehicleCategory, vehicleStats, withTanks,
   type CheckKind, type VehicleProfile, type VehicleRefill, type VehicleRoute, type VehicleStat,
 } from '../../lib/vehicleFuel';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
@@ -57,7 +57,7 @@ export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, editable, ba
   const [range, setRange] = useState<{ from: string; to: string } | null>(null);
   const [rangeOpen, setRangeOpen] = useState(false);
   useEffect(() => { setDailyPage(0); setRange(null); }, [stat.vehicle]);
-  const profile = profiles.find(p => p.id === stat.vehicle);
+  const profile = withTanks(profiles.find(p => p.id === stat.vehicle), stat.vehicle);
   // الاسم إن وُجد يحدد الفئة والصورة (يُعامل كرمز العربة)
   const [catLabels] = useCategoryNames();
   const baseCategory = vehicleCategory(profile?.name || stat.vehicle);

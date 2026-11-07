@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Building2, CalendarDays, ChevronLeft, ChevronRight, ClipboardList, Fuel, LineChart, Loader2, RefreshCw, UserRound, Users } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import {
-  VEHICLE_PROFILES_KEY, categoryLabel, labImage, tankCountOf, vehicleCategory,
+  VEHICLE_PROFILES_KEY, categoryLabel, labImage, tankCountOf, vehicleCategory, withTanks,
   type DayFill, type VehicleProfile, type VehicleRefill,
 } from '../../lib/vehicleFuel';
 import { VEHICLE_REGISTRY_KEY, readVehicleRegistry, type VehicleRegistryEntry } from '../../lib/vehicleRegistry';
@@ -104,7 +104,7 @@ export const VehicleLab: React.FC<{
   const [profiles, setProfiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
   const [registry, setRegistry] = useSyncedStorage<VehicleRegistryEntry[]>(VEHICLE_REGISTRY_KEY, []);
   useEffect(() => { window.scrollTo(0, 0); }, [vehicle]);
-  const profile = profiles.find(p => p.id === vehicle);
+  const profile = withTanks(profiles.find(p => p.id === vehicle), vehicle);
   const code = (profile?.name || vehicle).trim();
   const reg = registry.find(r => r.id === code.toUpperCase()) || registry.find(r => r.id === vehicle.toUpperCase());
   const url = labImage(code, profile?.photo);

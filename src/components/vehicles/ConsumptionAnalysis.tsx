@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowDownLeft, ArrowDownWideNarrow, ArrowUpRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, FlaskConical, Repeat2, Search, X } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
-import { FREQUENT_DAYS, VEHICLE_PROFILES_KEY, capConsumption, daysBetween, fillConsumption, imageGround, tankCaps, tankCountOf, vehicleCategory, vehicleImage, type DayFill, type VehicleProfile } from '../../lib/vehicleFuel';
+import { FREQUENT_DAYS, VEHICLE_PROFILES_KEY, capConsumption, daysBetween, fillConsumption, imageGround, tankCaps, tankCountOf, vehicleCategory, vehicleImage, withTanks, type DayFill, type VehicleProfile } from '../../lib/vehicleFuel';
 import { VEHICLE_REGISTRY_KEY, type VehicleRegistryEntry } from '../../lib/vehicleRegistry';
 import { useCategoryNames, useVehicleNames } from './categories';
 import { VehicleArt } from './VehicleArt';
@@ -193,7 +193,7 @@ export const ConsumptionAnalysis: React.FC<{
       const curRate = rate[3] ?? 0;
       const code = names.get(vehicle) || vehicle;
       const cat = vehicleCategory(code);
-      const prof = profiles.find(x => x.id === vehicle);
+      const prof = withTanks(profiles.find(x => x.id === vehicle), vehicle);
       const lastFill = last as DayFill | null;
       const capacity = tankCaps(prof).reduce((s, c) => s + c, 0);
       // الصرف من تسلسل كل تفويلات العربة؛ بلا خزان مسجل يبقى بلا قص (تقديري)
@@ -610,7 +610,7 @@ export const ConsumptionAnalysis: React.FC<{
 
                   {/* مدخل مختبر العربة: كارت فاتح من نفس طابع اللوحة الجانبية */}
                   {(() => {
-                    const prof = profiles.find(p => p.id === sel.vehicle);
+                    const prof = withTanks(profiles.find(p => p.id === sel.vehicle), sel.vehicle);
                     const reg = registry.find(r => r.id === sel.code.toUpperCase());
                     const label = 'block text-[11px] font-bold text-slate-500 dark:text-slate-400';
                     return (
