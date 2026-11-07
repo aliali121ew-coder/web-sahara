@@ -39,13 +39,14 @@ const SettingsView = lazyPage(() => import('./components/settings/SettingsView')
 const ProfileView = lazyPage(() => import('./components/settings/ProfileView'), 'ProfileView');
 const ReportAlertsView = lazyPage(() => import('./components/alerts/ReportAlertsView'), 'ReportAlertsView');
 const VehiclesReport = lazyPage(() => import('./components/vehicles/VehiclesReport'), 'VehiclesReport');
+const VehicleTanksUpdater = lazyPage(() => import('./components/vehicles/VehicleTanksUpdater'), 'VehicleTanksUpdater');
 
 const PAGE_PRELOADERS: Record<string, { preload: () => void }> = {
   dashboard: MainDashboard, tanks: TanksOverview, prices: PricesView, suppliers: SuppliersView,
   deliveries: InboundDeliveries, 'deliveries-sahara': InboundDeliveries, 'deliveries-etihad': InboundDeliveries,
   finance: FinanceBalance, 'finance-etihad': FinanceBalance, 'finance-sahara': FinanceBalance,
   managers: SiteManagers, tasks: TasksLogistics, reports: ReportsAnalytics, chat: ChatApp, settings: SettingsView, profile: ProfileView, alerts: ReportAlertsView,
-  'vehicles-report': VehiclesReport,
+  'vehicles-report': VehiclesReport, 'vehicles-tanks': VehicleTanksUpdater,
 };
 
 const AppContent: React.FC = () => {
@@ -213,6 +214,8 @@ const AppContent: React.FC = () => {
         return <ReportAlertsView />;
       case 'vehicles-report':
         return <VehiclesReport />;
+      case 'vehicles-tanks':
+        return <VehicleTanksUpdater />;
       default:
         return <MainDashboard />;
     }

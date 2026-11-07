@@ -26,6 +26,8 @@ export const PERM_GROUPS: SectionGroup[] = [
       { id: 'alerts', label: 'سجل التنبيهات' },
       // تقرير العربات: يُبنى من الواردات التي يملك الحساب صلاحية عليها
       { id: 'vehicles-report', label: 'تقرير العربات' },
+      // تحديث بيانات العربات: حسابات تحدّث سعات خزانات العربات فقط من صفحتها الخاصة (لا تظهر لمدير النظام)
+      { id: 'vehicles-tanks', label: 'تحديث بيانات العربات' },
       { id: 'chat', label: 'المحادثة' },
       { id: 'settings', label: 'الإعدادات' },
       { id: 'appearance', label: 'ضبط المظهر والخلفية' },
@@ -74,7 +76,7 @@ export const ALL_SECTIONS = PERM_GROUPS.flatMap(g => g.sections.map(s => s.id));
  * «صفحة واحدة فقط»: حساب لا يرى القائمة الجانبية ولا يتنقل بين الصفحات، ويفتح صفحته التي حدّدتها الإدارة فقط.
  * واجهة فقط (الصلاحيات الفعلية وحماية البيانات على الخادم كما هي)، ولا تُطبَّق على مدير النظام.
  */
-export const SINGLE_PAGE_TABS = ['dashboard', 'tanks', 'prices', 'suppliers', 'deliveries-sahara', 'deliveries-etihad', 'finance-etihad', 'finance-sahara', 'chat', 'settings', 'alerts', 'vehicles-report'] as const;
+export const SINGLE_PAGE_TABS = ['dashboard', 'tanks', 'prices', 'suppliers', 'deliveries-sahara', 'deliveries-etihad', 'finance-etihad', 'finance-sahara', 'chat', 'settings', 'alerts', 'vehicles-report', 'vehicles-tanks'] as const;
 export type SinglePageTab = (typeof SINGLE_PAGE_TABS)[number];
 export const sanitizeSinglePage = (v: unknown): string =>
   typeof v === 'string' && (SINGLE_PAGE_TABS as readonly string[]).includes(v) ? v : '';
@@ -165,10 +167,13 @@ const KEY_RULES: Rule[] = [
   { match: eq('sahara_tasks', 'sahara_supply_requests'), read: ['tasks', 'dashboard'], write: ['tasks'] },
   // تقرير العربات: كشوف تفويل الآليات المرفوعة (PDF) وسطورها
   // أسماء فئات العربات: يقرؤها من يرى التقرير، ويعدّلها مدير النظام فقط
-  { match: eq('sahara_vehicle_category_names_v1'), read: ['vehicles-report'], write: [] },
+  { match: eq('sahara_vehicle_category_names_v1'), read: ['vehicles-report', 'vehicles-tanks'], write: [] },
   // العربات المحذوفة (المخفية) من التقرير: يقرؤها من يرى التقرير، ويحذف ويستعيد مدير النظام فقط
   { match: eq('sahara_vehicle_hidden_v1'), read: ['vehicles-report'], write: [] },
-  { match: eq('sahara_vehicle_files_v1', 'sahara_vehicle_refills_v1', 'sahara_vehicle_routes_v1', 'sahara_vehicle_profiles_v1', 'sahara_vehicle_registry_v1'), read: ['vehicles-report'], write: ['vehicles-report'] },
+  { match: eq('sahara_vehicle_files_v1', 'sahara_vehicle_refills_v1', 'sahara_vehicle_routes_v1'), read: ['vehicles-report'], write: ['vehicles-report'] },
+  // ملفات العربات (السعات) يحدّثها أيضًا حساب «تحديث بيانات العربات»، ويقرأ سجل الآليات ليبحث عن العربات
+  { match: eq('sahara_vehicle_profiles_v1'), read: ['vehicles-report', 'vehicles-tanks'], write: ['vehicles-report', 'vehicles-tanks'] },
+  { match: eq('sahara_vehicle_registry_v1'), read: ['vehicles-report', 'vehicles-tanks'], write: ['vehicles-report'] },
   { match: eq('sahara_fuel_metrics'), read: ['dashboard', 'reports'], write: ['dashboard'] },
   // سجل التنبيهات (التحقق من اتصال التقارير): يقرؤه من يرى أحد الأقسام الأربعة، ويضيف إليه من يحفظ يومًا فيها،
   // ويعلّم التنبيه كمراجَع كل من يقرأ؛ تعديله وحذفه لمدير النظام

@@ -1,0 +1,284 @@
+/* eslint-disable i18next/no-literal-string */
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { CheckCircle2, Container, Fuel, Search, Truck, X, XCircle } from 'lucide-react';
+import { useSyncedStorage } from '../../lib/useSyncedStorage';
+import { getProfile } from '../../lib/session';
+import { SHEET_TANK_CODES, VEHICLE_PROFILES_KEY, sheetTanks, vehicleCategory, vehicleImage, type VehicleProfile } from '../../lib/vehicleFuel';
+import { VEHICLE_REGISTRY_KEY, type VehicleRegistryEntry } from '../../lib/vehicleRegistry';
+import { useCategoryNames } from './categories';
+
+/** عربة في قائمة البحث */
+interface Item { code: string; cat: string; catKey: string; group: string }
+
+const codeOf = (p: VehicleProfile) => (p.name?.trim() || p.id).toUpperCase();
+/** محدثة = سُجّلت لها سعة خزان في ملفها */
+const isUpdated = (p: VehicleProfile | undefined) => !!(p?.tankLiters || p?.tank2Liters || p?.tank3Liters);
+const fmtDate = (iso: string) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+};
+
+/**
+ * صفحة «تحديث بيانات العربات»: لحسابات تحديث الخزانات فقط. زر يفتح نافذة بخلفية ضبابية:
+ * بحث عن أي عربة (مع فئتها وصورتها)، ثم حتى 3 خزانات، والحفظ يُظهر علامة صح متحركة ثم تُغلق النافذة.
+ * العربة المحدثة يظهر كارتها بالأخضر، وغير المحدثة بالأحمر.
+ */
+export const VehicleTanksUpdater: React.FC = () => {
+  const [profiles, setProfiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
+  const [registry] = useSyncedStorage<VehicleRegistryEntry[]>(VEHICLE_REGISTRY_KEY, []);
+  const [labels] = useCategoryNames();
+  const [open, setOpen] = useState(false);
+
+  // كل العربات المعروفة: سجل الآليات، وكشوف الخزانات، وملفات العربات
+  const items = useMemo<Item[]>(() => {
+    const map = new Map<string, Item>();
+    const add = (raw: string, group = '') => {
+      const code = raw.trim().toUpperCase();
+      if (!code || map.has(code)) return;
+      const cat = vehicleCategory(code);
+      map.set(code, { code, catKey: cat?.key || 'OTHER', cat: (cat && labels[cat.key]) || cat?.label || 'أخرى', group });
+    };
+    registry.forEach(r => add(r.id, r.group?.replace(/^اليات\s*/, '').replace(/[\s-]+$/, '') || ''));
+    SHEET_TANK_CODES.forEach(c => add(c));
+    profiles.forEach(p => add(codeOf(p)));
+    return [...map.values()].sort((a, b) => a.code.localeCompare(b.code, 'en', { numeric: true }));
+  }, [registry, profiles, labels]);
+
+  const profileOf = (code: string) => profiles.find(p => codeOf(p) === code);
+  const updated = items.filter(i => isUpdated(profileOf(i.code))).length;
+  const pct = items.length ? Math.round((updated / items.length) * 100) : 0;
+
+  const save = (code: string, caps: (number | null)[], count: number) => {
+    const u = getProfile();
+    setProfiles(prev => {
+      const base = prev.find(p => codeOf(p) === code)
+        || { id: code, name: '', type: '', tankLiters: null, dailyLimit: null, driver: '', department: '', notes: '', photo: '', updatedAt: '', by: '' };
+      const next: VehicleProfile = {
+        ...base,
+        tankCount: count,
+        tankLiters: caps[0] ?? null,
+        tank2Liters: count > 1 ? caps[1] ?? null : null,
+        tank3Liters: count > 2 ? caps[2] ?? null : null,
+        updatedAt: new Date().toISOString(),
+        by: u?.name || u?.username || '',
+      };
+      return [next, ...prev.filter(p => p.id !== base.id)];
+    });
+  };
+
+  return (
+    <div className="min-h-[70vh] flex items-center justify-center p-4 font-cairo">
+      <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-soft-card p-6 sm:p-8 text-center">
+        <div className="w-16 h-16 mx-auto rounded-3xl bg-gradient-to-tr from-sky-500 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30">
+          <Fuel className="w-8 h-8" />
+        </div>
+        <h2 className="mt-4 text-2xl font-black text-slate-900 dark:text-white">تحديث بيانات العربات</h2>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">ابحث عن العربة وأدخل سعات خزاناتها</p>
+
+        <div className="mt-5 text-right">
+          <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
+            <span>المحدثة</span>
+            <span><bdi className="font-mono text-slate-900 dark:text-white">{updated}</bdi> من <bdi className="font-mono">{items.length}</bdi></span>
+          </div>
+          <div className="mt-1.5 h-2 rounded-full bg-rose-100 dark:bg-rose-950/40 overflow-hidden">
+            <div className="h-full rounded-full bg-gradient-to-l from-emerald-500 to-teal-400 transition-all duration-700" style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="mt-6 w-full h-14 inline-flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-l from-indigo-600 to-sky-600 hover:from-indigo-700 hover:to-sky-700 text-white text-lg font-black shadow-lg shadow-indigo-600/30 transition-all hover:-translate-y-0.5 active:scale-[.98] cursor-pointer"
+        >
+          <Truck className="w-6 h-6" />تحديث العربات
+        </button>
+      </div>
+
+      {open && <UpdateDialog items={items} profileOf={profileOf} onSave={save} onClose={() => setOpen(false)} />}
+    </div>
+  );
+};
+
+const UpdateDialog: React.FC<{
+  items: Item[];
+  profileOf: (code: string) => VehicleProfile | undefined;
+  onSave: (code: string, caps: (number | null)[], count: number) => void;
+  onClose: () => void;
+}> = ({ items, profileOf, onSave, onClose }) => {
+  const [q, setQ] = useState('');
+  const [catFilter, setCatFilter] = useState<string | null>(null);
+  const [code, setCode] = useState<string | null>(null);
+  const [count, setCount] = useState(1);
+  const [caps, setCaps] = useState<string[]>(['', '', '']);
+  const [done, setDone] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const close = () => { setClosing(true); window.setTimeout(onClose, 200); };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    window.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    inputRef.current?.focus();
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const cats = useMemo(() => {
+    const m = new Map<string, { key: string; name: string; count: number }>();
+    for (const i of items) { const c = m.get(i.catKey); if (c) c.count++; else m.set(i.catKey, { key: i.catKey, name: i.cat, count: 1 }); }
+    return [...m.values()].sort((a, b) => b.count - a.count);
+  }, [items]);
+  const needle = q.trim().toUpperCase();
+  const results = useMemo(() => items.filter(i => (!catFilter || i.catKey === catFilter)
+    && (!needle || i.code.includes(needle) || i.cat.includes(q.trim()))).slice(0, 60), [items, catFilter, needle, q]);
+
+  const pick = (c: string) => {
+    const prof = profileOf(c);
+    const saved = [prof?.tankLiters ?? null, prof?.tank2Liters ?? null, prof?.tank3Liters ?? null];
+    const sheet = sheetTanks(c);
+    const start = isUpdated(prof) ? saved : sheet ? [sheet[0] ?? null, sheet[1] ?? null, sheet[2] ?? null] : [null, null, null];
+    setCode(c);
+    setCount(prof?.tankCount || (isUpdated(prof) ? (saved[2] ? 3 : saved[1] ? 2 : 1) : sheet?.length || 1));
+    setCaps(start.map(v => (v ? String(v) : '')));
+  };
+
+  const sel = code ? items.find(i => i.code === code) : null;
+  const prof = code ? profileOf(code) : undefined;
+  const ok = isUpdated(prof);
+  const nums = caps.map(v => (v.trim() === '' ? null : Math.max(0, Number(v)) || null));
+  const valid = !!nums[0] && nums.slice(0, count).every(Boolean);
+  const total = nums.slice(0, count).reduce<number>((s, v) => s + (v || 0), 0);
+
+  const submit = () => {
+    if (!code || !valid) return;
+    onSave(code, nums, count);
+    setDone(true);
+    window.setTimeout(close, 1400);
+  };
+
+  return createPortal(
+    <div className={`fixed inset-0 z-[1000] flex items-end sm:items-center justify-center p-0 sm:p-4 font-cairo ${closing ? 'vehicle-fade-out' : 'vehicle-fade-in'}`} role="dialog" aria-modal="true" aria-label="تحديث العربات" dir="rtl">
+      <div className="absolute inset-0 bg-slate-950/45 backdrop-blur-md" onClick={close} />
+      <div className="relative w-full sm:max-w-lg max-h-[92vh] flex flex-col rounded-t-3xl sm:rounded-3xl bg-white/95 dark:bg-slate-900/95 border border-white/60 dark:border-slate-700 shadow-2xl overflow-hidden">
+        <style>{`
+          @keyframes vt-pop { 0% { transform: scale(.6); opacity: 0 } 60% { transform: scale(1.08); opacity: 1 } 100% { transform: scale(1) } }
+          @keyframes vt-draw { to { stroke-dashoffset: 0 } }
+          .vt-pop { animation: vt-pop .45s cubic-bezier(.2,.9,.3,1.2) both }
+          .vt-circle { stroke-dasharray: 166; stroke-dashoffset: 166; animation: vt-draw .5s ease-out .1s forwards }
+          .vt-check { stroke-dasharray: 48; stroke-dashoffset: 48; animation: vt-draw .35s ease-out .5s forwards }
+        `}</style>
+
+        {done ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-16 px-6">
+            <svg className="vt-pop w-24 h-24" viewBox="0 0 56 56" aria-hidden>
+              <circle className="vt-circle" cx="28" cy="28" r="26" fill="none" stroke="#10b981" strokeWidth="3" />
+              <path className="vt-check" d="M16 29l8 8 16-17" fill="none" stroke="#10b981" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <div className="text-xl font-black text-slate-900 dark:text-white">تم الحفظ</div>
+            <div className="text-sm text-slate-500 dark:text-slate-400">العربة <bdi dir="ltr" className="font-mono font-bold">{code}</bdi> محدثة · <bdi className="font-mono">{total.toLocaleString()}</bdi> لتر</div>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between gap-3 px-5 pt-5 pb-3">
+              <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2"><Truck className="w-5 h-5 text-indigo-600" />تحديث العربات</h3>
+              <button type="button" onClick={close} aria-label="إغلاق" className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center justify-center cursor-pointer"><X className="w-4 h-4" /></button>
+            </div>
+
+            {!sel ? (
+              <>
+                <div className="px-5">
+                  <label className="flex items-center gap-2 h-12 px-4 rounded-2xl bg-slate-100 dark:bg-slate-800 focus-within:ring-2 focus-within:ring-indigo-400">
+                    <Search className="w-5 h-5 text-slate-400" />
+                    <span className="sr-only">ابحث عن عربة</span>
+                    <input ref={inputRef} value={q} onChange={e => setQ(e.target.value)} placeholder="اكتب رقم العربة، مثل BS214 أو 290" className="flex-1 min-w-0 bg-transparent outline-none text-base font-bold text-slate-900 dark:text-white placeholder:font-medium placeholder:text-slate-400" />
+                  </label>
+                  <div className="flex gap-1.5 overflow-x-auto vehicle-scroll py-3 -mx-1 px-1">
+                    <button type="button" onClick={() => setCatFilter(null)} className={`shrink-0 h-8 px-3 rounded-full text-xs font-bold cursor-pointer ${!catFilter ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>الكل</button>
+                    {cats.map(c => (
+                      <button key={c.key} type="button" onClick={() => setCatFilter(f => (f === c.key ? null : c.key))} className={`shrink-0 h-8 px-3 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer ${catFilter === c.key ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>{c.name}</button>
+                    ))}
+                  </div>
+                </div>
+                <ul className="flex-1 min-h-0 overflow-y-auto vehicle-scroll px-3 pb-4 space-y-1.5">
+                  {results.map(i => {
+                    const up = isUpdated(profileOf(i.code));
+                    return (
+                      <li key={i.code}>
+                        <button type="button" onClick={() => pick(i.code)} className={`w-full flex items-center gap-3 p-2 rounded-2xl border text-right cursor-pointer transition-colors ${up ? 'border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/60 dark:bg-emerald-950/20 hover:bg-emerald-50' : 'border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/20 hover:bg-rose-50'}`}>
+                          <img src={vehicleImage(i.code)} alt="" loading="lazy" className="w-16 h-11 object-contain shrink-0" />
+                          <span className="flex-1 min-w-0">
+                            <span className="block font-mono font-black text-[15px] text-slate-900 dark:text-white" dir="ltr" style={{ textAlign: 'right' }}>{i.code}</span>
+                            <span className="block text-[11.5px] text-slate-500 dark:text-slate-400 truncate">{i.cat}{i.group && ` · ${i.group}`}</span>
+                          </span>
+                          <span className={`shrink-0 inline-flex items-center gap-1 text-[11px] font-black px-2 py-1 rounded-full ${up ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+                            {up ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}{up ? 'محدثة' : 'غير محدثة'}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                  {!results.length && <li className="py-10 text-center text-sm text-slate-400">لا توجد عربة بهذا الرقم</li>}
+                </ul>
+              </>
+            ) : (
+              <div className="flex-1 min-h-0 overflow-y-auto vehicle-scroll px-5 pb-5">
+                {/* كارت العربة: عنوانه أخضر إن كانت محدثة وأحمر إن لم تكن */}
+                <div className={`rounded-2xl border overflow-hidden ${ok ? 'border-emerald-300 dark:border-emerald-800' : 'border-rose-300 dark:border-rose-800'}`}>
+                  <div className={`flex items-center justify-between gap-2 px-4 py-2.5 text-white ${ok ? 'bg-gradient-to-l from-emerald-600 to-teal-500' : 'bg-gradient-to-l from-rose-600 to-red-500'}`}>
+                    <span className="inline-flex items-center gap-1.5 text-sm font-black">{ok ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}{ok ? 'محدثة' : 'غير محدثة'}</span>
+                    {ok && prof?.updatedAt && <span className="text-[11px] font-bold opacity-90">{fmtDate(prof.updatedAt)}{prof.by && ` · ${prof.by}`}</span>}
+                  </div>
+                  <div className="flex items-center gap-4 p-4 bg-slate-50/70 dark:bg-slate-800/40">
+                    <img src={vehicleImage(sel.code, prof?.photo)} alt={`صورة العربة ${sel.code}`} className="w-32 h-24 object-contain shrink-0" />
+                    <div className="min-w-0">
+                      <div className="font-mono font-black text-3xl text-slate-900 dark:text-white" dir="ltr" style={{ textAlign: 'right' }}>{sel.code}</div>
+                      <div className="text-sm font-bold text-slate-500 dark:text-slate-400">{sel.cat}</div>
+                      {sel.group && <div className="text-[11.5px] text-slate-400 truncate">{sel.group}</div>}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <div className="text-xs font-black text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1.5"><Container className="w-3.5 h-3.5" />عدد الخزانات</div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[1, 2, 3].map(n => (
+                      <button key={n} type="button" onClick={() => setCount(n)} className={`h-11 rounded-xl text-base font-black cursor-pointer transition-all ${count === n ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>{n}</button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-2.5">
+                  {['الخزان الرئيسي', 'الخزان الثاني', 'الخزان الثالث'].slice(0, count).map((label, k) => (
+                    <label key={label} className="flex items-center gap-3 h-14 px-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus-within:ring-2 focus-within:ring-indigo-400">
+                      <span className="w-28 shrink-0 text-sm font-bold text-slate-600 dark:text-slate-300">{label}</span>
+                      <input
+                        inputMode="numeric"
+                        value={caps[k]}
+                        onChange={e => { const v = e.target.value.replace(/[^\d]/g, ''); setCaps(c => c.map((x, j) => (j === k ? v : x))); }}
+                        placeholder="السعة"
+                        className="flex-1 min-w-0 bg-transparent outline-none text-xl font-mono font-bold text-slate-900 dark:text-white text-left placeholder:font-cairo placeholder:text-sm placeholder:font-medium placeholder:text-slate-400"
+                      />
+                      <span className="text-xs font-bold text-slate-400">لتر</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="mt-3 flex items-center justify-between text-sm">
+                  <span className="font-bold text-slate-500 dark:text-slate-400">السعة الكلية</span>
+                  <span className="font-mono font-black text-slate-900 dark:text-white">{total.toLocaleString()} <span className="font-cairo text-xs text-slate-400">لتر</span></span>
+                </div>
+
+                <div className="mt-5 grid grid-cols-[1fr_auto] gap-2">
+                  <button type="button" disabled={!valid} onClick={submit} className="h-12 rounded-2xl bg-gradient-to-l from-emerald-600 to-teal-500 text-white text-base font-black shadow-md shadow-emerald-500/30 disabled:opacity-40 disabled:shadow-none cursor-pointer disabled:cursor-not-allowed">حفظ</button>
+                  <button type="button" onClick={() => setCode(null)} className="h-12 px-5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm font-bold cursor-pointer">عربة أخرى</button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>,
+    document.body,
+  );
+};

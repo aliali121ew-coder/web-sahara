@@ -46,6 +46,8 @@ export const TAB_SECTION: Record<string, { section?: string; group?: string }> =
   alerts: { section: 'alerts' },
   // تقرير العربات: صلاحيته الخاصة (البيانات حسب صلاحية الواردات)
   'vehicles-report': { section: 'vehicles-report' },
+  // تحديث بيانات العربات: لأصحاب صلاحيته فقط (مدير النظام لا يراها)
+  'vehicles-tanks': { section: 'vehicles-tanks' },
   // الملف الشخصي لكل حساب بلا صلاحية (آخر القائمة: صفحة البداية لحساب بلا أقسام)
   profile: {},
 };
@@ -57,6 +59,7 @@ export const useCanOpenTab = () => {
     // حساب مقيَّد بصفحة واحدة: لا يفتح غيرها (الباقي يتبع الصلاحيات كالمعتاد)
     if (p.singlePage && tab !== p.singlePage) return false;
     if (tab === 'profile') return true;
+    if (tab === 'vehicles-tanks') return !p.isAdmin && p.canView('vehicles-tanks');
     // بلا أي قسم تحقق تكون الصفحة فارغة، فلا تُفتح
     if (tab === 'alerts') return p.canView('alerts') && Object.values(CHECK_SECTION_PERM).some(s => p.canView(s));
     const t = TAB_SECTION[tab];

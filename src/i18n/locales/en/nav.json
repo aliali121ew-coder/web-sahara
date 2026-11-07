@@ -16,7 +16,8 @@
     "profile": "Profile",
     "alerts": "Alerts log",
     "suppliers": "Suppliers",
-    "vehiclesReport": "Vehicles Report"
+    "vehiclesReport": "Vehicles Report",
+    "vehiclesTanks": "Vehicle Data Update"
   },
   "sidebar": {
     "label": "Main navigation",

@@ -303,6 +303,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       groupTitle: t('nav:groups.analytics'),
       items: [
         { id: 'vehicles-report', label: t('nav:items.vehiclesReport'), icon: Gauge },
+        { id: 'vehicles-tanks', label: t('nav:items.vehiclesTanks'), icon: Gauge },
         { id: 'chat', label: t('nav:items.chat'), icon: MessageSquare },
         { id: 'settings', label: t('nav:items.settings'), icon: Settings, badge: supportCount ? String(supportCount) : undefined },
       ]

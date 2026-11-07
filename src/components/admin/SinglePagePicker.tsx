@@ -17,6 +17,7 @@ const LABEL_KEY: Record<(typeof SINGLE_PAGE_TABS)[number], string> = {
   settings: 'nav:items.settings',
   alerts: 'nav:items.alerts',
   'vehicles-report': 'nav:items.vehiclesReport',
+  'vehicles-tanks': 'nav:items.vehiclesTanks',
 };
 
 /**

@@ -632,6 +632,11 @@ const VEHICLE_TANKS: Record<string, number[]> = {
   SF74: [60], SF75: [60], SF76: [40], SF77: [40], SF78: [40], SF81: [40],
 };
 
+/** سعات خزانات العربة من الكشوف (null = ليست في الكشوف) */
+export const sheetTanks = (code: string): number[] | null => VEHICLE_TANKS[code.trim().toUpperCase()] ?? null;
+/** رموز العربات الموجودة في كشوف الخزانات */
+export const SHEET_TANK_CODES = Object.keys(VEHICLE_TANKS);
+
 /**
  * ملف العربة مع خزاناتها من الكشف إن لم تُسجَّل لها خزانات في تفاصيلها.
  * ما يُدخل في تفاصيل العربة يبقى هو المعتمد، والحفظ من التفاصيل يثبّت سعات الكشف في ملفها.
