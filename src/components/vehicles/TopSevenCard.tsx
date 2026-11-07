@@ -45,7 +45,14 @@ const ChangeRing: React.FC<{ last: number; prev: number | null }> = ({ last, pre
  * الأعلى استهلاكًا (7 فقط): بلا فئة مفتوحة = أعلى عربة في كل فئة؛ مع فئة مفتوحة = أعلى عربات الفئة.
  * كل عربة في كارت صغير (حلقة تغيّر آخر تفويلة عن السابقة، آخر تفويلة والسابقة)، والكارتات تتوزع بالتساوي حتى نهاية العمود.
  */
-export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | null; onOpen: (v: string) => void }> = ({ stats, category, onOpen }) => {
+export const TopSevenCard: React.FC<{
+  stats: VehicleStat[];
+  category: string | null;
+  /** بلا onOpen لا تُفتح العربة (عرض فقط) */
+  onOpen?: (v: string) => void;
+  /** أقصى عدد للعربات (7 افتراضيًا) */
+  limit?: number;
+}> = ({ stats, category, onOpen, limit = TOP }) => {
   const [profiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
   const names = useVehicleNames();
   const [labels] = useCategoryNames();
@@ -65,14 +72,14 @@ export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | n
 
   // عدد الكارتات بقدر المساحة حتى نهاية كارت الفئات (7 كحد أقصى)، وتتمدد بالتساوي لملئها
   const listRef = useRef<HTMLOListElement>(null);
-  const [fit, setFit] = useState(TOP);
+  const [fit, setFit] = useState(limit);
   useEffect(() => {
     const el = listRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => setFit(Math.max(1, Math.min(TOP, Math.floor((el.clientHeight + GAP) / (CARD_MIN + GAP))))));
+    const ro = new ResizeObserver(() => setFit(Math.max(1, Math.min(limit, Math.floor((el.clientHeight + GAP) / (CARD_MIN + GAP))))));
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [limit]);
   const view = list.slice(0, fit);
 
   return (
@@ -93,8 +100,9 @@ export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | n
             <li key={s.vehicle} className="flex-1 flex" style={{ minHeight: CARD_MIN, maxHeight: 120 }}>
               <button
                 type="button"
-                onClick={() => onOpen(s.vehicle)}
-                className="vehicle-kpi w-full flex items-center gap-2.5 rounded-2xl border px-2.5 py-2 hover:shadow-md hover:-translate-y-px transition-all text-right cursor-pointer"
+                disabled={!onOpen}
+                onClick={() => onOpen?.(s.vehicle)}
+                className={`vehicle-kpi w-full flex items-center gap-2.5 rounded-2xl border px-2.5 py-2 transition-all text-right ${onOpen ? 'hover:shadow-md hover:-translate-y-px cursor-pointer' : 'cursor-default'}`}
                 style={{ animationDelay: `${i * 0.04}s`, background: `linear-gradient(to left, ${shareColor(share).tint}, transparent 85%)`, borderColor: shareColor(share).border }}
               >
                 <ChangeRing last={s.last.qty} prev={s.last.prevQty} />

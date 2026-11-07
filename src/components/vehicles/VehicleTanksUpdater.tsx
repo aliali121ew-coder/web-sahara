@@ -1,12 +1,16 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CheckCircle2, Container, Fuel, Search, Truck, X, XCircle } from 'lucide-react';
+import { CheckCircle2, Container, Search, Truck, X, XCircle } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { getProfile } from '../../lib/session';
 import { SHEET_TANK_CODES, VEHICLE_PROFILES_KEY, sheetTanks, vehicleCategory, vehicleImage, type VehicleProfile } from '../../lib/vehicleFuel';
 import { VEHICLE_REGISTRY_KEY, type VehicleRegistryEntry } from '../../lib/vehicleRegistry';
-import { useCategoryNames } from './categories';
+import { groupByCategory, useCategoryNames, useVehicleNames } from './categories';
+import { useVehicleData } from './useVehicleData';
+import { TopSevenCard } from './TopSevenCard';
+import { CategoryDonut } from './CategoryDonut';
+import { formatDay } from '../../lib/vehicleFuel';
 
 /** عربة في قائمة البحث */
 interface Item { code: string; cat: string; catKey: string; group: string }
@@ -67,38 +71,123 @@ export const VehicleTanksUpdater: React.FC = () => {
     });
   };
 
+  // التفويلات (قراءة فقط) للأعلى استهلاكًا والرسم: آخر يوم كشف كما في تقرير العربات
+  const { stats, active } = useVehicleData(null);
+  const names = useVehicleNames();
+  const statGroups = useMemo(() => groupByCategory(stats, names, labels), [stats, names, labels]);
+  const [topCat, setTopCat] = useState<string | null>(null);
+  const shownCat = topCat && statGroups.some(g => g.key === topCat) ? topCat : statGroups[0]?.key ?? null;
+
+  // كارتات الفئات: صورة الفئة واسمها، وعدد المحدثة وغير المحدثة فيها
+  const catCards = useMemo(() => {
+    const m = new Map<string, { key: string; name: string; sample: string; up: number; down: number }>();
+    for (const i of items) {
+      const c = m.get(i.catKey) || { key: i.catKey, name: i.cat, sample: i.code, up: 0, down: 0 };
+      if (isUpdated(profiles.find(p => codeOf(p) === i.code))) c.up++; else c.down++;
+      m.set(i.catKey, c);
+    }
+    return [...m.values()].sort((a, b) => (b.up + b.down) - (a.up + a.down));
+  }, [items, profiles]);
+  const down = items.length - updated;
+  const downPct = items.length ? 100 - pct : 0;
+  const day = active.kind === 'day' ? formatDay(active.date) : '';
+
   return (
-    <div className="min-h-[70vh] flex items-center justify-center p-4 font-cairo">
-      <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-soft-card p-6 sm:p-8 text-center">
-        <div className="w-16 h-16 mx-auto rounded-3xl bg-gradient-to-tr from-sky-500 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30">
-          <Fuel className="w-8 h-8" />
+    <div className="space-y-5 pb-12 font-cairo">
+      {/* العنوان وزر التحديث */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white">تحديث بيانات العربات</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">ابحث عن العربة وأدخل سعات خزاناتها</p>
         </div>
-        <h2 className="mt-4 text-2xl font-black text-slate-900 dark:text-white">تحديث بيانات العربات</h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">ابحث عن العربة وأدخل سعات خزاناتها</p>
-
-        <div className="mt-5 text-right">
-          <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
-            <span>المحدثة</span>
-            <span><bdi className="font-mono text-slate-900 dark:text-white">{updated}</bdi> من <bdi className="font-mono">{items.length}</bdi></span>
-          </div>
-          <div className="mt-1.5 h-2 rounded-full bg-rose-100 dark:bg-rose-950/40 overflow-hidden">
-            <div className="h-full rounded-full bg-gradient-to-l from-emerald-500 to-teal-400 transition-all duration-700" style={{ width: `${pct}%` }} />
-          </div>
-        </div>
-
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="mt-6 w-full h-14 inline-flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-l from-indigo-600 to-sky-600 hover:from-indigo-700 hover:to-sky-700 text-white text-lg font-black shadow-lg shadow-indigo-600/30 transition-all hover:-translate-y-0.5 active:scale-[.98] cursor-pointer"
+          className="w-full sm:w-auto h-12 px-6 inline-flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-l from-indigo-600 to-sky-600 hover:from-indigo-700 hover:to-sky-700 text-white text-base font-black shadow-lg shadow-indigo-600/30 transition-all hover:-translate-y-0.5 active:scale-[.98] cursor-pointer"
         >
-          <Truck className="w-6 h-6" />تحديث العربات
+          <Truck className="w-5 h-5" />تحديث العربات
         </button>
       </div>
+
+      {/* كارتان فقط: المحدثة وغير المحدثة مع نسبة كل منهما */}
+      <div className="grid grid-cols-2 gap-3">
+        <StatusKpi ok label="العربات المحدثة" value={updated} pct={pct} total={items.length} />
+        <StatusKpi ok={false} label="العربات غير المحدثة" value={down} pct={downPct} total={items.length} />
+      </div>
+
+      {/* الفئات: كارتات بلا بيانات تفويل ولا تُفتح، وعلى كل كارت المحدثة وغير المحدثة */}
+      <section className="rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-soft-card">
+        <h3 className="text-sm font-black text-slate-900 dark:text-white mb-3">فئات العربات <span className="text-[11px] font-bold text-slate-400">· {catCards.length} فئة</span></h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
+          {catCards.map(c => {
+            const all = c.up + c.down;
+            const share = all ? Math.round((c.up / all) * 100) : 0;
+            return (
+              <div key={c.key} className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-3">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-sm font-black text-slate-900 dark:text-white truncate">{c.name}</span>
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono">{all}</span>
+                </div>
+                <img src={vehicleImage(c.sample)} alt="" loading="lazy" className="w-full h-20 object-contain mt-2" />
+                <div className="mt-2 h-1.5 rounded-full bg-rose-200/70 dark:bg-rose-950/50 overflow-hidden">
+                  <div className="h-full rounded-full bg-emerald-500" style={{ width: `${share}%` }} />
+                </div>
+                <div className="grid grid-cols-2 gap-1.5 mt-2">
+                  <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1 text-center">
+                    <div className="font-mono font-black text-base text-emerald-700 dark:text-emerald-300 leading-tight">{c.up}</div>
+                    <div className="text-[10px] font-bold text-emerald-700/80 dark:text-emerald-300/80">محدثة</div>
+                  </div>
+                  <div className="rounded-xl bg-rose-50 dark:bg-rose-950/30 px-2 py-1 text-center">
+                    <div className="font-mono font-black text-base text-rose-700 dark:text-rose-300 leading-tight">{c.down}</div>
+                    <div className="text-[10px] font-bold text-rose-700/80 dark:text-rose-300/80">غير محدثة</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* الأعلى استهلاكًا: 5 فقط من فئة واحدة يختارها، ثم الرسم */}
+      {statGroups.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-1.5 overflow-x-auto vehicle-scroll pb-1">
+              {statGroups.map(g => (
+                <button key={g.key} type="button" onClick={() => setTopCat(g.key)} className={`shrink-0 h-8 px-3 rounded-full text-xs font-bold whitespace-nowrap cursor-pointer ${shownCat === g.key ? 'bg-amber-500 text-white' : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'}`}>{g.label}</button>
+              ))}
+            </div>
+            <div className="flex flex-col min-h-[420px]">
+              <TopSevenCard stats={stats} category={shownCat} limit={5} />
+            </div>
+            {day && <div className="text-[11px] text-slate-400 text-center">تفويلات يوم {day}</div>}
+          </div>
+          <CategoryDonut stats={stats} category={null} />
+        </div>
+      )}
 
       {open && <UpdateDialog items={items} profileOf={profileOf} onSave={save} onClose={() => setOpen(false)} />}
     </div>
   );
 };
+
+const StatusKpi: React.FC<{ ok: boolean; label: string; value: number; pct: number; total: number }> = ({ ok, label, value, pct, total }) => (
+  <div className={`relative overflow-hidden rounded-2xl border p-4 shadow-soft-card ${ok ? 'bg-white dark:bg-slate-900/90 border-emerald-200 dark:border-emerald-900/60' : 'bg-white dark:bg-slate-900/90 border-rose-200 dark:border-rose-900/60'}`}>
+    <div className={`absolute -top-8 -left-8 w-24 h-24 rounded-full blur-2xl opacity-20 ${ok ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+    <div className="relative flex items-center justify-between mb-2">
+      <span className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">{label}</span>
+      <span className={`p-1.5 rounded-xl text-white ${ok ? 'bg-emerald-500' : 'bg-rose-500'}`}>{ok ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}</span>
+    </div>
+    <div className="relative flex items-baseline gap-2">
+      <span className="text-2xl sm:text-3xl font-black font-mono text-slate-900 dark:text-white">{value}</span>
+      <span className={`text-sm font-black font-mono ${ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`} dir="ltr">{pct}%</span>
+    </div>
+    <div className={`relative mt-2 h-1.5 rounded-full overflow-hidden ${ok ? 'bg-emerald-100 dark:bg-emerald-950/40' : 'bg-rose-100 dark:bg-rose-950/40'}`}>
+      <div className={`h-full rounded-full ${ok ? 'bg-emerald-500' : 'bg-rose-500'}`} style={{ width: `${pct}%` }} />
+    </div>
+    <div className="relative text-[11px] text-slate-500 dark:text-slate-400 font-bold mt-1.5">من {total} عربة</div>
+  </div>
+);
 
 const UpdateDialog: React.FC<{
   items: Item[];

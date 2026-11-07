@@ -169,8 +169,10 @@ const KEY_RULES: Rule[] = [
   // أسماء فئات العربات: يقرؤها من يرى التقرير، ويعدّلها مدير النظام فقط
   { match: eq('sahara_vehicle_category_names_v1'), read: ['vehicles-report', 'vehicles-tanks'], write: [] },
   // العربات المحذوفة (المخفية) من التقرير: يقرؤها من يرى التقرير، ويحذف ويستعيد مدير النظام فقط
-  { match: eq('sahara_vehicle_hidden_v1'), read: ['vehicles-report'], write: [] },
-  { match: eq('sahara_vehicle_files_v1', 'sahara_vehicle_refills_v1', 'sahara_vehicle_routes_v1'), read: ['vehicles-report'], write: ['vehicles-report'] },
+  { match: eq('sahara_vehicle_hidden_v1'), read: ['vehicles-report', 'vehicles-tanks'], write: [] },
+  { match: eq('sahara_vehicle_files_v1', 'sahara_vehicle_routes_v1'), read: ['vehicles-report'], write: ['vehicles-report'] },
+  // سطور التفويل: يقرؤها أيضًا حساب «تحديث بيانات العربات» (للأعلى استهلاكًا والرسم) بلا تعديل
+  { match: eq('sahara_vehicle_refills_v1'), read: ['vehicles-report', 'vehicles-tanks'], write: ['vehicles-report'] },
   // ملفات العربات (السعات) يحدّثها أيضًا حساب «تحديث بيانات العربات»، ويقرأ سجل الآليات ليبحث عن العربات
   { match: eq('sahara_vehicle_profiles_v1'), read: ['vehicles-report', 'vehicles-tanks'], write: ['vehicles-report', 'vehicles-tanks'] },
   { match: eq('sahara_vehicle_registry_v1'), read: ['vehicles-report', 'vehicles-tanks'], write: ['vehicles-report'] },
