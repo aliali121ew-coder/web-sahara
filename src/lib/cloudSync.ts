@@ -352,7 +352,8 @@ const fetchState = async (timeoutMs = 8000, conditional = false) => {
   }
 };
 
-export type InitResult = 'ready' | 'need-login';
+/** unreachable: الجلسة باقية لكن تعذّر جلب البيانات (اتصال ضعيف أو عطل في الخادم) */
+export type InitResult = 'ready' | 'need-login' | 'unreachable';
 
 /** يُستدعى قبل عرض التطبيق: يسحب آخر نسخة من الخادم ثم يفعّل الحفظ التلقائي */
 export async function initCloudSync(): Promise<InitResult> {
@@ -395,8 +396,8 @@ export async function initCloudSync(): Promise<InitResult> {
       adopt((await res.json()) as StateResponse);
       rememberEtag(res);
     } catch {
-      // لم يصل الخادم: نعود لشاشة الدخول بدل البدء بالبيانات الافتراضية
-      return 'need-login';
+      // لم يصل الخادم: نعود لشاشة الدخول بدل البدء بالبيانات الافتراضية (دون مسح الجلسة)
+      return 'unreachable';
     }
     installInterceptors();
     flush();

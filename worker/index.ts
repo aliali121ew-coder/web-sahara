@@ -12,6 +12,7 @@ import { canCreateItems, canMarkRead, canReadKey, canWriteKey, canWriteSome, isS
 
 import { ensureFileColumns, loadFile, removeFile, storeFile } from './storage/files';
 import { applyCollectionOps, clearCollection, ensureCollections, isCollectionKey, limitedOpsAllowed, readCollections, replaceCollection, type CollectionOps } from './storage/collections';
+import { guardReportLogOps, isReportLogKey, scopeReportLogs } from './storage/reportLogs';
 import { COLLECTION_KEYS, KEY_RULES_SIGNATURE } from '../src/lib/permCatalog';
 import type { D1Database, D1PreparedStatement, Env, ExecutionContext, R2Bucket, ScheduledController } from './types';
 import { handleSystem } from './system/api';
@@ -281,6 +282,7 @@ export default {
         for (const r of results) items[r.key] = r.value;
       }
       Object.assign(items, await readCollections(env.DB, keys.filter(isCollectionKey)));
+      if (!session.admin) await scopeReportLogs(env.DB, items, session.perms);
       // رقم النسخة وبصمتها: الجهاز المتزامن يحفظها فلا يعيد المزامنة الدورية تنزيل النسخة الكاملة
       const v = await readStateVersion(env.DB);
       return new Response(JSON.stringify({ items, removed: plain.filter(k => !(k in items)), v }), {
@@ -303,6 +305,7 @@ export default {
       const items: Record<string, string> = Object.fromEntries(visible.map(r => [r.key, r.value]));
       // المجموعات الكبيرة تُجمَّع من سطورها وتُعاد بنفس الشكل (نص JSON)
       Object.assign(items, await readCollections(env.DB, COLLECTION_KEYS.filter(key => canReadKey(session.perms, session.admin, key))));
+      if (!session.admin) await scopeReportLogs(env.DB, items, session.perms);
       const body = JSON.stringify({
         items,
         admin: session.admin,
@@ -331,12 +334,18 @@ export default {
       // وإلا تحفظ كل شاشة مفتوحة ما وصلها فتنطلق موجة جلب متكررة على كل الأجهزة وتتأخر التحديثات
       const changed = new Set<string>();
       // فروق المجموعات (الطريقة الحديثة: عناصر جديدة/معدّلة ومحذوفة فقط)
-      for (const [key, ops] of Object.entries(body.collections || {})) {
-        if (!isCollectionKey(key) || !ops || typeof ops !== 'object') continue;
+      for (const [key, sent] of Object.entries(body.collections || {})) {
+        if (!isCollectionKey(key) || !sent || typeof sent !== 'object') continue;
+        let ops = sent;
         if (!canWriteKey(session.perms, session.admin, key)) {
           // بلا كتابة كاملة: تُقبل الإضافة فقط أو تعليم المقروء فقط إن سمحت بهما القاعدة، وإلا تُرفض كل عمليات المفتاح
           const allow = { create: canCreateItems(session.perms, session.admin, key), markRead: canMarkRead(session.perms, session.admin, key) };
           if (!(allow.create || allow.markRead) || !(await limitedOpsAllowed(env.DB, key, ops, allow))) { rejected.push(key); continue; }
+          if (isReportLogKey(key)) {
+            const guarded = await guardReportLogOps(env.DB, key, ops, session.id, session.perms, now);
+            if (!guarded) { rejected.push(key); continue; }
+            ops = guarded;
+          }
         }
         const r = await applyCollectionOps(env.DB, key, ops, session.id, now);
         if (typeof r === 'string') return json({ error: r, code: 'invalid_data' }, 400);

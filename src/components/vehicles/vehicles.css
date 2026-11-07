@@ -1,0 +1,104 @@
+/* تقرير العربات: حركة خفيفة للخريطة والبطاقات */
+.vehicle-flow { animation: vehicle-dash 1.6s linear infinite; }
+@keyframes vehicle-dash { to { stroke-dashoffset: -20; } }
+
+.vehicle-fill { animation: vehicle-grow 0.9s cubic-bezier(.2,.8,.2,1) both; transform-origin: right; }
+@keyframes vehicle-grow { from { transform: scaleX(0); } }
+
+.vehicle-kpi { animation: vehicle-rise 0.45s ease-out both; }
+.vehicle-kpi:nth-child(2) { animation-delay: .04s; }
+.vehicle-kpi:nth-child(3) { animation-delay: .08s; }
+.vehicle-kpi:nth-child(4) { animation-delay: .12s; }
+.vehicle-kpi:nth-child(5) { animation-delay: .16s; }
+.vehicle-kpi:nth-child(6) { animation-delay: .2s; }
+.vehicle-kpi:nth-child(7) { animation-delay: .24s; }
+@keyframes vehicle-rise { from { opacity: 0; transform: translateY(8px); } }
+
+.vehicle-drawer { animation: vehicle-slide 0.3s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes vehicle-slide { from { transform: translateX(-100%); } }
+
+.vehicle-float { animation: vehicle-bob 3s ease-in-out infinite; }
+@keyframes vehicle-bob { 50% { transform: translateY(-6px); } }
+
+.vehicle-hero-grid {
+  background-image: linear-gradient(rgb(51 65 85 / .35) 1px, transparent 1px), linear-gradient(90deg, rgb(51 65 85 / .35) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: radial-gradient(ellipse at 30% 0%, black 30%, transparent 75%);
+}
+.vehicle-scroll::-webkit-scrollbar { height: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .vehicle-flow, .vehicle-fill, .vehicle-kpi, .vehicle-drawer, .vehicle-float { animation: none; }
+}
+
+/* صفحة العربة */
+.vehicle-page { animation: vehicle-rise 0.35s ease-out both; }
+.vehicle-truck-in { animation: vehicle-drive 0.8s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes vehicle-drive { from { opacity: 0; transform: translateX(-40px); } }
+@media (prefers-reduced-motion: reduce) { .vehicle-page, .vehicle-truck-in { animation: none; } }
+.vehicle-gauge { animation: vehicle-gauge-in 1.1s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes vehicle-gauge-in { from { stroke-dashoffset: 220; } }
+
+/* قائمة تفاصيل العربة الجانبية */
+.vehicle-sheet-in { animation: vehicle-sheet-in 0.38s cubic-bezier(.16,1,.3,1) both; }
+.vehicle-sheet-out { animation: vehicle-sheet-out 0.22s ease-in both; }
+@keyframes vehicle-sheet-in { from { transform: translateX(100%); } }
+@keyframes vehicle-sheet-out { to { transform: translateX(100%); } }
+.vehicle-fade-in { animation: vehicle-fade 0.25s ease-out both; }
+.vehicle-fade-out { animation: vehicle-fade 0.22s ease-in reverse both; }
+@keyframes vehicle-fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .vehicle-sheet-in, .vehicle-sheet-out, .vehicle-fade-in, .vehicle-fade-out { animation: none; } }
+[dir="ltr"] .vehicle-sheet-in { animation-name: vehicle-sheet-in-ltr; }
+[dir="ltr"] .vehicle-sheet-out { animation-name: vehicle-sheet-out-ltr; }
+@keyframes vehicle-sheet-in-ltr { from { transform: translateX(-100%); } }
+@keyframes vehicle-sheet-out-ltr { to { transform: translateX(-100%); } }
+
+/* تحليل الاستهلاك: ظهور متتابع، أعمدة تنمو، تبديل هادئ للكارت، ونبض للحرج */
+.va-rise { animation: vehicle-rise 0.5s cubic-bezier(.2,.8,.2,1) both; }
+.va-fade { animation: va-fade 0.45s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes va-fade { from { opacity: 0; transform: translateY(6px); } }
+.va-grow { transform-origin: bottom; animation: va-grow 0.6s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes va-grow { from { transform: scaleY(0); } }
+.va-track { transform-origin: right; animation: vehicle-grow 0.6s ease both; }
+.va-pulse { animation: va-pulse 2s infinite; }
+@keyframes va-pulse { 0% { box-shadow: 0 0 0 0 rgb(229 72 77 / .45); } 70% { box-shadow: 0 0 0 7px rgb(229 72 77 / 0); } 100% { box-shadow: 0 0 0 0 rgb(229 72 77 / 0); } }
+.va-row { transition: background-color .25s ease; }
+.va-row:hover .va-code { color: rgb(67 56 202); }
+.va-line { transition: bottom .5s cubic-bezier(.2,.8,.2,1); }
+@media (prefers-reduced-motion: reduce) {
+  .va-rise, .va-fade, .va-grow, .va-track, .va-pulse { animation: none; }
+  .va-row, .va-line { transition: none; }
+}
+/* كارت العربة: تبديل العربة بتلاشٍ سريع بلا حركة */
+.va-appear { animation: va-appear .25s ease both; }
+@keyframes va-appear { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .va-appear { animation: none; } }
+/* مختبر العربة: رسم خط الاستهلاك */
+.va-draw { stroke-dasharray: 3000; animation: va-draw 1.2s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes va-draw { from { stroke-dashoffset: 3000; } to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .va-draw { animation: none; } }
+/* مختبر العربة: الرقم الكبير بتدرج أبيض ونقش مائل كأنه منقوش في البطاقة */
+.lab-code {
+  color: transparent;
+  background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0) 0 6px, rgba(100,116,139,.22) 6px 7px), linear-gradient(180deg, #FFFFFF 0%, #F4F6FA 30%, #CBD3DF 70%, #A7B2C3 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 1px rgba(100,116,139,.75)) drop-shadow(0 8px 16px rgba(11,18,32,.18));
+  animation: lab-mark .9s cubic-bezier(.2,.8,.2,1) both;
+}
+.dark .lab-code {
+  background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0) 0 6px, rgba(148,163,184,.14) 6px 7px), linear-gradient(180deg, rgba(255,255,255,.38) 0%, rgba(255,255,255,.24) 45%, rgba(255,255,255,.10) 100%);
+  filter: drop-shadow(0 0 1px rgba(148,163,184,.55)) drop-shadow(0 6px 14px rgba(0,0,0,.35));
+}
+@keyframes lab-mark { from { opacity: 0; letter-spacing: .3em; } }
+/* العربة تدخل من الخلف وتخرج من حافة البطاقة */
+.lab-truck { animation: lab-in .8s .1s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes lab-in { from { opacity: 0; transform: translateY(18px) scale(.96); } }
+/* الوقود يُرى داخل زجاج رسم الخزان فقط */
+.lab-glass {
+  -webkit-mask-image: url(/trucks/tank/glass-mask.png); mask-image: url(/trucks/tank/glass-mask.png);
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+  mix-blend-mode: multiply;
+}
+.lab-slosh { animation: lab-slosh 3.5s linear infinite; }
+@keyframes lab-slosh { to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .lab-code, .lab-truck, .lab-slosh { animation: none; } }
