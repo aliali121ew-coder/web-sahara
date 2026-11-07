@@ -459,10 +459,11 @@ export const ConsumptionAnalysis: React.FC<{
           </div>
 
           <div className="flex-1 overflow-x-auto">
-            <table className="w-full min-w-[880px] text-right">
+            <table className="w-full min-w-[960px] text-right">
               <thead>
                 <tr className="h-14 text-[11.5px] text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">
                   <th className="px-5 font-bold">العربة</th>
+                  <th className="px-2 font-bold text-center" title="مجموع سعات خزانات العربة">سعة الخزان</th>
                   {periods.map((p, i) => (
                     <th key={p.from} className="px-2 font-bold" title={p.range}>
                       {i === 3
@@ -507,6 +508,14 @@ export const ConsumptionAnalysis: React.FC<{
                           </div>
                         </div>
                       </td>
+                      <td className="px-2 text-center" title={r.tanks ? `${r.tanks} خزان` : undefined}>
+                        {r.capacity ? (
+                          <div className="flex flex-col items-center leading-tight">
+                            <span className="text-[13px] font-mono font-semibold text-slate-800 dark:text-slate-100">{fmt(r.capacity)}</span>
+                            <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap">لتر{r.tanks && r.tanks > 1 ? ` · ${r.tanks} خزانات` : ''}</span>
+                          </div>
+                        ) : <span className="text-slate-300 dark:text-slate-600">—</span>}
+                      </td>
                       {r.p.map((v, i) => (
                         <td key={i} className={`px-2 text-[13px] font-mono ${!cov[i] ? 'text-slate-300 dark:text-slate-600' : i === 3 ? 'font-semibold text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
                           {!cov[i] ? '·' : v ? fmt(v) : '—'}
@@ -545,7 +554,7 @@ export const ConsumptionAnalysis: React.FC<{
                     </tr>
                   );
                 })}
-                {!view.length && <tr><td colSpan={9} className="text-center text-sm text-slate-400 py-12">لا توجد عربات مطابقة</td></tr>}
+                {!view.length && <tr><td colSpan={10} className="text-center text-sm text-slate-400 py-12">لا توجد عربات مطابقة</td></tr>}
               </tbody>
             </table>
           </div>
