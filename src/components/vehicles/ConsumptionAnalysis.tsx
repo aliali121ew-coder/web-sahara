@@ -9,7 +9,7 @@ import { useCategoryNames, useVehicleNames } from './categories';
 import { VehicleArt } from './VehicleArt';
 
 type Unit = 'day' | 'week' | 'month';
-type Status = 'حرج' | 'مرتفع' | 'طبيعي' | 'منخفض' | 'جديد' | 'بلا تفويل';
+type Status = 'حرج' | 'مرتفع' | 'طبيعي' | 'منخفض' | 'جديد';
 type SortKey = 'change' | 'current';
 
 const PAGE = 10;
@@ -25,10 +25,9 @@ const DOT: Record<Status, string> = {
   'طبيعي': 'bg-slate-400',
   'منخفض': 'bg-teal-500',
   'جديد': 'bg-sky-500',
-  'بلا تفويل': 'bg-slate-300 dark:bg-slate-600',
 };
-const RULES = 'حرج: ارتفاع 30% فأكثر، أو 20% مع تفويل متقارب · مرتفع: 15% فأكثر · منخفض: انخفاض 10% فأكثر — على المعدل اليومي في أيام الكشوف';
-const USED_RULE = 'مجموع تفويلات الفترات الأربع (أو الفترة المختارة من وإلى)، لأن كل تفويلة تملأ الخزان فتساوي ما صُرف قبلها. أول تفويلة بلا سابقة لا تُحسب، والتفويلة الأكبر من السعة تُقص عندها، والرقم تحته = سعة الخزان ناقص الاستهلاك';
+const RULES = 'التغير = آخر تفويلة مقابل التي قبلها، على الصرف اليومي (الكمية ÷ الأيام منذ السابقة)، وإن لم تُعرف أيام السابقة فعلى الكمية · حرج: ارتفاع 30% فأكثر، أو 20% مع تفويل متقارب · مرتفع: 15% فأكثر · منخفض: انخفاض 10% فأكثر · جديد: لا توجد تفويلتان للمقارنة';
+const USED_RULE = 'مجموع تفويلات الفترات الأربع (أو الفترة المختارة من وإلى)، لأن كل تفويلة تملأ الخزان فتساوي ما صُرف قبلها. أول تفويلة بلا سابقة لا تُحسب، والتفويلة الأكبر من السعة تُقص عندها، والرقم تحته = سعة الخزان ناقص الاستهلاك. بلا خزان مسجل يظهر الرقم تقديريًا بلا قص';
 
 // التواريخ في الكشوف بصيغة YYYY/MM/DD
 const toMs = (d: string) => { const [y, m, dd] = d.split('/').map(Number); return Date.UTC(y, m - 1, dd); };
@@ -81,8 +80,15 @@ interface Row {
   p: number[];
   /** مجموع سعات الخزانات (0 = غير مسجلة) */
   capacity: number;
-  /** الاستهلاك في الفترات الأربع؛ null = السعة غير مسجلة */
+  /** الاستهلاك في الفترات الأربع؛ null = لا تفويلة لها سابقة */
   used: number | null;
+  /** السعة غير مسجلة: الاستهلاك بلا قص على الخزان */
+  estimated: boolean;
+  /** صرف آخر تفويلة والتي قبلها (لتر/يوم، أو لتر إن قورنت الكمية) */
+  now: number | null;
+  before: number | null;
+  /** أساس المقارنة: الصرف اليومي أو كمية التفويلة */
+  cmpBy: 'rate' | 'qty';
   /** المعدل اليومي لكل فترة على أيام الكشوف (null = فترة بلا كشوف) */
   rate: (number | null)[];
   prevRate: number;
@@ -185,20 +191,40 @@ export const ConsumptionAnalysis: React.FC<{
       const rate = p.map((v, i) => (cov[i] ? v / cov[i] : null));
       const prevRate = prevDays ? prevIdx.reduce((s, i) => s + p[i], 0) / prevDays : 0;
       const curRate = rate[3] ?? 0;
-      const change = prevRate && p[3] ? ((curRate - prevRate) / prevRate) * 100 : null;
       const code = names.get(vehicle) || vehicle;
       const cat = vehicleCategory(code);
       const prof = profiles.find(x => x.id === vehicle);
       const lastFill = last as DayFill | null;
       const capacity = tankCaps(prof).reduce((s, c) => s + c, 0);
-      const used = capacity
-        ? capConsumption(fillConsumption(list), capacity).reduce((s, c) => (c.consumed !== null && periodOf(c.date) >= (fromDate ? 3 : 0) ? s + c.consumed : s), 0)
-        : null;
+      // الصرف من تسلسل كل تفويلات العربة؛ بلا خزان مسجل يبقى بلا قص (تقديري)
+      const cons = fillConsumption(list);
+      const spent = capacity ? capConsumption(cons, capacity) : cons;
+      const inRange = spent.filter(c => c.consumed !== null && periodOf(c.date) >= (fromDate ? 3 : 0));
+      const used = inRange.length ? inRange.reduce((s, c) => s + c.consumed!, 0) : null;
+      // آخر تفويلة داخل الفترات مقابل التي قبلها (ولو كانت قبل الفترات)
+      let at = -1;
+      list.forEach((f, j) => { if (periodOf(f.date) >= 0) at = j; });
+      const daily = (j: number) => {
+        const c = spent[j];
+        const gap = c?.prevDate ? daysBetween(c.prevDate, c.date) : 0;
+        return c && c.consumed !== null && gap > 0 ? c.consumed / gap : null;
+      };
+      const amount = (j: number) => (spent[j]?.consumed ?? (capacity ? Math.min(list[j].qty, capacity) : list[j].qty));
+      let now: number | null = null;
+      let before: number | null = null;
+      let cmpBy: 'rate' | 'qty' = 'rate';
+      if (at > 0) {
+        const a = daily(at);
+        const b = daily(at - 1);
+        if (a !== null && b !== null) { now = a; before = b; }
+        else { now = amount(at); before = amount(at - 1); cmpBy = 'qty'; }
+      }
+      const change = now !== null && before ? ((now - before) / before) * 100 : null;
       return [{
         vehicle, code, display: prof?.name || vehicle,
         catKey: cat?.key || 'OTHER', cat: (cat && labels[cat.key]) || cat?.label || 'أخرى',
         driver: lastFill?.drivers[0] || prof?.driver || '',
-        p, capacity, used, rate, prevRate, curRate, change, n: recent.length, minGap, multi,
+        p, capacity, used, estimated: !capacity, now, before, cmpBy, rate, prevRate, curRate, change, n: recent.length, minGap, multi,
         close: (minGap !== null && minGap <= FREQUENT_DAYS) || multi > 0,
         recent: recent.reverse(),
       }];
@@ -211,7 +237,7 @@ export const ConsumptionAnalysis: React.FC<{
       const catAvg = list.length ? list.reduce((s, x) => s + x, 0) / list.length : 0;
       const dev = catAvg && r.p[3] && list.length > 1 ? ((r.p[3] - catAvg) / catAvg) * 100 : null;
       const c = r.change;
-      const status: Status = !r.p[3] ? 'بلا تفويل' : c === null ? 'جديد'
+      const status: Status = c === null ? 'جديد'
         : c >= 30 || (r.close && c >= 20) ? 'حرج'
         : c >= 15 ? 'مرتفع' : c <= -10 ? 'منخفض' : 'طبيعي';
       return { ...r, catAvg, dev, status };
@@ -269,7 +295,7 @@ export const ConsumptionAnalysis: React.FC<{
     if (r.multi > 0) out.push(['تفويل مكرر باليوم', 'bg-rose-500']);
     else if (r.minGap !== null && r.minGap <= FREQUENT_DAYS) out.push(['يومان متتاليان', 'bg-amber-400']);
     if (r.status === 'جديد') out.push(['بلا سابقة للمقارنة', 'bg-sky-500']);
-    if (r.status === 'بلا تفويل') out.push([`لم تفوّل في ${lastName}`, 'bg-slate-400']);
+    if (!r.p[3]) out.push([`لم تفوّل في ${lastName}`, 'bg-slate-400']);
     if (!out.length) out.push(['مستقر', 'bg-slate-400']);
     return out.slice(0, 2);
   };
@@ -282,7 +308,7 @@ export const ConsumptionAnalysis: React.FC<{
     { label: 'تفويل متقارب', value: k.close, unit: 'عربة', note: 'يومان أو اليوم نفسه', dot: 'bg-slate-400' },
   ];
 
-  const tabs: (Status | 'all')[] = ['all', 'حرج', 'مرتفع', 'منخفض', 'طبيعي', 'جديد', 'بلا تفويل'];
+  const tabs: (Status | 'all')[] = ['all', 'حرج', 'مرتفع', 'منخفض', 'طبيعي', 'جديد'];
 
   // الخط الزمني لأيام الفترة الأخيرة (يمين = أقدم)
   const span = daysBetween(periods[3].from, periods[3].to);
@@ -432,7 +458,12 @@ export const ConsumptionAnalysis: React.FC<{
                         </td>
                       ))}
                       <td className="px-2">
-                        {r.used === null ? <div className="text-center text-slate-400" title="سعة الخزان غير مسجلة">—</div> : (
+                        {r.used === null ? <div className="text-center text-slate-400" title="لا توجد تفويلة لها سابقة">—</div> : r.estimated ? (
+                          <div className="flex flex-col items-center gap-0.5" title={`استهلاك تقديري ${fmt(r.used)} لتر · سعة الخزان غير مسجلة`}>
+                            <span className="inline-flex items-center justify-center min-w-9 h-9 px-1.5 rounded-full bg-slate-50 dark:bg-slate-800/60 border border-dashed border-slate-300 dark:border-slate-600 text-[12.5px] font-mono font-bold text-slate-600 dark:text-slate-300">{fmt(r.used)}</span>
+                            <span className="text-[10px] font-medium whitespace-nowrap text-slate-400">بلا خزان</span>
+                          </div>
+                        ) : (
                           <div className="flex flex-col items-center gap-0.5" title={`استهلاك ${fmt(r.used)} لتر · سعة الخزان ${fmt(r.capacity)} لتر`}>
                             <span className="inline-flex items-center justify-center min-w-9 h-9 px-1.5 rounded-full bg-indigo-50 dark:bg-indigo-950/50 ring-1 ring-indigo-300 dark:ring-indigo-700 text-[12.5px] font-mono font-bold text-indigo-700 dark:text-indigo-300">{fmt(r.used)}</span>
                             <span className={`text-[10px] font-medium whitespace-nowrap ${r.used > r.capacity ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'}`}>
@@ -508,15 +539,15 @@ export const ConsumptionAnalysis: React.FC<{
                   <div className="va-fade grid grid-cols-[1fr_auto_1fr] items-end gap-3" style={{ animationDelay: '.05s' }}>
                     <div>
                       <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">الآن</div>
-                      <div className={`text-[32px] leading-tight font-mono font-semibold tracking-tight ${sel.change !== null && sel.change >= 15 ? 'text-rose-600 dark:text-rose-400' : sel.change !== null && sel.change <= -10 ? 'text-teal-600 dark:text-teal-400' : 'text-slate-900 dark:text-white'}`}>{sel.curRate ? num(sel.curRate) : '—'}</div>
+                      <div className={`text-[32px] leading-tight font-mono font-semibold tracking-tight ${sel.change !== null && sel.change >= 15 ? 'text-rose-600 dark:text-rose-400' : sel.change !== null && sel.change <= -10 ? 'text-teal-600 dark:text-teal-400' : 'text-slate-900 dark:text-white'}`}>{sel.now !== null ? num(sel.now) : '—'}</div>
                     </div>
                     <span className={`self-center px-3 py-1.5 rounded-full text-xs ${sel.change !== null && sel.change >= 15 ? 'bg-rose-50 dark:bg-rose-950/40' : sel.change !== null && sel.change <= -10 ? 'bg-teal-50 dark:bg-teal-950/40' : 'bg-slate-100 dark:bg-slate-800'}`}><Delta value={sel.change} /></span>
                     <div className="text-left">
                       <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">قبل</div>
-                      <div className="text-[22px] leading-tight font-mono font-semibold text-slate-400">{sel.prevRate ? num(sel.prevRate) : '—'}</div>
+                      <div className="text-[22px] leading-tight font-mono font-semibold text-slate-400">{sel.before !== null ? num(sel.before) : '—'}</div>
                     </div>
                   </div>
-                  <div className="-mt-3 text-[10.5px] text-slate-400">لتر لكل يوم كشوف</div>
+                  <div className="-mt-3 text-[10.5px] text-slate-400">{sel.cmpBy === 'rate' ? 'لتر يوميًا · آخر تفويلة مقابل السابقة' : 'لتر بالتفويلة · آخر تفويلة مقابل السابقة'}</div>
 
                   {/* المعدل في الفترات الأربع */}
                   {(() => {
