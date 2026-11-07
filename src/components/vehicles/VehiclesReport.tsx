@@ -283,7 +283,7 @@ export const VehiclesReport: React.FC = () => {
               <TopSevenCard stats={stats} category={category} onOpen={setVehicle} />
               </div>
             </div>
-            <div className="lg:col-span-7"><TopVehicleCards stats={stats} onOpen={setVehicle} selected={category} onSelect={setCategory} /></div>
+            <div className="lg:col-span-7"><TopVehicleCards stats={stats} onOpen={setVehicle} selected={category} onSelect={setCategory} hidden={data.hidden} onHide={data.hideVehicle} onRestore={data.restoreVehicle} /></div>
           </div>
         </>
       )}

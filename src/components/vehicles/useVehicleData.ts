@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import {
-  VEHICLE_FILES_KEY, VEHICLE_REFILLS_KEY, fileDayStart, groupDayFills, previousDate, readVehicleFile, vehicleStats,
+  VEHICLE_FILES_KEY, VEHICLE_HIDDEN_KEY, VEHICLE_REFILLS_KEY, fileDayStart, groupDayFills, previousDate, readVehicleFile, vehicleStats,
   type VehicleFile, type VehicleRefill,
 } from '../../lib/vehicleFuel';
 
@@ -25,7 +25,12 @@ export const useVehicleData = (scope: Scope | null) => {
     if (recentFiles.length !== files.length) setFiles(prev => prev.filter(f => Date.parse(f.uploadedAt) >= fileDayStart(Date.now())));
   }, [recentFiles.length, files.length, setFiles]);
 
-  const allFills = useMemo(() => groupDayFills(refills), [refills]);
+  // العربات المحذوفة تُخفى من كل التحليل، وتفويلاتها تبقى في التخزين حتى تُستعاد
+  const [hidden, setHidden] = useSyncedStorage<string[]>(VEHICLE_HIDDEN_KEY, []);
+  const hiddenSet = useMemo(() => new Set(hidden), [hidden]);
+  const allFills = useMemo(() => groupDayFills(refills).filter(f => !hiddenSet.has(f.vehicle)), [refills, hiddenSet]);
+  const hideVehicle = useCallback((v: string) => setHidden(prev => (prev.includes(v) ? prev : [...prev, v])), [setHidden]);
+  const restoreVehicle = useCallback((v: string) => setHidden(prev => prev.filter(x => x !== v)), [setHidden]);
   const dates = useMemo(() => [...new Set(allFills.map(f => f.date))].sort(), [allFills]);
   const active: Scope = scope ?? (dates.length ? { kind: 'day', date: dates[dates.length - 1] } : { kind: 'all' });
 
@@ -89,5 +94,5 @@ export const useVehicleData = (scope: Scope | null) => {
     setFiles(prev => prev.filter(f => f.id !== id));
   }, [setFiles, setRefills]);
 
-  return { files, recentFiles, refills, allFills, dates, active, fills, stats, history, prevDay, prevTotal, upload, removeFile };
+  return { files, recentFiles, refills, allFills, dates, active, fills, stats, history, prevDay, prevTotal, upload, removeFile, hidden, hideVehicle, restoreVehicle };
 };

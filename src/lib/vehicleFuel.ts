@@ -573,6 +573,8 @@ export interface VehicleProfile {
 export const VEHICLE_PROFILES_KEY = 'sahara_vehicle_profiles_v1';
 /** أسماء مخصصة لفئات العربات (مفتاح الفئة → الاسم)، يعدّلها مدير النظام */
 export const VEHICLE_CATEGORY_NAMES_KEY = 'sahara_vehicle_category_names_v1';
+/** العربات المحذوفة من التقرير (رمزها كما في الملفات): تُخفى من كل الصفحات وتبقى تفويلاتها محفوظة، ويعيدها مدير النظام */
+export const VEHICLE_HIDDEN_KEY = 'sahara_vehicle_hidden_v1';
 
 export type CheckKind = 'capacity' | 'limit' | 'driver' | 'frequent' | 'multi';
 export interface FillCheck { kind: CheckKind; date: string; text: string }

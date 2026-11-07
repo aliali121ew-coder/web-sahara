@@ -166,6 +166,8 @@ const KEY_RULES: Rule[] = [
   // تقرير العربات: كشوف تفويل الآليات المرفوعة (PDF) وسطورها
   // أسماء فئات العربات: يقرؤها من يرى التقرير، ويعدّلها مدير النظام فقط
   { match: eq('sahara_vehicle_category_names_v1'), read: ['vehicles-report'], write: [] },
+  // العربات المحذوفة (المخفية) من التقرير: يقرؤها من يرى التقرير، ويحذف ويستعيد مدير النظام فقط
+  { match: eq('sahara_vehicle_hidden_v1'), read: ['vehicles-report'], write: [] },
   { match: eq('sahara_vehicle_files_v1', 'sahara_vehicle_refills_v1', 'sahara_vehicle_routes_v1', 'sahara_vehicle_profiles_v1', 'sahara_vehicle_registry_v1'), read: ['vehicles-report'], write: ['vehicles-report'] },
   { match: eq('sahara_fuel_metrics'), read: ['dashboard', 'reports'], write: ['dashboard'] },
   // سجل التنبيهات (التحقق من اتصال التقارير): يقرؤه من يرى أحد الأقسام الأربعة، ويضيف إليه من يحفظ يومًا فيها،
