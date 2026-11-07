@@ -718,8 +718,15 @@ export const imageGround = (url: string) => IMAGE_GROUND[/\/types\/([\w-]+)\.web
 /** الاسم الافتراضي لفئة من مفتاحها (لمسار الصفحات) */
 export const categoryLabel = (key: string) => CATEGORY[key]?.label || '';
 
-/** أرقام الشفلات الكبيرة (SF + رقم): الشفل الكبير والصغير لكل منهما تسلسله */
-export const BIG_SF_NUMBERS = new Set<number>();
+/** خزان الشفل الصغير 75 لتر فأقل، وما فوقه شفل كبير */
+const BIG_SF_LITERS = 75;
+
+/** أرقام الشفلات الكبيرة (SF + رقم): من كشف الخزانات، كل شفل خزانه أكثر من 75 لتر */
+export const BIG_SF_NUMBERS = new Set<number>(
+  Object.entries(VEHICLE_TANKS)
+    .filter(([code, caps]) => /^SF\d+$/.test(code) && caps.reduce((s, c) => s + c, 0) > BIG_SF_LITERS)
+    .map(([code]) => Number(code.slice(2))),
+);
 
 /**
  * الفئة من رمز العربة: الأرقام فقط = رأس قاطرة (يُفصل ويُشد لأكثر من مقطورة)،
