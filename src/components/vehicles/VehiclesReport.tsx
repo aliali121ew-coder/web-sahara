@@ -96,7 +96,7 @@ export const VehiclesReport: React.FC = () => {
       aria-expanded={panelOpen}
       onClick={() => setPanelOpen(true)}
       onDragEnter={e => { e.preventDefault(); setPanelOpen(true); }}
-      className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl text-sm font-black text-white bg-sky-600 hover:bg-sky-700 shadow-sm shadow-sky-600/30 transition-all cursor-pointer ${panelOpen ? 'ring-4 ring-sky-500/20' : ''}`}
+      className={`flex items-center justify-center gap-2 w-full sm:w-auto px-3.5 py-2 rounded-2xl text-sm font-black text-white bg-sky-600 hover:bg-sky-700 shadow-sm shadow-sky-600/30 transition-all cursor-pointer ${panelOpen ? 'ring-4 ring-sky-500/20' : ''}`}
     >
       {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
       رفع الملفات
@@ -185,18 +185,18 @@ export const VehiclesReport: React.FC = () => {
   return (
     <div className="space-y-5 pb-12 font-cairo">
       <VehicleCrumbs items={crumbs} />
-      {/* أدوات الصفحة: تحليل الاستهلاك يمينًا، ثم التاريخ والملفات والرفع */}
-      <div className="flex flex-wrap items-center gap-2">
+      {/* أدوات الصفحة: تحليل الاستهلاك يمينًا، ثم التاريخ والملفات والرفع. على الهاتف: التحليل بعرض كامل، ثم التاريخ و«كل الفترة»، ثم الملفات والرفع */}
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2">
         {dates.length > 0 && (
           <button
             type="button"
             onClick={() => setAnalysis(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-black shadow-md shadow-indigo-600/30 transition-all hover:-translate-y-px cursor-pointer"
+            className="flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-black shadow-md shadow-indigo-600/30 transition-all hover:-translate-y-px cursor-pointer"
           >
             <ChartLine className="w-4 h-4" />تحليل الاستهلاك
           </button>
         )}
-        <div className="flex flex-wrap items-center gap-2 mr-auto">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:mr-auto">
         {dates.length > 0 && (
           <>
             {/* التاريخ: يوم واحد أو فترة «من – إلى» بنفس تقويم صفحة الوارد */}
@@ -205,7 +205,7 @@ export const VehiclesReport: React.FC = () => {
                 type="button"
                 onClick={() => setRangeOpen(o => !o)}
                 aria-label="تاريخ الكشف"
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl border text-sm font-bold font-mono shadow-xs cursor-pointer transition-all ${active.kind !== 'all' ? 'bg-white dark:bg-slate-900 border-sky-400 text-slate-800 dark:text-slate-100' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'}`}
+                className={`flex items-center justify-center gap-2 w-full sm:w-auto px-3.5 py-2 rounded-2xl border text-sm font-bold font-mono whitespace-nowrap shadow-xs cursor-pointer transition-all ${active.kind !== 'all' ? 'bg-white dark:bg-slate-900 border-sky-400 text-slate-800 dark:text-slate-100' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'}`}
               >
                 <CalendarDays className="w-4 h-4 text-sky-600" />
                 {active.kind === 'day' ? active.date : active.kind === 'range' ? `${active.from} ← ${active.to}` : 'اختر يومًا أو فترة'}
@@ -230,14 +230,14 @@ export const VehiclesReport: React.FC = () => {
             <button
               type="button"
               onClick={() => setScope({ kind: 'all' })}
-              className={`px-3.5 py-2 rounded-2xl text-sm font-bold border transition-all cursor-pointer ${active.kind === 'all' ? 'bg-sky-500 border-sky-500 text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'}`}
+              className={`w-full sm:w-auto px-3.5 py-2 rounded-2xl text-sm font-bold border transition-all cursor-pointer ${active.kind === 'all' ? 'bg-sky-500 border-sky-500 text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'}`}
             >
               كل الفترة
             </button>
           </>
         )}
           <span className="hidden sm:block w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
-          <button type="button" onClick={() => setShowFiles(true)} className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-sky-400 cursor-pointer">
+          <button type="button" onClick={() => setShowFiles(true)} className={`flex items-center justify-center gap-2 w-full sm:w-auto ${editable ? '' : 'col-span-2'} px-3.5 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-sky-400 cursor-pointer`}>
             <FileText className="w-4 h-4 text-sky-500" />الملفات
             <span className="min-w-[22px] h-[22px] px-1.5 inline-flex items-center justify-center rounded-full bg-sky-100 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 text-xs font-black font-mono">{recentFiles.length}</span>
           </button>

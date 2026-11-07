@@ -105,20 +105,21 @@ export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | n
                     {s.frequent > 0 && <span className="shrink-0 flex items-center gap-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400"><Repeat2 className="w-3 h-3" />متكرر</span>}
                   </div>
                   {/* آخر تفويلة وعدد الأيام، ثم السابقة بخط رصاصي فاتح */}
-                  <div className="flex items-center gap-2 mt-1 text-[11px] font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                  {/* تلتف على الشاشات الضيقة بدل أن تتداخل مع المجموع */}
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1 text-[11px] font-bold text-slate-700 dark:text-slate-200 [&>span]:whitespace-nowrap">
                     <span className="flex items-center gap-0.5"><Fuel className="w-3 h-3 text-sky-500" /><span className="font-mono">{s.last.qty.toLocaleString()}</span> لتر</span>
                     <span className="flex items-center gap-0.5 font-mono"><CalendarClock className="w-3 h-3 text-sky-500" />{formatDay(s.last.date)}</span>
                     {s.last.days !== null && <span className={`flex items-center gap-0.5 ${s.last.days <= 1 ? 'text-rose-600 dark:text-rose-400' : ''}`}><Timer className="w-3 h-3" />بعد {s.last.days} يوم</span>}
                   </div>
                   {s.last.prevQty !== null && (
-                    <div className="flex items-center gap-1.5 mt-0.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500 whitespace-nowrap">
+                    <div className="flex flex-wrap items-center gap-x-1.5 mt-0.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500 [&>span]:whitespace-nowrap">
                       <span>السابقة</span>
                       <span className="font-mono">{s.last.prevQty.toLocaleString()} لتر</span>
                       <span className="font-mono">{formatDay(s.last.prevDate)}</span>
                     </div>
                   )}
                 </div>
-                <div className="text-left shrink-0">
+                <div className="text-left shrink-0 self-center ps-1">
                   <div className="font-mono font-black text-base text-slate-900 dark:text-white leading-none">{s.total.toLocaleString()}</div>
                   <div className="text-[10px] text-slate-400 font-bold mt-1 whitespace-nowrap">لتر · {s.count} تفويلة</div>
                 </div>
