@@ -28,9 +28,9 @@ type Tab = 'all' | 'frequent' | 'multi' | 'violations';
 const isFrequent = (r: RefillRow) => r.days !== null && r.days <= FREQUENT_DAYS;
 
 const Select: React.FC<{ label: string; value: string; options: string[]; onChange: (v: string) => void }> = ({ label, value, options, onChange }) => (
-  <div className="flex items-center gap-1 bg-white dark:bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
-    <span className="font-bold text-slate-400">{label}</span>
-    <select value={value} onChange={e => onChange(e.target.value)} className="bg-transparent text-slate-800 dark:text-slate-200 font-bold outline-none cursor-pointer max-w-[160px] truncate font-cairo">
+  <div className="flex items-center gap-1 min-w-0 bg-white dark:bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
+    <span className="font-bold text-slate-400 shrink-0">{label}</span>
+    <select value={value} onChange={e => onChange(e.target.value)} className="flex-1 min-w-0 sm:flex-none bg-transparent text-slate-800 dark:text-slate-200 font-bold outline-none cursor-pointer sm:max-w-[160px] truncate font-cairo">
       {[ALL, ...options].map(o => <option key={o} value={o} className="bg-white dark:bg-slate-900">{o}</option>)}
     </select>
   </div>
@@ -66,7 +66,7 @@ export const VehicleRefillTable: React.FC<{ rows: RefillRow[]; vehicle: string; 
   const current = Math.min(page, pages);
   const start = (current - 1) * PAGE_SIZE;
   const view = shown.slice(start, start + PAGE_SIZE);
-  const span = Math.min(10, pages);
+  const span = Math.min(typeof window !== 'undefined' && window.innerWidth < 640 ? 4 : 10, pages);
   const first = Math.min(Math.max(1, current - Math.floor(span / 2)), pages - span + 1);
   const pageBtn = (off: boolean) => `px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1 transition-all ${off ? 'opacity-40 cursor-not-allowed border-slate-200 dark:border-slate-700 text-slate-400' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 cursor-pointer'}`;
 
@@ -89,15 +89,15 @@ export const VehicleRefillTable: React.FC<{ rows: RefillRow[]; vehicle: string; 
 
       {/* شريط الفلاتر مثل صفحة الوارد */}
       <div className="p-3.5 bg-slate-50/70 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-md">
+        <div className="relative flex-1 md:max-w-md">
           <Search className="w-4 h-4 absolute top-1/2 -translate-y-1/2 right-3 text-slate-400" />
           <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="بحث بالموقع أو السائق أو الكمية" className="w-full pr-9 pl-3 py-1.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none font-cairo" />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
           <Select label="الموقع:" value={site} options={sites} onChange={setSite} />
           <Select label="السائق:" value={driver} options={drivers} onChange={setDriver} />
-          <div className="relative">
-            <button type="button" aria-label="تاريخ سجل التفويل" onClick={() => setRangeOpen(o => !o)} className="flex items-center gap-1.5 bg-white dark:bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs cursor-pointer hover:border-blue-400 transition-colors">
+          <div className="relative col-span-2 sm:col-span-1">
+            <button type="button" aria-label="تاريخ سجل التفويل" onClick={() => setRangeOpen(o => !o)} className="w-full sm:w-auto flex items-center gap-1.5 bg-white dark:bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs cursor-pointer hover:border-blue-400 transition-colors">
               <CalendarDays className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
               <span className="font-bold text-slate-400">التاريخ:</span>
               <span className={`font-bold text-slate-800 dark:text-slate-200 ${range ? 'font-mono' : ''}`}>{!range ? ALL : range.from === range.to ? range.from : `${range.from} ← ${range.to}`}</span>
@@ -126,7 +126,41 @@ export const VehicleRefillTable: React.FC<{ rows: RefillRow[]; vehicle: string; 
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      {/* الهاتف: كارت لكل تفويلة بدل جدول يحتاج تمريرًا جانبيًا */}
+      <ul className="sm:hidden divide-y divide-slate-100 dark:divide-slate-800">
+        {view.map(f => {
+          const near = f.gap !== null && f.gap <= FREQUENT_DAYS;
+          return (
+            <li key={f.key} className="px-4 py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5 text-[12px] font-bold text-slate-600 dark:text-slate-300">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" /><span className="font-sans">{f.date}</span>
+                    {f.parts > 1 && <span className="text-[10px] font-bold px-1.5 py-px rounded-md bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300">{f.parts} باليوم</span>}
+                    {overCap.has(f.date) ? <span className="text-[10px] font-bold px-1.5 py-px rounded-md bg-rose-500 text-white">فوق السعة</span>
+                      : violationDates.has(f.date) && <span className="text-[10px] font-bold px-1.5 py-px rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300">مخالفة</span>}
+                  </div>
+                  <div className="mt-1 text-[12px] text-slate-500 dark:text-slate-400 truncate">{f.site}{f.driver && <> · {f.driver}</>}</div>
+                </div>
+                <div className="text-left shrink-0">
+                  <div className="font-mono text-lg font-bold leading-none text-slate-900 dark:text-white">{f.qty.toLocaleString()}<span className="font-cairo text-[11px] font-bold text-slate-400 mr-1">لتر</span></div>
+                  <div className={`mt-1 inline-flex items-center gap-1 text-[11px] font-semibold ${near ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                    {f.gap === null ? '—' : f.gap === 0 ? 'اليوم نفسه' : <>بعد <bdi className="font-mono">{f.gap}</bdi> يوم</>}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-400">
+                <span>السابقة: <b className="font-mono text-slate-600 dark:text-slate-300">{f.prevQty === null ? '—' : `${f.prevQty.toLocaleString()} لتر`}</b></span>
+                <span>عدد الأيام: <b className="font-mono text-slate-600 dark:text-slate-300">{f.days ?? '—'}</b></span>
+                {f.prevSite && <span className="truncate">من: <b className="text-slate-600 dark:text-slate-300">{f.prevSite}</b></span>}
+              </div>
+            </li>
+          );
+        })}
+        {!view.length && <li className="py-12 text-center text-sm text-slate-400">لا توجد تفويلات مطابقة</li>}
+      </ul>
+
+      <div className="hidden sm:block overflow-x-auto">
         <table className="w-full text-right text-xs border-collapse min-w-[980px]">
           <thead>
             <tr className="bg-gradient-to-r from-[#1c3b6f] via-[#244e91] to-[#1c3b6f] text-white font-black text-[11.5px] select-none">

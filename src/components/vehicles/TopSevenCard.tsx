@@ -100,8 +100,9 @@ export const TopSevenCard: React.FC<{ stats: VehicleStat[]; category: string | n
                 <ChangeRing last={s.last.qty} prev={s.last.prevQty} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <span className={`font-black text-sm text-slate-900 dark:text-white truncate ${prof?.name ? '' : 'font-mono'}`} dir={prof?.name ? undefined : 'ltr'}>{prof?.name || s.vehicle}</span>
-                    <span className="text-[10px] font-bold text-slate-400 truncate">{tag || (cat ? labels[cat.key] || cat.label : '')}</span>
+                    {/* رمز العربة يظهر كاملًا، والفئة هي التي تُختصر عند ضيق المساحة */}
+                    <span className={`font-black text-sm text-slate-900 dark:text-white shrink-0 max-w-[70%] truncate ${prof?.name ? '' : 'font-mono'}`} dir={prof?.name ? undefined : 'ltr'}>{prof?.name || names.get(s.vehicle) || s.vehicle}</span>
+                    <span className="text-[10px] font-bold text-slate-400 truncate min-w-0">{tag || (cat ? labels[cat.key] || cat.label : '')}</span>
                     {s.frequent > 0 && <span className="shrink-0 flex items-center gap-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400"><Repeat2 className="w-3 h-3" />متكرر</span>}
                   </div>
                   {/* آخر تفويلة وعدد الأيام، ثم السابقة بخط رصاصي فاتح */}
