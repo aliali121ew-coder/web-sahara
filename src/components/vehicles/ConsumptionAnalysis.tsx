@@ -1,12 +1,13 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowDownLeft, ArrowDownWideNarrow, ArrowUpRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, FlaskConical, Repeat2, Search, X } from 'lucide-react';
+import { ArrowDownLeft, ArrowDownWideNarrow, ArrowUpRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, FlaskConical, Printer, Repeat2, Search, X } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
-import { FREQUENT_DAYS, VEHICLE_PROFILES_KEY, capConsumption, daysBetween, fillConsumption, imageGround, tankCaps, tankCountOf, vehicleCategory, vehicleImage, withTanks, type DayFill, type VehicleProfile } from '../../lib/vehicleFuel';
+import { FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, capConsumption, daysBetween, fillConsumption, imageGround, tankCaps, tankCountOf, vehicleCategory, vehicleImage, withTanks, type DayFill, type VehicleProfile, type VehicleRoute } from '../../lib/vehicleFuel';
 import { VEHICLE_REGISTRY_KEY, type VehicleRegistryEntry } from '../../lib/vehicleRegistry';
 import { useCategoryNames, useVehicleNames } from './categories';
 import { VehicleArt } from './VehicleArt';
+import { buildConsumptionSheet, printHtml } from './printConsumption';
 
 type Unit = 'day' | 'week' | 'month';
 type Status = 'حرج' | 'مرتفع' | 'طبيعي' | 'منخفض' | 'جديد';
@@ -84,6 +85,10 @@ interface Row {
   used: number | null;
   /** السعة غير مسجلة: الاستهلاك بلا قص على الخزان */
   estimated: boolean;
+  /** عدد الخزانات (null = غير محدد) */
+  tanks: number | null;
+  /** المسافة المقطوعة في نفس فترة الاستهلاك (كم) من مسارات العربة */
+  km: number;
   /** صرف آخر تفويلة والتي قبلها (لتر/يوم، أو لتر إن قورنت الكمية) */
   now: number | null;
   before: number | null;
@@ -151,6 +156,8 @@ export const ConsumptionAnalysis: React.FC<{
   const [labels] = useCategoryNames();
   const [profiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
   const [registry] = useSyncedStorage<VehicleRegistryEntry[]>(VEHICLE_REGISTRY_KEY, []);
+  const [routes] = useSyncedStorage<VehicleRoute[]>(VEHICLE_ROUTES_KEY, []);
+  const [printOpen, setPrintOpen] = useState(false);
 
   const periods = useMemo(() => (fromDate ? buildRangePeriods(fromDate, endDate) : buildPeriods(endDate, unit)), [fromDate, endDate, unit]);
   const periodOf = (date: string) => periods.findIndex(p => date >= p.from && date <= p.to);
@@ -159,7 +166,12 @@ export const ConsumptionAnalysis: React.FC<{
   const cov = useMemo(() => periods.map(p => new Set(allFills.filter(f => f.date >= p.from && f.date <= p.to).map(f => f.date)).size), [allFills, periods]);
   const sheetDates = useMemo(() => new Set(allFills.map(f => f.date)), [allFills]);
 
-  const rows = useMemo<Row[]>(() => {
+  const allRows = useMemo<Row[]>(() => {
+    // المسافة على نفس فترة الاستهلاك: الفترات الأربع، أو الفترة المختارة وحدها
+    const kmFrom = fromDate ? periods[3].from : periods[0].from;
+    const kmTo = periods[3].to;
+    const kmOf = new Map<string, number>();
+    for (const r of routes) if (r.date >= kmFrom && r.date <= kmTo) kmOf.set(r.vehicle, (kmOf.get(r.vehicle) || 0) + r.km);
     const byVehicle = new Map<string, DayFill[]>();
     for (const f of allFills) {
       const l = byVehicle.get(f.vehicle);
@@ -224,7 +236,7 @@ export const ConsumptionAnalysis: React.FC<{
         vehicle, code, display: prof?.name || vehicle,
         catKey: cat?.key || 'OTHER', cat: (cat && labels[cat.key]) || cat?.label || 'أخرى',
         driver: lastFill?.drivers[0] || prof?.driver || '',
-        p, capacity, used, estimated: !capacity, now, before, cmpBy, rate, prevRate, curRate, change, n: recent.length, minGap, multi,
+        p, capacity, used, estimated: !capacity, tanks: tankCountOf(prof), km: kmOf.get(vehicle) || 0, now, before, cmpBy, rate, prevRate, curRate, change, n: recent.length, minGap, multi,
         close: (minGap !== null && minGap <= FREQUENT_DAYS) || multi > 0,
         recent: recent.reverse(),
       }];
@@ -241,9 +253,10 @@ export const ConsumptionAnalysis: React.FC<{
         : c >= 30 || (r.close && c >= 20) ? 'حرج'
         : c >= 15 ? 'مرتفع' : c <= -10 ? 'منخفض' : 'طبيعي';
       return { ...r, catAvg, dev, status };
-    }).filter(r => !category || r.catKey === category);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allFills, periods, cov, names, labels, profiles, category]);
+  }, [allFills, periods, cov, names, labels, profiles, routes]);
+  const rows = useMemo(() => allRows.filter(r => !category || r.catKey === category), [allRows, category]);
 
   const sorted = useMemo(() => {
     const key = (r: Row) => (sort === 'current' ? r.p[3] : r.change ?? -Infinity);
@@ -310,6 +323,25 @@ export const ConsumptionAnalysis: React.FC<{
 
   const tabs: (Status | 'all')[] = ['all', 'حرج', 'مرتفع', 'منخفض', 'طبيعي', 'جديد'];
 
+  // الطباعة: عامة (كل الفئات مجمّعة) أو لفئة واحدة، على الفترات الظاهرة في الجدول
+  const printCats = useMemo(() => {
+    const m = new Map<string, { key: string; name: string; count: number }>();
+    for (const r of allRows) { const c = m.get(r.catKey); if (c) c.count++; else m.set(r.catKey, { key: r.catKey, name: r.cat, count: 1 }); }
+    return [...m.values()].sort((a, b) => b.count - a.count);
+  }, [allRows]);
+  const doPrint = (catKey: string | null) => {
+    setPrintOpen(false);
+    const list = catKey ? allRows.filter(r => r.catKey === catKey) : allRows;
+    const name = catKey ? printCats.find(c => c.key === catKey)?.name || '' : 'عام';
+    printHtml(buildConsumptionSheet({
+      rows: list,
+      periods,
+      title: `كشف استهلاك العربات — ${name}`,
+      periodLabel: fromDate ? `${fromDate} ← ${endDate}` : `${periods[0].from} ← ${periods[3].to}`,
+      grouped: !catKey,
+    }));
+  };
+
   // الخط الزمني لأيام الفترة الأخيرة (يمين = أقدم)
   const span = daysBetween(periods[3].from, periods[3].to);
   const pos = (d: string) => (span ? (daysBetween(periods[3].from, d) / span) * 100 : 50);
@@ -353,6 +385,28 @@ export const ConsumptionAnalysis: React.FC<{
             {UNITS.map(([u, l]) => (
               <button key={u} type="button" aria-pressed={!fromDate && unit === u} onClick={() => { setFromDate(null); setUnit(u); setPage(0); }} className={`h-9 px-4 rounded-xl border text-sm font-bold cursor-pointer outline-hidden transition-all duration-200 focus-visible:ring-2 focus-visible:ring-indigo-400 ${!fromDate && unit === u ? 'border-indigo-100 dark:border-indigo-900/60 bg-gradient-to-l from-indigo-50 to-sky-50 dark:from-indigo-950/50 dark:to-sky-950/30 text-indigo-700 dark:text-indigo-300 shadow-sm' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}>{l}</button>
             ))}
+          </div>
+          <div className="relative">
+            <button type="button" aria-haspopup="menu" aria-expanded={printOpen} onClick={() => setPrintOpen(o => !o)} className="inline-flex items-center gap-2 h-10 px-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-indigo-400 cursor-pointer">
+              <Printer className="w-4 h-4 text-indigo-600" />طباعة
+              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${printOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {printOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setPrintOpen(false)} />
+                <div role="menu" className="absolute z-50 top-full mt-2 left-0 w-56 max-h-80 overflow-y-auto vehicle-scroll p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl">
+                  <button type="button" role="menuitem" onClick={() => doPrint(null)} className="w-full flex items-center justify-between gap-2 h-10 px-3 rounded-xl text-sm font-black text-slate-900 dark:text-white hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer">
+                    عام — كل الفئات<bdi className="font-mono text-[11px] text-slate-400">{allRows.length}</bdi>
+                  </button>
+                  <div className="my-1 h-px bg-slate-100 dark:bg-slate-800" />
+                  {printCats.map(c => (
+                    <button key={c.key} type="button" role="menuitem" onClick={() => doPrint(c.key)} className={`w-full flex items-center justify-between gap-2 h-9 px-3 rounded-xl text-[13px] font-bold hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer ${c.key === category ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-700 dark:text-slate-200'}`}>
+                      {c.name}<bdi className="font-mono text-[11px] text-slate-400">{c.count}</bdi>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
