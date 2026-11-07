@@ -336,8 +336,9 @@ export const ConsumptionAnalysis: React.FC<{
     printHtml(buildConsumptionSheet({
       rows: list,
       periods,
-      title: `كشف استهلاك العربات — ${name}`,
-      periodLabel: fromDate ? `${fromDate} ← ${endDate}` : `${periods[0].from} ← ${periods[3].to}`,
+      title: 'كشف استهلاك العربات',
+      scope: name,
+      periodLabel: `من ${fromDate ?? periods[0].from} إلى ${fromDate ? endDate : periods[3].to}`,
       grouped: !catKey,
     }));
   };
