@@ -31,6 +31,8 @@ interface Props {
   onOpen: (v: string) => void;
   /** يفتح مختبر العربة */
   onLab: (v: string) => void;
+  /** اليوم أو الفترة المحددة في تقرير العربات: الصفحة تفتح عليها (null = كل الفترة) */
+  initialRange?: { from: string; to: string } | null;
 }
 
 /** كارت رقم موحّد: العنوان والأيقونة في صف، وتحته القيمة ووحدتها بنفس الارتفاع في كل الكارتات */
@@ -48,15 +50,16 @@ const Spec: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactN
 );
 
 /** صفحة كاملة لتفاصيل عربة: المواصفات، آخر تفويلة، الرسوم، والسجل؛ والتاريخ يحدد كل شيء عدا آخر تفويلة */
-export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, editable, backLabel = 'تقرير العربات', onBack, onLab }) => {
+export const VehicleDetailPage: React.FC<Props> = ({ stat, refills, editable, backLabel = 'تقرير العربات', onBack, onLab, initialRange = null }) => {
   const { t } = useTranslation('vehicles');
   const [routes] = useSyncedStorage<VehicleRoute[]>(VEHICLE_ROUTES_KEY, []);
   const [profiles, setProfiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
   const [editing, setEditing] = useState(false);
   const [dailyPage, setDailyPage] = useState(0);
-  const [range, setRange] = useState<{ from: string; to: string } | null>(null);
+  const [range, setRange] = useState<{ from: string; to: string } | null>(initialRange);
   const [rangeOpen, setRangeOpen] = useState(false);
-  useEffect(() => { setDailyPage(0); setRange(null); }, [stat.vehicle]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setDailyPage(0); setRange(initialRange); }, [stat.vehicle, initialRange?.from, initialRange?.to]);
   const profile = withTanks(profiles.find(p => p.id === stat.vehicle), stat.vehicle);
   // الاسم إن وُجد يحدد الفئة والصورة (يُعامل كرمز العربة)
   const [catLabels] = useCategoryNames();

@@ -166,6 +166,7 @@ export const VehiclesReport: React.FC = () => {
           onBack={() => setVehicle(null)}
           onOpen={setVehicle}
           onLab={v => { setVehicle(null); setLab(v); }}
+          initialRange={active.kind === 'day' ? { from: active.date, to: active.date } : active.kind === 'range' ? { from: active.from, to: active.to } : null}
         />
       </div>
     );
