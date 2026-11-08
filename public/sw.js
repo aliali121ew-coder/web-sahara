@@ -18,7 +18,7 @@ const MAX_ASSETS = 400;
  * صور العربات تُخزَّن مسبقًا حتى تظهر مع النت الضعيف أو المقطوع، ولو لم تُعرض من قبل على هذا الجهاز.
  * اختبار etihadCoverage.test.ts يتأكد أن القائمة تشمل كل ملفات public/trucks
  */
-const typeImages = 'a at bs head hf hr hw is k ka kb kh kn ko kr ks l m r sa sf sf1 sl sr'.split(' ');
+const typeImages = 'a at bs h head hf hr hw is k ka kb kh kn ko kr ks l m r sa sf sf1 sl sr'.split(' ');
 const labImages = 'a at bs head hf hr hw k ka kb kh kn ks l m r sf1 sl sr'.split(' ');
 const VEHICLE_IMAGES = [
   '/trucks/semi_truck.jpg', '/trucks/tank/empty.webp', '/trucks/tank/glass-mask.png',

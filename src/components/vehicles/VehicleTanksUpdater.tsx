@@ -96,7 +96,9 @@ export const VehicleTanksUpdater: React.FC = () => {
       m.set(i.catKey, c);
     }
     // «أخرى» دائمًا آخر الكارتات
-    return [...m.values()].sort((a, b) => Number(a.key === 'OTHER') - Number(b.key === 'OTHER') || (b.up + b.down) - (a.up + a.down));
+    // الكارتات بلا صورة (شعار سما كربلاء) آخرًا، و«أخرى» آخرها
+    const noPhoto = (c: { key: string; sample: string }) => (c.key === 'OTHER' ? 2 : vehicleCategory(c.sample) ? 0 : 1);
+    return [...m.values()].sort((a, b) => noPhoto(a) - noPhoto(b) || (b.up + b.down) - (a.up + a.down));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, profiles]);
   const down = items.length - updated;
