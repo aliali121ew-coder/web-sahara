@@ -34,7 +34,8 @@ export function useIsVehicleUpdater() {
   const profile = useSessionProfile();
   const { isAdmin, canView } = usePermissions();
   if (isAdmin) return false;
-  return canView('vehicles-tanks') || norm(profile?.role || '').includes(norm(VEHICLE_UPDATER_ROLE));
+  const role = norm(profile?.role || '');
+  return canView('vehicles-tanks') || role.includes(norm(VEHICLE_UPDATER_ROLE)) || role.toLowerCase().includes('vehicle data update');
 }
 
 /** درجة صلاحية قسم واحد */

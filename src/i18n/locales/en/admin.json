@@ -63,7 +63,8 @@
       "Viewer",
       "Branch manager",
       "Department manager",
-      "General manager"
+      "General manager",
+      "Vehicle data update"
     ],
     "steps": {
       "identity": {
