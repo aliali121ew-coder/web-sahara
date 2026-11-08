@@ -368,24 +368,20 @@
 .sf-float-page .sf-hub-head { text-align: center; }
 .sf-float-stage { display: flex; flex-wrap: wrap; justify-content: center; align-content: center; gap: 44px 34px; padding: 36px 10px 48px; min-height: 62vh; perspective: 1200px; }
 .sf-float { border: 0; background: none; padding: 0; }
-.sf-float-card { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; width: 214px; height: 214px; padding: 0 18px 24px; border-radius: 38px; text-align: center;
+.sf-float-card { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; width: 214px; height: 230px; padding: 0 18px 24px; border-radius: 38px; text-align: center;
   background: linear-gradient(155deg, #ffffff 0%, #f8fafc 55%, #eef2f7 100%); border: 1px solid rgba(226, 232, 240, .9);
   box-shadow: 0 34px 44px -26px rgba(15, 23, 42, .38), inset 0 2px 0 rgba(255, 255, 255, .95);
   transform-style: preserve-3d; transition: box-shadow .3s; }
 .dark .sf-float-card { background: linear-gradient(155deg, #1b2740 0%, #131c30 60%, #0f172a 100%); border-color: #1e293b; box-shadow: 0 34px 44px -24px rgba(0, 0, 0, .7), inset 0 1px 0 rgba(255, 255, 255, .06); }
 /* ثابتة بلا حركة: ظل ملوّن فقط عند المؤشر */
 .sf-float:not(:disabled):hover .sf-float-card, .sf-float:not(:disabled):focus-visible .sf-float-card { box-shadow: 0 44px 60px -24px color-mix(in srgb, var(--c1) 55%, transparent), inset 0 2px 0 rgba(255, 255, 255, .95); }
-/* القوس الملوّن حول الدائرة (النصف المتجه للكارت) */
-.sf-float-arc { position: absolute; top: -22px; inset-inline-start: -22px; width: 142px; height: 142px; border-radius: 50%;
-  background: conic-gradient(from 140deg, var(--c2) 0, var(--c1) 48%, transparent 48%);
-  -webkit-mask: radial-gradient(circle, transparent 52px, #000 53px); mask: radial-gradient(circle, transparent 52px, #000 53px);
-  filter: drop-shadow(0 6px 10px color-mix(in srgb, var(--c2) 35%, transparent)); transform: translateZ(18px); }
-[dir="ltr"] .sf-float-arc { transform: translateZ(18px) scaleX(-1); }
-/* الدائرة البيضاء في الزاوية: أيقونة مكان الرقم */
-.sf-float-badge { position: absolute; top: -12px; inset-inline-start: -12px; width: 102px; height: 102px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  background: radial-gradient(circle at 35% 30%, #ffffff, #eef2f7); color: var(--c1); box-shadow: 0 12px 22px -10px rgba(15, 23, 42, .35), inset 0 -3px 6px rgba(15, 23, 42, .06); transform: translateZ(30px); }
-.dark .sf-float-badge { background: radial-gradient(circle at 35% 30%, #24324f, #162036); }
-.sf-float-icon { color: var(--c1); margin-bottom: 6px; transform: translateZ(24px); filter: drop-shadow(0 6px 8px color-mix(in srgb, var(--c1) 30%, transparent)); }
+/* الرسم في هالة ناعمة بلون الموقع، فوق أرضية خفيفة */
+.sf-float-card::before { content: ''; position: absolute; top: 20px; left: 50%; width: 140px; height: 140px; margin-left: -70px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--c1) 18%, transparent), color-mix(in srgb, var(--c1) 6%, transparent) 62%, transparent 72%); }
+.sf-float-card::after { content: ''; position: absolute; inset-inline: 30px; bottom: 0; height: 3px; border-radius: 3px 3px 0 0; background: var(--c1); opacity: 0; transition: opacity .3s; }
+.sf-float:not(:disabled):hover .sf-float-card::after { opacity: .7; }
+.sf-float-art { position: relative; display: flex; align-items: flex-end; justify-content: center; height: 112px; margin-bottom: 10px; filter: drop-shadow(0 8px 10px rgba(15, 23, 42, .12)); transition: transform .3s; }
+.sf-float:not(:disabled):hover .sf-float-art { transform: scale(1.06); }
 .sf-float-name { font-size: 18px; font-weight: 800; color: var(--c2); transform: translateZ(20px); }
 .dark .sf-float-name { color: var(--c1); }
 .sf-float-sub { font-size: 11.5px; color: var(--sf-mut); transform: translateZ(14px); }
@@ -396,7 +392,7 @@
 .sf-float:disabled { cursor: not-allowed; }
 .sf-float:disabled .sf-float-card { filter: grayscale(.7); opacity: .55; }
 .sf-float-lock { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--sf-mut); border-radius: 38px; background: color-mix(in srgb, var(--sf-panel) 35%, transparent); }
-@media (max-width: 520px) { .sf-float-stage { gap: 36px 18px; } .sf-float-card { width: 158px; height: 168px; border-radius: 30px; padding-bottom: 18px; } .sf-float-badge { width: 76px; height: 76px; } .sf-float-arc { width: 108px; height: 108px; -webkit-mask: radial-gradient(circle, transparent 39px, #000 40px); mask: radial-gradient(circle, transparent 39px, #000 40px); } .sf-float-name { font-size: 15px; } }
+@media (max-width: 520px) { .sf-float-stage { gap: 36px 18px; } .sf-float-card { width: 158px; height: 168px; border-radius: 30px; padding-bottom: 18px; } .sf-float-card { height: 186px; } .sf-float-art { height: 84px; } .sf-float-art svg { transform: scale(.76); transform-origin: bottom center; } .sf-float-card::before { width: 104px; height: 104px; margin-left: -52px; top: 14px; } .sf-float-name { font-size: 15px; } }
 
 /* ───── «طلب وقود» على خريطة مركز المراقبة ───── */
 .sf-map-btns { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }

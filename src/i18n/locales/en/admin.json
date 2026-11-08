@@ -63,7 +63,8 @@
       "Viewer",
       "Branch manager",
       "Department manager",
-      "General manager"
+      "General manager",
+      "Vehicle data update"
     ],
     "steps": {
       "identity": {
@@ -186,6 +187,9 @@
       "managers": "Site managers",
       "tasks": "Tasks & requests",
       "reports": "Reports",
+      "alerts": "Alerts log",
+      "vehicles-report": "Vehicles report",
+      "vehicles-tanks": "Vehicle data update",
       "chat": "Chat",
       "settings": "Settings",
       "appearance": "Appearance & background",

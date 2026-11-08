@@ -1,0 +1,114 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSyncedStorage } from '../../lib/useSyncedStorage';
+import {
+  VEHICLE_FILES_KEY, VEHICLE_HIDDEN_KEY, VEHICLE_REFILLS_KEY, dropStoredRows, fileDayStart, groupDayFills, previousDate, readVehicleFile, vehicleStats,
+  type VehicleFile, type VehicleRefill,
+} from '../../lib/vehicleFuel';
+
+export type Scope = { kind: 'day'; date: string } | { kind: 'range'; from: string; to: string } | { kind: 'all' };
+
+export interface UploadResult { name: string; ok: boolean; message: string; notes?: string[] }
+
+/** بيانات تقرير العربات: الملفات المرفوعة وسطورها، والتحليل حسب النطاق المختار */
+export const useVehicleData = (scope: Scope | null) => {
+  const [files, setFiles] = useSyncedStorage<VehicleFile[]>(VEHICLE_FILES_KEY, []);
+  const [refills, setRefills] = useSyncedStorage<VehicleRefill[]>(VEHICLE_REFILLS_KEY, []);
+  // أحدث التفويلات للرفع: الملفات تُرفع واحدًا تلو الآخر من نفس النداء ولا ينتظر كل ملف إعادة الرسم
+  const latestRefills = useRef(refills);
+  useEffect(() => { latestRefills.current = refills; }, [refills]);
+
+  // قائمة الملفات تُصفَّر كل يوم الساعة 7 صباحًا: يُحذف سجل الملف فقط وتبقى تفويلاته المخزنة
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { const t = window.setInterval(() => setNow(Date.now()), 60_000); return () => window.clearInterval(t); }, []);
+  const recentFiles = useMemo(() => files.filter(f => Date.parse(f.uploadedAt) >= fileDayStart(now)), [files, now]);
+  useEffect(() => {
+    if (recentFiles.length !== files.length) setFiles(prev => prev.filter(f => Date.parse(f.uploadedAt) >= fileDayStart(Date.now())));
+  }, [recentFiles.length, files.length, setFiles]);
+
+  // العربات المحذوفة تُخفى من كل التحليل، وتفويلاتها تبقى في التخزين حتى تُستعاد
+  const [hidden, setHidden] = useSyncedStorage<string[]>(VEHICLE_HIDDEN_KEY, []);
+  const hiddenSet = useMemo(() => new Set(hidden), [hidden]);
+  const allFills = useMemo(() => groupDayFills(refills).filter(f => !hiddenSet.has(f.vehicle)), [refills, hiddenSet]);
+  const hideVehicle = useCallback((v: string) => setHidden(prev => (prev.includes(v) ? prev : [...prev, v])), [setHidden]);
+  const restoreVehicle = useCallback((v: string) => setHidden(prev => prev.filter(x => x !== v)), [setHidden]);
+  const dates = useMemo(() => [...new Set(allFills.map(f => f.date))].sort(), [allFills]);
+  const active: Scope = scope ?? (dates.length ? { kind: 'day', date: dates[dates.length - 1] } : { kind: 'all' });
+
+  const fills = useMemo(
+    () => (active.kind === 'all' ? allFills
+      : active.kind === 'range' ? allFills.filter(f => f.date >= active.from && f.date <= active.to)
+      : allFills.filter(f => f.date === active.date)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allFills, active.kind, active.kind === 'day' ? active.date : '', active.kind === 'range' ? `${active.from}|${active.to}` : '']
+  );
+  const stats = useMemo(() => vehicleStats(fills).sort((a, b) => b.total - a.total), [fills]);
+  /** تاريخ كل عربة الكامل (للنافذة التفصيلية والمعدلات) بغض النظر عن النطاق */
+  const history = useMemo(() => new Map(vehicleStats(allFills).map(s => [s.vehicle, s])), [allFills]);
+
+  const prevDay = active.kind === 'day' ? previousDate(dates, active.date) : null;
+  const prevTotal = useMemo(
+    () => (prevDay ? allFills.filter(f => f.date === prevDay).reduce((s, f) => s + f.qty, 0) : null),
+    [allFills, prevDay]
+  );
+
+  /**
+   * يرفع عدة ملفات، وكل ملف قد يضم عدة كشوف مدموجة. الكشف المرفوع مسبقًا (نفس الموقع والتاريخ، أو نفس رقم المستند)
+   * يُتخطى مع تنبيه، ويُقارن بالتفويلات لأن قائمة الملفات تُصفَّر كل يوم؛ fallbackDate لسطور الكشف التي بلا تاريخ
+   */
+  const upload = useCallback(async (list: File[], fallbackDate = ''): Promise<UploadResult[]> => {
+    const results: UploadResult[] = [];
+    for (const f of list) {
+      try {
+        // الأكبر أولًا: نسخة جزئية من كشف داخل نفس الملف المدموج تُتخطى ويبقى الكامل
+        const sheets = (await readVehicleFile(f, fallbackDate)).sort((a, b) => b.file.rows - a.file.rows);
+        const have = new Set(latestRefills.current.map(r => r.fileId));
+        const fresh = sheets.filter(s => !have.has(s.file.id) && !!have.add(s.file.id));
+        const skipped = sheets.filter(s => !fresh.includes(s));
+        const notes = [...new Set([
+          ...skipped.map(({ file }) => `التاريخ ${file.reportDate} مسجل مسبقًا · ${file.site}${file.docNo ? ` · مستند ${file.docNo}` : ''}`),
+          ...fresh.filter(s => s.total !== null && s.total !== s.file.totalQty)
+            .map(({ file, total }) => `${file.site} · ${file.reportDate}: مجموع الملف ${total?.toLocaleString()} لا يطابق المقروء ${file.totalQty.toLocaleString()}`),
+        ])];
+        if (!fresh.length) {
+          const single = notes.length === 1;
+          results.push({ name: f.name, ok: false, message: single ? notes[0] : 'التواريخ مسجلة مسبقًا — لم يُرفع شيء', notes: single ? [] : notes });
+          continue;
+        }
+        // كشف جديد قد يتداخل مع كشف مرفوع سابقًا (مثل كشف شهر وكشف يوم من نفس الموقع): المتداخل وحده يُتخطى
+        let stored: VehicleRefill[] = latestRefills.current;
+        let dupRows = 0;
+        for (const s of fresh) {
+          const { kept, skipped } = dropStoredRows(s.refills, stored);
+          dupRows += skipped;
+          s.refills = kept;
+          s.file = { ...s.file, rows: kept.length, totalQty: kept.reduce((t, r) => t + r.qty, 0) };
+          stored = [...stored, ...kept];
+        }
+        if (dupRows) notes.push(`تخطّي ${dupRows} تفويلة مسجلة مسبقًا من كشف آخر`);
+        const usable = fresh.filter(s => s.refills.length);
+        if (!usable.length) {
+          results.push({ name: f.name, ok: false, message: 'كل تفويلات الملف مسجلة مسبقًا — لم يُرفع شيء', notes });
+          continue;
+        }
+        const ids = new Set(usable.map(s => s.file.id));
+        const rows = usable.flatMap(s => s.refills);
+        latestRefills.current = [...latestRefills.current, ...rows];
+        setRefills(prev => [...prev.filter(r => !ids.has(r.fileId)), ...rows]);
+        setFiles(prev => [...usable.map(s => s.file), ...prev.filter(x => !ids.has(x.id))]);
+        const liters = rows.reduce((s, r) => s + r.qty, 0).toLocaleString();
+        const where = usable.length > 1 ? `${usable.length} كشوف` : usable[0].file.site;
+        results.push({ name: f.name, ok: true, message: `${rows.length} سطر · ${liters} لتر · ${where}`, notes });
+      } catch (e) {
+        results.push({ name: f.name, ok: false, message: e instanceof Error ? e.message : 'تعذّرت قراءة الملف' });
+      }
+    }
+    return results;
+  }, [setFiles, setRefills]);
+
+  const removeFile = useCallback((id: string) => {
+    setRefills(prev => prev.filter(r => r.fileId !== id));
+    setFiles(prev => prev.filter(f => f.id !== id));
+  }, [setFiles, setRefills]);
+
+  return { files, recentFiles, refills, allFills, dates, active, fills, stats, history, prevDay, prevTotal, upload, removeFile, hidden, hideVehicle, restoreVehicle };
+};

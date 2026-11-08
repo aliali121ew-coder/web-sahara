@@ -18,8 +18,10 @@ import { useTranslation, Trans } from 'react-i18next';
 
 interface EtihadBalanceCardsProps {
   metrics: EtihadSummaryMetrics;
-  /** أيام التغطية المحسوبة من متوسط الاستهلاك الفعلي (0 = لا تقدير) */
+  /** أيام التغطية بحساب الواجهة الرئيسية (0 = لا تقدير) */
   coverageDays?: number;
+  /** تاريخ النفاد المتوقع */
+  coverageDate?: string;
   /** السعة الفعلية لخزانات الكاز من منظومة الخزانات (مرجع نسبة الرصيد) */
   capacityLiters?: number;
 }
@@ -27,6 +29,7 @@ interface EtihadBalanceCardsProps {
 export const EtihadBalanceCards: React.FC<EtihadBalanceCardsProps> = ({
   metrics,
   coverageDays = 0,
+  coverageDate = '',
   capacityLiters = 0
 }) => {
   const { t } = useTranslation(['finance', 'common']);
@@ -40,13 +43,6 @@ export const EtihadBalanceCards: React.FC<EtihadBalanceCardsProps> = ({
   };
 
   const totalCost = (metrics.todayInbound > 0 ? metrics.todayInbound : metrics.totalPurchases) * (metrics.averagePrice || 0);
-
-  const currentDate = new Date();
-  const securesUntilDate = new Date(currentDate.getTime() + (coverageDays * 24 * 60 * 60 * 1000));
-  const y = securesUntilDate.getFullYear();
-  const m = String(securesUntilDate.getMonth() + 1).padStart(2, '0');
-  const d = String(securesUntilDate.getDate()).padStart(2, '0');
-  const formattedSecuresUntil = coverageDays > 0 ? `${y}/${m}/${d}` : '—';
 
   const getBalanceStatus = (current: number) => {
     // بلا سعة معرّفة لا يُحكم على الرصيد
@@ -316,7 +312,7 @@ export const EtihadBalanceCards: React.FC<EtihadBalanceCardsProps> = ({
 
         <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
           <span>{t('finance:saharaPetrol.runOutDate')}:</span>
-          <span className="font-mono font-bold text-sky-600 dark:text-sky-400">{formattedSecuresUntil}</span>
+          <span className="font-mono font-bold text-sky-600 dark:text-sky-400">{coverageDate || '—'}</span>
         </div>
       </div>
 

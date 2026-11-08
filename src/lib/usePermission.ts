@@ -22,6 +22,22 @@ export function usePermissions() {
   return useMemo(() => ({ isAdmin, level, group, canView, canEdit, singlePage }), [isAdmin, level, group, canView, canEdit, singlePage]);
 }
 
+/** المسمى الوظيفي لحسابات تحديث خزانات العربات */
+export const VEHICLE_UPDATER_ROLE = 'تحديث بيانات العربات';
+const norm = (s: string) => s.replace(/[إأآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/\s+/g, ' ').trim();
+
+/**
+ * حساب «تحديث بيانات العربات»: صلاحيته الخاصة، أو مسماه الوظيفي «تحديث بيانات العربات».
+ * يرى صفحة التحديث بدل تقرير العربات الكامل. لا يُطبَّق على مدير النظام.
+ */
+export function useIsVehicleUpdater() {
+  const profile = useSessionProfile();
+  const { isAdmin, canView } = usePermissions();
+  if (isAdmin) return false;
+  const role = norm(profile?.role || '');
+  return canView('vehicles-tanks') || role.includes(norm(VEHICLE_UPDATER_ROLE)) || role.toLowerCase().includes('vehicle data update');
+}
+
 /** درجة صلاحية قسم واحد */
 export const useLevel = (section: string) => usePermissions().level(section);
 
@@ -42,8 +58,12 @@ export const TAB_SECTION: Record<string, { section?: string; group?: string }> =
   reports: { section: 'reports' },
   chat: { section: 'chat' },
   settings: { section: 'settings' },
-  // سجل التنبيهات: لمن يرى أحد الأقسام الأربعة (كاز الصحاري، كاز الاتحاد، البنزين، النفط الأسود)
-  alerts: {},
+  // سجل التنبيهات: صلاحيته الخاصة + أحد الأقسام الأربعة (كاز الصحاري، كاز الاتحاد، البنزين، النفط الأسود)
+  alerts: { section: 'alerts' },
+  // تقرير العربات: صلاحيته الخاصة (البيانات حسب صلاحية الواردات)
+  'vehicles-report': { section: 'vehicles-report' },
+  // تحديث بيانات العربات: لأصحاب صلاحيته فقط (مدير النظام لا يراها)
+  'vehicles-tanks': { section: 'vehicles-tanks' },
   // الملف الشخصي لكل حساب بلا صلاحية (آخر القائمة: صفحة البداية لحساب بلا أقسام)
   profile: {},
 };
@@ -55,7 +75,9 @@ export const useCanOpenTab = () => {
     // حساب مقيَّد بصفحة واحدة: لا يفتح غيرها (الباقي يتبع الصلاحيات كالمعتاد)
     if (p.singlePage && tab !== p.singlePage) return false;
     if (tab === 'profile') return true;
-    if (tab === 'alerts') return Object.values(CHECK_SECTION_PERM).some(s => p.canView(s));
+    if (tab === 'vehicles-tanks') return !p.isAdmin && p.canView('vehicles-tanks') && !p.canView('vehicles-report');
+    // بلا أي قسم تحقق تكون الصفحة فارغة، فلا تُفتح
+    if (tab === 'alerts') return p.canView('alerts') && Object.values(CHECK_SECTION_PERM).some(s => p.canView(s));
     const t = TAB_SECTION[tab];
     if (!t) return p.isAdmin;
     if (t.group === 'deliveries') return p.canView('deliveries-sahara') || p.canView('deliveries-etihad');
