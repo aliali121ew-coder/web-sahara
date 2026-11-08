@@ -6,8 +6,13 @@ describe('vehicleFleet', () => {
   it('matches the Excel totals', () => {
     expect(FLEET).toHaveLength(2623);
     expect(FLEET.filter(v => v.updated)).toHaveLength(224);
-    const sf = FLEET.filter(v => v.typeKey === 'SF');
+    const sf = FLEET.filter(v => v.typeKey === 'SF' || v.typeKey === 'SF1');
     expect(sf).toHaveLength(55);
+    // الكبير: خزان أكثر من 75 لتر
+    const big = FLEET.filter(v => v.typeKey === 'SF1');
+    expect(big.every(v => v.type === 'شفل كبير' && v.tanks[0] > 75)).toBe(true);
+    expect(FLEET.filter(v => v.typeKey === 'SF').every(v => v.type === 'شفل صغير' && v.tanks[0] <= 75)).toBe(true);
+    expect(big.map(v => v.code)).toContain('SF49');
     expect(sf.every(v => v.updated && v.tanks.length)).toBe(true);
     const heads = FLEET.filter(v => v.typeKey === 'HEAD');
     expect(heads).toHaveLength(1041);

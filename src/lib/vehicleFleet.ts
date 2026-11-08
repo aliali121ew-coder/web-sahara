@@ -15,10 +15,18 @@ const RAW = "1,0,0,0,0,28;2,0,0,0,0,28;3,0,0,0,0,28;4,0,0,0,0,28;5,0,0,0,0,28;6,
 
 export interface FleetVehicle { code: string; typeKey: string; type: string; updated: boolean; tanks: number[]; group: string }
 
+/** خزان الشفل الصغير 75 لتر فأقل، وما فوقه شفل كبير */
+const BIG_SF_LITERS = 75;
+
 const prefixOf = (code: string) => (/^\d+$/.test(code) ? 'HEAD' : /^([A-Z]+)/.exec(code)?.[1] || 'OTHER');
 
 export const FLEET: FleetVehicle[] = RAW.split(';').map(r => {
   const [code, u, t1, t2, t3, g] = r.split(',');
-  const typeKey = prefixOf(code);
-  return { code, typeKey, type: FLEET_TYPES[typeKey] || 'أخرى', updated: u === '1', tanks: [t1, t2, t3].map(Number).filter(Boolean), group: GROUPS[Number(g)] || '' };
+  const tanks = [t1, t2, t3].map(Number).filter(Boolean);
+  const prefix = prefixOf(code);
+  // الشفل: كبير إذا كان خزانه أكثر من 75 لتر، وصغير ما عدا ذلك (مثل فئات التقرير)
+  const big = prefix === 'SF' && tanks.reduce((s, c) => s + c, 0) > BIG_SF_LITERS;
+  const typeKey = big ? 'SF1' : prefix;
+  const type = prefix === 'SF' ? (big ? 'شفل كبير' : 'شفل صغير') : FLEET_TYPES[prefix] || 'أخرى';
+  return { code, typeKey, type, updated: u === '1', tanks, group: GROUPS[Number(g)] || '' };
 });
