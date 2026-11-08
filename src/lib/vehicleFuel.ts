@@ -239,6 +239,23 @@ export const splitSheets = (pages: PdfItem[][][]): PdfItem[][][][] => {
   return sheets;
 };
 
+/**
+ * سطور كشف جديد مسجلة مسبقًا من كشف آخر (نفس الموقع والعربة والتاريخ والكمية): تُتخطى حتى لا تتكرر التفويلة.
+ * العدّ بالتكرار: تفويلتان متطابقتان في الكشف الجديد وواحدة مخزنة = تُتخطى واحدة وتبقى الأخرى.
+ */
+export const dropStoredRows = <R extends Pick<VehicleRefill, 'site' | 'vehicle' | 'date' | 'qty'>>(rows: R[], stored: Pick<VehicleRefill, 'site' | 'vehicle' | 'date' | 'qty'>[]) => {
+  const key = (r: Pick<VehicleRefill, 'site' | 'vehicle' | 'date' | 'qty'>) => `${normalizeArabic(r.site)}|${r.vehicle.toUpperCase()}|${r.date}|${r.qty}`;
+  const left = new Map<string, number>();
+  for (const r of stored) left.set(key(r), (left.get(key(r)) || 0) + 1);
+  const kept: R[] = [];
+  let skipped = 0;
+  for (const r of rows) {
+    const n = left.get(key(r)) || 0;
+    if (n > 0) { left.set(key(r), n - 1); skipped++; } else kept.push(r);
+  }
+  return { kept, skipped };
+};
+
 const hash = (s: string) => {
   let h = 5381;
   for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
@@ -258,8 +275,11 @@ export const readVehicleFile = async (file: File, fallbackDate = ''): Promise<Ve
     if (!sheet.rows.length) continue;
     const site = sheet.site || 'غير محدد';
     const reportDate = sheet.rows.reduce((m, r) => (r.date > m ? r.date : m), '');
-    // معرّف الملف: المستند برقمه، والكشف بموقعه وتاريخه — به يُكتشف الكشف المرفوع مسبقًا
-    const fileId = `vf-${hash(sheet.docNo ? `${site}|doc|${sheet.docNo}` : `${site}|${reportDate}`)}`;
+    const firstDate = sheet.rows.reduce((m, r) => (r.date < m ? r.date : m), reportDate);
+    // معرّف الملف: المستند برقمه، والكشف بموقعه وتاريخه — به يُكتشف الكشف المرفوع مسبقًا.
+    // كشف عدة أيام (من–إلى) بموقعه ومداه، حتى لا يُعد مكررًا لكشف يوم واحد ينتهي بنفس التاريخ
+    const span = firstDate && firstDate !== reportDate ? `${site}|${firstDate}|${reportDate}` : `${site}|${reportDate}`;
+    const fileId = `vf-${hash(sheet.docNo ? `${site}|doc|${sheet.docNo}` : span)}`;
     const refills = sheet.rows.map((r, i) => ({ ...r, site, fileId, id: `${fileId}-${i}` }));
     uploads.push({
       file: {

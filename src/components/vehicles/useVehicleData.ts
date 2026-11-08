@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import {
-  VEHICLE_FILES_KEY, VEHICLE_HIDDEN_KEY, VEHICLE_REFILLS_KEY, fileDayStart, groupDayFills, previousDate, readVehicleFile, vehicleStats,
+  VEHICLE_FILES_KEY, VEHICLE_HIDDEN_KEY, VEHICLE_REFILLS_KEY, dropStoredRows, fileDayStart, groupDayFills, previousDate, readVehicleFile, vehicleStats,
   type VehicleFile, type VehicleRefill,
 } from '../../lib/vehicleFuel';
 
@@ -74,13 +74,29 @@ export const useVehicleData = (scope: Scope | null) => {
           results.push({ name: f.name, ok: false, message: single ? notes[0] : 'التواريخ مسجلة مسبقًا — لم يُرفع شيء', notes: single ? [] : notes });
           continue;
         }
-        const ids = new Set(fresh.map(s => s.file.id));
-        const rows = fresh.flatMap(s => s.refills);
+        // كشف جديد قد يتداخل مع كشف مرفوع سابقًا (مثل كشف شهر وكشف يوم من نفس الموقع): المتداخل وحده يُتخطى
+        let stored: VehicleRefill[] = latestRefills.current;
+        let dupRows = 0;
+        for (const s of fresh) {
+          const { kept, skipped } = dropStoredRows(s.refills, stored);
+          dupRows += skipped;
+          s.refills = kept;
+          s.file = { ...s.file, rows: kept.length, totalQty: kept.reduce((t, r) => t + r.qty, 0) };
+          stored = [...stored, ...kept];
+        }
+        if (dupRows) notes.push(`تخطّي ${dupRows} تفويلة مسجلة مسبقًا من كشف آخر`);
+        const usable = fresh.filter(s => s.refills.length);
+        if (!usable.length) {
+          results.push({ name: f.name, ok: false, message: 'كل تفويلات الملف مسجلة مسبقًا — لم يُرفع شيء', notes });
+          continue;
+        }
+        const ids = new Set(usable.map(s => s.file.id));
+        const rows = usable.flatMap(s => s.refills);
         latestRefills.current = [...latestRefills.current, ...rows];
         setRefills(prev => [...prev.filter(r => !ids.has(r.fileId)), ...rows]);
-        setFiles(prev => [...fresh.map(s => s.file), ...prev.filter(x => !ids.has(x.id))]);
+        setFiles(prev => [...usable.map(s => s.file), ...prev.filter(x => !ids.has(x.id))]);
         const liters = rows.reduce((s, r) => s + r.qty, 0).toLocaleString();
-        const where = fresh.length > 1 ? `${fresh.length} كشوف` : fresh[0].file.site;
+        const where = usable.length > 1 ? `${usable.length} كشوف` : usable[0].file.site;
         results.push({ name: f.name, ok: true, message: `${rows.length} سطر · ${liters} لتر · ${where}`, notes });
       } catch (e) {
         results.push({ name: f.name, ok: false, message: e instanceof Error ? e.message : 'تعذّرت قراءة الملف' });

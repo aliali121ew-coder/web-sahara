@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { capConsumption, consumptionBySite, consumptionTrend, fileDayStart, fillConsumption, parseVehicleSheet, splitSheets, type DayFill, type VehicleRefill } from '../vehicleFuel';
+import { capConsumption, consumptionBySite, consumptionTrend, dropStoredRows, fileDayStart, fillConsumption, parseVehicleSheet, splitSheets, type DayFill, type VehicleRefill } from '../vehicleFuel';
 import type { PdfItem } from '../saharaReportFile';
 
 const fill = (date: string, qty: number, over: Partial<DayFill> = {}): DayFill => ({
@@ -133,5 +133,24 @@ describe('splitSheets', () => {
     const pages = [[siteLine('سما الريف'), header, row('AT3', '75', '2026/10/30')], doc];
     const sheets = splitSheets(pages).map(p => parseVehicleSheet(p));
     expect(sheets.map(s => s.rows[0].date)).toEqual(['2026/10/30', '2026/10/27']);
+  });
+});
+
+describe('dropStoredRows', () => {
+  const r = (vehicle: string, date: string, qty: number, site = 'صحارى كربلاء (بيض)') => ({ vehicle, date, qty, site });
+  it('skips rows already stored from another sheet and keeps the rest', () => {
+    const stored = [r('299', '2026/10/31', 110)];
+    const rows = [r('299', '2026/10/27', 250), r('299', '2026/10/31', 110), r('810', '2026/10/31', 126)];
+    const { kept, skipped } = dropStoredRows(rows, stored);
+    expect(skipped).toBe(1);
+    expect(kept.map(x => `${x.vehicle}|${x.date}`)).toEqual(['299|2026/10/27', '810|2026/10/31']);
+  });
+  it('counts duplicates: two identical new rows and one stored keeps one', () => {
+    const { kept, skipped } = dropStoredRows([r('23', '2026/10/31', 100), r('23', '2026/10/31', 100)], [r('23', '2026/10/31', 100)]);
+    expect(skipped).toBe(1);
+    expect(kept).toHaveLength(1);
+  });
+  it('does not match another site', () => {
+    expect(dropStoredRows([r('23', '2026/10/31', 100)], [r('23', '2026/10/31', 100, 'موقع اخر')]).skipped).toBe(0);
   });
 });
