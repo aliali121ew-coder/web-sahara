@@ -5,7 +5,10 @@ import { FLEET } from '../vehicleFleet';
 describe('vehicleFleet', () => {
   it('matches the Excel totals', () => {
     expect(FLEET).toHaveLength(2623);
-    expect(FLEET.filter(v => v.updated)).toHaveLength(224);
+    expect(FLEET.filter(v => v.updated)).toHaveLength(362);
+    const kh = FLEET.filter(v => v.typeKey === 'KH');
+    expect(kh).toHaveLength(139);
+    expect(kh.every(v => v.updated && v.tanks.length === 1 && v.tanks[0] === 65)).toBe(true);
     const sf = FLEET.filter(v => v.typeKey === 'SF' || v.typeKey === 'SF1');
     expect(sf).toHaveLength(55);
     // الكبير: خزان أكثر من 75 لتر

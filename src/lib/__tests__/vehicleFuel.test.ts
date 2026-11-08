@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { capConsumption, consumptionBySite, consumptionTrend, dropStoredRows, fileDayStart, fillConsumption, parseVehicleSheet, splitSheets, type DayFill, type VehicleRefill } from '../vehicleFuel';
+import { capConsumption, consumptionBySite, consumptionTrend, dropStoredRows, fileDayStart, fillConsumption, parseVehicleSheet, sheetTanks, splitSheets, withTanks, type DayFill, type VehicleRefill } from '../vehicleFuel';
 import type { PdfItem } from '../saharaReportFile';
 
 const fill = (date: string, qty: number, over: Partial<DayFill> = {}): DayFill => ({
@@ -152,5 +152,14 @@ describe('dropStoredRows', () => {
   });
   it('does not match another site', () => {
     expect(dropStoredRows([r('23', '2026/10/31', 100)], [r('23', '2026/10/31', 100, 'موقع اخر')]).skipped).toBe(0);
+  });
+});
+
+describe('category tanks', () => {
+  it('every KH (كيا حمل) has a 65 L tank', () => {
+    expect(sheetTanks('KH125')).toEqual([65]);
+    expect(sheetTanks('kh7')).toEqual([65]);
+    expect(withTanks(undefined, 'KH40')).toMatchObject({ tankCount: 1, tankLiters: 65 });
+    expect(sheetTanks('BS214')).toEqual([100, 140]);
   });
 });

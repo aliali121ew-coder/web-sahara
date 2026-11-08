@@ -640,7 +640,7 @@ const VEHICLE_TANKS: Record<string, number[]> = {
   BS332: [100, 60, 140], BS333: [100, 60], BS336: [160, 80], BS338: [100, 100, 60], BS340: [100, 60],
   BS341: [100, 60], BS342: [100, 60], BS343: [160], BS345: [100, 60], BS346: [100, 60, 130], BS347: [100, 60],
   BS348: [100, 60], BS349: [100, 60], BS350: [100, 60, 120], BS352: [100, 60], BS354: [100, 60], HF68: [120, 120],
-  HR2: [250], HR12: [400, 1000], HW18: [625], K5: [250], KH125: [60], KN5: [90], KN11: [250], KN12: [500],
+  HR2: [250], HR12: [400, 1000], HW18: [625], K5: [250], KN5: [90], KN11: [250], KN12: [500],
   KN20: [400], KN35: [500], KN59: [700, 700], KO9: [60], KS5: [300], KS8: [350], L2: [700], L13: [700, 700],
   M18: [70], SL1: [350, 200], SL3: [700, 700], SL4: [600, 600],
   // شفل SF
@@ -653,7 +653,13 @@ const VEHICLE_TANKS: Record<string, number[]> = {
 };
 
 /** سعات خزانات العربة من الكشوف (null = ليست في الكشوف) */
-export const sheetTanks = (code: string): number[] | null => VEHICLE_TANKS[code.trim().toUpperCase()] ?? null;
+/** سعة موحدة لفئة كاملة (رمزها بلا رقم): كل كيا حمل KH خزانها 65 لتر */
+const CATEGORY_TANKS: Record<string, number[]> = { KH: [65] };
+const tanksOf = (code: string): number[] | undefined => {
+  const c = code.trim().toUpperCase();
+  return VEHICLE_TANKS[c] ?? CATEGORY_TANKS[/^([A-Z]+)\d+$/.exec(c)?.[1] || ''];
+};
+export const sheetTanks = (code: string): number[] | null => tanksOf(code) ?? null;
 /** رموز العربات الموجودة في كشوف الخزانات */
 export const SHEET_TANK_CODES = Object.keys(VEHICLE_TANKS);
 
@@ -663,7 +669,7 @@ export const SHEET_TANK_CODES = Object.keys(VEHICLE_TANKS);
  */
 export const withTanks = (p: VehicleProfile | undefined, vehicle: string): VehicleProfile | undefined => {
   if (p?.tankCount || p?.tankLiters || p?.tank2Liters || p?.tank3Liters) return p;
-  const caps = VEHICLE_TANKS[(p?.name || vehicle).trim().toUpperCase()];
+  const caps = tanksOf(p?.name || vehicle);
   if (!caps) return p;
   const base: VehicleProfile = p || { id: vehicle, name: '', type: '', tankLiters: null, dailyLimit: null, driver: '', department: '', notes: '', photo: '', updatedAt: '', by: '' };
   return { ...base, tankCount: caps.length || 1, tankLiters: caps[0] ?? null, tank2Liters: caps[1] ?? null, tank3Liters: caps[2] ?? null };
