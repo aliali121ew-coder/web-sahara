@@ -5,8 +5,8 @@ import { CheckCircle2, Container, Search, Truck, X, XCircle } from 'lucide-react
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { getProfile } from '../../lib/session';
 import { usePermissions } from '../../lib/usePermission';
-import { SHEET_TANK_CODES, VEHICLE_PROFILES_KEY, sheetTanks, vehicleCategory, vehicleImage, type VehicleProfile } from '../../lib/vehicleFuel';
-import { VEHICLE_REGISTRY_KEY, type VehicleRegistryEntry } from '../../lib/vehicleRegistry';
+import { VEHICLE_PROFILES_KEY, sheetTanks, vehicleCategory, vehicleImage, type VehicleProfile } from '../../lib/vehicleFuel';
+import { FLEET, FLEET_TYPES } from '../../lib/vehicleFleet';
 import { groupByCategory, useCategoryNames, useVehicleNames } from './categories';
 import { useVehicleData } from './useVehicleData';
 import { TopSevenCard } from './TopSevenCard';
@@ -19,8 +19,10 @@ interface Item { code: string; cat: string; catKey: string; group: string }
 const codeOf = (p: VehicleProfile) => (p.name?.trim() || p.id).toUpperCase();
 /** سُجّلت لها سعة خزان في ملفها (يدويًا) */
 const isUpdated = (p: VehicleProfile | undefined) => !!(p?.tankLiters || p?.tank2Liters || p?.tank3Liters);
-/** لها سعة في كشوف الخزانات المرفوعة */
-const inSheet = (code: string) => !!sheetTanks(code)?.length;
+/** أسطول الشركة من ملفي Excel (كل آلية: نوعها، محدثة أم لا، سعاتها المكتوبة، مجموعتها) */
+const FLEET_BY_CODE = new Map(FLEET.map(v => [v.code, v]));
+/** محدثة في ملفي Excel (شيتا «المحدث») */
+const inSheet = (code: string) => !!FLEET_BY_CODE.get(code)?.updated;
 /** صورة العربة، و«أخرى» (بلا فئة) شعار سما كربلاء */
 const imageOf = (code: string, photo?: string) => photo || (vehicleCategory(code) ? vehicleImage(code) : '/logos/sama.png');
 const fmtDate = (iso: string) => {
@@ -35,36 +37,30 @@ const fmtDate = (iso: string) => {
  */
 export const VehicleTanksUpdater: React.FC = () => {
   const [profiles, setProfiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
-  const [registry] = useSyncedStorage<VehicleRegistryEntry[]>(VEHICLE_REGISTRY_KEY, []);
   const [labels] = useCategoryNames();
   const [open, setOpen] = useState(false);
   // الحفظ يحتاج «تعديل» على تحديث بيانات العربات أو تقرير العربات (الخادم يرفض غير ذلك)
   const { canEdit } = usePermissions();
   const canSave = canEdit('vehicles-tanks') || canEdit('vehicles-report');
 
-  // التفويلات (قراءة فقط): عربات الأسطول، والأعلى استهلاكًا والرسم (آخر يوم كشف كما في تقرير العربات)
-  const { stats, active, history } = useVehicleData(null);
+  // التفويلات (قراءة فقط) للأعلى استهلاكًا والرسم (آخر يوم كشف كما في تقرير العربات)
+  const { stats, active } = useVehicleData(null);
   const names = useVehicleNames();
 
-  // العربات: التي فوّلت في الكشوف، والتي في كشوف الخزانات، والتي سُجّلت خزاناتها يدويًا.
-  // سجل الآليات (كل آليات الشركة) للمجموعة فقط، حتى لا تُعد آليات لا تفوّل أصلًا
+  // كل آليات الشركة من ملفي Excel مصنفة بنوعها، ومعها أي عربة حُفظت خزاناتها يدويًا وليست فيهما
   const items = useMemo<Item[]>(() => {
-    const groupOf = new Map(registry.map(r => [r.id.trim().toUpperCase(), r.group?.replace(/^اليات\s*/, '').replace(/[\s-]+$/, '') || '']));
-    const map = new Map<string, Item>();
-    const add = (raw: string) => {
-      const code = raw.trim().toUpperCase();
-      if (!code || map.has(code)) return;
-      const cat = vehicleCategory(code);
-      map.set(code, { code, catKey: cat?.key || 'OTHER', cat: (cat && labels[cat.key]) || cat?.label || 'أخرى', group: groupOf.get(code) || '' });
-    };
-    [...history.keys()].forEach(v => add(names.get(v) || v));
-    SHEET_TANK_CODES.forEach(c => add(c));
-    profiles.filter(isUpdated).forEach(p => add(codeOf(p)));
+    const map = new Map<string, Item>(FLEET.map(v => [v.code, { code: v.code, catKey: v.typeKey, cat: v.type, group: v.group }]));
+    for (const p of profiles.filter(isUpdated)) {
+      const code = codeOf(p);
+      if (map.has(code)) continue;
+      const key = /^\d+$/.test(code) ? 'HEAD' : /^([A-Z]+)/.exec(code)?.[1] || 'OTHER';
+      map.set(code, { code, catKey: FLEET_TYPES[key] ? key : 'OTHER', cat: FLEET_TYPES[key] || 'أخرى', group: '' });
+    }
     return [...map.values()].sort((a, b) => a.code.localeCompare(b.code, 'en', { numeric: true }));
-  }, [registry, profiles, labels, history, names]);
+  }, [profiles]);
 
   const profileOf = (code: string) => profiles.find(p => codeOf(p) === code);
-  /** محدثة = سعاتها في كشوف الخزانات المرفوعة أو حُفظت يدويًا */
+  /** محدثة = محدثة في ملفي Excel، أو حُفظت سعاتها يدويًا بعدهما */
   const isUp = (code: string) => isUpdated(profileOf(code)) || inSheet(code);
   const updated = items.filter(i => isUp(i.code)).length;
   const pct = items.length ? Math.round((updated / items.length) * 100) : 0;
@@ -96,11 +92,12 @@ export const VehicleTanksUpdater: React.FC = () => {
     const m = new Map<string, { key: string; name: string; sample: string; up: number; down: number }>();
     for (const i of items) {
       const c = m.get(i.catKey) || { key: i.catKey, name: i.cat, sample: i.code, up: 0, down: 0 };
-      if (isUpdated(profiles.find(p => codeOf(p) === i.code)) || inSheet(i.code)) c.up++; else c.down++;
+      if (isUp(i.code)) c.up++; else c.down++;
       m.set(i.catKey, c);
     }
     // «أخرى» دائمًا آخر الكارتات
     return [...m.values()].sort((a, b) => Number(a.key === 'OTHER') - Number(b.key === 'OTHER') || (b.up + b.down) - (a.up + a.down));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, profiles]);
   const down = items.length - updated;
   const downPct = items.length ? 100 - pct : 0;
@@ -148,7 +145,7 @@ export const VehicleTanksUpdater: React.FC = () => {
                   <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono">{all}</span>
                 </div>
                 {/* «أخرى» بلا صورة عربة: شعار سما كربلاء فقط */}
-                {c.key === 'OTHER'
+                {c.key === 'OTHER' || !vehicleCategory(c.sample)
                   ? <img src="/logos/sama.png" alt="سما كربلاء" loading="lazy" className="w-full h-20 object-contain mt-2 p-2" />
                   : <img src={vehicleImage(c.sample)} alt="" loading="lazy" className="w-full h-20 object-contain mt-2" />}
                 <div className="mt-2 h-1.5 rounded-full bg-rose-200/70 dark:bg-rose-950/50 overflow-hidden">
@@ -249,7 +246,7 @@ const UpdateDialog: React.FC<{
   const pick = (c: string) => {
     const prof = profileOf(c);
     const saved = [prof?.tankLiters ?? null, prof?.tank2Liters ?? null, prof?.tank3Liters ?? null];
-    const sheet = sheetTanks(c);
+    const sheet = sheetTanks(c) || (FLEET_BY_CODE.get(c)?.tanks.length ? FLEET_BY_CODE.get(c)!.tanks : null);
     const start = isUpdated(prof) ? saved : sheet ? [sheet[0] ?? null, sheet[1] ?? null, sheet[2] ?? null] : [null, null, null];
     setCode(c);
     setCount(prof?.tankCount || (isUpdated(prof) ? (saved[2] ? 3 : saved[1] ? 2 : 1) : sheet?.length || 1));
