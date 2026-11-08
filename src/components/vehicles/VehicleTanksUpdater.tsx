@@ -21,6 +21,8 @@ const codeOf = (p: VehicleProfile) => (p.name?.trim() || p.id).toUpperCase();
 const isUpdated = (p: VehicleProfile | undefined) => !!(p?.tankLiters || p?.tank2Liters || p?.tank3Liters);
 /** لها سعة في كشوف الخزانات المرفوعة */
 const inSheet = (code: string) => !!sheetTanks(code)?.length;
+/** صورة العربة، و«أخرى» (بلا فئة) شعار سما كربلاء */
+const imageOf = (code: string, photo?: string) => photo || (vehicleCategory(code) ? vehicleImage(code) : '/logos/sama.png');
 const fmtDate = (iso: string) => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? '' : `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
@@ -97,7 +99,8 @@ export const VehicleTanksUpdater: React.FC = () => {
       if (isUpdated(profiles.find(p => codeOf(p) === i.code)) || inSheet(i.code)) c.up++; else c.down++;
       m.set(i.catKey, c);
     }
-    return [...m.values()].sort((a, b) => (b.up + b.down) - (a.up + a.down));
+    // «أخرى» دائمًا آخر الكارتات
+    return [...m.values()].sort((a, b) => Number(a.key === 'OTHER') - Number(b.key === 'OTHER') || (b.up + b.down) - (a.up + a.down));
   }, [items, profiles]);
   const down = items.length - updated;
   const downPct = items.length ? 100 - pct : 0;
@@ -144,7 +147,10 @@ export const VehicleTanksUpdater: React.FC = () => {
                   <span className="text-sm font-black text-slate-900 dark:text-white truncate">{c.name}</span>
                   <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono">{all}</span>
                 </div>
-                <img src={vehicleImage(c.sample)} alt="" loading="lazy" className="w-full h-20 object-contain mt-2" />
+                {/* «أخرى» بلا صورة عربة: شعار سما كربلاء فقط */}
+                {c.key === 'OTHER'
+                  ? <img src="/logos/sama.png" alt="سما كربلاء" loading="lazy" className="w-full h-20 object-contain mt-2 p-2" />
+                  : <img src={vehicleImage(c.sample)} alt="" loading="lazy" className="w-full h-20 object-contain mt-2" />}
                 <div className="mt-2 h-1.5 rounded-full bg-rose-200/70 dark:bg-rose-950/50 overflow-hidden">
                   <div className="h-full rounded-full bg-emerald-500" style={{ width: `${share}%` }} />
                 </div>
@@ -313,7 +319,7 @@ const UpdateDialog: React.FC<{
                     return (
                       <li key={i.code}>
                         <button type="button" onClick={() => pick(i.code)} className={`w-full flex items-center gap-3 p-2 rounded-2xl border text-right cursor-pointer transition-colors ${up ? 'border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/60 dark:bg-emerald-950/20 hover:bg-emerald-50' : 'border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/20 hover:bg-rose-50'}`}>
-                          <img src={vehicleImage(i.code)} alt="" loading="lazy" className="w-16 h-11 object-contain shrink-0" />
+                          <img src={imageOf(i.code)} alt="" loading="lazy" className="w-16 h-11 object-contain shrink-0" />
                           <span className="flex-1 min-w-0">
                             <span className="block font-mono font-black text-[15px] text-slate-900 dark:text-white" dir="ltr" style={{ textAlign: 'right' }}>{i.code}</span>
                             <span className="block text-[11.5px] text-slate-500 dark:text-slate-400 truncate">{i.cat}{i.group && ` · ${i.group}`}</span>
@@ -339,7 +345,7 @@ const UpdateDialog: React.FC<{
                       : <span className="text-[11px] font-bold opacity-90">من كشف الخزانات</span>)}
                   </div>
                   <div className="flex items-center gap-4 p-4 bg-slate-50/70 dark:bg-slate-800/40">
-                    <img src={vehicleImage(sel.code, prof?.photo)} alt={`صورة العربة ${sel.code}`} className="w-32 h-24 object-contain shrink-0" />
+                    <img src={imageOf(sel.code, prof?.photo)} alt={`صورة العربة ${sel.code}`} className="w-32 h-24 object-contain shrink-0" />
                     <div className="min-w-0">
                       <div className="font-mono font-black text-3xl text-slate-900 dark:text-white" dir="ltr" style={{ textAlign: 'right' }}>{sel.code}</div>
                       <div className="text-sm font-bold text-slate-500 dark:text-slate-400">{sel.cat}</div>
