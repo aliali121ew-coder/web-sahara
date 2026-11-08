@@ -17,8 +17,10 @@ import { formatDay } from '../../lib/vehicleFuel';
 interface Item { code: string; cat: string; catKey: string; group: string }
 
 const codeOf = (p: VehicleProfile) => (p.name?.trim() || p.id).toUpperCase();
-/** محدثة = سُجّلت لها سعة خزان في ملفها */
+/** سُجّلت لها سعة خزان في ملفها (يدويًا) */
 const isUpdated = (p: VehicleProfile | undefined) => !!(p?.tankLiters || p?.tank2Liters || p?.tank3Liters);
+/** لها سعة في كشوف الخزانات المرفوعة */
+const inSheet = (code: string) => !!sheetTanks(code)?.length;
 const fmtDate = (iso: string) => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? '' : `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
@@ -38,23 +40,31 @@ export const VehicleTanksUpdater: React.FC = () => {
   const { canEdit } = usePermissions();
   const canSave = canEdit('vehicles-tanks') || canEdit('vehicles-report');
 
-  // كل العربات المعروفة: سجل الآليات، وكشوف الخزانات، وملفات العربات
+  // التفويلات (قراءة فقط): عربات الأسطول، والأعلى استهلاكًا والرسم (آخر يوم كشف كما في تقرير العربات)
+  const { stats, active, history } = useVehicleData(null);
+  const names = useVehicleNames();
+
+  // العربات: التي فوّلت في الكشوف، والتي في كشوف الخزانات، والتي سُجّلت خزاناتها يدويًا.
+  // سجل الآليات (كل آليات الشركة) للمجموعة فقط، حتى لا تُعد آليات لا تفوّل أصلًا
   const items = useMemo<Item[]>(() => {
+    const groupOf = new Map(registry.map(r => [r.id.trim().toUpperCase(), r.group?.replace(/^اليات\s*/, '').replace(/[\s-]+$/, '') || '']));
     const map = new Map<string, Item>();
-    const add = (raw: string, group = '') => {
+    const add = (raw: string) => {
       const code = raw.trim().toUpperCase();
       if (!code || map.has(code)) return;
       const cat = vehicleCategory(code);
-      map.set(code, { code, catKey: cat?.key || 'OTHER', cat: (cat && labels[cat.key]) || cat?.label || 'أخرى', group });
+      map.set(code, { code, catKey: cat?.key || 'OTHER', cat: (cat && labels[cat.key]) || cat?.label || 'أخرى', group: groupOf.get(code) || '' });
     };
-    registry.forEach(r => add(r.id, r.group?.replace(/^اليات\s*/, '').replace(/[\s-]+$/, '') || ''));
+    [...history.keys()].forEach(v => add(names.get(v) || v));
     SHEET_TANK_CODES.forEach(c => add(c));
-    profiles.forEach(p => add(codeOf(p)));
+    profiles.filter(isUpdated).forEach(p => add(codeOf(p)));
     return [...map.values()].sort((a, b) => a.code.localeCompare(b.code, 'en', { numeric: true }));
-  }, [registry, profiles, labels]);
+  }, [registry, profiles, labels, history, names]);
 
   const profileOf = (code: string) => profiles.find(p => codeOf(p) === code);
-  const updated = items.filter(i => isUpdated(profileOf(i.code))).length;
+  /** محدثة = سعاتها في كشوف الخزانات المرفوعة أو حُفظت يدويًا */
+  const isUp = (code: string) => isUpdated(profileOf(code)) || inSheet(code);
+  const updated = items.filter(i => isUp(i.code)).length;
   const pct = items.length ? Math.round((updated / items.length) * 100) : 0;
 
   const save = (code: string, caps: (number | null)[], count: number) => {
@@ -75,9 +85,6 @@ export const VehicleTanksUpdater: React.FC = () => {
     });
   };
 
-  // التفويلات (قراءة فقط) للأعلى استهلاكًا والرسم: آخر يوم كشف كما في تقرير العربات
-  const { stats, active } = useVehicleData(null);
-  const names = useVehicleNames();
   const statGroups = useMemo(() => groupByCategory(stats, names, labels), [stats, names, labels]);
   const [topCat, setTopCat] = useState<string | null>(null);
   const shownCat = topCat && statGroups.some(g => g.key === topCat) ? topCat : statGroups[0]?.key ?? null;
@@ -87,7 +94,7 @@ export const VehicleTanksUpdater: React.FC = () => {
     const m = new Map<string, { key: string; name: string; sample: string; up: number; down: number }>();
     for (const i of items) {
       const c = m.get(i.catKey) || { key: i.catKey, name: i.cat, sample: i.code, up: 0, down: 0 };
-      if (isUpdated(profiles.find(p => codeOf(p) === i.code))) c.up++; else c.down++;
+      if (isUpdated(profiles.find(p => codeOf(p) === i.code)) || inSheet(i.code)) c.up++; else c.down++;
       m.set(i.catKey, c);
     }
     return [...m.values()].sort((a, b) => (b.up + b.down) - (a.up + a.down));
@@ -175,7 +182,7 @@ export const VehicleTanksUpdater: React.FC = () => {
         </div>
       )}
 
-      {open && <UpdateDialog items={items} profileOf={profileOf} onSave={save} onClose={() => setOpen(false)} />}
+      {open && <UpdateDialog items={items} profileOf={profileOf} isUp={isUp} onSave={save} onClose={() => setOpen(false)} />}
     </div>
   );
 };
@@ -201,9 +208,10 @@ const StatusKpi: React.FC<{ ok: boolean; label: string; value: number; pct: numb
 const UpdateDialog: React.FC<{
   items: Item[];
   profileOf: (code: string) => VehicleProfile | undefined;
+  isUp: (code: string) => boolean;
   onSave: (code: string, caps: (number | null)[], count: number) => void;
   onClose: () => void;
-}> = ({ items, profileOf, onSave, onClose }) => {
+}> = ({ items, profileOf, isUp, onSave, onClose }) => {
   const [q, setQ] = useState('');
   const [catFilter, setCatFilter] = useState<string | null>(null);
   const [code, setCode] = useState<string | null>(null);
@@ -244,7 +252,7 @@ const UpdateDialog: React.FC<{
 
   const sel = code ? items.find(i => i.code === code) : null;
   const prof = code ? profileOf(code) : undefined;
-  const ok = isUpdated(prof);
+  const ok = !!code && isUp(code);
   const nums = caps.map(v => (v.trim() === '' ? null : Math.max(0, Number(v)) || null));
   const valid = !!nums[0] && nums.slice(0, count).every(Boolean);
   const total = nums.slice(0, count).reduce<number>((s, v) => s + (v || 0), 0);
@@ -301,7 +309,7 @@ const UpdateDialog: React.FC<{
                 </div>
                 <ul className="flex-1 min-h-0 overflow-y-auto vehicle-scroll px-3 pb-4 space-y-1.5">
                   {results.map(i => {
-                    const up = isUpdated(profileOf(i.code));
+                    const up = isUp(i.code);
                     return (
                       <li key={i.code}>
                         <button type="button" onClick={() => pick(i.code)} className={`w-full flex items-center gap-3 p-2 rounded-2xl border text-right cursor-pointer transition-colors ${up ? 'border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/60 dark:bg-emerald-950/20 hover:bg-emerald-50' : 'border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/20 hover:bg-rose-50'}`}>
@@ -326,7 +334,9 @@ const UpdateDialog: React.FC<{
                 <div className={`rounded-2xl border overflow-hidden ${ok ? 'border-emerald-300 dark:border-emerald-800' : 'border-rose-300 dark:border-rose-800'}`}>
                   <div className={`flex items-center justify-between gap-2 px-4 py-2.5 text-white ${ok ? 'bg-gradient-to-l from-emerald-600 to-teal-500' : 'bg-gradient-to-l from-rose-600 to-red-500'}`}>
                     <span className="inline-flex items-center gap-1.5 text-sm font-black">{ok ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}{ok ? 'محدثة' : 'غير محدثة'}</span>
-                    {ok && prof?.updatedAt && <span className="text-[11px] font-bold opacity-90">{fmtDate(prof.updatedAt)}{prof.by && ` · ${prof.by}`}</span>}
+                    {ok && (isUpdated(prof) && prof?.updatedAt
+                      ? <span className="text-[11px] font-bold opacity-90">{fmtDate(prof.updatedAt)}{prof.by && ` · ${prof.by}`}</span>
+                      : <span className="text-[11px] font-bold opacity-90">من كشف الخزانات</span>)}
                   </div>
                   <div className="flex items-center gap-4 p-4 bg-slate-50/70 dark:bg-slate-800/40">
                     <img src={vehicleImage(sel.code, prof?.photo)} alt={`صورة العربة ${sel.code}`} className="w-32 h-24 object-contain shrink-0" />
