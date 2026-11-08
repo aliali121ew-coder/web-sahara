@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { CheckCircle2, Container, Search, Truck, X, XCircle } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { getProfile } from '../../lib/session';
+import { usePermissions } from '../../lib/usePermission';
 import { SHEET_TANK_CODES, VEHICLE_PROFILES_KEY, sheetTanks, vehicleCategory, vehicleImage, type VehicleProfile } from '../../lib/vehicleFuel';
 import { VEHICLE_REGISTRY_KEY, type VehicleRegistryEntry } from '../../lib/vehicleRegistry';
 import { groupByCategory, useCategoryNames, useVehicleNames } from './categories';
@@ -33,6 +34,9 @@ export const VehicleTanksUpdater: React.FC = () => {
   const [registry] = useSyncedStorage<VehicleRegistryEntry[]>(VEHICLE_REGISTRY_KEY, []);
   const [labels] = useCategoryNames();
   const [open, setOpen] = useState(false);
+  // الحفظ يحتاج «تعديل» على تحديث بيانات العربات أو تقرير العربات (الخادم يرفض غير ذلك)
+  const { canEdit } = usePermissions();
+  const canSave = canEdit('vehicles-tanks') || canEdit('vehicles-report');
 
   // كل العربات المعروفة: سجل الآليات، وكشوف الخزانات، وملفات العربات
   const items = useMemo<Item[]>(() => {
@@ -108,6 +112,11 @@ export const VehicleTanksUpdater: React.FC = () => {
           <Truck className="w-5 h-5" />تحديث العربات
         </button>
       </div>
+      {!canSave && (
+        <div role="alert" className="rounded-2xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-sm font-bold text-amber-800 dark:text-amber-300">
+          هذا الحساب يستطيع العرض فقط. لحفظ سعات الخزانات يحتاج صلاحية «تعديل» على «تحديث بيانات العربات» أو «تقرير العربات» من إدارة الحسابات.
+        </div>
+      )}
 
       {/* كارتان فقط: المحدثة وغير المحدثة مع نسبة كل منهما */}
       <div className="grid grid-cols-2 gap-3">

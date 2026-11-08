@@ -22,6 +22,21 @@ export function usePermissions() {
   return useMemo(() => ({ isAdmin, level, group, canView, canEdit, singlePage }), [isAdmin, level, group, canView, canEdit, singlePage]);
 }
 
+/** المسمى الوظيفي لحسابات تحديث خزانات العربات */
+export const VEHICLE_UPDATER_ROLE = 'تحديث بيانات العربات';
+const norm = (s: string) => s.replace(/[إأآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/\s+/g, ' ').trim();
+
+/**
+ * حساب «تحديث بيانات العربات»: صلاحيته الخاصة، أو مسماه الوظيفي «تحديث بيانات العربات».
+ * يرى صفحة التحديث بدل تقرير العربات الكامل. لا يُطبَّق على مدير النظام.
+ */
+export function useIsVehicleUpdater() {
+  const profile = useSessionProfile();
+  const { isAdmin, canView } = usePermissions();
+  if (isAdmin) return false;
+  return canView('vehicles-tanks') || norm(profile?.role || '').includes(norm(VEHICLE_UPDATER_ROLE));
+}
+
 /** درجة صلاحية قسم واحد */
 export const useLevel = (section: string) => usePermissions().level(section);
 
@@ -59,7 +74,7 @@ export const useCanOpenTab = () => {
     // حساب مقيَّد بصفحة واحدة: لا يفتح غيرها (الباقي يتبع الصلاحيات كالمعتاد)
     if (p.singlePage && tab !== p.singlePage) return false;
     if (tab === 'profile') return true;
-    if (tab === 'vehicles-tanks') return !p.isAdmin && p.canView('vehicles-tanks');
+    if (tab === 'vehicles-tanks') return !p.isAdmin && p.canView('vehicles-tanks') && !p.canView('vehicles-report');
     // بلا أي قسم تحقق تكون الصفحة فارغة، فلا تُفتح
     if (tab === 'alerts') return p.canView('alerts') && Object.values(CHECK_SECTION_PERM).some(s => p.canView(s));
     const t = TAB_SECTION[tab];

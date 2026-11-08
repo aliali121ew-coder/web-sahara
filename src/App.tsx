@@ -18,7 +18,7 @@ import i18n from './i18n';
 /** عدد الصفحات التي تبقى محفوظة للرجوع الفوري إليها */
 const MAX_KEPT_PAGES = 4;
 import { NoAccess } from './components/auth/NoAccess';
-import { useCanOpenTab, usePermissions, TAB_SECTION } from './lib/usePermission';
+import { useCanOpenTab, useIsVehicleUpdater, usePermissions, TAB_SECTION } from './lib/usePermission';
 import type { NavTabId } from './types';
 
 // أرشفة PDF شهر مزارع المواقع (تُحمَّل في الخلفية فلا تثقل التحميل الأول)
@@ -48,6 +48,9 @@ const PAGE_PRELOADERS: Record<string, { preload: () => void }> = {
   managers: SiteManagers, tasks: TasksLogistics, reports: ReportsAnalytics, chat: ChatApp, settings: SettingsView, profile: ProfileView, alerts: ReportAlertsView,
   'vehicles-report': VehiclesReport, 'vehicles-tanks': VehicleTanksUpdater,
 };
+
+/** تقرير العربات، أو صفحة التحديث لحساب «تحديث بيانات العربات» */
+const VehiclesPage: React.FC = () => (useIsVehicleUpdater() ? <VehicleTanksUpdater /> : <VehiclesReport />);
 
 const AppContent: React.FC = () => {
   const { themeMode, bgGradient, gradientIntensity, shadeLevel } = useTheme();
@@ -213,7 +216,7 @@ const AppContent: React.FC = () => {
       case 'alerts':
         return <ReportAlertsView />;
       case 'vehicles-report':
-        return <VehiclesReport />;
+        return <VehiclesPage />;
       case 'vehicles-tanks':
         return <VehicleTanksUpdater />;
       default:
