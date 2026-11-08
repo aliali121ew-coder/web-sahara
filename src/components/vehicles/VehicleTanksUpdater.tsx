@@ -223,6 +223,9 @@ const UpdateDialog: React.FC<{
   const [count, setCount] = useState(1);
   const [caps, setCaps] = useState<string[]>(['', '', '']);
   const [done, setDone] = useState(false);
+  /** السعات عند فتح العربة: لمعرفة هل غيّرها المستخدم */
+  const [orig, setOrig] = useState<{ caps: (number | null)[]; count: number }>({ caps: [null, null, null], count: 1 });
+  const [confirming, setConfirming] = useState(false);
   const [closing, setClosing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -250,9 +253,12 @@ const UpdateDialog: React.FC<{
     const saved = [prof?.tankLiters ?? null, prof?.tank2Liters ?? null, prof?.tank3Liters ?? null];
     const sheet = sheetTanks(c) || (FLEET_BY_CODE.get(c)?.tanks.length ? FLEET_BY_CODE.get(c)!.tanks : null);
     const start = isUpdated(prof) ? saved : sheet ? [sheet[0] ?? null, sheet[1] ?? null, sheet[2] ?? null] : [null, null, null];
+    const startCount = prof?.tankCount || (isUpdated(prof) ? (saved[2] ? 3 : saved[1] ? 2 : 1) : sheet?.length || 1);
     setCode(c);
-    setCount(prof?.tankCount || (isUpdated(prof) ? (saved[2] ? 3 : saved[1] ? 2 : 1) : sheet?.length || 1));
+    setCount(startCount);
     setCaps(start.map(v => (v ? String(v) : '')));
+    setOrig({ caps: start.map(v => v || null), count: startCount });
+    setConfirming(false);
   };
 
   const sel = code ? items.find(i => i.code === code) : null;
@@ -262,8 +268,12 @@ const UpdateDialog: React.FC<{
   const valid = !!nums[0] && nums.slice(0, count).every(Boolean);
   const total = nums.slice(0, count).reduce<number>((s, v) => s + (v || 0), 0);
 
+  // عربة محدثة تغيّرت سعاتها أو عدد خزاناتها: تأكيد قبل الحفظ
+  const changed = ok && (count !== orig.count || [0, 1, 2].some(k => (k < count ? nums[k] : null) !== (k < orig.count ? orig.caps[k] : null)));
   const submit = () => {
     if (!code || !valid) return;
+    if (changed && !confirming) { setConfirming(true); return; }
+    setConfirming(false);
     onSave(code, nums, count);
     setDone(true);
     window.setTimeout(close, 1400);
@@ -381,6 +391,37 @@ const UpdateDialog: React.FC<{
                   <span className="font-bold text-slate-500 dark:text-slate-400">السعة الكلية</span>
                   <span className="font-mono font-black text-slate-900 dark:text-white">{total.toLocaleString()} <span className="font-cairo text-xs text-slate-400">لتر</span></span>
                 </div>
+
+                {confirming && (
+                  <div className="absolute inset-0 z-20 flex items-center justify-center p-5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm vehicle-fade-in" role="alertdialog" aria-label="تأكيد تغيير السعات">
+                    <div className="w-full max-w-sm rounded-3xl border border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-900 shadow-2xl p-5 text-center">
+                      <div className="w-12 h-12 mx-auto rounded-2xl bg-amber-100 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center text-2xl font-black">!</div>
+                      <div className="mt-3 text-lg font-black text-slate-900 dark:text-white">هل أنت متأكد؟</div>
+                      <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">العربة <bdi dir="ltr" className="font-mono font-bold">{code}</bdi> محدثة، وستتغير سعات خزاناتها</div>
+                      <div className="mt-4 space-y-1.5 text-sm">
+                        {['الخزان الرئيسي', 'الخزان الثاني', 'الخزان الثالث'].map((label, k) => {
+                          const was = k < orig.count ? orig.caps[k] : null;
+                          const now = k < count ? nums[k] : null;
+                          if (was === null && now === null) return null;
+                          const diff = was !== now;
+                          return (
+                            <div key={label} className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl ${diff ? 'bg-amber-50 dark:bg-amber-950/30' : 'bg-slate-50 dark:bg-slate-800/50'}`}>
+                              <span className="font-bold text-slate-600 dark:text-slate-300">{label}</span>
+                              <span className="font-mono font-bold" dir="ltr">
+                                <span className={diff ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}>{was ?? '—'}</span>
+                                {diff && <> → <span className="text-amber-700 dark:text-amber-300">{now ?? 'حذف'}</span></>}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-5 grid grid-cols-2 gap-2">
+                        <button type="button" onClick={submit} className="h-11 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-black cursor-pointer">نعم، متأكد</button>
+                        <button type="button" onClick={() => setConfirming(false)} className="h-11 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm font-bold cursor-pointer">تراجع</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="mt-5 grid grid-cols-[1fr_auto] gap-2">
                   <button type="button" disabled={!valid} onClick={submit} className="h-12 rounded-2xl bg-gradient-to-l from-emerald-600 to-teal-500 text-white text-base font-black shadow-md shadow-emerald-500/30 disabled:opacity-40 disabled:shadow-none cursor-pointer disabled:cursor-not-allowed">حفظ</button>
