@@ -244,8 +244,11 @@ export const AppLogin: React.FC<{ onSuccess: () => void; unreachable?: boolean }
     if (bioBusy || btn !== 'idle') return;
     setError('');
     setBioBusy(true);
-    // أثناء التحقق تُترك الشاشة لنافذة النظام (أندرويد / iPhone تعرض نافذتها الإلزامية للبصمة)،
-    // فحركة التطبيق تظهر بعد النجاح فقط ولا تتراكب فوق نافذة النظام
+    // الوجه: لوحة الوجه تنزل من الأعلى فور الضغط (لا تتراكب مع نافذة النظام في الوسط/الأسفل).
+    // الإصبع: الشاشة تُترك لنافذة النظام السفلية، ولوحة البصمة تظهر بعد نزولها (بعد النجاح)
+    const face = bioAnimationKind() === 'face';
+    const startedAt = Date.now();
+    if (face && !reducedMotion()) setBioPhase('verify');
     const ctrl = new AbortController();
     bioAbort.current = ctrl;
     try {
@@ -256,6 +259,11 @@ export const AppLogin: React.FC<{ onSuccess: () => void; unreachable?: boolean }
       if (reducedMotion()) {
         setBioPhase('success');
         setTimeout(onSuccess, 400);
+      } else if (face) {
+        // الوجه ظاهر منذ الضغط: تكتمل حركة الالتفات (1.35 ثانية على الأقل) ثم علامة الصح
+        const wait = Math.max(0, 1350 - (Date.now() - startedAt));
+        setTimeout(() => setBioPhase('success'), wait);
+        setTimeout(onSuccess, wait + 1000);
       } else {
         setBioPhase('verify');
         setTimeout(() => setBioPhase('success'), 1350);
