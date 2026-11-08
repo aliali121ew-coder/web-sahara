@@ -25,6 +25,8 @@ export const ACTIONS: Record<string, { icon: React.ComponentType<{ className?: s
   'admin.update': { icon: UserCog, sev: 'info' },
   'admin.password': { icon: KeyRound, sev: 'warn' },
   'admin.support': { icon: Inbox, sev: 'info' },
+  'admin.passkey_approve': { icon: Fingerprint, sev: 'warn' },
+  'admin.passkey_remove': { icon: Fingerprint, sev: 'info' },
   'data.save': { icon: Save, sev: 'info' },
   'data.denied': { icon: ShieldAlert, sev: 'danger' },
   'file.upload': { icon: FileUp, sev: 'info' },

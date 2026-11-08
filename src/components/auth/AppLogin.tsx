@@ -443,7 +443,8 @@ export const AppLogin: React.FC<{ onSuccess: () => void; unreachable?: boolean }
 
   const offerEl = bioOffer && (
     <BioOffer
-      onEnable={async prepared => { await enableBiometric(undefined, prepared); onSuccess(); }}
+      onEnable={async prepared => { const r = await enableBiometric(undefined, prepared); if (!r.pending) onSuccess(); return r.pending; }}
+      onDone={onSuccess}
       onSkip={() => { try { localStorage.setItem(BIO_DECLINED_KEY + username.trim().toLowerCase(), '1'); } catch { /* تجاهل */ } onSuccess(); }}
     />
   );
@@ -534,10 +535,12 @@ export const AppLogin: React.FC<{ onSuccess: () => void; unreachable?: boolean }
 };
 
 /** عرض تفعيل الدخول بالبصمة / بصمة الوجه بعد الدخول بكلمة المرور */
-const BioOffer: React.FC<{ onEnable: (prepared: BioRegisterOptions | null) => Promise<void>; onSkip: () => void }> = ({ onEnable, onSkip }) => {
+const BioOffer: React.FC<{ onEnable: (prepared: BioRegisterOptions | null) => Promise<boolean>; onDone: () => void; onSkip: () => void }> = ({ onEnable, onDone, onSkip }) => {
   const { t, i18n } = useTranslation('auth');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // بصمة حساب موظف تنتظر موافقة مدير النظام قبل أن تعمل
+  const [pending, setPending] = useState(false);
   // تُجلب بيانات التسجيل فور ظهور العرض ليبدأ طلب البصمة مباشرة عند الضغط (شرط Safari في iPhone)
   const { ref: prepared } = usePreparedBio(true);
   const [methods, setMethods] = useBioMethods();
@@ -545,8 +548,9 @@ const BioOffer: React.FC<{ onEnable: (prepared: BioRegisterOptions | null) => Pr
     setBusy(true);
     setError('');
     try {
-      await onEnable(prepared.current);
+      const wait = await onEnable(prepared.current);
       saveBioMethod(methods);
+      if (wait) { setPending(true); setBusy(false); }
     } catch (e) {
       setError(bioErrorText(e));
       setBusy(false);
@@ -562,10 +566,16 @@ const BioOffer: React.FC<{ onEnable: (prepared: BioRegisterOptions | null) => Pr
         <div className="mx-auto w-16 h-16 rounded-[20px] auth-bio-hero flex items-center justify-center text-white">
           <Fingerprint className="w-8 h-8" />
         </div>
-        <h2 id="bio-title" className="mt-5 text-[22px] font-black text-slate-900 dark:text-white">{t('bio.title')}</h2>
+        <h2 id="bio-title" className="mt-5 text-[22px] font-black text-slate-900 dark:text-white">{pending ? t('bio.pendingTitle') : t('bio.title')}</h2>
         <p className="mt-1.5 text-[13px] leading-6 text-slate-500 dark:text-slate-400">
-          {t('bio.text')}
+          {pending ? t('bio.pendingText') : t('bio.text')}
         </p>
+        {pending ? (
+          <button type="button" onClick={onDone} autoFocus
+            className="auth-btn auth-focus mt-6 w-full h-14 rounded-2xl text-white font-bold text-base flex items-center justify-center gap-2">
+            {t('bio.continue')}
+          </button>
+        ) : <>
         <BioMethods value={methods} onChange={setMethods} disabled={busy} />
         {error && (
           <p role="alert" className="mt-4 flex items-center justify-center gap-2 text-[13px] font-bold text-rose-700 dark:text-rose-300">
@@ -580,6 +590,7 @@ const BioOffer: React.FC<{ onEnable: (prepared: BioRegisterOptions | null) => Pr
           className="auth-focus mt-2 w-full h-12 rounded-2xl text-[15px] font-bold text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-900">
           {t('bio.later')}
         </button>
+        </>}
       </div>
     </div>
   );

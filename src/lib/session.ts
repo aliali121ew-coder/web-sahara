@@ -270,7 +270,8 @@ export async function prepareBiometric(password?: string): Promise<BioRegisterOp
  * تفعيل البصمة لحسابي على هذا الجهاز (يتطلب جلسة).
  * الخادم يشترط دخولًا بكلمة المرور خلال آخر 10 دقائق، وإلا تُمرَّر كلمة المرور هنا (رمز الخطأ reauth_required)
  */
-export async function enableBiometric(password?: string, prepared?: BioRegisterOptions | null) {
+/** يعيد pending = true إن كانت البصمة تنتظر موافقة مدير النظام قبل أن تعمل في الدخول */
+export async function enableBiometric(password?: string, prepared?: BioRegisterOptions | null): Promise<{ pending: boolean }> {
   const headers = sessionHeaders();
   // التحدي صالح دقيقتين: المجلوب مسبقًا يُستخدم إن كان حديثًا، وإلا يُجلب الآن
   const o = prepared && !password && Date.now() - prepared.fetchedAt < 90_000 ? prepared : await prepareBiometric(password);
@@ -294,7 +295,7 @@ export async function enableBiometric(password?: string, prepared?: BioRegisterO
   const res = cred.response as AuthenticatorAttestationResponse;
   const spki = res.getPublicKey?.();
   if (!spki) throw new AuthError('هذا المتصفح لا يدعم الدخول بالبصمة، حدّثه وحاول مجددًا', 'bio_unsupported');
-  await post('/api/chat/auth/webauthn/register', {
+  const r = await post<{ pending?: boolean }>('/api/chat/auth/webauthn/register', {
     id: cred.id,
     clientDataJSON: toB64url(res.clientDataJSON),
     publicKey: toB64url(spki),
@@ -303,6 +304,7 @@ export async function enableBiometric(password?: string, prepared?: BioRegisterO
   }, headers);
   localStorage.setItem(BIO_USER_KEY, o.user.name);
   localStorage.setItem(BIO_CRED_KEY, cred.id);
+  return { pending: !!r?.pending };
 }
 
 /** إيقاف البصمة على هذا الجهاز */

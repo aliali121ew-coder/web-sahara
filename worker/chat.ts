@@ -86,6 +86,8 @@ const ensureTables = (db: ChatDB) => schemaGate(db, 'chat', CHAT_SCHEMA, async (
   // مفاتيح الدخول بالبصمة / بصمة الوجه (المفتاح العام فقط) والتحديات المؤقتة
   await db.exec("CREATE TABLE IF NOT EXISTS webauthn_credentials (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, public_key TEXT NOT NULL, alg INTEGER NOT NULL, sign_count INTEGER NOT NULL DEFAULT 0, label TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, last_used INTEGER NOT NULL DEFAULT 0)");
   await db.exec('CREATE INDEX IF NOT EXISTS webauthn_credentials_user ON webauthn_credentials (user_id)');
+  // بصمة جهاز جديد لحساب غير مدير تنتظر موافقة مدير النظام (0) قبل أن تُقبل في الدخول؛ البصمات السابقة مقبولة (1)
+  try { await db.exec('ALTER TABLE webauthn_credentials ADD COLUMN approved INTEGER NOT NULL DEFAULT 1'); } catch { /* موجود */ }
   await db.exec("CREATE TABLE IF NOT EXISTS webauthn_challenges (challenge TEXT PRIMARY KEY, user_id TEXT NOT NULL DEFAULT '', kind TEXT NOT NULL, expires_at INTEGER NOT NULL)");
   // طلبات الدعم من شاشة الدخول (حساب جديد / نسيت كلمة المرور) تصل لمدير النظام
   await db.exec("CREATE TABLE IF NOT EXISTS support_requests (id TEXT PRIMARY KEY, name TEXT NOT NULL, phone TEXT NOT NULL DEFAULT '', username TEXT NOT NULL DEFAULT '', kind TEXT NOT NULL, message TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL)");
@@ -481,8 +483,8 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     if (!b?.id || !cd || cd.type !== 'webauthn.get' || cd.origin !== expectedOrigin) return fail('بيانات البصمة غير صالحة');
     if (!(await takeChallenge(cd.challenge, 'get'))) return fail('انتهت مهلة التحقق، حاول مجددًا');
     const { results } = await db.prepare(
-      'SELECT c.id, c.user_id, c.public_key, c.alg, c.sign_count, u.disabled, u.expires_at FROM webauthn_credentials c JOIN chat_users u ON u.id = c.user_id WHERE c.id = ?',
-    ).bind(str(b.id, 512)).all<{ id: string; user_id: string; public_key: string; alg: number; sign_count: number; disabled: number; expires_at: number }>();
+      'SELECT c.id, c.user_id, c.public_key, c.alg, c.sign_count, c.approved, u.disabled, u.expires_at FROM webauthn_credentials c JOIN chat_users u ON u.id = c.user_id WHERE c.id = ?',
+    ).bind(str(b.id, 512)).all<{ id: string; user_id: string; public_key: string; alg: number; sign_count: number; approved: number; disabled: number; expires_at: number }>();
     const cred = results[0];
     if (!cred) return fail('البصمة غير مسجلة لأي حساب. سجّل الدخول بكلمة المرور ثم فعّلها من جديد');
     if (isExpired(cred.expires_at, now)) return expiredResponse();
@@ -492,6 +494,11 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
       authenticatorData: str(b.authenticatorData, 4000), clientDataJSON: str(b.clientDataJSON, 4000), signature: str(b.signature, 2000),
     });
     if (!v.ok) return fail(v.error);
+    // التوقيع صحيح لكن الجهاز لم يُعتمد بعد من مدير النظام
+    if (!cred.approved) {
+      await audit(db, request, cred.user_id, 'auth.failed', 'بصمة بانتظار موافقة المدير');
+      return json({ error: 'بصمة هذا الجهاز بانتظار موافقة مدير النظام. ادخل بكلمة المرور حتى تتم الموافقة', code: 'passkey_pending' }, 403);
+    }
     // عدّاد التوقيعات يجب أن يزيد (إن كان الجهاز يدعمه) لكشف نسخ المفتاح
     if (v.signCount && cred.sign_count && v.signCount <= cred.sign_count) return fail('تم رفض البصمة لأسباب أمنية');
     await db.prepare('UPDATE webauthn_credentials SET sign_count = ?, last_used = ? WHERE id = ?').bind(v.signCount, now, cred.id).run();
@@ -649,13 +656,15 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     // معرّف بصمة مسجّل لحساب آخر لا يُستبدل (كان يسمح بإلغاء بصمة شخص آخر)
     const { results: existing } = await db.prepare('SELECT user_id FROM webauthn_credentials WHERE id = ?').bind(credId).all<{ user_id: string }>();
     if (existing[0] && existing[0].user_id !== authId) return json({ error: 'هذه البصمة مسجّلة مسبقًا', code: 'passkey_exists' }, 409);
-    await db.prepare('INSERT OR REPLACE INTO webauthn_credentials (id, user_id, public_key, alg, sign_count, label, created_at) VALUES (?, ?, ?, ?, 0, ?, ?)')
-      .bind(credId, authId, publicKey, alg, str(b.label, 80), now).run();
-    await audit(db, request, authId, 'auth.passkey_add', str(b.label, 80));
-    return json({ ok: true });
+    // حساب مدير النظام يُعتمد مباشرة؛ غيره ينتظر الموافقة (من يملك كلمة المرور لا يضيف وجهه بلا علم المدير)
+    const approved = session.admin ? 1 : 0;
+    await db.prepare('INSERT OR REPLACE INTO webauthn_credentials (id, user_id, public_key, alg, sign_count, label, created_at, approved) VALUES (?, ?, ?, ?, 0, ?, ?, ?)')
+      .bind(credId, authId, publicKey, alg, str(b.label, 80), now, approved).run();
+    await audit(db, request, authId, 'auth.passkey_add', `${str(b.label, 80)}${approved ? '' : ' (بانتظار الموافقة)'}`);
+    return json({ ok: true, pending: !approved });
   }
   if (path === '/auth/webauthn/credentials' && method === 'GET') {
-    const { results } = await db.prepare('SELECT id, label, created_at, last_used FROM webauthn_credentials WHERE user_id = ? ORDER BY created_at DESC').bind(authId).all();
+    const { results } = await db.prepare('SELECT id, label, created_at, last_used, approved FROM webauthn_credentials WHERE user_id = ? ORDER BY created_at DESC').bind(authId).all();
     return json({ items: results });
   }
   const credMatch = path.match(/^\/auth\/webauthn\/credentials\/(.+)$/);
@@ -725,6 +734,28 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
       const b = await readBody<{ status?: string }>(request);
       await db.prepare('UPDATE support_requests SET status = ? WHERE id = ?').bind(b?.status === 'done' ? 'done' : 'open', decodeURIComponent(sm[1])).run();
       await audit(db, request, authId, 'admin.support', b?.status === 'done' ? 'تمت معالجة طلب' : 'إعادة فتح طلب');
+      return json({ ok: true });
+    }
+
+    // بصمات الأجهزة: الطلبات المعلّقة أولًا، مع اعتمادها أو حذفها
+    if (path === '/admin/passkeys' && method === 'GET') {
+      const { results } = await db.prepare(
+        "SELECT c.id, c.user_id, c.label, c.created_at, c.last_used, c.approved, u.username, u.name, u.avatar, u.color FROM webauthn_credentials c JOIN chat_users u ON u.id = c.user_id ORDER BY c.approved ASC, c.created_at DESC LIMIT 500",
+      ).all();
+      return json({ items: results });
+    }
+    const pk = path.match(/^\/admin\/passkeys\/([^/]+)$/);
+    if (pk && (method === 'PATCH' || method === 'DELETE')) {
+      const id = decodeURIComponent(pk[1]);
+      const { results } = await db.prepare('SELECT c.user_id, u.username FROM webauthn_credentials c JOIN chat_users u ON u.id = c.user_id WHERE c.id = ?').bind(id).all<{ user_id: string; username: string }>();
+      if (!results[0]) return json({ error: 'البصمة غير موجودة', code: 'not_found' }, 404);
+      if (method === 'PATCH') {
+        await db.prepare('UPDATE webauthn_credentials SET approved = 1 WHERE id = ?').bind(id).run();
+        await audit(db, request, authId, 'admin.passkey_approve', `@${results[0].username}`);
+      } else {
+        await db.prepare('DELETE FROM webauthn_credentials WHERE id = ?').bind(id).run();
+        await audit(db, request, authId, 'admin.passkey_remove', `@${results[0].username}`);
+      }
       return json({ ok: true });
     }
 
