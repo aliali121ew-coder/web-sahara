@@ -226,7 +226,7 @@ const UpdateDialog: React.FC<{
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
     window.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
-    inputRef.current?.focus();
+    // لا تركيز تلقائي على البحث: لوحة المفاتيح على الهاتف تظهر فقط عند الضغط على الحقل
     return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
