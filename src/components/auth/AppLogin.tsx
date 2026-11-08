@@ -109,6 +109,8 @@ export const AppLogin: React.FC<{ onSuccess: () => void; unreachable?: boolean }
   const [lockedUntil, setLockedUntil] = useState(0);
   const [now, setNow] = useState(Date.now());
   const passRef = useRef<HTMLInputElement>(null);
+  // كتب المستخدم كلمة المرور بنفسه؟ لا = ملأها مدير كلمات المرور (في الآيفون بعد التحقق بالوجه)
+  const typedPass = useRef(false);
   const errId = useId();
   const phone = useIsPhone();
   // الشرائح التعريفية أول مرة فقط، والترحيب بعد الخروج. اسم مستخدم محفوظ يعني أنه لم يخرج بنفسه (ضعف اتصال أو مشكلة):
@@ -224,7 +226,14 @@ export const AppLogin: React.FC<{ onSuccess: () => void; unreachable?: boolean }
       setBtn('success');
       // بعد أول دخول بكلمة المرور على جهاز يدعم البصمة: نعرض تفعيلها (مرة لكل حساب)
       const offer = bioAvail && biometricUser() !== u && !localStorage.getItem(BIO_DECLINED_KEY + u);
-      setTimeout(() => (offer ? setBioOffer(true) : onSuccess()), reducedMotion() ? 0 : 650);
+      const next = () => (offer ? setBioOffer(true) : onSuccess());
+      // كلمة مرور ملأها الآيفون بعد التحقق بالوجه: علامة نجاح الوجه من الأعلى قبل فتح التطبيق
+      if (mode !== 'setup' && !typedPass.current && bioAnimationKind() === 'face') {
+        setBioPhase('success');
+        setTimeout(() => { setBioPhase(null); next(); }, reducedMotion() ? 400 : 1300);
+      } else {
+        setTimeout(next, reducedMotion() ? 0 : 650);
+      }
     } catch (err) {
       setBtn('idle');
       fail(err);
@@ -340,7 +349,7 @@ export const AppLogin: React.FC<{ onSuccess: () => void; unreachable?: boolean }
         <Field
           ref={passRef} id="a-pass" label={t('fields.password')} icon={Lock} dir="ltr" invalid={hasError && !setup}
           type={show ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
-          onKeyDown={onKey} onKeyUp={onKey} maxLength={128} required
+          onKeyDown={e => { typedPass.current = true; onKey(e); }} onKeyUp={onKey} maxLength={128} required
           autoComplete={setup ? 'new-password' : 'current-password'} autoFocus={!phone && !setup && !!username}
           trailing={
             <button type="button" onClick={() => setShow(v => !v)} aria-pressed={show}
