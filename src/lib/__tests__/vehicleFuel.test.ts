@@ -162,4 +162,8 @@ describe('category tanks', () => {
     expect(withTanks(undefined, 'KH40')).toMatchObject({ tankCount: 1, tankLiters: 65 });
     expect(sheetTanks('BS214')).toEqual([100, 140]);
   });
+  it('every HF (حافلة) has a 200 L tank', () => {
+    expect(sheetTanks('HF68')).toEqual([200]);
+    expect(withTanks(undefined, 'HF12')).toMatchObject({ tankCount: 1, tankLiters: 200 });
+  });
 });

@@ -5,7 +5,10 @@ import { FLEET } from '../vehicleFleet';
 describe('vehicleFleet', () => {
   it('matches the Excel totals', () => {
     expect(FLEET).toHaveLength(2623);
-    expect(FLEET.filter(v => v.updated)).toHaveLength(362);
+    expect(FLEET.filter(v => v.updated)).toHaveLength(455);
+    const hf = FLEET.filter(v => v.typeKey === 'HF');
+    expect(hf).toHaveLength(94);
+    expect(hf.every(v => v.updated && v.tanks.length === 1 && v.tanks[0] === 200)).toBe(true);
     const kh = FLEET.filter(v => v.typeKey === 'KH');
     expect(kh).toHaveLength(139);
     expect(kh.every(v => v.updated && v.tanks.length === 1 && v.tanks[0] === 65)).toBe(true);
