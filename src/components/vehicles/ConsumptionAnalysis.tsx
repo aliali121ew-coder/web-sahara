@@ -7,7 +7,8 @@ import { FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, capConsumption
 import { VEHICLE_REGISTRY_KEY, type VehicleRegistryEntry } from '../../lib/vehicleRegistry';
 import { useCategoryNames, useVehicleNames } from './categories';
 import { VehicleArt } from './VehicleArt';
-import { buildConsumptionSheet, printHtml, type WeekTop } from './printConsumption';
+import { buildConsumptionSheet, type WeekTop } from './printConsumption';
+import { PrintPreview } from './PrintPreview';
 import { DistanceEntry } from './DistanceEntry';
 
 type Unit = 'day' | 'week' | 'month';
@@ -160,6 +161,8 @@ export const ConsumptionAnalysis: React.FC<{
   const [routes, setRoutes] = useSyncedStorage<VehicleRoute[]>(VEHICLE_ROUTES_KEY, []);
   const [printOpen, setPrintOpen] = useState(false);
   const [distOpen, setDistOpen] = useState(false);
+  /** معاينة الكشف قبل الطباعة (HTML الورقة وعنوانها) */
+  const [preview, setPreview] = useState<{ html: string; scope: string; period: string } | null>(null);
 
   const periods = useMemo(() => (fromDate ? buildRangePeriods(fromDate, endDate) : buildPeriods(endDate, unit)), [fromDate, endDate, unit]);
   const periodOf = (date: string) => periods.findIndex(p => date >= p.from && date <= p.to);
@@ -363,7 +366,7 @@ export const ConsumptionAnalysis: React.FC<{
     const prevFrom = addDays(prevTo, 1 - len);
     const inList = new Set(list.map(r => r.vehicle));
     const prevTotal = allFills.reduce((s, f) => (f.date >= prevFrom && f.date <= prevTo && inList.has(f.vehicle) ? s + f.qty : s), 0);
-    printHtml(buildConsumptionSheet({
+    const html = buildConsumptionSheet({
       prevTotal,
       curTotal: allFills.reduce((s, f) => (f.date >= curFrom && f.date <= periods[3].to && inList.has(f.vehicle) ? s + f.qty : s), 0),
       prevRange: `${short(prevFrom)}–${short(prevTo)}`,
@@ -376,7 +379,8 @@ export const ConsumptionAnalysis: React.FC<{
       scope: name,
       periodLabel: `من ${fromDate ?? periods[0].from} إلى ${fromDate ? endDate : periods[3].to}`,
       grouped: !catKey,
-    }));
+    });
+    setPreview({ html, scope: name, period: `من ${fromDate ?? periods[0].from} إلى ${fromDate ? endDate : periods[3].to}` });
   };
 
   // الخط الزمني لأيام الفترة الأخيرة (يمين = أقدم)
@@ -426,6 +430,9 @@ export const ConsumptionAnalysis: React.FC<{
           <button type="button" onClick={() => setDistOpen(true)} title="رفع المسافات المقطوعة للفترة المحددة قبل الطباعة" className="inline-flex items-center gap-2 h-10 px-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-emerald-400 cursor-pointer">
             <Route className="w-4 h-4 text-emerald-600" />المسافات المقطوعة
           </button>
+          {preview && (
+            <PrintPreview html={preview.html} title={`كشف استهلاك العربات — ${preview.scope}`} subtitle={`${preview.period} · أعلى 20 عربة · A4 أفقي`} onClose={() => setPreview(null)} />
+          )}
           {distOpen && (
             <DistanceEntry
               vehicles={rows.map(r => ({ vehicle: r.vehicle, code: r.code, cat: r.cat, amount: r.used ?? r.p.reduce((s, x) => s + x, 0) }))}

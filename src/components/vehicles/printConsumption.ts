@@ -351,8 +351,22 @@ ${side}
 
 /** مساحة الطباعة بالبكسل: A4 أفقي (297×210 مم) ناقص الهوامش */
 const MM = 96 / 25.4;
-const PAGE_W = Math.floor((297 - 18) * MM);
-const PAGE_H = Math.floor((210 - 16) * MM) - 6;
+export const PAGE_W = Math.floor((297 - 18) * MM);
+export const PAGE_H = Math.floor((210 - 16) * MM) - 6;
+/** الورقة كاملة بالهوامش (للمعاينة) وهوامشها */
+export const PAPER = { w: Math.round(297 * MM), h: Math.round(210 * MM), padX: Math.round(9 * MM), padY: Math.round(8 * MM) };
+
+/** ينتظر الخط والشعارات ثم يصغّر الكشف إن زاد ارتفاعه على الورقة (ورقة واحدة دائمًا) */
+export const fitSheet = async (doc: Document) => {
+  const images = [...doc.images].map(img => (img.complete ? Promise.resolve() : new Promise(r => { img.onload = img.onerror = () => r(undefined); })));
+  const timeout = new Promise(r => window.setTimeout(r, 4000));
+  await Promise.race([Promise.all([doc.fonts?.ready, ...images]), timeout]);
+  const sheet = doc.getElementById('sheet');
+  if (!sheet) return;
+  sheet.style.zoom = '';
+  const z = Math.min(1, PAGE_H / sheet.scrollHeight);
+  if (z < 1) sheet.style.zoom = String(z);
+};
 
 /** يطبع صفحة HTML من إطار مخفي بعد تحميل الخط والشعارات (بلا نافذة جديدة ولا تأثر بتنسيق الصفحة) */
 export const printHtml = (html: string) => {
@@ -367,16 +381,7 @@ export const printHtml = (html: string) => {
   doc.open();
   doc.write(html);
   doc.close();
-  const images = [...doc.images].map(img => (img.complete ? Promise.resolve() : new Promise(r => { img.onload = img.onerror = () => r(undefined); })));
-  const ready = Promise.all([doc.fonts?.ready, ...images]);
-  const timeout = new Promise(r => window.setTimeout(r, 4000));
-  void Promise.race([ready, timeout]).then(() => {
-    // ورقة واحدة: يُصغَّر الكشف إن زاد ارتفاعه على الورقة
-    const sheet = doc.getElementById('sheet');
-    if (sheet) {
-      const z = Math.min(1, PAGE_H / sheet.scrollHeight);
-      if (z < 1) sheet.style.zoom = String(z);
-    }
+  void fitSheet(doc).then(() => {
     win.addEventListener('afterprint', () => window.setTimeout(() => frame.remove(), 500));
     win.focus();
     win.print();
