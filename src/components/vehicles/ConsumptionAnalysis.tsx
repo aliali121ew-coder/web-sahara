@@ -7,7 +7,7 @@ import { FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, capConsumption
 import { VEHICLE_REGISTRY_KEY, type VehicleRegistryEntry } from '../../lib/vehicleRegistry';
 import { useCategoryNames, useVehicleNames } from './categories';
 import { VehicleArt } from './VehicleArt';
-import { buildConsumptionSheet, printHtml } from './printConsumption';
+import { buildConsumptionSheet, printHtml, type WeekTop } from './printConsumption';
 
 type Unit = 'day' | 'week' | 'month';
 type Status = 'حرج' | 'مرتفع' | 'طبيعي' | 'منخفض' | 'جديد';
@@ -333,7 +333,30 @@ export const ConsumptionAnalysis: React.FC<{
     setPrintOpen(false);
     const list = catKey ? allRows.filter(r => r.catKey === catKey) : allRows;
     const name = catKey ? printCats.find(c => c.key === catKey)?.name || '' : 'عام';
+    // الأعلى استهلاكًا خلال آخر 7 أيام حتى نهاية الكشف (من عربات الكشف نفسها)
+    const weekTo = periods[3].to;
+    const weekFrom = addDays(weekTo, -6);
+    const rowOf = new Map(list.map(r => [r.vehicle, r]));
+    const byVehicle = new Map<string, DayFill[]>();
+    for (const f of allFills) {
+      if (f.date < weekFrom || f.date > weekTo || !rowOf.has(f.vehicle)) continue;
+      const l = byVehicle.get(f.vehicle);
+      if (l) l.push(f); else byVehicle.set(f.vehicle, [f]);
+    }
+    const week: WeekTop[] = [...byVehicle.entries()].map(([vehicle, fills]) => {
+      fills.sort((a, b) => a.date.localeCompare(b.date));
+      const last = fills[fills.length - 1];
+      const r = rowOf.get(vehicle)!;
+      return {
+        code: r.code, cat: r.cat,
+        total: fills.reduce((s, f) => s + f.qty, 0), count: fills.length,
+        lastQty: last.qty, lastDate: last.date, prevQty: last.prevQty, prevDate: last.prevDate, days: last.days,
+        frequent: fills.some(f => f.parts > 1 || (f.days !== null && f.days <= FREQUENT_DAYS)),
+      };
+    }).sort((a, b) => b.total - a.total);
     printHtml(buildConsumptionSheet({
+      week,
+      weekRange: `${short(weekFrom)}–${short(weekTo)}`,
       rows: list,
       periods,
       title: 'كشف استهلاك العربات',
