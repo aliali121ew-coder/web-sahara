@@ -67,8 +67,13 @@ export const buildConsumptionSheet = (opts: {
   /** الأعلى استهلاكًا خلال الأسبوع ومدى الأسبوع */
   week: WeekTop[];
   weekRange: string;
+  /** تفويل نفس عدد الأيام قبل بداية الكشف (للنسبة) ومداها ومدى الكشف */
+  prevTotal: number;
+  curTotal: number;
+  prevRange: string;
+  curRange: string;
 }) => {
-  const { rows, periods, title, scope, grouped, week, weekRange } = opts;
+  const { rows, periods, title, scope, grouped, week, weekRange, prevTotal, curTotal, prevRange, curRange } = opts;
   const origin = window.location.origin;
   const L = periods.length - 1;
   const cols = 2 + periods.length + 6;
@@ -113,9 +118,9 @@ export const buildConsumptionSheet = (opts: {
   // الكارتات
   const all = totals(rows);
   const top = ranked[0];
-  const last = all.p[L];
-  // النسبة: الفترة الحالية مقابل متوسط الفترات السابقة (التي فيها تفويل)
-  const prev = prevAvg(all.p) ?? 0;
+  // النسبة: مجموع أيام الكشف مقابل نفس عدد الأيام قبلها مباشرة
+  const last = curTotal;
+  const prev = prevTotal;
   const pct = prev ? ((last - prev) / prev) * 100 : null;
   const pctCls = pct === null ? '' : pct > 0 ? 'up' : pct < 0 ? 'down' : '';
   const pctTxt = pct === null ? '—' : `${pct > 0 ? '+' : pct < 0 ? '−' : ''}${Math.abs(pct).toFixed(1)}%`;
@@ -166,9 +171,9 @@ export const buildConsumptionSheet = (opts: {
     <div class="v code">${top ? esc(top.code) : '—'}${top ? `<small>${esc(top.cat)}</small>` : ''}</div>
     <div class="meter"><i style="width:${topShare}%"></i></div>
     <div class="s">${top ? `<b>${n(amountOf(top))}</b> لتر · <b dir="ltr">${topShare}%</b> من الكل` : ''}</div></div>
-  <div class="kpi t3 ${pctCls}"><div class="kh"><span class="ic">${I_TREND}</span><span class="k">النسبة عن الأيام السابقة</span></div>
+  <div class="kpi t3 ${pctCls}"><div class="kh"><span class="ic">${I_TREND}</span><span class="k">النسبة عن الفترة السابقة</span></div>
     <div class="v" dir="ltr">${pctTxt}</div>
-    <div class="cmp"><div><span>متوسط السابقة</span><i style="width:${(prev / cmpMax) * 100}%"></i><b>${n(prev)}</b></div><div class="on"><span>${esc(periods[L].name)}</span><i style="width:${(last / cmpMax) * 100}%"></i><b>${n(last)}</b></div></div></div>
+    <div class="cmp"><div><span dir="ltr">${esc(prevRange)}</span><i style="width:${(prev / cmpMax) * 100}%"></i><b>${n(prev)}</b></div><div class="on"><span dir="ltr">${esc(curRange)}</span><i style="width:${(last / cmpMax) * 100}%"></i><b>${n(last)}</b></div></div></div>
   <div class="kpi t4 chart"><div class="kh"><span class="ic">${I_CHART}</span><span class="k">التفويل في الفترات</span><span class="tot">${n(all.fill)} لتر</span></div>${chart}</div>
 </section>`;
 
@@ -242,7 +247,7 @@ body { font-family: 'CairoP', 'Segoe UI', Tahoma, sans-serif; color: #0f172a; fo
 .kpi .s { font-size: 9px; color: #64748b; font-weight: 600; }
 .kpi .s b { color: #0f172a; font-weight: 800; }
 .cmp { margin-top: 4px; display: flex; flex-direction: column; gap: 3px; }
-.cmp div { display: grid; grid-template-columns: 62px 1fr 38px; align-items: center; gap: 5px; font-size: 8.5px; font-weight: 700; color: #64748b; }
+.cmp div { display: grid; grid-template-columns: 62px 1fr 40px; align-items: center; gap: 5px; font-size: 8.5px; font-weight: 700; color: #64748b; }
 .cmp i { display: block; height: 6px; border-radius: 999px; background: #cbd5e1; }
 .cmp .on i { background: var(--c); }
 .cmp .on { color: #0f172a; }

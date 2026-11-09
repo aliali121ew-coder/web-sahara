@@ -356,7 +356,18 @@ export const ConsumptionAnalysis: React.FC<{
         frequent: fills.some(f => f.parts > 1 || (f.days !== null && f.days <= FREQUENT_DAYS)),
       };
     }).sort((a, b) => b.total - a.total);
+    // النسبة: نفس عدد أيام الكشف قبل بدايته مباشرة (الكشف 5–9 يقارَن بـ 1–4)
+    const curFrom = fromDate ? periods[3].from : periods[0].from;
+    const len = daysBetween(curFrom, periods[3].to) + 1;
+    const prevTo = addDays(curFrom, -1);
+    const prevFrom = addDays(prevTo, 1 - len);
+    const inList = new Set(list.map(r => r.vehicle));
+    const prevTotal = allFills.reduce((s, f) => (f.date >= prevFrom && f.date <= prevTo && inList.has(f.vehicle) ? s + f.qty : s), 0);
     printHtml(buildConsumptionSheet({
+      prevTotal,
+      curTotal: allFills.reduce((s, f) => (f.date >= curFrom && f.date <= periods[3].to && inList.has(f.vehicle) ? s + f.qty : s), 0),
+      prevRange: `${short(prevFrom)}–${short(prevTo)}`,
+      curRange: `${short(curFrom)}–${short(periods[3].to)}`,
       week,
       weekRange: `${short(weekFrom)}–${short(weekTo)}`,
       rows: list,
