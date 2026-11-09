@@ -92,46 +92,58 @@ export const buildConsumptionSheet = (opts: {
     };
   };
 
+  /** متوسط الفترات السابقة التي فيها تفويل */
+  const prevAvg = (p: number[]) => {
+    const list = p.slice(0, L).filter(v => v > 0);
+    return list.length ? list.reduce((s, v) => s + v, 0) / list.length : null;
+  };
+  /** لون شارة الاستهلاك: أحمر إن زادت الفترة الحالية على متوسط السابقة، أخضر إن قلت، رمادي بلا مقارنة */
+  const trend = (r: PrintRow) => {
+    const avg = prevAvg(r.p);
+    const cur = r.p[L];
+    return avg === null || !cur || Math.abs(cur - avg) < 0.5 ? 'flat' : cur > avg ? 'up' : 'down';
+  };
+
   const body = topRows.map((r, i) => {
     const fill = r.p.reduce((s, x) => s + x, 0);
     const rem = remainingOf(r);
-    return `<tr><td class="idx">${i + 1}</td><td class="code"><b>${esc(r.code)}</b>${grouped ? `<span class="cat">${esc(r.cat)}</span>` : ''}</td>${r.p.map((v, k) => `<td${k === L ? ' class="last"' : ''}>${cell(v)}</td>`).join('')}<td class="hl">${n(fill)}</td><td class="hl strong">${r.used === null ? dash : n(r.used)}</td><td>${r.estimated ? dash : n(r.capacity)}</td><td>${rem === null ? dash : n(rem)}</td><td>${r.tanks ?? dash}</td><td>${cell(r.km)}</td></tr>`;
+    return `<tr><td class="idx">${i + 1}</td><td class="code"><b>${esc(r.code)}</b>${grouped ? `<span class="cat">${esc(r.cat)}</span>` : ''}</td>${r.p.map((v, k) => `<td${k === L ? ' class="last"' : ''}>${cell(v)}</td>`).join('')}<td class="hl">${n(fill)}</td><td>${r.used === null ? dash : `<span class="pill ${trend(r)}">${n(r.used)}</span>`}</td><td>${r.estimated ? dash : n(r.capacity)}</td><td>${rem === null ? dash : n(rem)}</td><td>${r.tanks ?? dash}</td><td>${cell(r.km)}</td></tr>`;
   }).join('');
 
   // الكارتات
   const all = totals(rows);
   const top = ranked[0];
   const last = all.p[L];
-  const prev = all.p[L - 1];
+  // النسبة: الفترة الحالية مقابل متوسط الفترات السابقة (التي فيها تفويل)
+  const prev = prevAvg(all.p) ?? 0;
   const pct = prev ? ((last - prev) / prev) * 100 : null;
   const pctCls = pct === null ? '' : pct > 0 ? 'up' : pct < 0 ? 'down' : '';
   const pctTxt = pct === null ? '—' : `${pct > 0 ? '+' : pct < 0 ? '−' : ''}${Math.abs(pct).toFixed(1)}%`;
   const active = rows.filter(r => r.p[L] > 0).length;
 
   // رسم أعمدة الفترات: الأقدم يمينًا مثل الجدول، والفترة الأخيرة بلون مميز وقيمتها في شارة
-  const W = 340, H = 92, top_ = 18, base = 66, gap = 22;
-  const bw = (W - gap * (periods.length + 1)) / periods.length;
+  const W = 340, H = 74, top_ = 13, base = 54, gap = 30;
+  const bw = 18;
+  const slot = (W - gap) / periods.length;
   const max = Math.max(1, ...all.p);
-  const grid = [0.25, 0.5, 0.75, 1].map(f => `<line x1="6" x2="${W - 6}" y1="${base - f * (base - top_)}" y2="${base - f * (base - top_)}" stroke="#e2e8f0" stroke-width="0.8" stroke-dasharray="3 3"/>`).join('');
+  const grid = [0.5, 1].map(f => `<line x1="6" x2="${W - 6}" y1="${base - f * (base - top_)}" y2="${base - f * (base - top_)}" stroke="#e2e8f0" stroke-width="0.8" stroke-dasharray="3 3"/>`).join('');
   const bars = all.p.map((v, k) => {
     const on = k === L;
-    const h = Math.max(v ? 4 : 2, (v / max) * (base - top_));
-    const x = W - gap - (k + 1) * bw - k * gap;
-    const cx = x + bw / 2;
-    const label = v ? n(v) : '0';
-    const pill = on
-      ? `<rect x="${cx - 22}" y="${base - h - 15}" width="44" height="12" rx="6" fill="#1e3a8a"/><text x="${cx}" y="${base - h - 6.5}" class="bv on">${label}</text>`
-      : `<text x="${cx}" y="${base - h - 4}" class="bv">${label}</text>`;
-    return `<rect x="${x}" y="${top_}" width="${bw}" height="${base - top_}" rx="5" fill="#f8fafc"/>`
-      + `<rect x="${x}" y="${base - h}" width="${bw}" height="${h}" rx="5" fill="url(#${on ? 'gOn' : 'gOff'})"/>`
-      + pill
-      + `<text x="${cx}" y="${base + 12}" class="bn${on ? ' on' : ''}">${esc(periods[k].name)}</text>`
-      + `<text x="${cx}" y="${base + 22}" class="br" direction="ltr">${esc(periods[k].range)}</text>`;
+    const h = Math.max(bw, (v / max) * (base - top_));
+    const cx = W - gap / 2 - slot * (k + 0.5);
+    const x = cx - bw / 2;
+    const y = base - h;
+    const color = on ? '#059669' : '#6ee7b7';
+    return `<rect x="${x}" y="${y}" width="${bw}" height="${h}" rx="${bw / 2}" fill="url(#${on ? 'gOn' : 'gOff'})"/>`
+      + `<circle cx="${cx}" cy="${y + bw / 2}" r="${bw / 2 - 3.5}" fill="#fff" stroke="${color}" stroke-width="2"/>`
+      + `<text x="${cx}" y="${y - 3}" class="bv${on ? ' on' : ''}">${v ? n(v) : '0'}</text>`
+      + `<text x="${cx}" y="${base + 10}" class="bn${on ? ' on' : ''}">${esc(periods[k].name)}</text>`
+      + `<text x="${cx}" y="${base + 19}" class="br" direction="ltr">${esc(periods[k].range)}</text>`;
   }).join('');
   const chart = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="xMidYMid meet"><defs>`
-    + `<linearGradient id="gOn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b5bdb"/><stop offset="1" stop-color="#1e3a8a"/></linearGradient>`
-    + `<linearGradient id="gOff" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cbd5e1"/><stop offset="1" stop-color="#94a3b8"/></linearGradient>`
-    + `</defs>${grid}<line x1="6" y1="${base}" x2="${W - 6}" y2="${base}" stroke="#94a3b8" stroke-width="1"/>${bars}</svg>`;
+    + `<linearGradient id="gOn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#10b981"/><stop offset="1" stop-color="#6ee7b7"/></linearGradient>`
+    + `<linearGradient id="gOff" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a7f3d0"/><stop offset="1" stop-color="#d1fae5"/></linearGradient>`
+    + `</defs>${grid}${bars}</svg>`;
 
   const icon = (d: string) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
   const I_TRUCK = icon('<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>');
@@ -154,9 +166,9 @@ export const buildConsumptionSheet = (opts: {
     <div class="v code">${top ? esc(top.code) : '—'}${top ? `<small>${esc(top.cat)}</small>` : ''}</div>
     <div class="meter"><i style="width:${topShare}%"></i></div>
     <div class="s">${top ? `<b>${n(amountOf(top))}</b> لتر · <b dir="ltr">${topShare}%</b> من الكل` : ''}</div></div>
-  <div class="kpi t3 ${pctCls}"><div class="kh"><span class="ic">${I_TREND}</span><span class="k">النسبة عن السابق</span></div>
+  <div class="kpi t3 ${pctCls}"><div class="kh"><span class="ic">${I_TREND}</span><span class="k">النسبة عن الأيام السابقة</span></div>
     <div class="v" dir="ltr">${pctTxt}</div>
-    <div class="cmp"><div><span>${esc(periods[L - 1].name)}</span><i style="width:${(prev / cmpMax) * 100}%"></i><b>${n(prev)}</b></div><div class="on"><span>${esc(periods[L].name)}</span><i style="width:${(last / cmpMax) * 100}%"></i><b>${n(last)}</b></div></div></div>
+    <div class="cmp"><div><span>متوسط السابقة</span><i style="width:${(prev / cmpMax) * 100}%"></i><b>${n(prev)}</b></div><div class="on"><span>${esc(periods[L].name)}</span><i style="width:${(last / cmpMax) * 100}%"></i><b>${n(last)}</b></div></div></div>
   <div class="kpi t4 chart"><div class="kh"><span class="ic">${I_CHART}</span><span class="k">التفويل في الفترات</span><span class="tot">${n(all.fill)} لتر</span></div>${chart}</div>
 </section>`;
 
@@ -192,7 +204,7 @@ body { font-family: 'CairoP', 'Segoe UI', Tahoma, sans-serif; color: #0f172a; fo
 .head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; padding-bottom: 6px; border-bottom: 3px double #1e3a8a; }
 .org { display: flex; flex-direction: column; gap: 3px; }
 .logos { display: flex; align-items: center; gap: 8px; }
-.logos img { height: 32px; width: auto; object-fit: contain; }
+.logos img { height: 46px; width: auto; object-fit: contain; }
 .org h1 { margin: 0; font-size: 11.5px; font-weight: 900; }
 .org p { margin: 0; font-size: 9.5px; font-weight: 700; color: #334155; }
 .mid { text-align: center; }
@@ -200,45 +212,45 @@ body { font-family: 'CairoP', 'Segoe UI', Tahoma, sans-serif; color: #0f172a; fo
 .mid h2 { margin: 4px 0 0; font-size: 19px; font-weight: 900; letter-spacing: -.2px; }
 .mid .scope { font-size: 12px; font-weight: 800; color: #1e3a8a; }
 .partner { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
-.partner img { height: 42px; width: auto; object-fit: contain; }
+.partner img { height: 50px; width: auto; object-fit: contain; }
 .partner span { font-size: 10.5px; font-weight: 900; }
 
 /* شريط بيانات الكشف */
 
 /* الكارتات */
 .cards { display: grid; grid-template-columns: 1fr 1fr 1fr 1.75fr; gap: 8px; margin: 8px 0; }
-.kpi { position: relative; border: 1px solid #e2e8f0; border-radius: 12px; padding: 7px 11px 8px; overflow: hidden; background: linear-gradient(160deg, var(--tint) 0%, #fff 62%); }
+.kpi { position: relative; border: 1px solid #e2e8f0; border-radius: 12px; padding: 5px 10px 6px; overflow: hidden; background: linear-gradient(160deg, var(--tint) 0%, #fff 62%); }
 .kpi::after { content: ''; position: absolute; top: 0; inset-inline: 0; height: 3px; background: var(--c); }
 .t1 { --c: #1e3a8a; --tint: #eef2ff; }
 .t2 { --c: #d97706; --tint: #fffbeb; }
 .t3 { --c: #64748b; --tint: #f8fafc; }
 .t3.up { --c: #e11d48; --tint: #fff1f2; }
 .t3.down { --c: #059669; --tint: #ecfdf5; }
-.t4 { --c: #1e3a8a; --tint: #f8fafc; padding-bottom: 2px; }
+.t4 { --c: #059669; --tint: #f0fdf4; padding-bottom: 1px; }
 .kh { display: flex; align-items: center; gap: 6px; }
 .ic { width: 20px; height: 20px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; background: var(--c); color: #fff; flex-shrink: 0; }
 .ic svg { width: 12px; height: 12px; }
 .k { font-size: 9.5px; font-weight: 800; color: #475569; }
-.tot { margin-inline-start: auto; font-size: 9px; font-weight: 800; color: #1e3a8a; background: #eef2ff; border-radius: 999px; padding: 0 8px; }
-.kpi .v { font-size: 21px; font-weight: 900; line-height: 1.2; margin-top: 4px; color: #0f172a; }
+.tot { margin-inline-start: auto; font-size: 9px; font-weight: 800; color: #047857; background: #d1fae5; border-radius: 999px; padding: 0 8px; }
+.kpi .v { font-size: 18px; font-weight: 900; line-height: 1.15; margin-top: 2px; color: #0f172a; }
 .kpi .v small { font-size: 9.5px; font-weight: 700; color: #64748b; margin-inline-start: 5px; }
 .kpi .v.code { direction: ltr; text-align: right; }
 .kpi .v.code small { direction: rtl; unicode-bidi: isolate; margin-left: 7px; }
 .t3 .v { color: var(--c); }
-.meter { height: 5px; border-radius: 999px; background: #e2e8f0; margin: 5px 0 3px; overflow: hidden; }
+.meter { height: 4px; border-radius: 999px; background: #e2e8f0; margin: 3px 0 2px; overflow: hidden; }
 .meter i { display: block; height: 100%; border-radius: 999px; background: var(--c); margin-inline-start: 0; }
 .kpi .s { font-size: 9px; color: #64748b; font-weight: 600; }
 .kpi .s b { color: #0f172a; font-weight: 800; }
 .cmp { margin-top: 4px; display: flex; flex-direction: column; gap: 3px; }
-.cmp div { display: grid; grid-template-columns: 44px 1fr 38px; align-items: center; gap: 5px; font-size: 8.5px; font-weight: 700; color: #64748b; }
+.cmp div { display: grid; grid-template-columns: 62px 1fr 38px; align-items: center; gap: 5px; font-size: 8.5px; font-weight: 700; color: #64748b; }
 .cmp i { display: block; height: 6px; border-radius: 999px; background: #cbd5e1; }
 .cmp .on i { background: var(--c); }
 .cmp .on { color: #0f172a; }
 .cmp b { font-weight: 800; color: #0f172a; text-align: left; }
-.bv { font-size: 8.5px; font-weight: 800; fill: #475569; text-anchor: middle; }
-.bv.on { fill: #fff; font-weight: 900; }
+.bv { font-size: 8.5px; font-weight: 800; fill: #64748b; text-anchor: middle; }
+.bv.on { fill: #047857; font-weight: 900; }
 .bn { font-size: 8.5px; font-weight: 700; fill: #475569; text-anchor: middle; }
-.bn.on { fill: #1e3a8a; font-weight: 900; }
+.bn.on { fill: #047857; font-weight: 900; }
 .br { font-size: 7px; font-weight: 600; fill: #94a3b8; text-anchor: middle; }
 
 /* الجدول */
@@ -255,7 +267,10 @@ td.idx { color: #64748b; width: 26px; }
 td.code { text-align: right; white-space: nowrap; }
 td.code b { font-weight: 900; direction: ltr; unicode-bidi: isolate; }
 td.code .cat { font-size: 8.5px; font-weight: 700; color: #64748b; margin-inline-start: 5px; }
-td.strong { color: #1e3a8a; }
+.pill { display: inline-block; min-width: 46px; padding: 0 8px; border-radius: 6px; font-weight: 800; line-height: 1.55; }
+.pill.up { background: #ffe4e6; color: #be123c; }
+.pill.down { background: #d1fae5; color: #047857; }
+.pill.flat { background: #f1f5f9; color: #475569; }
 td.last { background: #eff6ff !important; font-weight: 800; }
 td.hl { font-weight: 800; }
 td sup { color: #64748b; }
@@ -298,7 +313,6 @@ tr { page-break-inside: avoid; }
 <header class="head">
   <div class="org">
     <div class="logos"><img src="${origin}/logos/sahara.png" alt=""><img src="${origin}/logos/sama.png" alt=""><img src="${origin}/logos/bawadi.png" alt=""><img src="${origin}/logos/kac.png" alt=""></div>
-    <h1>مجموعة شركات كربلاء للإنتاج الزراعي والحيواني</h1>
     <p>الإدارة المركزية للوقود والمشتقات النفطية</p>
   </div>
   <div class="mid"><span class="badge">وثيقة رسمية معتمدة</span><h2>${esc(title)}</h2><div class="scope">${esc(scope)}</div></div>
