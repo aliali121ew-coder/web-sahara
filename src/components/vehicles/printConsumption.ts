@@ -294,7 +294,7 @@ td.code .cat { font-size: 9px; font-weight: 700; color: #64748b; margin-inline-s
 .pill { display: inline-block; min-width: 48px; padding: 0 8px; border-radius: 6px; font-weight: 800; line-height: 1.6; background: #eef2ff; color: #1e3a8a; }
 .pill.alert { background: #ffe4e6; color: #be123c; }
 td.last { background: #eff6ff !important; font-weight: 800; }
-td.hl { font-weight: 800; }
+td.hl { font-weight: 800; background: #f4f6fa !important; }
 td sup { color: #64748b; }
 .nil { color: #e2e8f0; font-weight: 400; }
 .cnt { font-weight: 700; font-size: 9px; color: #64748b; margin-inline-start: 6px; }
