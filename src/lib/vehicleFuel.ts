@@ -262,7 +262,13 @@ const hash = (s: string) => {
   return (h >>> 0).toString(36);
 };
 
-export interface VehicleUpload { file: VehicleFile; refills: VehicleRefill[]; total: number | null }
+export interface VehicleUpload {
+  file: VehicleFile;
+  refills: VehicleRefill[];
+  total: number | null;
+  /** معرّف الكشف بالطريقة القديمة (الموقع والتاريخ فقط) — لمطابقة الكشوف المرفوعة قبل احتساب عدد العربات */
+  legacyId: string;
+}
 
 /** يقرأ ملف PDF (كشف واحد أو عدة كشوف مدموجة) ويحوّل كل كشف إلى ملف + تفويلات جاهزة للحفظ */
 export const readVehicleFile = async (file: File, fallbackDate = ''): Promise<VehicleUpload[]> => {
@@ -276,10 +282,12 @@ export const readVehicleFile = async (file: File, fallbackDate = ''): Promise<Ve
     const site = sheet.site || 'غير محدد';
     const reportDate = sheet.rows.reduce((m, r) => (r.date > m ? r.date : m), '');
     const firstDate = sheet.rows.reduce((m, r) => (r.date < m ? r.date : m), reportDate);
-    // معرّف الملف: المستند برقمه، والكشف بموقعه وتاريخه — به يُكتشف الكشف المرفوع مسبقًا.
+    // معرّف الملف: المستند برقمه، والكشف بموقعه وتاريخه وعدد عرباته — به يُكتشف الكشف المرفوع مسبقًا.
+    // الموقع الواحد قد يرفع أكثر من كشف في اليوم، فالكشف بعدد عربات مختلف يُعد كشفًا آخر.
     // كشف عدة أيام (من–إلى) بموقعه ومداه، حتى لا يُعد مكررًا لكشف يوم واحد ينتهي بنفس التاريخ
     const span = firstDate && firstDate !== reportDate ? `${site}|${firstDate}|${reportDate}` : `${site}|${reportDate}`;
-    const fileId = `vf-${hash(sheet.docNo ? `${site}|doc|${sheet.docNo}` : span)}`;
+    const legacyId = `vf-${hash(sheet.docNo ? `${site}|doc|${sheet.docNo}` : span)}`;
+    const fileId = sheet.docNo ? legacyId : `vf-${hash(`${span}|n${sheet.rows.length}`)}`;
     const refills = sheet.rows.map((r, i) => ({ ...r, site, fileId, id: `${fileId}-${i}` }));
     uploads.push({
       file: {
@@ -296,6 +304,7 @@ export const readVehicleFile = async (file: File, fallbackDate = ''): Promise<Ve
       },
       refills,
       total: sheet.total,
+      legacyId,
     });
   }
   if (!uploads.length) throw new Error('لم يُعثر على جدول تفويل العربات في الملف');

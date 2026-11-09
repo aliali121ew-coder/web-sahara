@@ -52,7 +52,7 @@ export const useVehicleData = (scope: Scope | null) => {
   );
 
   /**
-   * يرفع عدة ملفات، وكل ملف قد يضم عدة كشوف مدموجة. الكشف المرفوع مسبقًا (نفس الموقع والتاريخ، أو نفس رقم المستند)
+   * يرفع عدة ملفات، وكل ملف قد يضم عدة كشوف مدموجة. الكشف المرفوع مسبقًا (نفس الموقع والتاريخ وعدد العربات، أو نفس رقم المستند)
    * يُتخطى مع تنبيه، ويُقارن بالتفويلات لأن قائمة الملفات تُصفَّر كل يوم؛ fallbackDate لسطور الكشف التي بلا تاريخ
    */
   const upload = useCallback(async (list: File[], fallbackDate = ''): Promise<UploadResult[]> => {
@@ -61,11 +61,16 @@ export const useVehicleData = (scope: Scope | null) => {
       try {
         // الأكبر أولًا: نسخة جزئية من كشف داخل نفس الملف المدموج تُتخطى ويبقى الكامل
         const sheets = (await readVehicleFile(f, fallbackDate)).sort((a, b) => b.file.rows - a.file.rows);
-        const have = new Set(latestRefills.current.map(r => r.fileId));
-        const fresh = sheets.filter(s => !have.has(s.file.id) && !!have.add(s.file.id));
+        // مكرر = نفس الموقع والتاريخ ونفس عدد العربات (أو نفس رقم المستند)؛ وكشف مرفوع بالمعرّف القديم يُطابق بعدد سطوره
+        const counts = new Map<string, number>();
+        for (const r of latestRefills.current) counts.set(r.fileId, (counts.get(r.fileId) || 0) + 1);
+        const have = new Set(counts.keys());
+        const isDup = (s: (typeof sheets)[number]) => have.has(s.file.id)
+          || (s.legacyId !== s.file.id && counts.get(s.legacyId) === s.file.rows);
+        const fresh = sheets.filter(s => !isDup(s) && !!have.add(s.file.id));
         const skipped = sheets.filter(s => !fresh.includes(s));
         const notes = [...new Set([
-          ...skipped.map(({ file }) => `التاريخ ${file.reportDate} مسجل مسبقًا · ${file.site}${file.docNo ? ` · مستند ${file.docNo}` : ''}`),
+          ...skipped.map(({ file }) => `كشف ${file.site} بتاريخ ${file.reportDate} (${file.rows} عربة) مسجل مسبقًا${file.docNo ? ` · مستند ${file.docNo}` : ''}`),
           ...fresh.filter(s => s.total !== null && s.total !== s.file.totalQty)
             .map(({ file, total }) => `${file.site} · ${file.reportDate}: مجموع الملف ${total?.toLocaleString()} لا يطابق المقروء ${file.totalQty.toLocaleString()}`),
         ])];
