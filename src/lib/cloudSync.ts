@@ -11,6 +11,8 @@ import { COLLECTION_KEYS, SHADOW_PREFIX } from './permCatalog';
 /** رمز الدخول القديم (قبل حسابات المستخدمين) — يُمسح فقط */
 export const TOKEN_KEY = 'sahara_cloud_token';
 const PENDING_KEY = 'sahara_cloud_pending';
+/** الحساب الذي تعود له البيانات المحلية في هذا الجهاز */
+const SYNC_OWNER_KEY = 'sahara_cloud_owner';
 
 // مفاتيح خاصة بالجهاز نفسه فلا تُزامَن
 const LOCAL_ONLY = new Set([
@@ -30,6 +32,7 @@ const LOCAL_ONLY = new Set([
   // بطاقة "ثبّت التطبيق": تأجيلها خاص بهذا الجهاز
   'sahara_install_dismissed_at',
   PENDING_KEY,
+  SYNC_OWNER_KEY,
   'sahara_active_tab',
   'sahara_theme_mode',
   'sahara_language',
@@ -160,8 +163,11 @@ const buildPayload = (pending: Pending) => {
   const collections: Record<string, CollectionOps> = {};
   /** القيم التي حُسب منها الفرق: تصبح النسخة المرجعية بعد نجاح الإرسال */
   const snapshots: Record<string, string | null> = {};
+  /** مجموعات كبيرة صارت فارغة كلها محليًا: نسخة قديمة أو ناقصة لا حذف مقصود، فلا تُرسل وتُستعاد نسخة الخادم */
+  const stale: string[] = [];
   for (const key of Object.keys(pending)) {
     const value = rawGet.call(localStorage, key);
+    if (isCollection(key) && wipesCollection(value, getShadow(key))) { stale.push(key); continue; }
     if (value === null) { remove.push(key); if (isCollection(key)) snapshots[key] = null; continue; }
     if (isCollection(key)) {
       const ops = diffCollection(value, getShadow(key));
@@ -170,7 +176,17 @@ const buildPayload = (pending: Pending) => {
     }
     set[key] = value;
   }
-  return { body: { set, remove, collections }, snapshots };
+  return { body: { set, remove, collections }, snapshots, stale };
+};
+
+/** حذف كل عناصر مجموعة فيها 20 عنصرًا أو أكثر دفعة واحدة */
+const wipesCollection = (value: string | null, shadow: string | null) => {
+  try {
+    const old = shadow ? JSON.parse(shadow) : null;
+    if (!Array.isArray(old) || old.length < 20) return false;
+    const cur = value === null ? [] : JSON.parse(value);
+    return Array.isArray(cur) && cur.length === 0;
+  } catch { return false; }
 };
 
 /** رقم نسخة البيانات التي وصلت لهذا الجهاز (يرسله الخادم عبر القناة اللحظية مع كل حفظ) */
@@ -194,7 +210,14 @@ async function flush(): Promise<void> {
   flushing = true;
   setStatus('saving');
   try {
-    const { body, snapshots } = buildPayload(pending);
+    const { body, snapshots, stale } = buildPayload(pending);
+    if (stale.length) {
+      console.warn('cloud sync: refused to empty', stale);
+      const p = readPending();
+      stale.forEach(k => { delete p[k]; delete pending[k]; });
+      writePending(p);
+      void restoreRejected(stale);
+    }
     const res = await api('/api/state', { method: 'PUT', body: JSON.stringify(body) });
     if (res.status === 401) {
       // الرمز لم يعد صالحًا: نطلب الدخول مجددًا دون فقدان التعديلات المعلّقة
@@ -361,6 +384,21 @@ export async function initCloudSync(): Promise<InitResult> {
   // بقايا إعدادات Supabase القديمة (غير مستخدمة)
   for (const k of ['sahara_supabase_url', 'sahara_supabase_anon_key']) rawRemove.call(localStorage, k);
   if (!getToken()) return 'need-login';
+
+  // تغيّر الحساب على هذا الجهاز: تُمسح بيانات الحساب السابق ونسخه المرجعية وتعديلاته المعلّقة، ويبدأ كجهاز جديد.
+  // حساب مقيّد لا يرى أقسامًا كاملة فتبقى عنده فارغة؛ دخول مدير النظام بعده كان يرفع هذه النسخة الفارغة
+  // فوق بيانات الخادم (هكذا حُذفت واردات الصحاري والاتحاد والموردون في 2026-11-08)
+  const owner = sessionHeaders()['x-chat-user'] || '';
+  const prevOwner = rawGet.call(localStorage, SYNC_OWNER_KEY);
+  if (owner && prevOwner !== owner) {
+    if (prevOwner !== null) {
+      for (const k of Object.keys(localStorage)) {
+        if (shouldSync(k) || k.startsWith(SHADOW_PREFIX)) rawRemove.call(localStorage, k);
+      }
+      rawRemove.call(localStorage, PENDING_KEY);
+    }
+    rawSet.call(localStorage, SYNC_OWNER_KEY, owner);
+  }
 
   // جهاز بلا بيانات محلية (أول دخول أو بعد مسح المتصفح): لا نعرض التطبيق قبل وصول نسخة الخادم،
   // وإلا يبدأ بالبيانات الافتراضية ويرفعها فوق بيانات الخادم (حدث عند بطء تشغيل الخادم)
