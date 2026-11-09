@@ -245,7 +245,16 @@ export const VehiclesReport: React.FC = () => {
         </div>
       </div>
 
-      {!allFills.length ? (
+      {!allFills.length && (data.refillsStatus === 'loading' || data.refillsStatus === 'idle') ? (
+        <div className="rounded-3xl border border-slate-200 dark:border-slate-800 p-12 text-center bg-white dark:bg-slate-900">
+          <Loader2 className="w-8 h-8 mx-auto text-sky-500 animate-spin" />
+          <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mt-3">جارٍ تحميل كشوف العربات…</p>
+        </div>
+      ) : !allFills.length && data.refillsStatus === 'error' ? (
+        <div className="rounded-3xl border border-rose-200 dark:border-rose-900/50 p-10 text-center bg-rose-50/60 dark:bg-rose-500/5">
+          <p className="text-sm font-bold text-rose-700 dark:text-rose-300">تعذّر تحميل كشوف العربات، تحقق من الاتصال ثم أعد فتح الصفحة</p>
+        </div>
+      ) : !allFills.length ? (
         <div className="rounded-3xl border-2 border-dashed p-12 text-center border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900">
           <div className="w-16 h-16 mx-auto rounded-3xl bg-gradient-to-tr from-sky-500 to-indigo-600 text-white flex items-center justify-center mb-4 shadow-lg shadow-sky-500/30 vehicle-float">
             <Upload className="w-7 h-7" />

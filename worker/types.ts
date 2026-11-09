@@ -21,6 +21,8 @@ export interface R2Object {
   uploaded: Date;
   httpMetadata?: { contentType?: string };
   customMetadata?: Record<string, string>;
+  etag?: string;
+  httpEtag?: string;
 }
 export interface R2ObjectBody extends R2Object {
   body: ReadableStream;
@@ -30,10 +32,12 @@ export interface R2ObjectBody extends R2Object {
 export interface R2PutOptions {
   httpMetadata?: { contentType?: string };
   customMetadata?: Record<string, string>;
+  /** كتابة مشروطة: لا تُكتب إلا إذا لم يتغيّر الكائن منذ قراءته (يعيد null عند الفشل) */
+  onlyIf?: { etagMatches?: string };
 }
 export interface R2Objects { objects: R2Object[]; truncated: boolean; cursor?: string }
 export interface R2Bucket {
-  put(key: string, value: ArrayBuffer | ArrayBufferView | string | Blob | ReadableStream | null, options?: R2PutOptions): Promise<R2Object>;
+  put(key: string, value: ArrayBuffer | ArrayBufferView | string | Blob | ReadableStream | null, options?: R2PutOptions): Promise<R2Object | null>;
   get(key: string): Promise<R2ObjectBody | null>;
   head(key: string): Promise<R2Object | null>;
   delete(keys: string | string[]): Promise<void>;

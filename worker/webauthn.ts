@@ -64,7 +64,7 @@ export async function verifyAssertion(opts: {
   authenticatorData: string;
   clientDataJSON: string;
   signature: string;
-}): Promise<{ ok: true; signCount: number } | { ok: false; error: string }> {
+}): Promise<{ ok: true; signCount: number } | { ok: false; error: string; code?: string }> {
   const auth = fromB64url(opts.authenticatorData);
   if (auth.length < 37) return { ok: false, error: 'بيانات الجهاز غير صالحة', code: 'invalid_device' };
   // أول 32 بايت = بصمة اسم الموقع: تمنع استخدام البصمة على موقع مزيّف

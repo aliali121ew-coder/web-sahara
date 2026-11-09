@@ -266,7 +266,8 @@
       "file.delete": "File deleted",
       "admin.passkey_approve": "Device passkey approved",
       "admin.passkey_remove": "Device passkey removed",
-      "system.pages": "Pages turned off or on"
+      "system.pages": "Pages turned off or on",
+      "system.vehicles_migrate": "Vehicle sheets moved to R2"
     },
     "categories": {
       "all": "All",

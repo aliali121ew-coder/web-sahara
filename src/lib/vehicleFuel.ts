@@ -239,22 +239,8 @@ export const splitSheets = (pages: PdfItem[][][]): PdfItem[][][][] => {
   return sheets;
 };
 
-/**
- * سطور كشف جديد مسجلة مسبقًا من كشف آخر (نفس الموقع والعربة والتاريخ والكمية): تُتخطى حتى لا تتكرر التفويلة.
- * العدّ بالتكرار: تفويلتان متطابقتان في الكشف الجديد وواحدة مخزنة = تُتخطى واحدة وتبقى الأخرى.
- */
-export const dropStoredRows = <R extends Pick<VehicleRefill, 'site' | 'vehicle' | 'date' | 'qty'>>(rows: R[], stored: Pick<VehicleRefill, 'site' | 'vehicle' | 'date' | 'qty'>[]) => {
-  const key = (r: Pick<VehicleRefill, 'site' | 'vehicle' | 'date' | 'qty'>) => `${normalizeArabic(r.site)}|${r.vehicle.toUpperCase()}|${r.date}|${r.qty}`;
-  const left = new Map<string, number>();
-  for (const r of stored) left.set(key(r), (left.get(key(r)) || 0) + 1);
-  const kept: R[] = [];
-  let skipped = 0;
-  for (const r of rows) {
-    const n = left.get(key(r)) || 0;
-    if (n > 0) { left.set(key(r), n - 1); skipped++; } else kept.push(r);
-  }
-  return { kept, skipped };
-};
+// منقولة إلى vehicleRows.ts (مشتركة مع الخادم)
+export { dropStoredRows } from './vehicleRows';
 
 const hash = (s: string) => {
   let h = 5381;

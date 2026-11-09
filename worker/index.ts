@@ -13,9 +13,10 @@ import { canCreateItems, canMarkRead, canReadKey, canWriteKey, canWriteSome, isS
 import { ensureFileColumns, loadFile, removeFile, storeFile } from './storage/files';
 import { applyCollectionOps, clearCollection, ensureCollections, isCollectionKey, limitedOpsAllowed, readCollections, replaceCollection, type CollectionOps } from './storage/collections';
 import { guardReportLogOps, isReportLogKey, scopeReportLogs } from './storage/reportLogs';
-import { COLLECTION_KEYS, DISABLED_SECTIONS_META, KEY_RULES_SIGNATURE, isKeyDisabled, sanitizeDisabled } from '../src/lib/permCatalog';
+import { COLLECTION_KEYS, DISABLED_SECTIONS_META, KEY_RULES_SIGNATURE, RETIRED_KEYS, isKeyDisabled, sanitizeDisabled } from '../src/lib/permCatalog';
 import type { D1Database, D1PreparedStatement, Env, ExecutionContext, R2Bucket, ScheduledController } from './types';
 import { handleSystem } from './system/api';
+import { handleVehicles } from './vehicles';
 import { ensureSystemTables, getMaintenance } from './system/backup';
 import { schemaGate } from './storage/schema';
 import { bumpStateVersion, readStateVersion, STATE_VERSION_KEY } from './storage/stateVersion';
@@ -272,6 +273,11 @@ export default {
       if (m) return json({ error: 'النظام في وضع الصيانة (استرجاع نسخة احتياطية). حاول بعد دقائق', code: 'maintenance' }, 503);
     }
 
+    // تفويلات العربات: ملفات شهرية في R2 (لا تُقرأ من D1 ولا تُحفظ في مساحة المتصفح)
+    if (url.pathname.startsWith('/api/vehicles/')) {
+      return handleVehicles(request, url, env, ctx, session, await readDisabledSections(env.DB), msg => broadcastVersion(env, ctx, msg));
+    }
+
     // قناة التحديث اللحظي: WebSocket لا يرسل ترويسات مخصّصة، فمعرّف الحساب يأتي في الرابط ويُطابق مع كوكي الجلسة
     // (الكوكي SameSite=Strict، ونتحقق من Origin حتى لا تفتح مواقع أخرى القناة)
     if (url.pathname === '/api/state/ws') {
@@ -373,7 +379,8 @@ export default {
       // تُعاد للجهاز مع المرفوضة (فيحذف نسخته المحلية) دون أن تُسجَّل محاولة دخول غير مسموح
       const stoppedKeys: string[] = [];
       const stopped = (key: string) => {
-        if (!isKeyDisabled(key, off)) return false;
+        // ومفاتيح انتقلت بياناتها (سطور العربات صارت في R2): جهاز بنسخة قديمة يحذف نسخته بهدوء
+        if (!RETIRED_KEYS.includes(key) && !isKeyDisabled(key, off)) return false;
         stoppedKeys.push(key);
         return true;
       };

@@ -202,8 +202,11 @@ const KEY_RULES: Rule[] = [
 ];
 
 /** مفاتيح لا تُخزَّن على الخادم أبدًا (أسرار الجلسة وإعدادات الجهاز) */
+/** مفاتيح قديمة انتقلت بياناتها خارج حالة التطبيق: سطور تفويل العربات صارت ملفات شهرية في R2 */
+export const RETIRED_KEYS: readonly string[] = ['sahara_vehicle_refills_v1'];
+
 export const isServerForbiddenKey = (k: string) =>
-  k.startsWith('sahara_chat_') || k.startsWith('sahara_session_') || k.startsWith('sahara_cloud_')
+  RETIRED_KEYS.includes(k) || k.startsWith('sahara_chat_') || k.startsWith('sahara_session_') || k.startsWith('sahara_cloud_')
   || k.endsWith('_token') || k.includes('supabase') || k === 'sahara_bio_cred' || k === 'sahara_last_username' || k === 'sahara_last_name' || k === 'sahara_bio_user'
   || k.startsWith(SHADOW_PREFIX);
 

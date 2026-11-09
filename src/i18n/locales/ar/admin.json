@@ -274,7 +274,8 @@
       "file.delete": "حذف ملف",
       "admin.passkey_approve": "اعتماد بصمة جهاز",
       "admin.passkey_remove": "حذف بصمة جهاز",
-      "system.pages": "إيقاف أو تشغيل صفحات"
+      "system.pages": "إيقاف أو تشغيل صفحات",
+      "system.vehicles_migrate": "نقل كشوف العربات إلى R2"
     },
     "categories": {
       "all": "الكل",

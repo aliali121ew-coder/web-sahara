@@ -6,7 +6,8 @@
  */
 
 import { hasSession, sessionHeaders, clearSession, SESSION_PROFILE_KEY, LAST_USER_KEY, LAST_NAME_KEY, BIO_USER_KEY, BIO_DECLINED_PREFIX } from './session';
-import { COLLECTION_KEYS, SHADOW_PREFIX, isKeyDisabled } from './permCatalog';
+import { COLLECTION_KEYS, RETIRED_KEYS, SHADOW_PREFIX, isKeyDisabled } from './permCatalog';
+import { VEHICLES_SIGNAL } from './vehicleRows';
 import { DISABLED_PAGES_KEY, getDisabledPages, setDisabledPages } from './disabledPages';
 
 /** رمز الدخول القديم (قبل حسابات المستخدمين) — يُمسح فقط */
@@ -17,6 +18,8 @@ const SYNC_OWNER_KEY = 'sahara_cloud_owner';
 
 // مفاتيح خاصة بالجهاز نفسه فلا تُزامَن
 const LOCAL_ONLY = new Set([
+  // مفاتيح انتقلت بياناتها خارج المزامنة (سطور العربات في R2): لا تُرسل أبدًا
+  ...RETIRED_KEYS,
   // الصفحات الموقوفة: تصل من الخادم مع حالة البيانات، ولا تُرفع منه
   DISABLED_PAGES_KEY,
   TOKEN_KEY,
@@ -286,6 +289,8 @@ export const REALTIME_OPEN_EVENT = 'sahara:realtime-open';
 /** صلاحيات هذا الحساب تغيّرت (إشارة من القناة اللحظية): خط النبض ثم تحديث الصفحة (PermsPulse) */
 export const PERMS_CHANGED_EVENT = 'sahara:perms-changed';
 export const CLOUD_APPLIED_EVENT = 'cloud-state-applied';
+/** تغيّرت سطور تفويل العربات في R2 (رفع أو حذف كشف من جهاز آخر) */
+export const VEHICLES_CHANGED_EVENT = 'sahara:vehicles-changed';
 
 /**
  * إبلاغ الصفحات بمفاتيح وصلت من الخادم: الحدث المخصّص، وحدث storage لكل مفتاح
@@ -411,6 +416,18 @@ export async function initCloudSync(): Promise<InitResult> {
       rawRemove.call(localStorage, PENDING_KEY);
     }
     rawSet.call(localStorage, SYNC_OWNER_KEY, owner);
+  }
+
+  // مفاتيح انتقلت بياناتها (سطور العربات صارت في R2): تُحذف نسختها ونسختها المرجعية فتفرغ مساحة المتصفح
+  {
+    const pending = readPending();
+    let dirty = false;
+    for (const k of RETIRED_KEYS) {
+      rawRemove.call(localStorage, k);
+      rawRemove.call(localStorage, SHADOW_PREFIX + k);
+      if (k in pending) { delete pending[k]; dirty = true; }
+    }
+    if (dirty) writePending(pending);
   }
 
   // جهاز بلا بيانات محلية (أول دخول أو بعد مسح المتصفح): لا نعرض التطبيق قبل وصول نسخة الخادم،
@@ -591,6 +608,11 @@ export async function initCloudSync(): Promise<InitResult> {
 
   /** إشعار تغيير ("رقم النسخة|المفاتيح"): يُجلب ما تغيّر فقط، أو النسخة الكاملة إن لم تُذكر المفاتيح */
   const onVersion = (msg: string) => {
+    // رفع أو حذف كشف عربات: الأشهر في R2 تُحدَّث من صفحة العربات، ولا تمس حالة البيانات
+    if (msg.startsWith(VEHICLES_SIGNAL)) {
+      window.dispatchEvent(new Event(VEHICLES_CHANGED_EVENT));
+      return;
+    }
     const sep = msg.indexOf('|');
     const v = sep < 0 ? msg : msg.slice(0, sep);
     if (!v || v === knownVersion) return;
