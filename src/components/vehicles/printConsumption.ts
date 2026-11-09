@@ -217,8 +217,7 @@ body { font-family: 'CairoP', 'Segoe UI', Tahoma, sans-serif; color: #0f172a; fo
 .org h1 { margin: 0; font-size: 11.5px; font-weight: 900; }
 .org p { margin: 0; font-size: 9.5px; font-weight: 700; color: #334155; }
 .mid { text-align: center; }
-.badge { display: inline-block; padding: 1px 16px; border-radius: 999px; background: #1e3a8a; color: #fff; font-size: 9.5px; font-weight: 800; }
-.mid h2 { margin: 4px 0 0; font-size: 19px; font-weight: 900; letter-spacing: -.2px; }
+.mid h2 { margin: 0; font-size: 20px; font-weight: 900; letter-spacing: -.2px; }
 .mid .scope { font-size: 12px; font-weight: 800; color: #1e3a8a; }
 .partner { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
 .partner img { height: 50px; width: auto; object-fit: contain; }
@@ -321,7 +320,7 @@ tr { page-break-inside: avoid; }
     <div class="logos"><img src="${origin}/logos/sahara.png" alt=""><img src="${origin}/logos/sama.png" alt=""><img src="${origin}/logos/bawadi.png" alt=""><img src="${origin}/logos/kac.png" alt=""></div>
     <p>الإدارة المركزية للوقود والمشتقات النفطية</p>
   </div>
-  <div class="mid"><span class="badge">وثيقة رسمية معتمدة</span><h2>${esc(title)}</h2><div class="scope">${esc(scope)}</div></div>
+  <div class="mid"><h2>${esc(title)}</h2>${grouped ? '' : `<div class="scope">${esc(scope)}</div>`}</div>
   <div class="partner"><img src="${origin}/logos/etihad.png" alt=""><span>مجموعة الاتحاد للصناعات</span></div>
 </header>
 ${cards}
