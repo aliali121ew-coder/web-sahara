@@ -8,12 +8,12 @@ import { handleWeather } from './weather';
 import { extractSaharaReport } from './extractSaharaReport';
 import { readInboundNames, type InboundNameRow } from './inboundNames';
 import { audit, handleChat, verifySession, type Session } from './chat';
-import { canCreateItems, canMarkRead, canReadKey, canWriteKey, canWriteSome, isServerForbiddenKey, keySectionLabel, levelOf } from '../src/lib/permCatalog';
+import { canCreateItems, canMarkRead, canReadKey, canWriteKey, canWriteSome, isServerForbiddenKey, keySectionLabel, levelOf, sectionLabel } from '../src/lib/permCatalog';
 
 import { ensureFileColumns, loadFile, removeFile, storeFile } from './storage/files';
 import { applyCollectionOps, clearCollection, ensureCollections, isCollectionKey, limitedOpsAllowed, readCollections, replaceCollection, type CollectionOps } from './storage/collections';
 import { guardReportLogOps, isReportLogKey, scopeReportLogs } from './storage/reportLogs';
-import { COLLECTION_KEYS, KEY_RULES_SIGNATURE } from '../src/lib/permCatalog';
+import { COLLECTION_KEYS, DISABLED_SECTIONS_META, KEY_RULES_SIGNATURE, isKeyDisabled, sanitizeDisabled } from '../src/lib/permCatalog';
 import type { D1Database, D1PreparedStatement, Env, ExecutionContext, R2Bucket, ScheduledController } from './types';
 import { handleSystem } from './system/api';
 import { ensureSystemTables, getMaintenance } from './system/backup';
@@ -84,6 +84,11 @@ const cheapHash = (text: string) => {
 const RULES_HASH = cheapHash(KEY_RULES_SIGNATURE);
 const stateEtag = (version: string, session: Session) =>
   `"${cheapHash([version, session.id, session.admin ? 1 : 0, JSON.stringify(session.perms), RULES_HASH].join('|'))}"`;
+/** الصفحات الموقوفة (سطر واحد من system_meta): بياناتها لا تُحمَّل ولا تُحفظ لأي حساب */
+const readDisabledSections = async (db: D1Database): Promise<Set<string>> => {
+  const { results } = await db.prepare('SELECT value FROM system_meta WHERE key = ?').bind(DISABLED_SECTIONS_META).all<{ value: string }>();
+  try { return new Set(sanitizeDisabled(JSON.parse(results[0]?.value || '[]'))); } catch { return new Set(); }
+};
 const MAX_STATE_BODY = 8 * 1024 * 1024;
 const MAX_IMAGE_BODY = 6 * 1024 * 1024;
 /** ملف PDF للقراءة الذكية (base64 يزيد الحجم ~33%) */
@@ -233,6 +238,31 @@ export default {
     await ensureCollections(env.DB, env.BACKUPS);
     await ensureSystemTables(env.DB);
 
+    // إيقاف الصفحات غير المستخدمة (لمدير النظام فقط): يقرؤها الجميع ضمن حالة البيانات
+    if (url.pathname === '/api/system/pages') {
+      if (!session.admin) return forbidden('هذه الصفحة لمدير النظام فقط');
+      if (request.method === 'GET') return json({ disabled: [...await readDisabledSections(env.DB)] });
+      if (request.method === 'PUT') {
+        const b = await request.json().catch(() => ({})) as { disabled?: unknown };
+        const before = await readDisabledSections(env.DB);
+        const next = sanitizeDisabled(b.disabled);
+        const now = Date.now();
+        await env.DB.prepare('INSERT INTO system_meta (key, value, updated_at) VALUES (?1, ?2, ?3) ON CONFLICT(key) DO UPDATE SET value = ?2, updated_at = ?3')
+          .bind(DISABLED_SECTIONS_META, JSON.stringify(next), now).run();
+        // رقم نسخة جديد بلا مفاتيح: كل جهاز مفتوح يجلب النسخة الكاملة فتختفي الصفحات الموقوفة وبياناتها أو تعود
+        const version = `${now}-pages`;
+        await env.DB.prepare('INSERT INTO system_meta (key, value, updated_at) VALUES (?1, ?2, ?3) ON CONFLICT(key) DO UPDATE SET value = ?2, updated_at = ?3')
+          .bind(STATE_VERSION_KEY, version, now).run();
+        broadcastVersion(env, ctx, version);
+        const stopped = next.filter(x => !before.has(x));
+        const started = [...before].filter(x => !next.includes(x));
+        const detail = [stopped.length ? `إيقاف: ${stopped.map(sectionLabel).join('، ')}` : '', started.length ? `تشغيل: ${started.map(sectionLabel).join('، ')}` : ''].filter(Boolean).join(' · ');
+        if (detail) await audit(env.DB, request, session.id, 'system.pages', detail);
+        return json({ ok: true, disabled: next });
+      }
+      return json({ error: 'غير موجود', code: 'not_found' }, 404);
+    }
+
     // لوحة إدارة النظام (لمدير النظام فقط)
     if (url.pathname.startsWith('/api/system/')) return handleSystem(request, url, env, session);
 
@@ -275,6 +305,8 @@ export default {
       const keys = Array.from(new Set((url.searchParams.get('keys') || '').split(',').map(k => k.trim()).filter(Boolean)))
         .slice(0, 100)
         .filter(k => canReadKey(session.perms, session.admin, k));
+      const off = await readDisabledSections(env.DB);
+      if (off.size) keys.splice(0, keys.length, ...keys.filter(k => !isKeyDisabled(k, off)));
       const plain = keys.filter(k => !isCollectionKey(k));
       const items: Record<string, string> = {};
       if (plain.length) {
@@ -300,15 +332,18 @@ export default {
       const headers = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', etag, ...API_SECURITY_HEADERS };
       if (sent === etag) return new Response(null, { status: 304, headers });
       const { results } = await env.DB.prepare('SELECT key, value, updated_at FROM app_state').all<StateRow>();
+      // الصفحات الموقوفة: بياناتها لا تُقرأ ولا تُرسل لأي حساب (ومنه مدير النظام)
+      const off = await readDisabledSections(env.DB);
       // كل حساب يستلم فقط مفاتيح الأقسام المسموح له بعرضها
-      const visible = results.filter(r => canReadKey(session.perms, session.admin, r.key));
+      const visible = results.filter(r => canReadKey(session.perms, session.admin, r.key) && !isKeyDisabled(r.key, off));
       const items: Record<string, string> = Object.fromEntries(visible.map(r => [r.key, r.value]));
       // المجموعات الكبيرة تُجمَّع من سطورها وتُعاد بنفس الشكل (نص JSON)
-      Object.assign(items, await readCollections(env.DB, COLLECTION_KEYS.filter(key => canReadKey(session.perms, session.admin, key))));
+      Object.assign(items, await readCollections(env.DB, COLLECTION_KEYS.filter(key => canReadKey(session.perms, session.admin, key) && !isKeyDisabled(key, off))));
       if (!session.admin) await scopeReportLogs(env.DB, items, session.perms);
       const body = JSON.stringify({
         items,
         admin: session.admin,
+        disabled: [...off],
         collections: COLLECTION_KEYS,
         // قراءة فقط = لا يملك أي نوع كتابة (الإضافة فقط أو تعليم المقروء يُرسلان ويتحقق منهما الخادم)
         readOnly: Object.keys(items).filter(k => !canWriteSome(session.perms, session.admin, k)),
@@ -333,9 +368,19 @@ export default {
       // المفاتيح التي تغيّرت فعلًا: حفظ لا يغيّر شيئًا (نفس القيمة) لا يرفع رقم النسخة ولا يُبلّغ الأجهزة،
       // وإلا تحفظ كل شاشة مفتوحة ما وصلها فتنطلق موجة جلب متكررة على كل الأجهزة وتتأخر التحديثات
       const changed = new Set<string>();
+      // الصفحات الموقوفة: لا يُحفظ شيء من بياناتها (جهاز قديم ما زال يحملها)
+      const off = await readDisabledSections(env.DB);
+      // تُعاد للجهاز مع المرفوضة (فيحذف نسخته المحلية) دون أن تُسجَّل محاولة دخول غير مسموح
+      const stoppedKeys: string[] = [];
+      const stopped = (key: string) => {
+        if (!isKeyDisabled(key, off)) return false;
+        stoppedKeys.push(key);
+        return true;
+      };
       // فروق المجموعات (الطريقة الحديثة: عناصر جديدة/معدّلة ومحذوفة فقط)
       for (const [key, sent] of Object.entries(body.collections || {})) {
         if (!isCollectionKey(key) || !sent || typeof sent !== 'object') continue;
+        if (stopped(key)) continue;
         let ops = sent;
         if (!canWriteKey(session.perms, session.admin, key)) {
           // بلا كتابة كاملة: تُقبل الإضافة فقط أو تعليم المقروء فقط إن سمحت بهما القاعدة، وإلا تُرفض كل عمليات المفتاح
@@ -353,6 +398,7 @@ export default {
       }
       for (const [key, value] of Object.entries(body.set || {})) {
         if (typeof value !== 'string') continue;
+        if (stopped(key)) continue;
         if (!canWriteKey(session.perms, session.admin, key)) { rejected.push(key); continue; }
         // نسخة قديمة من التطبيق أرسلت المجموعة كاملة: تُستبدل بسطورها
         if (isCollectionKey(key)) {
@@ -370,6 +416,7 @@ export default {
       }
       for (const key of body.remove || []) {
         if (typeof key !== 'string') continue;
+        if (stopped(key)) continue;
         if (!canWriteKey(session.perms, session.admin, key)) { rejected.push(key); continue; }
         if (isCollectionKey(key)) {
           const { meta } = await clearCollection(env.DB, key);
@@ -397,7 +444,7 @@ export default {
       }
       if (rejected.length) await audit(env.DB, request, session.id, 'data.denied', Array.from(new Set(rejected.map(keySectionLabel))).join('، '), { merge: true });
       // بصمة النسخة الجديدة: الجهاز المتزامن يحفظها فلا يعيد تنزيل النسخة الكاملة بسبب حفظه هو
-      return json({ ok: true, saved: changedKeys.length, rejected, version, etag: version ? stateEtag(version, session) : undefined });
+      return json({ ok: true, saved: changedKeys.length, rejected: [...rejected, ...stoppedKeys], version, etag: version ? stateEtag(version, session) : undefined });
     }
 
     // المحادثة: الحسابات والغرف والرسائل والمرفقات

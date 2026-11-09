@@ -32,6 +32,7 @@ export const ACTIONS: Record<string, { icon: React.ComponentType<{ className?: s
   'file.upload': { icon: FileUp, sev: 'info' },
   'file.delete': { icon: FileX, sev: 'warn' },
   'profile.update': { icon: UserCog, sev: 'info' },
+  'system.pages': { icon: ShieldAlert, sev: 'warn' },
 };
 export const actionLabel = (a: string) => (i18n.exists(`admin:audit.actions.${a}`) ? i18n.t(`admin:audit.actions.${a}`) : a);
 export const SEV: Record<Severity, { dot: string; ring: string; text: string }> = {

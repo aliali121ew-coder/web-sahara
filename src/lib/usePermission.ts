@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
-import { groupLevel, levelOf, type Level } from './permCatalog';
+import { PERM_GROUPS, levelOf, type Level } from './permCatalog';
+import { useDisabledPages } from './disabledPages';
 import { useSessionProfile } from './session';
 import { CHECK_SECTION_PERM } from './checkSections';
 
@@ -13,8 +14,14 @@ export function usePermissions() {
   // ثبات المراجع مهم: الدوال تُستخدم في اعتماديات useMemo/useEffect، ولو تغيّرت مع كل رسم تحدث حلقة رسم لا تنتهي
   const permsKey = JSON.stringify(profile?.perms || {});
   const perms = useMemo(() => JSON.parse(permsKey) as Record<string, Level>, [permsKey]);
-  const level = useCallback((section: string): Level => levelOf(perms, isAdmin, section), [perms, isAdmin]);
-  const group = useCallback((groupId: string): Level => groupLevel(perms, isAdmin, groupId), [perms, isAdmin]);
+  // الصفحات الموقوفة من «إدارة النظام» تُعامل كأن لا صلاحية عليها، حتى لمدير النظام (بياناتها لا تُحمَّل أصلًا)
+  const disabled = useDisabledPages();
+  const off = useMemo(() => new Set(disabled), [disabled]);
+  const level = useCallback((section: string): Level => (off.has(section) ? 0 : levelOf(perms, isAdmin, section)), [perms, isAdmin, off]);
+  const group = useCallback((groupId: string): Level => {
+    const g = PERM_GROUPS.find(x => x.id === groupId);
+    return (g ? Math.max(0, ...g.sections.map(s => level(s.id))) : 0) as Level;
+  }, [level]);
   const canView = useCallback((section: string) => level(section) >= 1, [level]);
   const canEdit = useCallback((section: string) => level(section) >= 2, [level]);
   // «صفحة واحدة فقط»: لا تُطبَّق على مدير النظام

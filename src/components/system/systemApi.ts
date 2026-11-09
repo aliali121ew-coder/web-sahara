@@ -82,6 +82,9 @@ export const systemApi = {
   purgeTrash: (key?: string) => call<{ deleted: number }>(`/files/trash${key ? `?key=${encodeURIComponent(key)}` : ''}`, { method: 'DELETE' }),
   jobs: () => call<{ items: JobRow[]; nextRun: number }>('/jobs'),
   runJob: (job: 'daily' | 'monthly' | 'cleanup', month?: string) => post<{ result: unknown }>('/maintenance/run', { job, month }),
+  /** الصفحات الموقوفة (لكل الحسابات): لا تظهر ولا تُحمَّل بياناتها */
+  pages: () => call<{ disabled: string[] }>('/pages'),
+  setPages: (disabled: string[]) => call<{ disabled: string[] }>('/pages', { method: 'PUT', body: JSON.stringify({ disabled }) }),
   setMaintenance: (on: boolean, reason?: string) => post<{ maintenance: Overview['maintenance'] }>('/maintenance/mode', { on, reason }),
 };
 

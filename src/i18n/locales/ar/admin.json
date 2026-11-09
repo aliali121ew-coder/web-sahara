@@ -273,7 +273,8 @@
       "file.upload": "رفع ملف",
       "file.delete": "حذف ملف",
       "admin.passkey_approve": "اعتماد بصمة جهاز",
-      "admin.passkey_remove": "حذف بصمة جهاز"
+      "admin.passkey_remove": "حذف بصمة جهاز",
+      "system.pages": "إيقاف أو تشغيل صفحات"
     },
     "categories": {
       "all": "الكل",

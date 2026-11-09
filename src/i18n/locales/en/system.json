@@ -93,7 +93,8 @@
     "files": "Files",
     "backups": "Backups",
     "db": "Database",
-    "overview": "Overview"
+    "overview": "Overview",
+    "pages": "Pages"
   },
   "backupsArchive": "Backups and archive",
   "status": {
@@ -224,5 +225,19 @@
     "baseDone": "Current data set as base",
     "resetDone_one": "Reset done; {{count}} expired account stopped",
     "resetDone_other": "Reset done; {{count}} expired accounts stopped"
+  },
+  "pages": {
+    "title": "Turn off unused pages",
+    "hint": "A turned-off page disappears from the menu for every account, including the system admin, and its data is not loaded when the app opens, so it uses no database reads or browser storage. Nothing is deleted; the data returns as it was when the page is turned back on.",
+    "dashboardNote": "The dashboard reads the data of most pages (inbound, prices, tanks, balances): turn it off too so that data stops loading.",
+    "offCount_one": "{{count}} off",
+    "offCount_other": "{{count}} off",
+    "offCount_zero": "All on",
+    "wholeCompany": "(all sections)",
+    "on": "On",
+    "off": "Off",
+    "save": "Save",
+    "undo": "Undo",
+    "saved": "Saved and sent to all open devices"
   }
 }

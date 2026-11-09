@@ -265,7 +265,8 @@
       "file.upload": "File uploaded",
       "file.delete": "File deleted",
       "admin.passkey_approve": "Device passkey approved",
-      "admin.passkey_remove": "Device passkey removed"
+      "admin.passkey_remove": "Device passkey removed",
+      "system.pages": "Pages turned off or on"
     },
     "categories": {
       "all": "All",

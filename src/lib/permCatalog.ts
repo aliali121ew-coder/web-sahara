@@ -235,6 +235,27 @@ export const SHADOW_PREFIX = 'sahara_shadow:';
 
 const ruleFor = (k: string) => KEY_RULES.find(r => r.match(k));
 
+// ───── إيقاف الصفحات غير المستخدمة (لكل الحسابات ومنها مدير النظام) ─────
+/** مفتاح القائمة في system_meta على الخادم */
+export const DISABLED_SECTIONS_META = 'disabled_sections';
+/** صفحات لا تُوقف: الإعدادات (منها يُعاد تشغيل الصفحات) */
+export const UNSTOPPABLE_SECTIONS: readonly string[] = ['settings'];
+/** قائمة صفحات موقوفة صالحة: أقسام معروفة فقط، بلا تكرار، وبلا الإعدادات */
+export const sanitizeDisabled = (raw: unknown): string[] =>
+  Array.isArray(raw)
+    ? [...new Set(raw.filter((x): x is string => typeof x === 'string' && SECTION_SET.has(x) && !UNSTOPPABLE_SECTIONS.includes(x)))].sort()
+    : [];
+/**
+ * مفتاح بيانات كل الأقسام التي تقرؤه موقوفة: لا يُحمَّل عند فتح التطبيق ولا يُقبل حفظه، فلا يستهلك قراءات.
+ * المفاتيح العامة (COMMON) ومفتاح بلا قاعدة لا تتوقف أبدًا، ومفتاح تقرؤه أيضًا صفحة مفعّلة (مثل لوحة التحكم) يبقى.
+ */
+export const isKeyDisabled = (key: string, disabled: ReadonlySet<string>) => {
+  if (!disabled.size) return false;
+  const r = ruleFor(key);
+  if (!r || r.read.includes(COMMON)) return false;
+  return r.read.every(s => disabled.has(s));
+};
+
 /**
  * بصمة قواعد القراءة والكتابة: تدخل في ETag حالة الخادم، فإذا تغيّرت القواعد (مثل إضافة "dashboard" لقراءة مفتاح)
  * تستلم الأجهزة المفتوحة النسخة الجديدة فورًا بدل رد 304 حتى يتغيّر شيء في البيانات
@@ -280,6 +301,9 @@ export const canWriteSome = (perms: Perms, isAdmin: boolean, key: string) =>
 const SECTION_LABEL: Record<string, string> = Object.fromEntries(
   PERM_GROUPS.flatMap(g => g.sections.map(s => [s.id, g.id === 'pages' ? s.label : `${g.label} ← ${s.label}`])),
 );
+
+/** اسم قسم واحد (لسجل العمليات) */
+export const sectionLabel = (id: string) => SECTION_LABEL[id] || id;
 
 /** اسم القسم المسؤول عن مفتاح بيانات (لسجل العمليات) */
 export const keySectionLabel = (key: string) => {

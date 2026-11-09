@@ -6,7 +6,8 @@
  */
 
 import { hasSession, sessionHeaders, clearSession, SESSION_PROFILE_KEY, LAST_USER_KEY, LAST_NAME_KEY, BIO_USER_KEY, BIO_DECLINED_PREFIX } from './session';
-import { COLLECTION_KEYS, SHADOW_PREFIX } from './permCatalog';
+import { COLLECTION_KEYS, SHADOW_PREFIX, isKeyDisabled } from './permCatalog';
+import { DISABLED_PAGES_KEY, getDisabledPages, setDisabledPages } from './disabledPages';
 
 /** رمز الدخول القديم (قبل حسابات المستخدمين) — يُمسح فقط */
 export const TOKEN_KEY = 'sahara_cloud_token';
@@ -16,6 +17,8 @@ const SYNC_OWNER_KEY = 'sahara_cloud_owner';
 
 // مفاتيح خاصة بالجهاز نفسه فلا تُزامَن
 const LOCAL_ONLY = new Set([
+  // الصفحات الموقوفة: تصل من الخادم مع حالة البيانات، ولا تُرفع منه
+  DISABLED_PAGES_KEY,
   TOKEN_KEY,
   SESSION_PROFILE_KEY,
   // بيانات الدخول الخاصة بهذا الجهاز فقط: لا تُزامَن أبدًا مع الأجهزة الأخرى
@@ -101,14 +104,20 @@ const scheduleFlush = (delay = 300) => {
 
 // مفاتيح لا يملك هذا الحساب صلاحية تعديلها (يحددها الخادم): التغييرات عليها تبقى محلية ولا تُرسل
 const blocked = new Set<string>();
-type StateResponse = { items: Record<string, string>; admin?: boolean; readOnly?: string[] };
+type StateResponse = { items: Record<string, string>; admin?: boolean; readOnly?: string[]; disabled?: string[] };
 const setBlocked = (r: StateResponse) => {
   blocked.clear();
   (r.readOnly || []).forEach(k => blocked.add(k));
+  if (Array.isArray(r.disabled)) setDisabledPages(r.disabled);
+};
+/** مفتاح صفحة موقوفة: لا يُرسل (الخادم يرفضه)، وتُحذف نسخته المحلية عند وصول الحالة */
+const isStopped = (key: string) => {
+  const off = getDisabledPages();
+  return off.length > 0 && isKeyDisabled(key, new Set(off));
 };
 
 const markPending = (key: string) => {
-  if (blocked.has(key)) return;
+  if (blocked.has(key) || isStopped(key)) return;
   const p = readPending();
   p[key] = (p[key] || 0) + 1;
   writePending(p);
@@ -329,6 +338,10 @@ const applyServerState = (items: Record<string, string>, removed?: string[]): st
       changed.push(key);
     }
   }
+  // مجموعة لم تعد تصل (حُذفت أو أُوقفت صفحتها): تُحذف نسختها المرجعية أيضًا فتفرغ مساحتها من المتصفح
+  for (const key of COLLECTION_KEYS) {
+    if (!(key in items) && !(key in pending) && (!removed || removed.includes(key)) && getShadow(key) !== null) setShadow(key, null);
+  }
   return changed;
 };
 
@@ -407,7 +420,7 @@ export async function initCloudSync(): Promise<InitResult> {
   /** تطبيق نسخة الخادم (أو رفع بيانات الجهاز إن كان الخادم فارغًا). يعيد المفاتيح التي تغيّرت */
   const adopt = (data: StateResponse): string[] => {
     setBlocked(data);
-    if (!Object.keys(data.items).length && data.admin) {
+    if (!Object.keys(data.items).length && data.admin && !data.disabled?.length) {
       // الخادم فارغ (أول استخدام): رفع كل البيانات الموجودة في هذا الجهاز.
       // لمدير النظام فقط: الحساب المقيّد يستلم مفاتيح أقسامه فقط وقد تبدو له النسخة فارغة
       const p = readPending();
@@ -493,10 +506,12 @@ export async function initCloudSync(): Promise<InitResult> {
         if (res.status === 304) return true;
       }
       if (!res.ok) return false;
-      const data = (await res.json()) as { items: Record<string, string>; removed?: string[]; v?: string };
+      const data = (await res.json()) as { items: Record<string, string>; removed?: string[]; v?: string; disabled?: string[] };
       // اكتمل إرسال من هذا الجهاز أثناء الجلب: النسخة قد تسبقه، فيُعاد الجلب
       if (gen !== flushGen) return 'again';
       if (flushing) return 'later';
+      // النسخة الكاملة تحمل قائمة الصفحات الموقوفة (تتغيّر من إدارة النظام دون إعادة تحميل)
+      if (!keys && Array.isArray(data.disabled)) setDisabledPages(data.disabled);
       const changed = applyServerState(data.items, keys ? (data.removed ?? []) : undefined);
       // الجلب الجزئي لآخر نسخة معروفة يُبقي الجهاز متزامنًا: تُحفظ بصمتها (وإلا نزّلت المزامنة الدورية كل شيء)
       if (!keys || (data.v && data.v === knownVersion && !wantFull && !wantKeys.size)) rememberEtag(res);
