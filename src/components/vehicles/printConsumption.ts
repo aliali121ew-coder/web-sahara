@@ -102,7 +102,7 @@ export const buildConsumptionSheet = (opts: {
     const list = p.slice(0, L).filter(v => v > 0);
     return list.length ? list.reduce((s, v) => s + v, 0) / list.length : null;
   };
-  /** لون شارة الاستهلاك: أحمر إن زادت الفترة الحالية على متوسط السابقة، أخضر إن قلت، رمادي بلا مقارنة */
+  /** لون شارة الاستهلاك: أخضر إن قلت الفترة الحالية عن متوسط السابقة، وأحمر غير ذلك */
   const trend = (r: PrintRow) => {
     const avg = prevAvg(r.p);
     const cur = r.p[L];
@@ -275,7 +275,7 @@ td.code .cat { font-size: 8.5px; font-weight: 700; color: #64748b; margin-inline
 .pill { display: inline-block; min-width: 46px; padding: 0 8px; border-radius: 6px; font-weight: 800; line-height: 1.55; }
 .pill.up { background: #ffe4e6; color: #be123c; }
 .pill.down { background: #d1fae5; color: #047857; }
-.pill.flat { background: #f1f5f9; color: #475569; }
+.pill.flat { background: #ffe4e6; color: #be123c; }
 td.last { background: #eff6ff !important; font-weight: 800; }
 td.hl { font-weight: 800; }
 td sup { color: #64748b; }
