@@ -293,8 +293,6 @@ td.code b { font-weight: 900; direction: ltr; unicode-bidi: isolate; }
 td.code .cat { font-size: 9px; font-weight: 700; color: #64748b; margin-inline-start: 5px; }
 .pill { display: inline-block; min-width: 48px; padding: 0 8px; border-radius: 6px; font-weight: 800; line-height: 1.6; background: #eef2ff; color: #1e3a8a; }
 .pill.alert { background: #ffe4e6; color: #be123c; }
-caption { caption-side: bottom; text-align: right; padding-top: 4px; font-size: 8.5px; font-weight: 600; color: #94a3b8; }
-caption i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: #ffe4e6; border: 1px solid #fda4af; vertical-align: -1px; margin-inline-end: 4px; }
 td.last { background: #eff6ff !important; font-weight: 800; }
 td.hl { font-weight: 800; }
 td sup { color: #64748b; }
@@ -308,12 +306,13 @@ tr { page-break-inside: avoid; }
 
 /* الجدول 75% وعمود الأسبوع 25% */
 .main { display: grid; grid-template-columns: 3fr 1fr; gap: 8px; align-items: stretch; }
+.main > table { height: 100%; }
 .week { display: flex; flex-direction: column; border: 1px solid #94a3b8; border-radius: 8px; overflow: hidden; }
 .wh { background: #1e3a8a; color: #fff; padding: 5px 9px; display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
 .wh b { font-size: 10px; font-weight: 800; }
 .wh small { font-size: 8.5px; color: #c7d2fe; font-weight: 600; }
 .week ol { list-style: none; margin: 0; padding: 5px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
-.week li { flex: 1; display: flex; align-items: center; gap: 6px; border: 1px solid #e2e8f0; border-radius: 7px; padding: 3px 6px; }
+.week li { flex: 1 1 0; min-height: 0; display: flex; align-items: center; gap: 6px; border: 1px solid #e2e8f0; border-radius: 7px; padding: 3px 6px; }
 .week li:nth-child(-n+3) { border-color: #cbd5e1; background: #f8fafc; }
 .week li.empty { justify-content: center; color: #94a3b8; }
 .rk { width: 15px; height: 15px; border-radius: 50%; background: #e2e8f0; color: #334155; font-size: 8.5px; font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -344,7 +343,6 @@ tr { page-break-inside: avoid; }
 ${cards}
 <div class="main">
 <table>
-<caption><i></i>أحمر: قفزة 30% فأكثر عن معدل العربة في الفترات السابقة، أو صرف لكل كم أعلى من متوسط فئتها بـ 30%</caption>
 <thead><tr><th>ت</th><th>العربة</th>${periods.map((p, k) => `<th${k === L ? ' class="last"' : ''}>${esc(p.name)}<small dir="ltr">${esc(p.range)}</small></th>`).join('')}<th>مجموع التفويل</th><th>الاستهلاك</th><th>سعة الخزان<small>لتر</small></th><th>المتبقي</th><th>عدد الخزانات</th><th>المسافة المقطوعة<small>كم</small></th></tr></thead>
 <tbody>${body || `<tr><td colspan="${cols}">لا توجد عربات</td></tr>`}</tbody>
 </table>
