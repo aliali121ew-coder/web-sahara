@@ -103,10 +103,27 @@ export const buildConsumptionSheet = (opts: {
     };
   };
 
+  // التنبيه (أحمر): قفزة في الفترة الحالية 30% فأكثر عن معدل العربة نفسها في الفترات السابقة،
+  // أو صرف لكل كم أعلى من متوسط فئتها بـ 30% فأكثر (حين تُسجَّل المسافة)
+  const ALERT = 1.3;
+  const rates = new Map<string, number[]>();
+  for (const r of rows) if (r.used && r.km > 0) rates.set(r.catKey, [...(rates.get(r.catKey) || []), r.used / r.km]);
+  const alertOf = (r: PrintRow) => {
+    const before = r.p.slice(0, L).filter(v => v > 0);
+    const own = before.length ? before.reduce((s, v) => s + v, 0) / before.length : null;
+    const spike = own !== null && r.p[L] >= own * ALERT;
+    const list = rates.get(r.catKey) || [];
+    const avgRate = list.length > 1 ? list.reduce((s, v) => s + v, 0) / list.length : null;
+    const perKm = !!r.used && r.km > 0 && avgRate !== null && r.used / r.km >= avgRate * ALERT;
+    return spike || perKm;
+  };
+  /** خانة فارغة بلا شرطة للأعمدة الثانوية */
+  const opt = (v: number | null | undefined) => (v ? n(v) : '');
+
   const body = topRows.map((r, i) => {
     const fill = r.p.reduce((s, x) => s + x, 0);
     const rem = remainingOf(r);
-    return `<tr><td class="idx">${i + 1}</td><td class="code"><b>${esc(r.code)}</b>${grouped ? `<span class="cat">${esc(r.cat)}</span>` : ''}</td>${r.p.map((v, k) => `<td${k === L ? ' class="last"' : ''}>${cell(v)}</td>`).join('')}<td class="hl">${n(fill)}</td><td>${r.used === null ? dash : `<span class="pill">${n(r.used)}</span>`}</td><td>${r.estimated ? dash : n(r.capacity)}</td><td>${rem === null ? dash : n(rem)}</td><td>${r.tanks ?? dash}</td><td>${cell(r.km)}</td></tr>`;
+    return `<tr><td class="idx">${i + 1}</td><td class="code"><b>${esc(r.code)}</b>${grouped ? `<span class="cat">${esc(r.cat)}</span>` : ''}</td>${r.p.map((v, k) => `<td${k === L ? ' class="last"' : ''}>${cell(v)}</td>`).join('')}<td class="hl">${n(fill)}</td><td>${r.used === null ? dash : `<span class="pill${alertOf(r) ? ' alert' : ''}">${n(r.used)}</span>`}</td><td>${r.estimated ? '' : opt(r.capacity)}</td><td>${rem === null ? '' : n(rem)}</td><td>${opt(r.tanks)}</td><td>${opt(r.km)}</td></tr>`;
   }).join('');
 
   // الكارتات
@@ -143,7 +160,7 @@ export const buildConsumptionSheet = (opts: {
       + `<text x="${cx}" y="${base + 19}" class="br" direction="ltr">${esc(periods[k].range)}</text>`;
   }).join('');
   const chart = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="xMidYMid meet"><defs>`
-    + `<linearGradient id="gOn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#059669"/><stop offset="1" stop-color="#34d399"/></linearGradient>`
+    + `<linearGradient id="gOn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0284c7" stop-opacity=".75"/><stop offset="1" stop-color="#7dd3fc" stop-opacity=".75"/></linearGradient>`
     + `<linearGradient id="gOff" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#94a3b8"/><stop offset="1" stop-color="#cbd5e1"/></linearGradient>`
     + `</defs>${grid}<line x1="6" y1="${base}" x2="${W - 6}" y2="${base}" stroke="#cbd5e1" stroke-width="1"/>${bars}</svg>`;
 
@@ -194,7 +211,6 @@ export const buildConsumptionSheet = (opts: {
   const weekList = week.slice(0, WEEK_TOP).map((w, k) => `<li><div class="rk">${k + 1}</div>${ring(w.lastQty, w.prevQty)}<div class="wi">
     <div class="wl"><b dir="ltr">${esc(w.code)}</b><span class="wc">${esc(w.cat)}</span>${w.frequent ? '<span class="fq">متكرر</span>' : ''}</div>
     <div class="wl2"><b>${n(w.lastQty)}</b> لتر · <span dir="ltr">${day(w.lastDate)}</span>${w.days !== null ? ` · <span class="${w.days <= 1 ? 'fq' : ''}">بعد ${w.days} يوم</span>` : ''}</div>
-    ${w.prevQty !== null ? `<div class="wl3">السابقة ${n(w.prevQty)} لتر · <span dir="ltr">${day(w.prevDate)}</span></div>` : ''}
   </div><div class="wt"><b>${n(w.total)}</b><small>لتر · ${w.count} تفويلة</small></div></li>`).join('');
   const side = `<aside class="week"><div class="wh"><b>الأعلى استهلاكًا خلال الأسبوع</b><small dir="ltr">${esc(weekRange)}</small></div>
   <ol>${weekList || '<li class="empty">لا توجد تفويلات في الأسبوع</li>'}</ol></aside>`;
@@ -228,25 +244,25 @@ body { font-family: 'CairoP', 'Segoe UI', Tahoma, sans-serif; color: #0f172a; fo
 /* الكارتات */
 .cards { display: grid; grid-template-columns: 1fr 1fr 1fr 1.75fr; gap: 8px; margin: 8px 0; }
 .kpi { position: relative; border: 1px solid #e2e8f0; border-radius: 12px; padding: 5px 10px 6px; overflow: hidden; background: linear-gradient(160deg, var(--tint) 0%, #fff 62%); }
-.kpi::after { content: ''; position: absolute; top: 0; inset-inline: 0; height: 3px; background: var(--c); }
-.t1 { --c: #1e3a8a; --tint: #eef2ff; }
-.t2 { --c: #d97706; --tint: #fffbeb; }
+.kpi::after { content: ''; position: absolute; top: 0; inset-inline: 0; height: 3px; background: var(--c); opacity: .6; }
+.t1 { --c: #1e3a8a; --tint: #f5f7ff; }
+.t2 { --c: #d97706; --tint: #fffdf5; }
 .t3 { --c: #64748b; --tint: #f8fafc; }
 .t3.up { --c: #e11d48; --tint: #fff1f2; }
 .t3.down { --c: #059669; --tint: #ecfdf5; }
-.t4 { --c: #059669; --tint: #f0fdf4; padding-bottom: 1px; }
+.t4 { --c: #0369a1; --tint: #f5faff; padding-bottom: 1px; }
 .kh { display: flex; align-items: center; gap: 6px; }
-.ic { width: 20px; height: 20px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; background: var(--c); color: #fff; flex-shrink: 0; }
+.ic { width: 20px; height: 20px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; background: var(--c); color: #fff; flex-shrink: 0; opacity: .6; }
 .ic svg { width: 12px; height: 12px; }
 .k { font-size: 9.5px; font-weight: 800; color: #475569; }
-.tot { margin-inline-start: auto; font-size: 9px; font-weight: 800; color: #047857; background: #d1fae5; border-radius: 999px; padding: 0 8px; }
+.tot { margin-inline-start: auto; font-size: 9px; font-weight: 800; color: #0369a1; background: #e0f2fe; border-radius: 999px; padding: 0 8px; }
 .kpi .v { font-size: 18px; font-weight: 900; line-height: 1.15; margin-top: 2px; color: #0f172a; }
 .kpi .v small { font-size: 9.5px; font-weight: 700; color: #64748b; margin-inline-start: 5px; }
 .kpi .v.code { direction: ltr; text-align: right; }
 .kpi .v.code small { direction: rtl; unicode-bidi: isolate; margin-left: 7px; }
 .t3 .v { color: var(--c); }
 .meter { height: 4px; border-radius: 999px; background: #e2e8f0; margin: 3px 0 2px; overflow: hidden; }
-.meter i { display: block; height: 100%; border-radius: 999px; background: var(--c); margin-inline-start: 0; }
+.meter i { display: block; height: 100%; border-radius: 999px; background: var(--c); margin-inline-start: 0; opacity: .6; }
 .kpi .s { font-size: 9px; color: #64748b; font-weight: 600; }
 .kpi .s b { color: #0f172a; font-weight: 800; }
 .cmp { margin-top: 4px; display: flex; flex-direction: column; gap: 3px; }
@@ -256,30 +272,33 @@ body { font-family: 'CairoP', 'Segoe UI', Tahoma, sans-serif; color: #0f172a; fo
 .cmp .on { color: #0f172a; }
 .cmp b { font-weight: 800; color: #0f172a; text-align: left; }
 .bv { font-size: 8.5px; font-weight: 800; fill: #64748b; text-anchor: middle; }
-.bv.on { fill: #047857; font-weight: 900; }
+.bv.on { fill: #0369a1; font-weight: 900; }
 .bn { font-size: 8.5px; font-weight: 700; fill: #475569; text-anchor: middle; }
-.bn.on { fill: #047857; font-weight: 900; }
+.bn.on { fill: #0369a1; font-weight: 900; }
 .br { font-size: 7px; font-weight: 600; fill: #94a3b8; text-anchor: middle; }
 
 /* الجدول */
 table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #94a3b8; border-radius: 8px; overflow: hidden; }
 thead { display: table-header-group; }
-th { background: #1e3a8a; color: #fff; font-weight: 800; font-size: 10px; padding: 4px 5px; border-inline-start: 1px solid #3451a8; }
+th { background: #1e3a8a; color: #fff; font-weight: 800; font-size: 10.5px; padding: 5px 5px; border-inline-start: 1px solid #3451a8; }
 th:first-child { border-inline-start: 0; }
 th small { display: block; font-weight: 600; font-size: 8.5px; color: #c7d2fe; }
 th.last { background: #3b5bdb; }
-td { padding: 2.5px 5px; text-align: center; border-top: 1px solid #e2e8f0; border-inline-start: 1px solid #e2e8f0; font-weight: 600; }
+td { padding: 3.5px 5px; font-size: 11px; text-align: center; border-top: 1px solid #e2e8f0; border-inline-start: 1px solid #e2e8f0; font-weight: 600; }
 td:first-child { border-inline-start: 0; }
 tbody tr:nth-child(even):not(.cat):not(.sub):not(.all) td { background: #f8fafc; }
 td.idx { color: #64748b; width: 26px; }
 td.code { text-align: right; white-space: nowrap; }
 td.code b { font-weight: 900; direction: ltr; unicode-bidi: isolate; }
-td.code .cat { font-size: 8.5px; font-weight: 700; color: #64748b; margin-inline-start: 5px; }
-.pill { display: inline-block; min-width: 46px; padding: 0 8px; border-radius: 6px; font-weight: 800; line-height: 1.55; background: #ffe4e6; color: #be123c; }
+td.code .cat { font-size: 9px; font-weight: 700; color: #64748b; margin-inline-start: 5px; }
+.pill { display: inline-block; min-width: 48px; padding: 0 8px; border-radius: 6px; font-weight: 800; line-height: 1.6; background: #eef2ff; color: #1e3a8a; }
+.pill.alert { background: #ffe4e6; color: #be123c; }
+caption { caption-side: bottom; text-align: right; padding-top: 4px; font-size: 8.5px; font-weight: 600; color: #94a3b8; }
+caption i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: #ffe4e6; border: 1px solid #fda4af; vertical-align: -1px; margin-inline-end: 4px; }
 td.last { background: #eff6ff !important; font-weight: 800; }
 td.hl { font-weight: 800; }
 td sup { color: #64748b; }
-.nil { color: #cbd5e1; }
+.nil { color: #e2e8f0; font-weight: 400; }
 .cnt { font-weight: 700; font-size: 9px; color: #64748b; margin-inline-start: 6px; }
 tr.sub td { background: #f1f5f9; font-weight: 800; border-top: 1px solid #94a3b8; }
 tr.sub td.lbl, tr.all td.lbl { text-align: right; }
@@ -299,20 +318,19 @@ tr { page-break-inside: avoid; }
 .week li.empty { justify-content: center; color: #94a3b8; }
 .rk { width: 15px; height: 15px; border-radius: 50%; background: #e2e8f0; color: #334155; font-size: 8.5px; font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .week li:nth-child(1) .rk { background: #1e3a8a; color: #fff; }
-.ring { position: relative; width: 34px; height: 34px; flex-shrink: 0; }
-.ring svg { width: 34px; height: 34px; display: block; }
-.ring span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 7.5px; font-weight: 900; }
+.ring { position: relative; width: 38px; height: 38px; flex-shrink: 0; }
+.ring svg { width: 38px; height: 38px; display: block; }
+.ring span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 8.5px; font-weight: 900; }
 .wi { flex: 1; min-width: 0; line-height: 1.35; }
 .wl { display: flex; align-items: baseline; gap: 4px; white-space: nowrap; overflow: hidden; }
-.wl b { font-size: 11px; font-weight: 900; }
-.wc { font-size: 8px; font-weight: 700; color: #94a3b8; overflow: hidden; text-overflow: ellipsis; }
+.wl b { font-size: 12.5px; font-weight: 900; }
+.wc { font-size: 9px; font-weight: 700; color: #94a3b8; overflow: hidden; text-overflow: ellipsis; }
 .fq { color: #e11d48; font-weight: 800; }
-.wl .fq { font-size: 8px; }
-.wl2 { font-size: 8.5px; font-weight: 700; color: #334155; white-space: nowrap; }
-.wl3 { font-size: 8px; font-weight: 600; color: #94a3b8; white-space: nowrap; }
+.wl .fq { font-size: 9px; }
+.wl2 { font-size: 10px; margin-top: 1px; font-weight: 700; color: #334155; white-space: nowrap; }
 .wt { text-align: left; flex-shrink: 0; line-height: 1.2; }
-.wt b { display: block; font-size: 12px; font-weight: 900; }
-.wt small { font-size: 7.5px; font-weight: 700; color: #94a3b8; white-space: nowrap; }
+.wt b { display: block; font-size: 13.5px; font-weight: 900; }
+.wt small { font-size: 8.5px; font-weight: 700; color: #94a3b8; white-space: nowrap; }
 
 </style></head><body><div id="sheet">
 <header class="head">
@@ -326,6 +344,7 @@ tr { page-break-inside: avoid; }
 ${cards}
 <div class="main">
 <table>
+<caption><i></i>أحمر: قفزة 30% فأكثر عن معدل العربة في الفترات السابقة، أو صرف لكل كم أعلى من متوسط فئتها بـ 30%</caption>
 <thead><tr><th>ت</th><th>العربة</th>${periods.map((p, k) => `<th${k === L ? ' class="last"' : ''}>${esc(p.name)}<small dir="ltr">${esc(p.range)}</small></th>`).join('')}<th>مجموع التفويل</th><th>الاستهلاك</th><th>سعة الخزان<small>لتر</small></th><th>المتبقي</th><th>عدد الخزانات</th><th>المسافة المقطوعة<small>كم</small></th></tr></thead>
 <tbody>${body || `<tr><td colspan="${cols}">لا توجد عربات</td></tr>`}</tbody>
 </table>
