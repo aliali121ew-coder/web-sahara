@@ -82,7 +82,7 @@ export const buildConsumptionSheet = (opts: {
   const { rows, periods, title, scope, grouped, week, weekRange, prevTotal, curTotal, prevRange, curRange } = opts;
   const origin = window.location.origin;
   const L = periods.length - 1;
-  const cols = 2 + periods.length + 6;
+  const cols = 3 + periods.length + 5;
   const amountOf = (r: PrintRow) => r.used ?? r.p.reduce((s, x) => s + x, 0);
   // أعلى 20 عربة استهلاكًا (من كل الفئات في الطباعة العامة)
   const ranked = [...rows].sort((a, b) => amountOf(b) - amountOf(a) || a.code.localeCompare(b.code, 'en', { numeric: true }));
@@ -121,9 +121,8 @@ export const buildConsumptionSheet = (opts: {
   const opt = (v: number | null | undefined) => (v ? n(v) : '');
 
   const body = topRows.map((r, i) => {
-    const fill = r.p.reduce((s, x) => s + x, 0);
     const rem = remainingOf(r);
-    return `<tr><td class="idx">${i + 1}</td><td class="code"><b>${esc(r.code)}</b>${grouped ? `<span class="cat">${esc(r.cat)}</span>` : ''}</td>${r.p.map((v, k) => `<td${k === L ? ' class="last"' : ''}>${cell(v)}</td>`).join('')}<td class="hl">${n(fill)}</td><td>${r.used === null ? dash : `<span class="pill${alertOf(r) ? ' alert' : ''}">${n(r.used)}</span>`}</td><td>${r.estimated ? '' : opt(r.capacity)}</td><td>${rem === null ? '' : n(rem)}</td><td>${opt(r.tanks)}</td><td>${opt(r.km)}</td></tr>`;
+    return `<tr><td class="idx">${i + 1}</td><td class="code"><b>${esc(r.code)}</b></td><td class="cat">${esc(r.cat)}</td>${r.p.map((v, k) => `<td${k === L ? ' class="last"' : ''}>${cell(v)}</td>`).join('')}<td>${r.used === null ? dash : `<span class="pill${alertOf(r) ? ' alert' : ''}">${n(r.used)}</span>`}</td><td>${r.estimated ? '' : opt(r.capacity)}</td><td>${rem === null ? '' : n(rem)}</td><td>${opt(r.tanks)}</td><td>${opt(r.km)}</td></tr>`;
   }).join('');
 
   // الكارتات
@@ -290,11 +289,10 @@ tbody tr:nth-child(even):not(.cat):not(.sub):not(.all) td { background: #f8fafc;
 td.idx { color: #64748b; width: 26px; }
 td.code { text-align: right; white-space: nowrap; }
 td.code b { font-weight: 900; direction: ltr; unicode-bidi: isolate; }
-td.code .cat { font-size: 9px; font-weight: 700; color: #64748b; margin-inline-start: 5px; }
+td.cat { font-size: 10px; font-weight: 700; color: #475569; white-space: nowrap; }
 .pill { display: inline-block; min-width: 48px; padding: 0 8px; border-radius: 6px; font-weight: 800; line-height: 1.6; background: #eef2ff; color: #1e3a8a; }
 .pill.alert { background: #ffe4e6; color: #be123c; }
 td.last { background: #eff6ff !important; font-weight: 800; }
-td.hl { font-weight: 800; background: #fbf8f1 !important; }
 td sup { color: #64748b; }
 .nil { color: #e2e8f0; font-weight: 400; }
 .cnt { font-weight: 700; font-size: 9px; color: #64748b; margin-inline-start: 6px; }
@@ -343,7 +341,7 @@ tr { page-break-inside: avoid; }
 ${cards}
 <div class="main">
 <table>
-<thead><tr><th>ت</th><th>العربة</th>${periods.map((p, k) => `<th${k === L ? ' class="last"' : ''}>${esc(p.name)}<small dir="ltr">${esc(p.range)}</small></th>`).join('')}<th>مجموع التفويل</th><th>الاستهلاك</th><th>سعة الخزان<small>لتر</small></th><th>المتبقي</th><th>عدد الخزانات</th><th>المسافة المقطوعة<small>كم</small></th></tr></thead>
+<thead><tr><th>ت</th><th>العربة</th><th>الفئة</th>${periods.map((p, k) => `<th${k === L ? ' class="last"' : ''}>${esc(p.name)}<small dir="ltr">${esc(p.range)}</small></th>`).join('')}<th>الاستهلاك</th><th>سعة الخزان<small>لتر</small></th><th>المتبقي</th><th>عدد الخزانات</th><th>المسافة المقطوعة<small>كم</small></th></tr></thead>
 <tbody>${body || `<tr><td colspan="${cols}">لا توجد عربات</td></tr>`}</tbody>
 </table>
 ${side}
