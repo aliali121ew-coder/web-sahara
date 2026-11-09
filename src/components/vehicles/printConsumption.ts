@@ -68,7 +68,7 @@ export const buildConsumptionSheet = (opts: {
   week: WeekTop[];
   weekRange: string;
 }) => {
-  const { rows, periods, title, scope, periodLabel, grouped, week, weekRange } = opts;
+  const { rows, periods, title, scope, grouped, week, weekRange } = opts;
   const origin = window.location.origin;
   const L = periods.length - 1;
   const cols = 2 + periods.length + 6;
@@ -90,10 +90,6 @@ export const buildConsumptionSheet = (opts: {
       tanks: list.reduce((s, r) => s + (r.tanks || 0), 0),
       km: list.reduce((s, r) => s + r.km, 0),
     };
-  };
-  const totalRow = (label: string, list: PrintRow[], cls: string) => {
-    const t = totals(list);
-    return `<tr class="${cls}"><td colspan="2" class="lbl">${esc(label)} <span class="cnt">${list.length} عربة</span></td>${t.p.map(v => `<td>${cell(v)}</td>`).join('')}<td class="hl">${n(t.fill)}</td><td class="hl">${t.used === null ? dash : n(t.used)}</td><td>${cell(t.cap)}</td><td>${t.rem === null ? dash : n(t.rem)}</td><td>${t.tanks || dash}</td><td>${cell(t.km)}</td></tr>`;
   };
 
   const body = topRows.map((r, i) => {
@@ -182,8 +178,6 @@ export const buildConsumptionSheet = (opts: {
   const side = `<aside class="week"><div class="wh"><b>الأعلى استهلاكًا خلال الأسبوع</b><small dir="ltr">${esc(weekRange)}</small></div>
   <ol>${weekList || '<li class="empty">لا توجد تفويلات في الأسبوع</li>'}</ol></aside>`;
 
-  const now = new Date();
-  const printed = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
 
   return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>${esc(title)} — ${esc(scope)}</title>
 <style>
@@ -195,14 +189,14 @@ html, body { margin: 0; background: #fff; }
 body { font-family: 'CairoP', 'Segoe UI', Tahoma, sans-serif; color: #0f172a; font-size: 10.5px; line-height: 1.3; font-variant-numeric: tabular-nums; }
 
 /* الترويسة الرسمية */
-.head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; padding-bottom: 6px; border-bottom: 3px double #0f172a; }
+.head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; padding-bottom: 6px; border-bottom: 3px double #1e3a8a; }
 .org { display: flex; flex-direction: column; gap: 3px; }
 .logos { display: flex; align-items: center; gap: 8px; }
 .logos img { height: 32px; width: auto; object-fit: contain; }
 .org h1 { margin: 0; font-size: 11.5px; font-weight: 900; }
 .org p { margin: 0; font-size: 9.5px; font-weight: 700; color: #334155; }
 .mid { text-align: center; }
-.badge { display: inline-block; padding: 1px 16px; border-radius: 999px; background: #0f172a; color: #fff; font-size: 9.5px; font-weight: 800; }
+.badge { display: inline-block; padding: 1px 16px; border-radius: 999px; background: #1e3a8a; color: #fff; font-size: 9.5px; font-weight: 800; }
 .mid h2 { margin: 4px 0 0; font-size: 19px; font-weight: 900; letter-spacing: -.2px; }
 .mid .scope { font-size: 12px; font-weight: 800; color: #1e3a8a; }
 .partner { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
@@ -210,14 +204,9 @@ body { font-family: 'CairoP', 'Segoe UI', Tahoma, sans-serif; color: #0f172a; fo
 .partner span { font-size: 10.5px; font-weight: 900; }
 
 /* شريط بيانات الكشف */
-.info { display: flex; gap: 0; margin: 6px 0; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; }
-.info div { flex: 1; padding: 4px 10px; border-inline-start: 1px solid #e2e8f0; }
-.info div:first-child { border-inline-start: 0; }
-.info span { display: block; font-size: 8.5px; font-weight: 700; color: #64748b; }
-.info b { font-size: 11px; font-weight: 800; }
 
 /* الكارتات */
-.cards { display: grid; grid-template-columns: 1fr 1fr 1fr 1.75fr; gap: 8px; margin-bottom: 8px; }
+.cards { display: grid; grid-template-columns: 1fr 1fr 1fr 1.75fr; gap: 8px; margin: 8px 0; }
 .kpi { position: relative; border: 1px solid #e2e8f0; border-radius: 12px; padding: 7px 11px 8px; overflow: hidden; background: linear-gradient(160deg, var(--tint) 0%, #fff 62%); }
 .kpi::after { content: ''; position: absolute; top: 0; inset-inline: 0; height: 3px; background: var(--c); }
 .t1 { --c: #1e3a8a; --tint: #eef2ff; }
@@ -255,10 +244,10 @@ body { font-family: 'CairoP', 'Segoe UI', Tahoma, sans-serif; color: #0f172a; fo
 /* الجدول */
 table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #94a3b8; border-radius: 8px; overflow: hidden; }
 thead { display: table-header-group; }
-th { background: #0f172a; color: #fff; font-weight: 800; font-size: 10px; padding: 4px 5px; border-inline-start: 1px solid #334155; }
+th { background: #1e3a8a; color: #fff; font-weight: 800; font-size: 10px; padding: 4px 5px; border-inline-start: 1px solid #3451a8; }
 th:first-child { border-inline-start: 0; }
-th small { display: block; font-weight: 600; font-size: 8.5px; color: #cbd5e1; }
-th.last { background: #1e3a8a; }
+th small { display: block; font-weight: 600; font-size: 8.5px; color: #c7d2fe; }
+th.last { background: #3b5bdb; }
 td { padding: 2.5px 5px; text-align: center; border-top: 1px solid #e2e8f0; border-inline-start: 1px solid #e2e8f0; font-weight: 600; }
 td:first-child { border-inline-start: 0; }
 tbody tr:nth-child(even):not(.cat):not(.sub):not(.all) td { background: #f8fafc; }
@@ -281,9 +270,9 @@ tr { page-break-inside: avoid; }
 /* الجدول 75% وعمود الأسبوع 25% */
 .main { display: grid; grid-template-columns: 3fr 1fr; gap: 8px; align-items: stretch; }
 .week { display: flex; flex-direction: column; border: 1px solid #94a3b8; border-radius: 8px; overflow: hidden; }
-.wh { background: #0f172a; color: #fff; padding: 5px 9px; display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.wh { background: #1e3a8a; color: #fff; padding: 5px 9px; display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
 .wh b { font-size: 10px; font-weight: 800; }
-.wh small { font-size: 8.5px; color: #cbd5e1; font-weight: 600; }
+.wh small { font-size: 8.5px; color: #c7d2fe; font-weight: 600; }
 .week ol { list-style: none; margin: 0; padding: 5px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
 .week li { flex: 1; display: flex; align-items: center; gap: 6px; border: 1px solid #e2e8f0; border-radius: 7px; padding: 3px 6px; }
 .week li:nth-child(-n+3) { border-color: #cbd5e1; background: #f8fafc; }
@@ -315,16 +304,11 @@ tr { page-break-inside: avoid; }
   <div class="mid"><span class="badge">وثيقة رسمية معتمدة</span><h2>${esc(title)}</h2><div class="scope">${esc(scope)}</div></div>
   <div class="partner"><img src="${origin}/logos/etihad.png" alt=""><span>مجموعة الاتحاد للصناعات</span></div>
 </header>
-<div class="info">
-  <div><span>الفترة</span><b>${esc(periodLabel)}</b></div>
-  <div><span>الأعمدة</span><b>${periods.map(p => esc(p.name)).join(' · ')}</b></div>
-  <div><span>تاريخ الطباعة</span><b dir="ltr">${printed}</b></div>
-</div>
 ${cards}
 <div class="main">
 <table>
 <thead><tr><th>ت</th><th>العربة</th>${periods.map((p, k) => `<th${k === L ? ' class="last"' : ''}>${esc(p.name)}<small dir="ltr">${esc(p.range)}</small></th>`).join('')}<th>مجموع التفويل</th><th>الاستهلاك</th><th>سعة الخزان<small>لتر</small></th><th>المتبقي</th><th>عدد الخزانات</th><th>المسافة المقطوعة<small>كم</small></th></tr></thead>
-<tbody>${body || `<tr><td colspan="${cols}">لا توجد عربات</td></tr>`}${topRows.length ? totalRow(`مجموع أعلى ${topRows.length}`, topRows, 'all') : ''}</tbody>
+<tbody>${body || `<tr><td colspan="${cols}">لا توجد عربات</td></tr>`}</tbody>
 </table>
 ${side}
 </div>
