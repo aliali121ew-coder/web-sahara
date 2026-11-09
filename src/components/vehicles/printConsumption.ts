@@ -52,7 +52,7 @@ const remainingOf = (r: PrintRow) => (r.used !== null && r.capacity && !r.estima
 
 /**
  * كشف استهلاك العربات للطباعة بالترويسة الرسمية: كارتات (عدد العربات، الأعلى استهلاكًا، النسبة عن السابق، رسم الفترات)
- * ثم في ورقة واحدة: جدول أعلى 20 عربة استهلاكًا (75%) بجانبه الأعلى استهلاكًا خلال الأسبوع (25%)، ثم التواقيع.
+ * ثم في ورقة واحدة: جدول أعلى 20 عربة استهلاكًا (75%) بجانبه الأعلى استهلاكًا خلال الأسبوع (25%).
  * الطباعة العامة من كل الفئات (الفئة بجانب العربة)، وطباعة الفئة من عرباتها وحدها.
  */
 export const buildConsumptionSheet = (opts: {
@@ -71,7 +71,7 @@ export const buildConsumptionSheet = (opts: {
   const { rows, periods, title, scope, periodLabel, grouped, week, weekRange } = opts;
   const origin = window.location.origin;
   const L = periods.length - 1;
-  const cols = 2 + periods.length + 5;
+  const cols = 2 + periods.length + 6;
   const amountOf = (r: PrintRow) => r.used ?? r.p.reduce((s, x) => s + x, 0);
   // أعلى 20 عربة استهلاكًا (من كل الفئات في الطباعة العامة)
   const ranked = [...rows].sort((a, b) => amountOf(b) - amountOf(a) || a.code.localeCompare(b.code, 'en', { numeric: true }));
@@ -86,19 +86,20 @@ export const buildConsumptionSheet = (opts: {
       fill: p.reduce((s, x) => s + x, 0),
       used: usedList.length ? usedList.reduce((s, r) => s + r.used!, 0) : null,
       rem: remList.length ? remList.reduce((s, x) => s + x, 0) : null,
+      cap: list.reduce((s, r) => s + (r.estimated ? 0 : r.capacity), 0),
       tanks: list.reduce((s, r) => s + (r.tanks || 0), 0),
       km: list.reduce((s, r) => s + r.km, 0),
     };
   };
   const totalRow = (label: string, list: PrintRow[], cls: string) => {
     const t = totals(list);
-    return `<tr class="${cls}"><td colspan="2" class="lbl">${esc(label)} <span class="cnt">${list.length} عربة</span></td>${t.p.map(v => `<td>${cell(v)}</td>`).join('')}<td class="hl">${n(t.fill)}</td><td class="hl">${t.used === null ? dash : n(t.used)}</td><td>${t.rem === null ? dash : n(t.rem)}</td><td>${t.tanks || dash}</td><td>${cell(t.km)}</td></tr>`;
+    return `<tr class="${cls}"><td colspan="2" class="lbl">${esc(label)} <span class="cnt">${list.length} عربة</span></td>${t.p.map(v => `<td>${cell(v)}</td>`).join('')}<td class="hl">${n(t.fill)}</td><td class="hl">${t.used === null ? dash : n(t.used)}</td><td>${cell(t.cap)}</td><td>${t.rem === null ? dash : n(t.rem)}</td><td>${t.tanks || dash}</td><td>${cell(t.km)}</td></tr>`;
   };
 
   const body = topRows.map((r, i) => {
     const fill = r.p.reduce((s, x) => s + x, 0);
     const rem = remainingOf(r);
-    return `<tr><td class="idx">${i + 1}</td><td class="code"><b>${esc(r.code)}</b>${grouped ? `<span class="cat">${esc(r.cat)}</span>` : ''}</td>${r.p.map((v, k) => `<td${k === L ? ' class="last"' : ''}>${cell(v)}</td>`).join('')}<td class="hl">${n(fill)}</td><td class="hl strong">${r.used === null ? dash : n(r.used) + (r.estimated ? '<sup>*</sup>' : '')}</td><td>${rem === null ? dash : n(rem)}</td><td>${r.tanks ?? dash}</td><td>${cell(r.km)}</td></tr>`;
+    return `<tr><td class="idx">${i + 1}</td><td class="code"><b>${esc(r.code)}</b>${grouped ? `<span class="cat">${esc(r.cat)}</span>` : ''}</td>${r.p.map((v, k) => `<td${k === L ? ' class="last"' : ''}>${cell(v)}</td>`).join('')}<td class="hl">${n(fill)}</td><td class="hl strong">${r.used === null ? dash : n(r.used)}</td><td>${r.estimated ? dash : n(r.capacity)}</td><td>${rem === null ? dash : n(rem)}</td><td>${r.tanks ?? dash}</td><td>${cell(r.km)}</td></tr>`;
   }).join('');
 
   // الكارتات
@@ -111,25 +112,56 @@ export const buildConsumptionSheet = (opts: {
   const pctTxt = pct === null ? '—' : `${pct > 0 ? '+' : pct < 0 ? '−' : ''}${Math.abs(pct).toFixed(1)}%`;
   const active = rows.filter(r => r.p[L] > 0).length;
 
-  // رسم الفترات: الأقدم يمينًا مثل الجدول، والفترة الأخيرة بلون مميز
-  const W = 300, H = 60, top_ = 12, base = 45, gap = 14;
+  // رسم أعمدة الفترات: الأقدم يمينًا مثل الجدول، والفترة الأخيرة بلون مميز وقيمتها في شارة
+  const W = 340, H = 92, top_ = 18, base = 66, gap = 22;
   const bw = (W - gap * (periods.length + 1)) / periods.length;
   const max = Math.max(1, ...all.p);
+  const grid = [0.25, 0.5, 0.75, 1].map(f => `<line x1="6" x2="${W - 6}" y1="${base - f * (base - top_)}" y2="${base - f * (base - top_)}" stroke="#e2e8f0" stroke-width="0.8" stroke-dasharray="3 3"/>`).join('');
   const bars = all.p.map((v, k) => {
-    const h = Math.max(v ? 3 : 1.5, (v / max) * (base - top_));
+    const on = k === L;
+    const h = Math.max(v ? 4 : 2, (v / max) * (base - top_));
     const x = W - gap - (k + 1) * bw - k * gap;
-    const c = k === L ? '#1e3a8a' : '#cbd5e1';
-    return `<rect x="${x}" y="${base - h}" width="${bw}" height="${h}" rx="3" fill="${c}"/>`
-      + `<text x="${x + bw / 2}" y="${base - h - 4}" class="bv${k === L ? ' on' : ''}">${v ? n(v) : ''}</text>`
-      + `<text x="${x + bw / 2}" y="${base + 13}" class="bn${k === L ? ' on' : ''}">${esc(periods[k].name)}</text>`;
+    const cx = x + bw / 2;
+    const label = v ? n(v) : '0';
+    const pill = on
+      ? `<rect x="${cx - 22}" y="${base - h - 15}" width="44" height="12" rx="6" fill="#1e3a8a"/><text x="${cx}" y="${base - h - 6.5}" class="bv on">${label}</text>`
+      : `<text x="${cx}" y="${base - h - 4}" class="bv">${label}</text>`;
+    return `<rect x="${x}" y="${top_}" width="${bw}" height="${base - top_}" rx="5" fill="#f8fafc"/>`
+      + `<rect x="${x}" y="${base - h}" width="${bw}" height="${h}" rx="5" fill="url(#${on ? 'gOn' : 'gOff'})"/>`
+      + pill
+      + `<text x="${cx}" y="${base + 12}" class="bn${on ? ' on' : ''}">${esc(periods[k].name)}</text>`
+      + `<text x="${cx}" y="${base + 22}" class="br" direction="ltr">${esc(periods[k].range)}</text>`;
   }).join('');
-  const chart = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="xMidYMid meet"><line x1="${gap / 2}" y1="${base}" x2="${W - gap / 2}" y2="${base}" stroke="#94a3b8" stroke-width="1"/>${bars}</svg>`;
+  const chart = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="xMidYMid meet"><defs>`
+    + `<linearGradient id="gOn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b5bdb"/><stop offset="1" stop-color="#1e3a8a"/></linearGradient>`
+    + `<linearGradient id="gOff" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cbd5e1"/><stop offset="1" stop-color="#94a3b8"/></linearGradient>`
+    + `</defs>${grid}<line x1="6" y1="${base}" x2="${W - 6}" y2="${base}" stroke="#94a3b8" stroke-width="1"/>${bars}</svg>`;
+
+  const icon = (d: string) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const I_TRUCK = icon('<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>');
+  const I_TROPHY = icon('<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>');
+  const I_TREND = pct !== null && pct < 0
+    ? icon('<polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/>')
+    : icon('<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>');
+  const I_CHART = icon('<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>');
+  const activePct = rows.length ? Math.round((active / rows.length) * 100) : 0;
+  const cmpMax = Math.max(1, last, prev);
+  const fleetUsed = all.used ?? all.fill;
+  const topShare = top && fleetUsed ? Math.round((amountOf(top) / fleetUsed) * 100) : 0;
 
   const cards = `<section class="cards">
-  <div class="card"><div class="k">عدد العربات</div><div class="v">${rows.length.toLocaleString('en-US')}<small>عربة</small></div><div class="s"><b>${active}</b> فوّلت في ${esc(periods[L].name)}</div></div>
-  <div class="card"><div class="k">الأعلى استهلاكًا</div><div class="v code">${top ? esc(top.code) : '—'}</div><div class="s">${top ? `<b>${n(amountOf(top))}</b> لتر · ${esc(top.cat)}` : ''}</div></div>
-  <div class="card"><div class="k">النسبة عن السابق</div><div class="v ${pctCls}" dir="ltr">${pctTxt}</div><div class="s">${esc(periods[L].name)} <b>${n(last)}</b> مقابل ${esc(periods[L - 1].name)} <b>${n(prev)}</b> لتر</div></div>
-  <div class="card chart"><div class="k">التفويل في الفترات (لتر)</div>${chart}</div>
+  <div class="kpi t1"><div class="kh"><span class="ic">${I_TRUCK}</span><span class="k">عدد العربات</span></div>
+    <div class="v">${rows.length.toLocaleString('en-US')}<small>عربة</small></div>
+    <div class="meter"><i style="width:${activePct}%"></i></div>
+    <div class="s"><b>${active}</b> فوّلت في ${esc(periods[L].name)} · <b dir="ltr">${activePct}%</b></div></div>
+  <div class="kpi t2"><div class="kh"><span class="ic">${I_TROPHY}</span><span class="k">الأعلى استهلاكًا</span></div>
+    <div class="v code">${top ? esc(top.code) : '—'}${top ? `<small>${esc(top.cat)}</small>` : ''}</div>
+    <div class="meter"><i style="width:${topShare}%"></i></div>
+    <div class="s">${top ? `<b>${n(amountOf(top))}</b> لتر · <b dir="ltr">${topShare}%</b> من الكل` : ''}</div></div>
+  <div class="kpi t3 ${pctCls}"><div class="kh"><span class="ic">${I_TREND}</span><span class="k">النسبة عن السابق</span></div>
+    <div class="v" dir="ltr">${pctTxt}</div>
+    <div class="cmp"><div><span>${esc(periods[L - 1].name)}</span><i style="width:${(prev / cmpMax) * 100}%"></i><b>${n(prev)}</b></div><div class="on"><span>${esc(periods[L].name)}</span><i style="width:${(last / cmpMax) * 100}%"></i><b>${n(last)}</b></div></div></div>
+  <div class="kpi t4 chart"><div class="kh"><span class="ic">${I_CHART}</span><span class="k">التفويل في الفترات</span><span class="tot">${n(all.fill)} لتر</span></div>${chart}</div>
 </section>`;
 
   // الأعلى استهلاكًا خلال الأسبوع: حلقة تغيّر آخر تفويلة عن السابقة، ثم آخر تفويلة والسابقة ومجموع الأسبوع
@@ -185,21 +217,40 @@ body { font-family: 'CairoP', 'Segoe UI', Tahoma, sans-serif; color: #0f172a; fo
 .info b { font-size: 11px; font-weight: 800; }
 
 /* الكارتات */
-.cards { display: grid; grid-template-columns: 1fr 1fr 1fr 1.6fr; gap: 8px; margin-bottom: 7px; }
-.card { position: relative; border: 1px solid #cbd5e1; border-radius: 10px; padding: 5px 12px; overflow: hidden; }
-.card::before { content: ''; position: absolute; inset-inline-start: 0; top: 0; bottom: 0; width: 4px; background: #1e3a8a; }
-.card .k { font-size: 9.5px; font-weight: 800; color: #475569; }
-.card .v { font-size: 18px; font-weight: 900; line-height: 1.25; margin-top: 2px; }
-.card .v small { font-size: 10px; font-weight: 700; color: #64748b; margin-inline-start: 4px; }
-.card .v.code { direction: ltr; text-align: right; }
-.card .v.up { color: #be123c; }
-.card .v.down { color: #0f766e; }
-.card .s { font-size: 9.5px; color: #64748b; }
-.card .s b { color: #0f172a; font-weight: 800; }
-.card.chart { padding-bottom: 2px; }
-.bv { font-size: 9px; font-weight: 800; fill: #475569; text-anchor: middle; }
-.bn { font-size: 9px; font-weight: 700; fill: #64748b; text-anchor: middle; }
-.bv.on, .bn.on { fill: #1e3a8a; font-weight: 900; }
+.cards { display: grid; grid-template-columns: 1fr 1fr 1fr 1.75fr; gap: 8px; margin-bottom: 8px; }
+.kpi { position: relative; border: 1px solid #e2e8f0; border-radius: 12px; padding: 7px 11px 8px; overflow: hidden; background: linear-gradient(160deg, var(--tint) 0%, #fff 62%); }
+.kpi::after { content: ''; position: absolute; top: 0; inset-inline: 0; height: 3px; background: var(--c); }
+.t1 { --c: #1e3a8a; --tint: #eef2ff; }
+.t2 { --c: #d97706; --tint: #fffbeb; }
+.t3 { --c: #64748b; --tint: #f8fafc; }
+.t3.up { --c: #e11d48; --tint: #fff1f2; }
+.t3.down { --c: #059669; --tint: #ecfdf5; }
+.t4 { --c: #1e3a8a; --tint: #f8fafc; padding-bottom: 2px; }
+.kh { display: flex; align-items: center; gap: 6px; }
+.ic { width: 20px; height: 20px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; background: var(--c); color: #fff; flex-shrink: 0; }
+.ic svg { width: 12px; height: 12px; }
+.k { font-size: 9.5px; font-weight: 800; color: #475569; }
+.tot { margin-inline-start: auto; font-size: 9px; font-weight: 800; color: #1e3a8a; background: #eef2ff; border-radius: 999px; padding: 0 8px; }
+.kpi .v { font-size: 21px; font-weight: 900; line-height: 1.2; margin-top: 4px; color: #0f172a; }
+.kpi .v small { font-size: 9.5px; font-weight: 700; color: #64748b; margin-inline-start: 5px; }
+.kpi .v.code { direction: ltr; text-align: right; }
+.kpi .v.code small { direction: rtl; unicode-bidi: isolate; margin-left: 7px; }
+.t3 .v { color: var(--c); }
+.meter { height: 5px; border-radius: 999px; background: #e2e8f0; margin: 5px 0 3px; overflow: hidden; }
+.meter i { display: block; height: 100%; border-radius: 999px; background: var(--c); margin-inline-start: 0; }
+.kpi .s { font-size: 9px; color: #64748b; font-weight: 600; }
+.kpi .s b { color: #0f172a; font-weight: 800; }
+.cmp { margin-top: 4px; display: flex; flex-direction: column; gap: 3px; }
+.cmp div { display: grid; grid-template-columns: 44px 1fr 38px; align-items: center; gap: 5px; font-size: 8.5px; font-weight: 700; color: #64748b; }
+.cmp i { display: block; height: 6px; border-radius: 999px; background: #cbd5e1; }
+.cmp .on i { background: var(--c); }
+.cmp .on { color: #0f172a; }
+.cmp b { font-weight: 800; color: #0f172a; text-align: left; }
+.bv { font-size: 8.5px; font-weight: 800; fill: #475569; text-anchor: middle; }
+.bv.on { fill: #fff; font-weight: 900; }
+.bn { font-size: 8.5px; font-weight: 700; fill: #475569; text-anchor: middle; }
+.bn.on { fill: #1e3a8a; font-weight: 900; }
+.br { font-size: 7px; font-weight: 600; fill: #94a3b8; text-anchor: middle; }
 
 /* الجدول */
 table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #94a3b8; border-radius: 8px; overflow: hidden; }
@@ -254,11 +305,6 @@ tr { page-break-inside: avoid; }
 .wt b { display: block; font-size: 12px; font-weight: 900; }
 .wt small { font-size: 7.5px; font-weight: 700; color: #94a3b8; white-space: nowrap; }
 
-/* الأسفل */
-.note { margin-top: 6px; font-size: 9px; color: #475569; }
-.sign { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 8px; page-break-inside: avoid; }
-.sign div { text-align: center; font-size: 10.5px; font-weight: 800; }
-.sign div span { display: block; margin-top: 20px; border-top: 1px dashed #64748b; padding-top: 3px; font-size: 9px; font-weight: 600; color: #64748b; }
 </style></head><body><div id="sheet">
 <header class="head">
   <div class="org">
@@ -271,20 +317,17 @@ tr { page-break-inside: avoid; }
 </header>
 <div class="info">
   <div><span>الفترة</span><b>${esc(periodLabel)}</b></div>
-  <div><span>نوع الكشف</span><b>${grouped ? 'عام' : `فئة: ${esc(scope)}`} — أعلى ${Math.min(SHEET_TOP, rows.length)} من ${rows.length} عربة</b></div>
   <div><span>الأعمدة</span><b>${periods.map(p => esc(p.name)).join(' · ')}</b></div>
   <div><span>تاريخ الطباعة</span><b dir="ltr">${printed}</b></div>
 </div>
 ${cards}
 <div class="main">
 <table>
-<thead><tr><th>ت</th><th>العربة</th>${periods.map((p, k) => `<th${k === L ? ' class="last"' : ''}>${esc(p.name)}<small dir="ltr">${esc(p.range)}</small></th>`).join('')}<th>مجموع التفويل</th><th>الاستهلاك</th><th>المتبقي</th><th>عدد الخزانات</th><th>المسافة المقطوعة<small>كم</small></th></tr></thead>
+<thead><tr><th>ت</th><th>العربة</th>${periods.map((p, k) => `<th${k === L ? ' class="last"' : ''}>${esc(p.name)}<small dir="ltr">${esc(p.range)}</small></th>`).join('')}<th>مجموع التفويل</th><th>الاستهلاك</th><th>سعة الخزان<small>لتر</small></th><th>المتبقي</th><th>عدد الخزانات</th><th>المسافة المقطوعة<small>كم</small></th></tr></thead>
 <tbody>${body || `<tr><td colspan="${cols}">لا توجد عربات</td></tr>`}${topRows.length ? totalRow(`مجموع أعلى ${topRows.length}`, topRows, 'all') : ''}</tbody>
 </table>
 ${side}
 </div>
-<div class="note">الاستهلاك = مجموع التفويلات بعد استبعاد أول تفويلة بلا سابقة وقص ما يزيد على سعة الخزان · المتبقي = سعة الخزان ناقص الاستهلاك · <sup>*</sup> تقديري: سعة الخزان غير مسجلة · الكميات باللتر</div>
-<div class="sign"><div>معدّ الكشف<span>الاسم والتوقيع</span></div><div>مسؤول الوقود<span>الاسم والتوقيع</span></div><div>المدير المختص<span>الاسم والتوقيع</span></div></div>
 </div></body></html>`;
 };
 

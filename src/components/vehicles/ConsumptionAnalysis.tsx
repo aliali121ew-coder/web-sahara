@@ -1,6 +1,6 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowDownLeft, ArrowDownWideNarrow, ArrowUpRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, FlaskConical, Printer, Repeat2, Search, X } from 'lucide-react';
+import { ArrowDownLeft, ArrowDownWideNarrow, ArrowUpRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, FlaskConical, Printer, Route, Repeat2, Search, X } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
 import { FREQUENT_DAYS, VEHICLE_PROFILES_KEY, VEHICLE_ROUTES_KEY, capConsumption, daysBetween, fillConsumption, imageGround, tankCaps, tankCountOf, vehicleCategory, vehicleImage, withTanks, type DayFill, type VehicleProfile, type VehicleRoute } from '../../lib/vehicleFuel';
@@ -8,6 +8,7 @@ import { VEHICLE_REGISTRY_KEY, type VehicleRegistryEntry } from '../../lib/vehic
 import { useCategoryNames, useVehicleNames } from './categories';
 import { VehicleArt } from './VehicleArt';
 import { buildConsumptionSheet, printHtml, type WeekTop } from './printConsumption';
+import { DistanceEntry } from './DistanceEntry';
 
 type Unit = 'day' | 'week' | 'month';
 type Status = 'حرج' | 'مرتفع' | 'طبيعي' | 'منخفض' | 'جديد';
@@ -156,8 +157,9 @@ export const ConsumptionAnalysis: React.FC<{
   const [labels] = useCategoryNames();
   const [profiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
   const [registry] = useSyncedStorage<VehicleRegistryEntry[]>(VEHICLE_REGISTRY_KEY, []);
-  const [routes] = useSyncedStorage<VehicleRoute[]>(VEHICLE_ROUTES_KEY, []);
+  const [routes, setRoutes] = useSyncedStorage<VehicleRoute[]>(VEHICLE_ROUTES_KEY, []);
   const [printOpen, setPrintOpen] = useState(false);
+  const [distOpen, setDistOpen] = useState(false);
 
   const periods = useMemo(() => (fromDate ? buildRangePeriods(fromDate, endDate) : buildPeriods(endDate, unit)), [fromDate, endDate, unit]);
   const periodOf = (date: string) => periods.findIndex(p => date >= p.from && date <= p.to);
@@ -410,6 +412,19 @@ export const ConsumptionAnalysis: React.FC<{
               <button key={u} type="button" aria-pressed={!fromDate && unit === u} onClick={() => { setFromDate(null); setUnit(u); setPage(0); }} className={`h-9 px-4 rounded-xl border text-sm font-bold cursor-pointer outline-hidden transition-all duration-200 focus-visible:ring-2 focus-visible:ring-indigo-400 ${!fromDate && unit === u ? 'border-indigo-100 dark:border-indigo-900/60 bg-gradient-to-l from-indigo-50 to-sky-50 dark:from-indigo-950/50 dark:to-sky-950/30 text-indigo-700 dark:text-indigo-300 shadow-sm' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}>{l}</button>
             ))}
           </div>
+          <button type="button" onClick={() => setDistOpen(true)} title="رفع المسافات المقطوعة للفترة المحددة قبل الطباعة" className="inline-flex items-center gap-2 h-10 px-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-emerald-400 cursor-pointer">
+            <Route className="w-4 h-4 text-emerald-600" />المسافات المقطوعة
+          </button>
+          {distOpen && (
+            <DistanceEntry
+              vehicles={rows.map(r => ({ vehicle: r.vehicle, code: r.code, cat: r.cat, amount: r.used ?? r.p.reduce((s, x) => s + x, 0) }))}
+              from={fromDate ? periods[3].from : periods[0].from}
+              to={periods[3].to}
+              routes={routes}
+              setRoutes={setRoutes}
+              onClose={() => setDistOpen(false)}
+            />
+          )}
           <div className="relative">
             <button type="button" aria-haspopup="menu" aria-expanded={printOpen} onClick={() => setPrintOpen(o => !o)} className="inline-flex items-center gap-2 h-10 px-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-indigo-400 cursor-pointer">
               <Printer className="w-4 h-4 text-indigo-600" />طباعة
