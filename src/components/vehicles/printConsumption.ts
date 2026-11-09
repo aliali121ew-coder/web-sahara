@@ -127,28 +127,32 @@ export const buildConsumptionSheet = (opts: {
   const active = rows.filter(r => r.p[L] > 0).length;
 
   // رسم أعمدة الفترات: الأقدم يمينًا مثل الجدول، والفترة الأخيرة بلون مميز وقيمتها في شارة
-  const W = 340, H = 74, top_ = 13, base = 54, gap = 30;
-  const bw = 18;
+  const W = 340, H = 74, top_ = 13, base = 54, gap = 18;
   const slot = (W - gap) / periods.length;
+  const bw = Math.min(46, slot - 26);
   const max = Math.max(1, ...all.p);
   const grid = [0.5, 1].map(f => `<line x1="6" x2="${W - 6}" y1="${base - f * (base - top_)}" y2="${base - f * (base - top_)}" stroke="#e2e8f0" stroke-width="0.8" stroke-dasharray="3 3"/>`).join('');
+  /** عمود بزوايا علوية مستديرة وقاعدة مستقيمة */
+  const col = (x: number, y: number, w: number, h: number) => {
+    const r = Math.min(6, h, w / 2);
+    return `M${x},${base}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${base}Z`;
+  };
   const bars = all.p.map((v, k) => {
     const on = k === L;
-    const h = Math.max(bw, (v / max) * (base - top_));
+    const h = v ? Math.max(3, (v / max) * (base - top_)) : 1.5;
     const cx = W - gap / 2 - slot * (k + 0.5);
     const x = cx - bw / 2;
     const y = base - h;
-    const color = on ? '#059669' : '#6ee7b7';
-    return `<rect x="${x}" y="${y}" width="${bw}" height="${h}" rx="${bw / 2}" fill="url(#${on ? 'gOn' : 'gOff'})"/>`
-      + `<circle cx="${cx}" cy="${y + bw / 2}" r="${bw / 2 - 3.5}" fill="#fff" stroke="${color}" stroke-width="2"/>`
+    return `<path d="${col(x, top_, bw, base - top_)}" fill="#f1f5f9"/>`
+      + `<path d="${col(x, y, bw, h)}" fill="url(#${on ? 'gOn' : 'gOff'})"/>`
       + `<text x="${cx}" y="${y - 3}" class="bv${on ? ' on' : ''}">${v ? n(v) : '0'}</text>`
       + `<text x="${cx}" y="${base + 10}" class="bn${on ? ' on' : ''}">${esc(periods[k].name)}</text>`
       + `<text x="${cx}" y="${base + 19}" class="br" direction="ltr">${esc(periods[k].range)}</text>`;
   }).join('');
   const chart = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="xMidYMid meet"><defs>`
-    + `<linearGradient id="gOn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#10b981"/><stop offset="1" stop-color="#6ee7b7"/></linearGradient>`
-    + `<linearGradient id="gOff" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a7f3d0"/><stop offset="1" stop-color="#d1fae5"/></linearGradient>`
-    + `</defs>${grid}${bars}</svg>`;
+    + `<linearGradient id="gOn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#059669"/><stop offset="1" stop-color="#34d399"/></linearGradient>`
+    + `<linearGradient id="gOff" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#94a3b8"/><stop offset="1" stop-color="#cbd5e1"/></linearGradient>`
+    + `</defs>${grid}<line x1="6" y1="${base}" x2="${W - 6}" y2="${base}" stroke="#cbd5e1" stroke-width="1"/>${bars}</svg>`;
 
   const icon = (d: string) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
   const I_TRUCK = icon('<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>');
