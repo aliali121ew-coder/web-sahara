@@ -97,22 +97,10 @@ export const buildConsumptionSheet = (opts: {
     };
   };
 
-  /** متوسط الفترات السابقة التي فيها تفويل */
-  const prevAvg = (p: number[]) => {
-    const list = p.slice(0, L).filter(v => v > 0);
-    return list.length ? list.reduce((s, v) => s + v, 0) / list.length : null;
-  };
-  /** لون شارة الاستهلاك: أخضر إن قلت الفترة الحالية عن متوسط السابقة، وأحمر غير ذلك */
-  const trend = (r: PrintRow) => {
-    const avg = prevAvg(r.p);
-    const cur = r.p[L];
-    return avg === null || !cur || Math.abs(cur - avg) < 0.5 ? 'flat' : cur > avg ? 'up' : 'down';
-  };
-
   const body = topRows.map((r, i) => {
     const fill = r.p.reduce((s, x) => s + x, 0);
     const rem = remainingOf(r);
-    return `<tr><td class="idx">${i + 1}</td><td class="code"><b>${esc(r.code)}</b>${grouped ? `<span class="cat">${esc(r.cat)}</span>` : ''}</td>${r.p.map((v, k) => `<td${k === L ? ' class="last"' : ''}>${cell(v)}</td>`).join('')}<td class="hl">${n(fill)}</td><td>${r.used === null ? dash : `<span class="pill ${trend(r)}">${n(r.used)}</span>`}</td><td>${r.estimated ? dash : n(r.capacity)}</td><td>${rem === null ? dash : n(rem)}</td><td>${r.tanks ?? dash}</td><td>${cell(r.km)}</td></tr>`;
+    return `<tr><td class="idx">${i + 1}</td><td class="code"><b>${esc(r.code)}</b>${grouped ? `<span class="cat">${esc(r.cat)}</span>` : ''}</td>${r.p.map((v, k) => `<td${k === L ? ' class="last"' : ''}>${cell(v)}</td>`).join('')}<td class="hl">${n(fill)}</td><td>${r.used === null ? dash : `<span class="pill">${n(r.used)}</span>`}</td><td>${r.estimated ? dash : n(r.capacity)}</td><td>${rem === null ? dash : n(rem)}</td><td>${r.tanks ?? dash}</td><td>${cell(r.km)}</td></tr>`;
   }).join('');
 
   // الكارتات
@@ -213,7 +201,7 @@ body { font-family: 'CairoP', 'Segoe UI', Tahoma, sans-serif; color: #0f172a; fo
 .head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; padding-bottom: 6px; border-bottom: 3px double #1e3a8a; }
 .org { display: flex; flex-direction: column; gap: 3px; }
 .logos { display: flex; align-items: center; gap: 8px; }
-.logos img { height: 46px; width: auto; object-fit: contain; }
+.logos img { height: 36px; width: auto; object-fit: contain; }
 .org h1 { margin: 0; font-size: 11.5px; font-weight: 900; }
 .org p { margin: 0; font-size: 9.5px; font-weight: 700; color: #334155; }
 .mid { text-align: center; }
@@ -276,10 +264,7 @@ td.idx { color: #64748b; width: 26px; }
 td.code { text-align: right; white-space: nowrap; }
 td.code b { font-weight: 900; direction: ltr; unicode-bidi: isolate; }
 td.code .cat { font-size: 8.5px; font-weight: 700; color: #64748b; margin-inline-start: 5px; }
-.pill { display: inline-block; min-width: 46px; padding: 0 8px; border-radius: 6px; font-weight: 800; line-height: 1.55; }
-.pill.up { background: #ffe4e6; color: #be123c; }
-.pill.down { background: #d1fae5; color: #047857; }
-.pill.flat { background: #ffe4e6; color: #be123c; }
+.pill { display: inline-block; min-width: 46px; padding: 0 8px; border-radius: 6px; font-weight: 800; line-height: 1.55; background: #ffe4e6; color: #be123c; }
 td.last { background: #eff6ff !important; font-weight: 800; }
 td.hl { font-weight: 800; }
 td sup { color: #64748b; }
