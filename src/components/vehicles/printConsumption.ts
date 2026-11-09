@@ -17,7 +17,13 @@ export interface PrintRow {
   km: number;
 }
 
-export interface PrintPeriod { name: string; range: string }
+export interface PrintPeriod {
+  name: string;
+  range: string;
+  /** حدود الفترة YYYY/MM/DD — لحساب المعدل اليومي (بدونها تُعد يومًا واحدًا) */
+  from?: string;
+  to?: string;
+}
 
 /** عربة في عمود «الأعلى استهلاكًا خلال الأسبوع» */
 export interface WeekTop {
@@ -105,7 +111,6 @@ export const buildConsumptionSheet = (opts: {
 
   // الكارتات
   const all = totals(rows);
-  const top = ranked[0];
   // النسبة: مجموع أيام الكشف مقابل نفس عدد الأيام قبلها مباشرة
   const last = curTotal;
   const prev = prevTotal;
@@ -144,25 +149,32 @@ export const buildConsumptionSheet = (opts: {
 
   const icon = (d: string) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
   const I_TRUCK = icon('<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>');
-  const I_TROPHY = icon('<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>');
+  const I_FUEL = icon('<line x1="3" x2="15" y1="22" y2="22"/><line x1="4" x2="14" y1="9" y2="9"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/>');
   const I_TREND = pct !== null && pct < 0
     ? icon('<polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/>')
     : icon('<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>');
   const I_CHART = icon('<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>');
   const activePct = rows.length ? Math.round((active / rows.length) * 100) : 0;
   const cmpMax = Math.max(1, last, prev);
-  const fleetUsed = all.used ?? all.fill;
-  const topShare = top && fleetUsed ? Math.round((amountOf(top) / fleetUsed) * 100) : 0;
+  // الاستهلاك اليومي لكل العربات: تفويل الفترة الأخيرة ÷ أيامها، مقابل معدل الفترات السابقة
+  const ms = (d: string) => { const [y, m, dd] = d.split('/').map(Number); return Date.UTC(y, m - 1, dd); };
+  const daysOf = (pp: PrintPeriod) => (pp.from && pp.to ? Math.round((ms(pp.to) - ms(pp.from)) / 86400000) + 1 : 1);
+  const daily = all.p.map((v, k) => v / daysOf(periods[k]));
+  const today = daily[L];
+  const before = daily.slice(0, L).filter(v => v > 0);
+  const beforeAvg = before.length ? before.reduce((s, v) => s + v, 0) / before.length : null;
+  const dailyMax = Math.max(1, ...daily);
+  const perVehicle = active ? today / active : 0;
 
   const cards = `<section class="cards">
-  <div class="kpi t1"><div class="kh"><span class="ic">${I_TRUCK}</span><span class="k">عدد العربات</span></div>
-    <div class="v">${rows.length.toLocaleString('en-US')}<small>عربة</small></div>
+  <div class="kpi t1"><div class="kh"><span class="ic">${I_TRUCK}</span><span class="k">العربات التي فوّلت · ${esc(periods[L].name)}</span></div>
+    <div class="v">${active.toLocaleString('en-US')}<small>من أصل ${rows.length.toLocaleString('en-US')} عربة</small></div>
     <div class="meter"><i style="width:${activePct}%"></i></div>
-    <div class="s"><b>${active}</b> فوّلت في ${esc(periods[L].name)} · <b dir="ltr">${activePct}%</b></div></div>
-  <div class="kpi t2"><div class="kh"><span class="ic">${I_TROPHY}</span><span class="k">الأعلى استهلاكًا</span></div>
-    <div class="v code">${top ? esc(top.code) : '—'}${top ? `<small>${esc(top.cat)}</small>` : ''}</div>
-    <div class="meter"><i style="width:${topShare}%"></i></div>
-    <div class="s">${top ? `<b>${n(amountOf(top))}</b> لتر · <b dir="ltr">${topShare}%</b> من الكل` : ''}</div></div>
+    <div class="s"><b dir="ltr">${activePct}%</b> من عربات الكشف · <b>${(rows.length - active).toLocaleString('en-US')}</b> لم تفوّل</div></div>
+  <div class="kpi t2"><div class="kh"><span class="ic">${I_FUEL}</span><span class="k">الاستهلاك اليومي · كل العربات</span></div>
+    <div class="v">${n(today)}<small>لتر/يوم</small></div>
+    <div class="meter"><i style="width:${(today / dailyMax) * 100}%"></i></div>
+    <div class="s">متوسط العربة <b>${n(perVehicle)}</b> لتر${beforeAvg !== null ? ` · السابقة <b>${n(beforeAvg)}</b> لتر/يوم` : ''}</div></div>
   <div class="kpi t3 ${pctCls}"><div class="kh"><span class="ic">${I_TREND}</span><span class="k">النسبة عن الفترة السابقة</span></div>
     <div class="v" dir="ltr">${pctTxt}</div>
     <div class="cmp"><div><span dir="ltr">${esc(prevRange)}</span><i style="width:${(prev / cmpMax) * 100}%"></i><b>${n(prev)}</b></div><div class="on"><span dir="ltr">${esc(curRange)}</span><i style="width:${(last / cmpMax) * 100}%"></i><b>${n(last)}</b></div></div></div>
