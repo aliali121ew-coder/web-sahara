@@ -563,10 +563,12 @@ export interface VehicleProfile {
   type: string;
   /** سعة الخزان (لتر): تفويلة أكبر منها مستحيلة */
   tankLiters: number | null;
-  /** سعة الخزان الثاني (لتر) — خزان وحدة التبريد في بعض البرادات */
+  /** سعة خزان الاحتياط 1 (لتر) */
   tank2Liters?: number | null;
-  /** سعة الخزان الثالث (لتر) */
+  /** سعة خزان الاحتياط 2 (لتر) */
   tank3Liters?: number | null;
+  /** سعة خزان البراد (وحدة التبريد) باللتر */
+  reeferTankLiters?: number | null;
   /** عدد الخزانات المختار في تفاصيل العربة (يُحفظ ولو لم تُدخل السعات بعد) */
   tankCount?: number | null;
   /** المعدل المرجعي للقيادة (لتر لكل 100 كم) — لمختبر العربة */
@@ -602,8 +604,28 @@ export const fileDayStart = (now: number) => {
   return d.getTime() > now ? d.getTime() - 86400000 : d.getTime();
 };
 
+/** خانات خزانات العربة بالترتيب: الرئيسي، الاحتياط 1، الاحتياط 2، البراد */
+export const TANK_SLOTS = [
+  { field: 'tankLiters', label: 'الخزان الرئيسي' },
+  { field: 'tank2Liters', label: 'خزان الاحتياط 1' },
+  { field: 'tank3Liters', label: 'خزان الاحتياط 2' },
+  { field: 'reeferTankLiters', label: 'خزان البراد' },
+] as const;
+/** سعة كل خانة (null = بلا سعة) */
+export const tankSlotsOf = (p: VehicleProfile | undefined): (number | null)[] =>
+  [p?.tankLiters ?? null, p?.tank2Liters ?? null, p?.tank3Liters ?? null, p?.reeferTankLiters ?? null];
+/**
+ * الخزانات الموجودة في العربة: الرئيسي دائمًا، وكل خانة لها سعة.
+ * الملفات الأقدم (عدد مختار بلا سعات ولا خزان براد) تعني أول N من الرئيسي والاحتياطين.
+ */
+export const tankOnOf = (p: VehicleProfile | undefined): boolean[] => {
+  const caps = tankSlotsOf(p);
+  const n = !p?.reeferTankLiters && p?.tankCount ? Math.min(3, p.tankCount) : 0;
+  return caps.map((c, i) => i === 0 || !!c || (i < 3 && i < n));
+};
+
 /** سعات خزانات العربة المسجلة بالترتيب */
-export const tankCaps = (p: VehicleProfile | undefined) => [p?.tankLiters, p?.tank2Liters, p?.tank3Liters].filter((c): c is number => !!c);
+export const tankCaps = (p: VehicleProfile | undefined) => tankSlotsOf(p).filter((c): c is number => !!c);
 
 /**
  * سعات خزانات العربات (لتر)، بالترتيب: الرئيسي ثم الثاني ثم الثالث.
@@ -663,7 +685,7 @@ export const SHEET_TANK_CODES = Object.keys(VEHICLE_TANKS);
  * ما يُدخل في تفاصيل العربة يبقى هو المعتمد، والحفظ من التفاصيل يثبّت سعات الكشف في ملفها.
  */
 export const withTanks = (p: VehicleProfile | undefined, vehicle: string): VehicleProfile | undefined => {
-  if (p?.tankCount || p?.tankLiters || p?.tank2Liters || p?.tank3Liters) return p;
+  if (p?.tankCount || p?.tankLiters || p?.tank2Liters || p?.tank3Liters || p?.reeferTankLiters) return p;
   const caps = tanksOf(p?.name || vehicle);
   if (!caps) return p;
   const base: VehicleProfile = p || { id: vehicle, name: '', type: '', tankLiters: null, dailyLimit: null, driver: '', department: '', notes: '', photo: '', updatedAt: '', by: '' };
@@ -671,7 +693,8 @@ export const withTanks = (p: VehicleProfile | undefined, vehicle: string): Vehic
 };
 
 /** عدد خزانات العربة: المختار في تفاصيلها، وللملفات الأقدم آخر خزان له سعة؛ null = غير محدد */
-export const tankCountOf = (p: VehicleProfile | undefined) => p?.tankCount || (p?.tank3Liters ? 3 : p?.tank2Liters ? 2 : p?.tankLiters ? 1 : null);
+export const tankCountOf = (p: VehicleProfile | undefined) =>
+  p?.tankCount || ((p?.tank3Liters ? 3 : p?.tank2Liters ? 2 : p?.tankLiters ? 1 : 0) + (p?.reeferTankLiters ? 1 : 0)) || null;
 
 export const checkFills = (fills: DayFill[], profile: VehicleProfile | undefined): FillCheck[] => {
   const out: FillCheck[] = [];

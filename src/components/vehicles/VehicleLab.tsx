@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Building2, CalendarDays, ChevronLeft, ChevronRight, ClipboardList, Fuel, LineChart, Loader2, RefreshCw, UserRound, Users } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import {
-  VEHICLE_PROFILES_KEY, categoryLabel, labImage, tankCountOf, vehicleCategory, withTanks,
+  VEHICLE_PROFILES_KEY, categoryLabel, labImage, tankOnOf, tankSlotsOf, vehicleCategory, withTanks,
   type DayFill, type VehicleProfile, type VehicleRefill,
 } from '../../lib/vehicleFuel';
 import { VEHICLE_REGISTRY_KEY, readVehicleRegistry, type VehicleRegistryEntry } from '../../lib/vehicleRegistry';
@@ -79,9 +79,10 @@ const FUEL = {
 };
 // الزجاج في رسم الخزان يبدأ من 11.28% من الأسفل ويرتفع 71.27% من الصورة
 const TANKS = [
-  { name: 'خزان المحرك', short: 'المحرك', color: '#4F46E5' },
-  { name: 'الخزان الثاني', short: 'الثاني', color: '#0EA5E9' },
-  { name: 'الخزان الثالث', short: 'الثالث', color: '#14B8A6' },
+  { name: 'الخزان الرئيسي', short: 'الرئيسي', color: '#4F46E5' },
+  { name: 'خزان الاحتياط 1', short: 'احتياط 1', color: '#0EA5E9' },
+  { name: 'خزان الاحتياط 2', short: 'احتياط 2', color: '#14B8A6' },
+  { name: 'خزان البراد', short: 'البراد', color: '#F59E0B' },
 ];
 const GLASS_BOTTOM = 11.28;
 const GLASS_HEIGHT = 71.27;
@@ -177,14 +178,16 @@ export const VehicleLab: React.FC<{
   // العدد والسعات تُحدد من تفاصيل العربة. تفويلة اليوم تملأ خزان المحرك أولًا، والباقي يعبر إلى ما بعده،
   // وما يزيد على مجموع السعات = فوق السعة ويظهر على آخر خزان له سعة
   const dayTotal = lastDayLines.reduce((s, r) => s + r.qty, 0);
-  const caps = [profile?.tankLiters ?? null, profile?.tank2Liters ?? null, profile?.tank3Liters ?? null].slice(0, tankCountOf(profile) ?? 1);
+  // الخزانات الموجودة بترتيب خاناتها (الرئيسي، الاحتياط، البراد) مع اسم ولون كل خانة
+  const slots = tankOnOf(profile).map((o, i) => (o ? i : -1)).filter(i => i >= 0);
+  const caps = slots.map(i => tankSlotsOf(profile)[i]);
   const capSum = caps.reduce<number>((s, c) => s + (c || 0), 0);
   const overflow = caps[0] ? Math.max(0, dayTotal - capSum) : 0;
   let left = dayTotal;
   const tanks = caps.map((cap, i) => {
     const fill = cap ? Math.min(left, cap) : i === 0 ? left : 0;
     left -= fill;
-    return { ...TANKS[i], cap, fill, extra: cap && i === caps.reduce((m, c, j) => (c ? j : m), 0) ? overflow : 0 };
+    return { ...TANKS[slots[i]], cap, fill, extra: cap && i === caps.reduce((m, c, j) => (c ? j : m), 0) ? overflow : 0 };
   });
 
   // ── الرسم

@@ -6,7 +6,7 @@ import { getProfile } from '../../lib/session';
 import { VehicleArt } from './VehicleArt';
 import { useCategoryNames } from './categories';
 import { usePermissions } from '../../lib/usePermission';
-import { FREQUENT_DAYS, formatDay, shrinkImage, tankCaps, tankCountOf, vehicleCategory, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
+import { FREQUENT_DAYS, TANK_SLOTS, formatDay, shrinkImage, tankCaps, tankOnOf, vehicleCategory, type VehicleProfile, type VehicleStat } from '../../lib/vehicleFuel';
 
 export const emptyProfile = (vehicle: string): VehicleProfile => ({
   id: vehicle, name: '', type: '', tankLiters: null, dailyLimit: null, driver: '', department: '', notes: '', photo: '', updatedAt: '', by: '',
@@ -14,7 +14,6 @@ export const emptyProfile = (vehicle: string): VehicleProfile => ({
 
 type Tab = 'info' | 'fills';
 
-const TANK_FIELDS = ['tankLiters', 'tank2Liters', 'tank3Liters'] as const;
 
 /**
  * قائمة سحب جانبية «تفاصيل العربة»: رقم العربة وعدد خزاناتها وسعاتها، وسجل تفويلاتها.
@@ -28,9 +27,15 @@ export const VehicleProfileEditor: React.FC<{
   onClose: () => void;
 }> = ({ stat, profile, editable, onSave, onClose }) => {
   const [p, setP] = useState<VehicleProfile>(profile || emptyProfile(stat.vehicle));
-  const tankCount = tankCountOf(p) ?? 1;
-  // تقليل العدد يلغي سعة الخزانات الزائدة
-  const pickTanks = (n: number) => setP(x => ({ ...x, tankCount: n, tank2Liters: n > 1 ? x.tank2Liters : null, tank3Liters: n > 2 ? x.tank3Liters : null }));
+  // الخزانات: الرئيسي دائمًا، والاحتياط 1 و2 والبراد حسب العربة؛ إلغاء خزان يلغي سعته
+  const [on, setOn] = useState<boolean[]>(() => tankOnOf(profile || emptyProfile(stat.vehicle)));
+  const toggleTank = (i: number) => {
+    if (!i) return;
+    const next = on.map((x, j) => (j === i ? !x : x));
+    setOn(next);
+    setP(x => ({ ...x, tankCount: next.filter(Boolean).length, ...(next[i] ? {} : { [TANK_SLOTS[i].field]: null }) }));
+  };
+  const shown = TANK_SLOTS.map((t, i) => ({ ...t, i })).filter(t => on[t.i]);
   const [catLabels] = useCategoryNames();
   // اسم العربة يعدّله مدير النظام فقط
   const { isAdmin } = usePermissions();
@@ -149,16 +154,16 @@ export const VehicleProfileEditor: React.FC<{
               </label>
               <div className={box}>
                 <span className={label}><Container className="w-3.5 h-3.5 text-sky-500" />عدد الخزانات</span>
-                <div role="group" aria-label="عدد الخزانات" className="grid grid-cols-3 gap-2">
-                  {[1, 2, 3].map(n => (
-                    <button key={n} type="button" disabled={!editable} aria-pressed={tankCount === n} onClick={() => pickTanks(n)} className={`h-11 rounded-xl border text-sm font-black font-mono transition-all cursor-pointer disabled:cursor-default ${tankCount === n ? 'bg-sky-500 border-sky-500 text-white shadow-md shadow-sky-500/25' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 enabled:hover:border-sky-400'}`}>{n}</button>
+                <div role="group" aria-label="عدد الخزانات" className="grid grid-cols-2 gap-2">
+                  {TANK_SLOTS.map((t, i) => (
+                    <button key={t.field} type="button" disabled={!editable || i === 0} aria-pressed={on[i]} onClick={() => toggleTank(i)} className={`h-11 px-2 rounded-xl border text-[13px] font-black transition-all cursor-pointer disabled:cursor-default ${on[i] ? 'bg-sky-500 border-sky-500 text-white shadow-md shadow-sky-500/25' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 enabled:hover:border-sky-400'}`}>{t.label}</button>
                   ))}
                 </div>
               </div>
-              <div className={`grid gap-2.5 ${tankCount === 3 ? 'grid-cols-3' : tankCount === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                {TANK_FIELDS.slice(0, tankCount).map((f, i) => (
+              <div className={`grid gap-2.5 ${shown.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                {shown.map(({ field: f, label: name }) => (
                   <label key={f} className={`block min-w-0 ${box} focus-within:border-sky-500`}>
-                    <span className="block text-[11px] font-black text-slate-500 dark:text-slate-400 truncate">سعة خزان {i + 1}</span>
+                    <span className="block text-[11px] font-black text-slate-500 dark:text-slate-400 truncate">{name}</span>
                     <input type="number" min={0} inputMode="numeric" disabled={!editable} value={p[f] ?? ''} onChange={e => setP({ ...p, [f]: num(e.target.value) })} placeholder="—" className="mt-1.5 w-full bg-transparent outline-hidden font-mono text-lg font-black text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600" />
                     <span className="block text-[10px] font-bold text-slate-400">لتر</span>
                   </label>

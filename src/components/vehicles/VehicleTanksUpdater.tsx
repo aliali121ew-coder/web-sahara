@@ -5,7 +5,7 @@ import { CheckCircle2, Container, Search, Truck, X, XCircle } from 'lucide-react
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { getProfile } from '../../lib/session';
 import { usePermissions } from '../../lib/usePermission';
-import { VEHICLE_PROFILES_KEY, sheetTanks, vehicleCategory, vehicleImage, type VehicleProfile } from '../../lib/vehicleFuel';
+import { TANK_SLOTS, VEHICLE_PROFILES_KEY, sheetTanks, tankOnOf, tankSlotsOf, vehicleCategory, vehicleImage, type VehicleProfile } from '../../lib/vehicleFuel';
 import { FLEET, FLEET_TYPES } from '../../lib/vehicleFleet';
 import { groupByCategory, useCategoryNames, useVehicleNames } from './categories';
 import { useVehicleData } from './useVehicleData';
@@ -18,7 +18,7 @@ interface Item { code: string; cat: string; catKey: string; group: string }
 
 const codeOf = (p: VehicleProfile) => (p.name?.trim() || p.id).toUpperCase();
 /** سُجّلت لها سعة خزان في ملفها (يدويًا) */
-const isUpdated = (p: VehicleProfile | undefined) => !!(p?.tankLiters || p?.tank2Liters || p?.tank3Liters);
+const isUpdated = (p: VehicleProfile | undefined) => tankSlotsOf(p).some(Boolean);
 /** أسطول الشركة من ملفي Excel (كل آلية: نوعها، محدثة أم لا، سعاتها المكتوبة، مجموعتها) */
 const FLEET_BY_CODE = new Map(FLEET.map(v => [v.code, v]));
 /** محدثة في ملفي Excel (شيتا «المحدث») */
@@ -65,17 +65,19 @@ export const VehicleTanksUpdater: React.FC = () => {
   const updated = items.filter(i => isUp(i.code)).length;
   const pct = items.length ? Math.round((updated / items.length) * 100) : 0;
 
-  const save = (code: string, caps: (number | null)[], count: number) => {
+  /** caps: سعة كل خانة (الرئيسي، الاحتياط 1، الاحتياط 2، البراد) أو null إن لم تكن في العربة */
+  const save = (code: string, caps: (number | null)[]) => {
     const u = getProfile();
     setProfiles(prev => {
       const base = prev.find(p => codeOf(p) === code)
         || { id: code, name: '', type: '', tankLiters: null, dailyLimit: null, driver: '', department: '', notes: '', photo: '', updatedAt: '', by: '' };
       const next: VehicleProfile = {
         ...base,
-        tankCount: count,
+        tankCount: caps.filter(Boolean).length || 1,
         tankLiters: caps[0] ?? null,
-        tank2Liters: count > 1 ? caps[1] ?? null : null,
-        tank3Liters: count > 2 ? caps[2] ?? null : null,
+        tank2Liters: caps[1] ?? null,
+        tank3Liters: caps[2] ?? null,
+        reeferTankLiters: caps[3] ?? null,
         updatedAt: new Date().toISOString(),
         by: u?.name || u?.username || '',
       };
@@ -214,17 +216,18 @@ const UpdateDialog: React.FC<{
   items: Item[];
   profileOf: (code: string) => VehicleProfile | undefined;
   isUp: (code: string) => boolean;
-  onSave: (code: string, caps: (number | null)[], count: number) => void;
+  onSave: (code: string, caps: (number | null)[]) => void;
   onClose: () => void;
 }> = ({ items, profileOf, isUp, onSave, onClose }) => {
   const [q, setQ] = useState('');
   const [catFilter, setCatFilter] = useState<string | null>(null);
   const [code, setCode] = useState<string | null>(null);
-  const [count, setCount] = useState(1);
-  const [caps, setCaps] = useState<string[]>(['', '', '']);
+  /** الخزانات المختارة: الرئيسي دائمًا، والاحتياط 1 و2 والبراد حسب العربة */
+  const [on, setOn] = useState<boolean[]>([true, false, false, false]);
+  const [caps, setCaps] = useState<string[]>(['', '', '', '']);
   const [done, setDone] = useState(false);
   /** السعات عند فتح العربة: لمعرفة هل غيّرها المستخدم */
-  const [orig, setOrig] = useState<{ caps: (number | null)[]; count: number }>({ caps: [null, null, null], count: 1 });
+  const [orig, setOrig] = useState<(number | null)[]>([null, null, null, null]);
   const [confirming, setConfirming] = useState(false);
   const [closing, setClosing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -250,31 +253,33 @@ const UpdateDialog: React.FC<{
 
   const pick = (c: string) => {
     const prof = profileOf(c);
-    const saved = [prof?.tankLiters ?? null, prof?.tank2Liters ?? null, prof?.tank3Liters ?? null];
     const sheet = sheetTanks(c) || (FLEET_BY_CODE.get(c)?.tanks.length ? FLEET_BY_CODE.get(c)!.tanks : null);
-    const start = isUpdated(prof) ? saved : sheet ? [sheet[0] ?? null, sheet[1] ?? null, sheet[2] ?? null] : [null, null, null];
-    const startCount = prof?.tankCount || (isUpdated(prof) ? (saved[2] ? 3 : saved[1] ? 2 : 1) : sheet?.length || 1);
+    // المحفوظ يدويًا أولًا، وإلا سعات كشف الخزانات (الرئيسي ثم الاحتياط)
+    const start = isUpdated(prof) || prof?.tankCount ? tankSlotsOf(prof) : sheet ? [sheet[0] ?? null, sheet[1] ?? null, sheet[2] ?? null, null] : [null, null, null, null];
+    const startOn = isUpdated(prof) || prof?.tankCount ? tankOnOf(prof) : start.map((v, i) => i === 0 || !!v);
     setCode(c);
-    setCount(startCount);
+    setOn(startOn);
     setCaps(start.map(v => (v ? String(v) : '')));
-    setOrig({ caps: start.map(v => v || null), count: startCount });
+    setOrig(start.map((v, i) => (startOn[i] ? v || null : null)));
     setConfirming(false);
   };
 
   const sel = code ? items.find(i => i.code === code) : null;
   const prof = code ? profileOf(code) : undefined;
   const ok = !!code && isUp(code);
-  const nums = caps.map(v => (v.trim() === '' ? null : Math.max(0, Number(v)) || null));
-  const valid = !!nums[0] && nums.slice(0, count).every(Boolean);
-  const total = nums.slice(0, count).reduce<number>((s, v) => s + (v || 0), 0);
+  // سعة كل خانة مختارة، وnull لغير المختارة (تُحذف سعتها عند الحفظ)
+  const nums = caps.map((v, i) => (on[i] && v.trim() !== '' ? Math.max(0, Number(v)) || null : null));
+  const valid = on.every((o, i) => !o || !!nums[i]);
+  const total = nums.reduce<number>((s, v) => s + (v || 0), 0);
+  const toggle = (i: number) => { if (i) setOn(o => o.map((x, j) => (j === i ? !x : x))); };
 
-  // عربة محدثة تغيّرت سعاتها أو عدد خزاناتها: تأكيد قبل الحفظ
-  const changed = ok && (count !== orig.count || [0, 1, 2].some(k => (k < count ? nums[k] : null) !== (k < orig.count ? orig.caps[k] : null)));
+  // عربة محدثة تغيّرت سعاتها أو خزاناتها: تأكيد قبل الحفظ
+  const changed = ok && nums.some((v, k) => v !== orig[k]);
   const submit = () => {
     if (!code || !valid) return;
     if (changed && !confirming) { setConfirming(true); return; }
     setConfirming(false);
-    onSave(code, nums, count);
+    onSave(code, nums);
     setDone(true);
     window.setTimeout(close, 1400);
   };
@@ -364,16 +369,23 @@ const UpdateDialog: React.FC<{
                 </div>
 
                 <div className="mt-4">
-                  <div className="text-xs font-black text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1.5"><Container className="w-3.5 h-3.5" />عدد الخزانات</div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[1, 2, 3].map(n => (
-                      <button key={n} type="button" onClick={() => setCount(n)} className={`h-11 rounded-xl text-base font-black cursor-pointer transition-all ${count === n ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>{n}</button>
+                  <div className="text-xs font-black text-slate-500 dark:text-slate-400 mb-2 flex items-center justify-between gap-1.5">
+                    <span className="flex items-center gap-1.5"><Container className="w-3.5 h-3.5" />عدد الخزانات</span>
+                    <span className="font-mono text-indigo-600 dark:text-indigo-400">{on.filter(Boolean).length}</span>
+                  </div>
+                  {/* الخزان الرئيسي دائمًا، والباقي يُختار حسب العربة */}
+                  <div role="group" aria-label="الخزانات" className="grid grid-cols-2 gap-2">
+                    {TANK_SLOTS.map((t, i) => (
+                      <button key={t.field} type="button" aria-pressed={on[i]} disabled={i === 0} onClick={() => toggle(i)}
+                        className={`h-11 px-2 rounded-xl text-[13px] font-black transition-all ${i ? 'cursor-pointer' : 'cursor-default'} ${on[i] ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
+                        {t.label}
+                      </button>
                     ))}
                   </div>
                 </div>
 
                 <div className="mt-4 space-y-2.5">
-                  {['الخزان الرئيسي', 'الخزان الثاني', 'الخزان الثالث'].slice(0, count).map((label, k) => (
+                  {TANK_SLOTS.map((t, k) => ({ label: t.label, k })).filter(({ k }) => on[k]).map(({ label, k }) => (
                     <label key={label} className="flex items-center gap-3 h-14 px-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus-within:ring-2 focus-within:ring-indigo-400">
                       <span className="w-28 shrink-0 text-sm font-bold text-slate-600 dark:text-slate-300">{label}</span>
                       <input
@@ -399,9 +411,9 @@ const UpdateDialog: React.FC<{
                       <div className="mt-3 text-lg font-black text-slate-900 dark:text-white">هل أنت متأكد؟</div>
                       <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">العربة <bdi dir="ltr" className="font-mono font-bold">{code}</bdi> محدثة، وستتغير سعات خزاناتها</div>
                       <div className="mt-4 space-y-1.5 text-sm">
-                        {['الخزان الرئيسي', 'الخزان الثاني', 'الخزان الثالث'].map((label, k) => {
-                          const was = k < orig.count ? orig.caps[k] : null;
-                          const now = k < count ? nums[k] : null;
+                        {TANK_SLOTS.map(({ label }, k) => {
+                          const was = orig[k];
+                          const now = nums[k];
                           if (was === null && now === null) return null;
                           const diff = was !== now;
                           return (
