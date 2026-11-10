@@ -18,7 +18,8 @@ export function useSupportCount() {
     const load = () => Promise.all([
       chatApi.adminSupport().then(r => r.items.filter(x => x.status === 'open').length).catch(() => 0),
       chatApi.adminPasskeys().then(r => r.items.filter(x => !x.approved).length).catch(() => 0),
-    ]).then(([a, b]) => { if (alive) setCount(a + b); });
+      chatApi.adminDevices().then(r => r.items.filter(x => !x.approved).length).catch(() => 0),
+    ]).then(([a, b, c]) => { if (alive) setCount(a + b + c); });
     load();
     const id = setInterval(load, POLL_MS);
     const onVis = () => { if (document.visibilityState === 'visible') load(); };

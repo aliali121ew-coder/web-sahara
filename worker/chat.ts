@@ -41,7 +41,7 @@ const str = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max
 const uid = () => crypto.randomUUID();
 
 // زِد الإصدار عند أي تعديل على التهيئة أدناه (راجع worker/storage/schema.ts)
-const CHAT_SCHEMA = '5';
+const CHAT_SCHEMA = '6';
 const ensureTables = (db: ChatDB) => schemaGate(db, 'chat', CHAT_SCHEMA, async () => {
   await db.exec("CREATE TABLE IF NOT EXISTS chat_users (id TEXT PRIMARY KEY, name TEXT NOT NULL, role TEXT NOT NULL DEFAULT '', bio TEXT NOT NULL DEFAULT '', avatar TEXT NOT NULL DEFAULT '', color TEXT NOT NULL DEFAULT '', last_seen INTEGER NOT NULL DEFAULT 0, typing_room TEXT NOT NULL DEFAULT '', typing_at INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL)");
   await db.exec("CREATE TABLE IF NOT EXISTS chat_rooms (id TEXT PRIMARY KEY, type TEXT NOT NULL, name TEXT NOT NULL DEFAULT '', description TEXT NOT NULL DEFAULT '', avatar TEXT NOT NULL DEFAULT '', created_by TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)");
@@ -88,6 +88,9 @@ const ensureTables = (db: ChatDB) => schemaGate(db, 'chat', CHAT_SCHEMA, async (
   await db.exec('CREATE INDEX IF NOT EXISTS webauthn_credentials_user ON webauthn_credentials (user_id)');
   // بصمة جهاز جديد لحساب غير مدير تنتظر موافقة مدير النظام (0) قبل أن تُقبل في الدخول؛ البصمات السابقة مقبولة (1)
   try { await db.exec('ALTER TABLE webauthn_credentials ADD COLUMN approved INTEGER NOT NULL DEFAULT 1'); } catch { /* موجود */ }
+  // أجهزة الدخول: جهاز جديد لحساب موظف لا يدخل (بكلمة المرور أو البصمة) حتى يعتمده مدير النظام
+  await db.exec("CREATE TABLE IF NOT EXISTS trusted_devices (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, device_hash TEXT NOT NULL, approved INTEGER NOT NULL DEFAULT 0, label TEXT NOT NULL DEFAULT '', ip TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, last_used INTEGER NOT NULL DEFAULT 0, approved_by TEXT NOT NULL DEFAULT '', approved_at INTEGER NOT NULL DEFAULT 0)");
+  await db.exec('CREATE UNIQUE INDEX IF NOT EXISTS trusted_devices_user_device ON trusted_devices (user_id, device_hash)');
   await db.exec("CREATE TABLE IF NOT EXISTS webauthn_challenges (challenge TEXT PRIMARY KEY, user_id TEXT NOT NULL DEFAULT '', kind TEXT NOT NULL, expires_at INTEGER NOT NULL)");
   // طلبات الدعم من شاشة الدخول (حساب جديد / نسيت كلمة المرور) تصل لمدير النظام
   await db.exec("CREATE TABLE IF NOT EXISTS support_requests (id TEXT PRIMARY KEY, name TEXT NOT NULL, phone TEXT NOT NULL DEFAULT '', username TEXT NOT NULL DEFAULT '', kind TEXT NOT NULL, message TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL)");
@@ -300,6 +303,47 @@ const withCookie = (res: Response, cookie: string) => {
   return res;
 };
 
+// ───── أجهزة الدخول ─────
+// معرّف ثابت لكل متصفح (كوكي HttpOnly طويل المدة) يُحفظ على الخادم كبصمة مع الحساب.
+// جهاز جديد لحساب موظف لا يحصل على جلسة حتى يعتمده مدير النظام؛ الجلسات القائمة والدخول المحفوظ تعتمد أجهزتها تلقائيًا.
+const DEVICE_COOKIE = 'sahara_device';
+const DEVICE_MAX_AGE = 5 * 365 * 86400;
+const deviceCookie = (id: string) => `${DEVICE_COOKIE}=${id}; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=${DEVICE_MAX_AGE}`;
+/** معرّف هذا الجهاز من الكوكي، أو معرّف جديد يُرسل للمتصفح مع الرد */
+const deviceOf = (request: Request) => {
+  const have = str(readCookie(request, DEVICE_COOKIE), 128);
+  return have.length >= 20 ? { id: have, fresh: false } : { id: newKey(), fresh: true };
+};
+const withDevice = (res: Response, dev: { id: string; fresh: boolean }) => (dev.fresh ? withCookie(res, deviceCookie(dev.id)) : res);
+/**
+ * حالة الجهاز لحساب: true = معتمد. trust = اعتماد تلقائي (مدير النظام، أو جلسة/دخول محفوظ قائم).
+ * جهاز غير معروف يُسجَّل «بانتظار الموافقة».
+ */
+const deviceApproved = async (db: ChatDB, request: Request, userId: string, deviceId: string, now: number, trust: boolean) => {
+  const hash = await hashKey(deviceId);
+  const { results } = await db.prepare('SELECT id, approved FROM trusted_devices WHERE user_id = ? AND device_hash = ?').bind(userId, hash).all<{ id: string; approved: number }>();
+  const row = results[0];
+  const label = str(request.headers.get('user-agent'), 300);
+  const ip = str(request.headers.get('cf-connecting-ip'), 64);
+  if (row) {
+    if (!row.approved && trust) {
+      await db.prepare('UPDATE trusted_devices SET approved = 1, approved_at = ?, last_used = ? WHERE id = ?').bind(now, now, row.id).run();
+      return true;
+    }
+    if (row.approved) await db.prepare('UPDATE trusted_devices SET last_used = ?, label = ?, ip = ? WHERE id = ?').bind(now, label, ip, row.id).run();
+    return !!row.approved;
+  }
+  await db.prepare('INSERT OR IGNORE INTO trusted_devices (id, user_id, device_hash, approved, label, ip, created_at, last_used, approved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .bind(uid(), userId, hash, trust ? 1 : 0, label, ip, now, trust ? now : 0, trust ? now : 0).run();
+  return trust;
+};
+/** مدير النظام لا يحتاج اعتماد أجهزته */
+const isAdminOf = async (db: ChatDB, userId: string) => {
+  const { results } = await db.prepare('SELECT is_admin FROM chat_users WHERE id = ?').bind(userId).all<{ is_admin: number }>();
+  return !!results[0]?.is_admin;
+};
+const devicePending = () => json({ error: 'هذا جهاز جديد لحسابك وينتظر موافقة مدير النظام. حاول الدخول بعد الموافقة', code: 'device_pending' }, 403);
+
 // ───── متابعة الدخول بضغطة واحدة ─────
 // مع «تذكّرني» يحصل الجهاز على رمز متابعة (كوكي HttpOnly منفصل) يعيد الجلسة إن ضاعت (مُسح كوكيها أو تعذّر الاتصال)
 // بلا طلب كلمة المرور: يستخدمه التطبيق تلقائيًا عند الفتح، وتكتفي شاشة الدخول بزر «تسجيل الدخول».
@@ -446,11 +490,18 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     }
     if (isExpired(u.expires_at, now)) return expiredResponse();
     if (u.disabled) return json({ error: 'هذا الحساب موقوف. راجع مدير النظام', code: 'disabled' }, 403);
+    // جهاز جديد لحساب موظف: بانتظار موافقة مدير النظام (كلمة المرور صحيحة، فلا تُحتسب محاولة فاشلة)
+    const dev = deviceOf(request);
+    if (!(await deviceApproved(db, request, u.id, dev.id, now, await isAdminOf(db, u.id)))) {
+      await db.prepare('UPDATE chat_users SET fail_count = 0, lock_until = 0 WHERE id = ?').bind(u.id).run();
+      await audit(db, request, u.id, 'auth.device_pending', 'كلمة المرور', { username });
+      return withDevice(devicePending(), dev);
+    }
     await db.prepare('UPDATE chat_users SET fail_count = 0, lock_until = 0, last_seen = ? WHERE id = ?').bind(now, u.id).run();
     await db.prepare("INSERT OR IGNORE INTO chat_members (room_id, user_id, role, last_read, joined_at) VALUES (?, ?, 'member', 0, ?)").bind(GENERAL_ROOM, u.id, now).run();
     await audit(db, request, u.id, 'auth.login', 'كلمة المرور', { username });
     const remember = b?.remember !== false;
-    return newSession(db, request, u.id, now, { pwAt: now, remember, resumeUntil: remember ? now + RESUME_MAX_MS : 0 });
+    return withDevice(await newSession(db, request, u.id, now, { pwAt: now, remember, resumeUntil: remember ? now + RESUME_MAX_MS : 0 }), dev);
   }
 
   // ───── الدخول بالبصمة / بصمة الوجه ─────
@@ -501,10 +552,16 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     }
     // عدّاد التوقيعات يجب أن يزيد (إن كان الجهاز يدعمه) لكشف نسخ المفتاح
     if (v.signCount && cred.sign_count && v.signCount <= cred.sign_count) return fail('تم رفض البصمة لأسباب أمنية');
+    // البصمة صحيحة، لكن الجهاز نفسه يجب أن يكون معتمدًا للحساب (بصمة متزامنة على هاتف جديد مثلًا)
+    const dev = deviceOf(request);
+    if (!(await deviceApproved(db, request, cred.user_id, dev.id, now, await isAdminOf(db, cred.user_id)))) {
+      await audit(db, request, cred.user_id, 'auth.device_pending', 'البصمة');
+      return withDevice(devicePending(), dev);
+    }
     await db.prepare('UPDATE webauthn_credentials SET sign_count = ?, last_used = ? WHERE id = ?').bind(v.signCount, now, cred.id).run();
     await db.prepare('UPDATE chat_users SET fail_count = 0, lock_until = 0, last_seen = ? WHERE id = ?').bind(now, cred.user_id).run();
     await audit(db, request, cred.user_id, 'auth.login', 'البصمة');
-    return newSession(db, request, cred.user_id, now, { resumeUntil: -1 });
+    return withDevice(await newSession(db, request, cred.user_id, now, { resumeUntil: -1 }), dev);
   }
 
   // متابعة الدخول برمز المتابعة المحفوظ (بدون كلمة مرور)
@@ -529,7 +586,10 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
     }
     await db.prepare('UPDATE chat_users SET last_seen = ? WHERE id = ?').bind(now, r.user_id).run();
     await audit(db, request, r.user_id, 'auth.login', 'دخول محفوظ', { username: r.username });
-    return newSession(db, request, r.user_id, now, { resumeUntil: r.expires_at, resumeToken: token, loginAt: r.expires_at - RESUME_MAX_MS });
+    // رمز المتابعة لا يصدر إلا لجهاز دخل فعلًا، فجهازه معتمد
+    const rdev = deviceOf(request);
+    await deviceApproved(db, request, r.user_id, rdev.id, now, true);
+    return withDevice(await newSession(db, request, r.user_id, now, { resumeUntil: r.expires_at, resumeToken: token, loginAt: r.expires_at - RESUME_MAX_MS }), rdev);
   }
   // نسيان الدخول المحفوظ على هذا الجهاز («الدخول بحساب آخر»)
   if (path === '/auth/resume/forget' && method === 'POST') {
@@ -560,7 +620,10 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
   // ───── جلستي وحسابي ─────
   if (path === '/auth/me' && method === 'GET') {
     const { results } = await db.prepare(`SELECT ${ACCOUNT_COLS} FROM chat_users WHERE id = ?`).bind(authId).all<AccountRow>();
-    return json({ user: withPerms(results[0]) });
+    // جهاز داخل بجلسة قائمة: يُعتمد تلقائيًا (الأجهزة المسجلة قبل تفعيل موافقة الأجهزة تبقى تعمل)
+    const dev = deviceOf(request);
+    await deviceApproved(db, request, authId, dev.id, now, true);
+    return withDevice(json({ user: withPerms(results[0]) }), dev);
   }
   if (path === '/auth/logout' && method === 'POST') {
     // يُلغى رمز المتابعة هنا أيضًا حتى لا يعتمد على طلب /auth/resume/forget المنفصل (قد يضيع في اتصال ضعيف)
@@ -755,6 +818,28 @@ export async function handleChat(request: Request, url: URL, db: ChatDB, appToke
       } else {
         await db.prepare('DELETE FROM webauthn_credentials WHERE id = ?').bind(id).run();
         await audit(db, request, authId, 'admin.passkey_remove', `@${results[0].username}`);
+      }
+      return json({ ok: true });
+    }
+
+    // أجهزة الدخول: المعلّقة أولًا
+    if (path === '/admin/devices' && method === 'GET') {
+      const { results } = await db.prepare(
+        'SELECT d.id, d.user_id, d.label, d.ip, d.created_at, d.last_used, d.approved, d.approved_at, u.username, u.name, u.avatar, u.color FROM trusted_devices d JOIN chat_users u ON u.id = d.user_id ORDER BY d.approved ASC, d.created_at DESC LIMIT 500',
+      ).all();
+      return json({ items: results });
+    }
+    const dv = path.match(/^\/admin\/devices\/([^/]+)$/);
+    if (dv && (method === 'PATCH' || method === 'DELETE')) {
+      const id = decodeURIComponent(dv[1]);
+      const { results } = await db.prepare('SELECT d.user_id, u.username FROM trusted_devices d JOIN chat_users u ON u.id = d.user_id WHERE d.id = ?').bind(id).all<{ user_id: string; username: string }>();
+      if (!results[0]) return json({ error: 'الجهاز غير موجود', code: 'not_found' }, 404);
+      if (method === 'PATCH') {
+        await db.prepare('UPDATE trusted_devices SET approved = 1, approved_by = ?, approved_at = ? WHERE id = ?').bind(authId, now, id).run();
+        await audit(db, request, authId, 'admin.device_approve', `@${results[0].username}`);
+      } else {
+        await db.prepare('DELETE FROM trusted_devices WHERE id = ?').bind(id).run();
+        await audit(db, request, authId, 'admin.device_remove', `@${results[0].username}`);
       }
       return json({ ok: true });
     }

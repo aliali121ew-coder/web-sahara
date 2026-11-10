@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Users, UserPlus, Search, Loader2, Crown, Ban, CheckCircle2, ArrowRight, ArrowLeft, KeyRound, Fingerprint, RefreshCw, Check, ShieldCheck, Inbox, History, Pencil, Eye, EyeOff, Timer } from 'lucide-react';
-import { chatApi, type Account, type AdminPasskey, type SupportRequest } from '../chat/chatApi';
+import { chatApi, type Account, type AdminDevice, type AdminPasskey, type SupportRequest } from '../chat/chatApi';
 import { useTranslation } from 'react-i18next';
 import { errorText } from '../../i18n/errors';
 import { ProfileCard } from '../layout/ProfileCard';
@@ -43,7 +43,9 @@ export const UsersAdmin: React.FC = () => {
   const loadRequests = useCallback(() => chatApi.adminSupport().then(r => setRequests(r.items)).catch(e => setError(errorText(e))), []);
   const [passkeys, setPasskeys] = useState<AdminPasskey[] | null>(null);
   const loadPasskeys = useCallback(() => chatApi.adminPasskeys().then(r => setPasskeys(r.items)).catch(e => setError(errorText(e))), []);
-  useEffect(() => { loadUsers(); loadRequests(); loadPasskeys(); }, [loadUsers, loadRequests, loadPasskeys]);
+  const [devices, setDevices] = useState<AdminDevice[] | null>(null);
+  const loadDevices = useCallback(() => chatApi.adminDevices().then(r => setDevices(r.items)).catch(e => setError(errorText(e))), []);
+  useEffect(() => { loadUsers(); loadRequests(); loadPasskeys(); loadDevices(); }, [loadUsers, loadRequests, loadPasskeys, loadDevices]);
   // المتصلون الآن: يُحدَّث كل 20 ثانية أثناء فتح الصفحة، ومعه «آخر ظهور» لمن خرج
   const [online, setOnline] = useState<Set<string>>(() => new Set());
   useEffect(() => {
@@ -110,8 +112,11 @@ export const UsersAdmin: React.FC = () => {
               onCreate={p => { setPrefill(p); setIssued(null); setCreateRound(r => r + 1); setTab('create'); }}
               onResetPassword={(acc, requestId) => { setEditTarget({ acc, resetPw: true, requestId }); setTab('users'); }} />
           ) },
-          { id: 'devices', label: t('tabs.devices'), icon: Fingerprint, badge: (passkeys || []).filter(p => !p.approved).length, content: (
-            <PasskeyApprovals items={passkeys} reload={loadPasskeys} />
+          { id: 'devices', label: t('tabs.devices'), icon: Fingerprint, badge: [...(passkeys || []), ...(devices || [])].filter(p => !p.approved).length, content: (
+            <div className="space-y-6">
+              <PasskeyApprovals kind="logins" items={devices} reload={loadDevices} />
+              <PasskeyApprovals items={passkeys} reload={loadPasskeys} />
+            </div>
           ) },
           { id: 'audit', label: t('tabs.audit'), icon: History, content: <AuditLog users={items || []} /> },
           { id: 'create', label: t('tabs.create'), icon: UserPlus, content: (

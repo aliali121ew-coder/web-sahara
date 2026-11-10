@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Fingerprint, Clock, ShieldCheck, Check, X, Trash2, Loader2, Search, Smartphone } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { chatApi, type AdminPasskey } from '../chat/chatApi';
+import { chatApi, type AdminDevice, type AdminPasskey } from '../chat/chatApi';
 import { errorText } from '../../i18n/errors';
 import { Empty, KpiCard, Skeleton, UserAvatar, btnCls, cardCls, fullDate, inputCls, timeAgo } from './adminUi';
 
@@ -19,8 +19,15 @@ const deviceName = (ua: string) => {
  * بصمات الأجهزة (الدخول بالوجه / الإصبع): بصمة جهاز جديد لحساب موظف لا تعمل حتى يعتمدها مدير النظام،
  * لأن الموقع لا يرى الوجه نفسه، فمن يعرف كلمة المرور يستطيع إضافة وجهه من هاتفه
  */
-export const PasskeyApprovals: React.FC<{ items: AdminPasskey[] | null; reload: () => Promise<unknown> }> = ({ items, reload }) => {
-  const { t } = useTranslation('admin');
+export const PasskeyApprovals: React.FC<{
+  items: (AdminPasskey | AdminDevice)[] | null;
+  reload: () => Promise<unknown>;
+  /** passkeys = بصمات الوجه والإصبع، logins = أجهزة الدخول (كلمة المرور أو البصمة من جهاز جديد) */
+  kind?: 'passkeys' | 'logins';
+}> = ({ items, reload, kind = 'passkeys' }) => {
+  const { t: tt } = useTranslation('admin');
+  const ns = kind === 'logins' ? 'logins' : 'devices';
+  const t = (k: string, o?: Record<string, unknown>) => tt(`${ns}.${k.replace(/^devices\./, '')}`, o);
   const [view, setView] = useState<'pending' | 'approved'>('pending');
   const [q, setQ] = useState('');
   const [busy, setBusy] = useState('');
@@ -34,12 +41,14 @@ export const PasskeyApprovals: React.FC<{ items: AdminPasskey[] | null; reload: 
       && (!term || p.name.toLowerCase().includes(term) || p.username.toLowerCase().includes(term)));
   }, [all, view, q]);
 
-  const act = async (p: AdminPasskey, approve: boolean) => {
+  const act = async (p: AdminPasskey | AdminDevice, approve: boolean) => {
     if (!approve && p.approved && !window.confirm(t('devices.confirmRemove'))) return;
     setBusy(p.id);
     setError('');
     try {
-      await (approve ? chatApi.adminPasskeyApprove(p.id) : chatApi.adminPasskeyRemove(p.id));
+      await (kind === 'logins'
+        ? (approve ? chatApi.adminDeviceApprove(p.id) : chatApi.adminDeviceRemove(p.id))
+        : (approve ? chatApi.adminPasskeyApprove(p.id) : chatApi.adminPasskeyRemove(p.id)));
       await reload();
     } catch (e) {
       setError(errorText(e));
@@ -80,6 +89,7 @@ export const PasskeyApprovals: React.FC<{ items: AdminPasskey[] | null; reload: 
                   <div className="font-bold text-sm text-slate-900 dark:text-white truncate">{p.name} <span dir="ltr" className="text-xs font-semibold text-slate-400">@{p.username}</span></div>
                   <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12px] text-slate-500">
                     <span className="inline-flex items-center gap-1" title={p.label}><Smartphone className="w-3.5 h-3.5" /> {deviceName(p.label)}</span>
+                    {'ip' in p && p.ip && <span dir="ltr" className="font-mono">{p.ip}</span>}
                     <span title={fullDate(p.created_at)}>{t('devices.added', { time: timeAgo(p.created_at) })}</span>
                     {!!p.approved && <span>{p.last_used ? t('devices.lastUsed', { time: timeAgo(p.last_used) }) : t('devices.neverUsed')}</span>}
                   </div>

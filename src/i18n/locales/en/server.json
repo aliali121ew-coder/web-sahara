@@ -91,6 +91,7 @@
     "invalid_expiry": "Choose a trial duration (1 hour to 1 month)",
     "demo_disabled": "This feature is not available in the demo version",
     "chat_disabled": "Chat is temporarily unavailable (under development)",
-    "passkey_pending": "This device's passkey is waiting for admin approval"
+    "passkey_pending": "This device's passkey is waiting for admin approval",
+    "device_pending": "This is a new device for your account and is waiting for admin approval"
   }
 }

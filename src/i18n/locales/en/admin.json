@@ -267,7 +267,10 @@
       "admin.passkey_approve": "Device passkey approved",
       "admin.passkey_remove": "Device passkey removed",
       "system.pages": "Pages turned off or on",
-      "system.vehicles_migrate": "Vehicle sheets moved to R2"
+      "system.vehicles_migrate": "Vehicle sheets moved to R2",
+      "admin.device_approve": "Sign-in device approved",
+      "admin.device_remove": "Sign-in device removed",
+      "auth.device_pending": "New device sign-in awaiting approval"
     },
     "categories": {
       "all": "All",
@@ -409,6 +412,22 @@
     "neverUsed": "Never used",
     "empty": "No device passkeys",
     "noPending": "No requests awaiting approval",
+    "search": "Search by name or username"
+  },
+  "logins": {
+    "pending": "Devices awaiting approval",
+    "approved": "Approved devices",
+    "total": "All sign-in devices",
+    "hint": "Every staff sign-in from a new device (password or passkey) waits for your approval; the account cannot sign in from that device until you approve it. Approve only devices you know belong to the account owner.",
+    "approve": "Approve",
+    "reject": "Reject",
+    "remove": "Remove",
+    "confirmRemove": "Remove this device? Signing in from it will need your approval again.",
+    "added": "First attempt {{time}}",
+    "lastUsed": "Last sign-in {{time}}",
+    "neverUsed": "Not signed in yet",
+    "empty": "No sign-in devices",
+    "noPending": "No devices awaiting approval",
     "search": "Search by name or username"
   }
 }
