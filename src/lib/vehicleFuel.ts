@@ -571,6 +571,8 @@ export interface VehicleProfile {
   reeferTankLiters?: number | null;
   /** عدد الخزانات المختار في تفاصيل العربة (يُحفظ ولو لم تُدخل السعات بعد) */
   tankCount?: number | null;
+  /** أُلغي تحديث الخزانات: العربة بلا سعات وتُعد غير محدثة (ولا تُؤخذ سعات كشف الخزانات) */
+  tanksCleared?: boolean;
   /** المعدل المرجعي للقيادة (لتر لكل 100 كم) — لمختبر العربة */
   refL100?: number | null;
   /** صرف وحدة التبريد (لتر لكل ساعة) — لمختبر العربة */
@@ -685,7 +687,7 @@ export const SHEET_TANK_CODES = Object.keys(VEHICLE_TANKS);
  * ما يُدخل في تفاصيل العربة يبقى هو المعتمد، والحفظ من التفاصيل يثبّت سعات الكشف في ملفها.
  */
 export const withTanks = (p: VehicleProfile | undefined, vehicle: string): VehicleProfile | undefined => {
-  if (p?.tankCount || p?.tankLiters || p?.tank2Liters || p?.tank3Liters || p?.reeferTankLiters) return p;
+  if (p?.tanksCleared || p?.tankCount || p?.tankLiters || p?.tank2Liters || p?.tank3Liters || p?.reeferTankLiters) return p;
   const caps = tanksOf(p?.name || vehicle);
   if (!caps) return p;
   const base: VehicleProfile = p || { id: vehicle, name: '', type: '', tankLiters: null, dailyLimit: null, driver: '', department: '', notes: '', photo: '', updatedAt: '', by: '' };

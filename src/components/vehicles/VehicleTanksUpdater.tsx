@@ -1,7 +1,7 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CheckCircle2, Container, Search, Truck, X, XCircle } from 'lucide-react';
+import { CheckCircle2, Container, RotateCcw, Search, Truck, X, XCircle } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { getProfile } from '../../lib/session';
 import { usePermissions } from '../../lib/usePermission';
@@ -61,7 +61,7 @@ export const VehicleTanksUpdater: React.FC = () => {
 
   const profileOf = (code: string) => profiles.find(p => codeOf(p) === code);
   /** محدثة = محدثة في ملفي Excel، أو حُفظت سعاتها يدويًا بعدهما */
-  const isUp = (code: string) => isUpdated(profileOf(code)) || inSheet(code);
+  const isUp = (code: string) => { const p = profileOf(code); return !p?.tanksCleared && (isUpdated(p) || inSheet(code)); };
   const updated = items.filter(i => isUp(i.code)).length;
   const pct = items.length ? Math.round((updated / items.length) * 100) : 0;
 
@@ -74,12 +74,27 @@ export const VehicleTanksUpdater: React.FC = () => {
       const next: VehicleProfile = {
         ...base,
         tankCount: caps.filter(Boolean).length || 1,
+        tanksCleared: false,
         tankLiters: caps[0] ?? null,
         tank2Liters: caps[1] ?? null,
         tank3Liters: caps[2] ?? null,
         reeferTankLiters: caps[3] ?? null,
         updatedAt: new Date().toISOString(),
         by: u?.name || u?.username || '',
+      };
+      return [next, ...prev.filter(p => p.id !== base.id)];
+    });
+  };
+
+  /** إلغاء التحديث: تُصفَّر سعات العربة وتعود «غير محدثة» (حتى لو كانت محدثة في كشف الخزانات) */
+  const reset = (code: string) => {
+    const u = getProfile();
+    setProfiles(prev => {
+      const base = prev.find(p => codeOf(p) === code)
+        || { id: code, name: '', type: '', tankLiters: null, dailyLimit: null, driver: '', department: '', notes: '', photo: '', updatedAt: '', by: '' };
+      const next: VehicleProfile = {
+        ...base, tankCount: null, tankLiters: null, tank2Liters: null, tank3Liters: null, reeferTankLiters: null, tanksCleared: true,
+        updatedAt: new Date().toISOString(), by: u?.name || u?.username || '',
       };
       return [next, ...prev.filter(p => p.id !== base.id)];
     });
@@ -189,7 +204,7 @@ export const VehicleTanksUpdater: React.FC = () => {
         </div>
       )}
 
-      {open && <UpdateDialog items={items} profileOf={profileOf} isUp={isUp} onSave={save} onClose={() => setOpen(false)} />}
+      {open && <UpdateDialog items={items} profileOf={profileOf} isUp={isUp} onSave={save} onReset={reset} onClose={() => setOpen(false)} />}
     </div>
   );
 };
@@ -217,8 +232,9 @@ const UpdateDialog: React.FC<{
   profileOf: (code: string) => VehicleProfile | undefined;
   isUp: (code: string) => boolean;
   onSave: (code: string, caps: (number | null)[]) => void;
+  onReset: (code: string) => void;
   onClose: () => void;
-}> = ({ items, profileOf, isUp, onSave, onClose }) => {
+}> = ({ items, profileOf, isUp, onSave, onReset, onClose }) => {
   const [q, setQ] = useState('');
   const [catFilter, setCatFilter] = useState<string | null>(null);
   const [code, setCode] = useState<string | null>(null);
@@ -255,8 +271,10 @@ const UpdateDialog: React.FC<{
     const prof = profileOf(c);
     const sheet = sheetTanks(c) || (FLEET_BY_CODE.get(c)?.tanks.length ? FLEET_BY_CODE.get(c)!.tanks : null);
     // المحفوظ يدويًا أولًا، وإلا سعات كشف الخزانات (الرئيسي ثم الاحتياط)
-    const start = isUpdated(prof) || prof?.tankCount ? tankSlotsOf(prof) : sheet ? [sheet[0] ?? null, sheet[1] ?? null, sheet[2] ?? null, null] : [null, null, null, null];
-    const startOn = isUpdated(prof) || prof?.tankCount ? tankOnOf(prof) : start.map((v, i) => i === 0 || !!v);
+    // أُلغي تحديثها: تبدأ فارغة؛ وإلا المحفوظ يدويًا أولًا، ثم سعات كشف الخزانات (الرئيسي ثم الاحتياط)
+    const start = prof?.tanksCleared ? [null, null, null, null]
+      : isUpdated(prof) || prof?.tankCount ? tankSlotsOf(prof) : sheet ? [sheet[0] ?? null, sheet[1] ?? null, sheet[2] ?? null, null] : [null, null, null, null];
+    const startOn = prof?.tanksCleared ? [true, false, false, false] : isUpdated(prof) || prof?.tankCount ? tankOnOf(prof) : start.map((v, i) => i === 0 || !!v);
     setCode(c);
     setOn(startOn);
     setCaps(start.map(v => (v ? String(v) : '')));
@@ -272,6 +290,15 @@ const UpdateDialog: React.FC<{
   const valid = on.every((o, i) => !o || !!nums[i]);
   const total = nums.reduce<number>((s, v) => s + (v || 0), 0);
   const toggle = (i: number) => { if (i) setOn(o => o.map((x, j) => (j === i ? !x : x))); };
+  const clearCap = (k: number) => setCaps(c => c.map((x, j) => (j === k ? '' : x)));
+  const cancelUpdate = () => {
+    if (!code || !window.confirm(`إلغاء تحديث العربة ${code}؟ ستُصفَّر سعات خزاناتها وتُحسب غير محدثة`)) return;
+    onReset(code);
+    setOn([true, false, false, false]);
+    setCaps(['', '', '', '']);
+    setOrig([null, null, null, null]);
+    setConfirming(false);
+  };
 
   // عربة محدثة تغيّرت سعاتها أو خزاناتها: تأكيد قبل الحفظ
   const changed = ok && nums.some((v, k) => v !== orig[k]);
@@ -396,6 +423,12 @@ const UpdateDialog: React.FC<{
                         className="flex-1 min-w-0 bg-transparent outline-none text-xl font-mono font-bold text-slate-900 dark:text-white text-left placeholder:font-cairo placeholder:text-sm placeholder:font-medium placeholder:text-slate-400"
                       />
                       <span className="text-xs font-bold text-slate-400">لتر</span>
+                      {caps[k] && (
+                        <button type="button" onClick={e => { e.preventDefault(); clearCap(k); }} aria-label={`مسح ${label}`} title="مسح"
+                          className="shrink-0 w-7 h-7 -me-1 rounded-full flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer">
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
                     </label>
                   ))}
                 </div>
@@ -439,6 +472,11 @@ const UpdateDialog: React.FC<{
                   <button type="button" disabled={!valid} onClick={submit} className="h-12 rounded-2xl bg-gradient-to-l from-emerald-600 to-teal-500 text-white text-base font-black shadow-md shadow-emerald-500/30 disabled:opacity-40 disabled:shadow-none cursor-pointer disabled:cursor-not-allowed">حفظ</button>
                   <button type="button" onClick={() => setCode(null)} className="h-12 px-5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm font-bold cursor-pointer">عربة أخرى</button>
                 </div>
+                {ok && (
+                  <button type="button" onClick={cancelUpdate} className="mt-2 w-full h-11 rounded-2xl border border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 text-sm font-bold flex items-center justify-center gap-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer">
+                    <RotateCcw className="w-4 h-4" />إلغاء التحديث
+                  </button>
+                )}
               </div>
             )}
           </>
