@@ -1,8 +1,9 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CheckCircle2, Container, RotateCcw, Search, Truck, X, XCircle } from 'lucide-react';
+import { CheckCircle2, Container, Loader2, RotateCcw, Search, Truck, X, XCircle } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
+import { saveNow } from '../../lib/cloudSync';
 import { getProfile } from '../../lib/session';
 import { usePermissions } from '../../lib/usePermission';
 import { TANK_SLOTS, VEHICLE_PROFILES_KEY, sheetTanks, tankOnOf, tankSlotsOf, vehicleCategory, vehicleImage, type VehicleProfile } from '../../lib/vehicleFuel';
@@ -65,8 +66,26 @@ export const VehicleTanksUpdater: React.FC = () => {
   const updated = items.filter(i => isUp(i.code)).length;
   const pct = items.length ? Math.round((updated / items.length) * 100) : 0;
 
+  /**
+   * حفظ مؤكد: يُكتب ثم يُرسل للخادم فورًا ويُنتظر تأكيده، فلا تظهر علامة النجاح إلا إذا حُفظ فعلًا
+   * (ووصل إشعاره لحظيًا للأجهزة الأخرى). يعيد رسالة الخطأ أو null.
+   */
+  const persist = async (write: () => void): Promise<string | null> => {
+    if (!canSave) return 'هذا الحساب يستطيع العرض فقط. اطلب صلاحية «تعديل» من مدير النظام';
+    try {
+      write();
+    } catch {
+      return 'تعذّر الحفظ: مساحة التخزين في المتصفح ممتلئة. أعد تحميل الصفحة وحاول مجددًا';
+    }
+    const r = await saveNow(VEHICLE_PROFILES_KEY);
+    if (r === 'saved') return null;
+    return r === 'denied'
+      ? 'رفض الخادم الحفظ: هذا الحساب لا يملك صلاحية تعديل بيانات العربات'
+      : 'لم يصل الحفظ إلى الخادم بعد (تحقق من الاتصال). سيُعاد إرساله تلقائيًا عند عودة الاتصال';
+  };
+
   /** caps: سعة كل خانة (الرئيسي، الاحتياط 1، الاحتياط 2، البراد) أو null إن لم تكن في العربة */
-  const save = (code: string, caps: (number | null)[]) => {
+  const save = (code: string, caps: (number | null)[]) => persist(() => {
     const u = getProfile();
     setProfiles(prev => {
       const base = prev.find(p => codeOf(p) === code)
@@ -84,10 +103,10 @@ export const VehicleTanksUpdater: React.FC = () => {
       };
       return [next, ...prev.filter(p => p.id !== base.id)];
     });
-  };
+  });
 
   /** إلغاء التحديث: تُصفَّر سعات العربة وتعود «غير محدثة» (حتى لو كانت محدثة في كشف الخزانات) */
-  const reset = (code: string) => {
+  const reset = (code: string) => persist(() => {
     const u = getProfile();
     setProfiles(prev => {
       const base = prev.find(p => codeOf(p) === code)
@@ -98,7 +117,7 @@ export const VehicleTanksUpdater: React.FC = () => {
       };
       return [next, ...prev.filter(p => p.id !== base.id)];
     });
-  };
+  });
 
   const statGroups = useMemo(() => groupByCategory(stats, names, labels), [stats, names, labels]);
   const [topCat, setTopCat] = useState<string | null>(null);
@@ -231,8 +250,8 @@ const UpdateDialog: React.FC<{
   items: Item[];
   profileOf: (code: string) => VehicleProfile | undefined;
   isUp: (code: string) => boolean;
-  onSave: (code: string, caps: (number | null)[]) => void;
-  onReset: (code: string) => void;
+  onSave: (code: string, caps: (number | null)[]) => Promise<string | null>;
+  onReset: (code: string) => Promise<string | null>;
   onClose: () => void;
 }> = ({ items, profileOf, isUp, onSave, onReset, onClose }) => {
   const [q, setQ] = useState('');
@@ -291,9 +310,15 @@ const UpdateDialog: React.FC<{
   const total = nums.reduce<number>((s, v) => s + (v || 0), 0);
   const toggle = (i: number) => { if (i) setOn(o => o.map((x, j) => (j === i ? !x : x))); };
   const clearCap = (k: number) => setCaps(c => c.map((x, j) => (j === k ? '' : x)));
-  const cancelUpdate = () => {
-    if (!code || !window.confirm(`إلغاء تحديث العربة ${code}؟ ستُصفَّر سعات خزاناتها وتُحسب غير محدثة`)) return;
-    onReset(code);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const cancelUpdate = async () => {
+    if (!code || saving || !window.confirm(`إلغاء تحديث العربة ${code}؟ ستُصفَّر سعات خزاناتها وتُحسب غير محدثة`)) return;
+    setSaving(true);
+    setSaveError('');
+    const err = await onReset(code);
+    setSaving(false);
+    if (err) { setSaveError(err); return; }
     setOn([true, false, false, false]);
     setCaps(['', '', '', '']);
     setOrig([null, null, null, null]);
@@ -302,11 +327,16 @@ const UpdateDialog: React.FC<{
 
   // عربة محدثة تغيّرت سعاتها أو خزاناتها: تأكيد قبل الحفظ
   const changed = ok && nums.some((v, k) => v !== orig[k]);
-  const submit = () => {
-    if (!code || !valid) return;
+  const submit = async () => {
+    if (!code || !valid || saving) return;
     if (changed && !confirming) { setConfirming(true); return; }
     setConfirming(false);
-    onSave(code, nums);
+    setSaving(true);
+    setSaveError('');
+    // علامة النجاح بعد تأكيد الخادم فقط
+    const err = await onSave(code, nums);
+    setSaving(false);
+    if (err) { setSaveError(err); return; }
     setDone(true);
     window.setTimeout(close, 1400);
   };
@@ -468,8 +498,13 @@ const UpdateDialog: React.FC<{
                   </div>
                 )}
 
+                {saveError && (
+                  <div role="alert" className="mt-4 rounded-2xl border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 px-4 py-3 text-sm font-bold text-rose-700 dark:text-rose-300">{saveError}</div>
+                )}
                 <div className="mt-5 grid grid-cols-[1fr_auto] gap-2">
-                  <button type="button" disabled={!valid} onClick={submit} className="h-12 rounded-2xl bg-gradient-to-l from-emerald-600 to-teal-500 text-white text-base font-black shadow-md shadow-emerald-500/30 disabled:opacity-40 disabled:shadow-none cursor-pointer disabled:cursor-not-allowed">حفظ</button>
+                  <button type="button" disabled={!valid || saving} onClick={submit} className="h-12 rounded-2xl bg-gradient-to-l from-emerald-600 to-teal-500 text-white text-base font-black shadow-md shadow-emerald-500/30 disabled:opacity-40 disabled:shadow-none cursor-pointer disabled:cursor-not-allowed inline-flex items-center justify-center gap-2">
+                    {saving && <Loader2 className="w-5 h-5 animate-spin" />}{saving ? 'جارٍ الحفظ…' : 'حفظ'}
+                  </button>
                   <button type="button" onClick={() => setCode(null)} className="h-12 px-5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm font-bold cursor-pointer">عربة أخرى</button>
                 </div>
                 {ok && (

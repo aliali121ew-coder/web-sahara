@@ -267,6 +267,29 @@ async function flush(): Promise<void> {
   }
 }
 
+/** نتيجة حفظ مؤكد على الخادم */
+export type SaveResult = 'saved' | 'denied' | 'offline';
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+/**
+ * يرسل تعديل مفتاح فورًا وينتظر تأكيد الخادم (بدل الحفظ في الخلفية): saved = وصل وحُفظ ووصل إشعاره للأجهزة الأخرى،
+ * denied = لا صلاحية تعديل (أعاد الخادم نسخته)، offline = لم يصل خلال المهلة (يبقى معلّقًا ويُعاد إرساله لاحقًا).
+ * يُستدعى بعد كتابة المفتاح في localStorage.
+ */
+export const saveNow = async (key: string, timeoutMs = 12000): Promise<SaveResult> => {
+  if (blocked.has(key) || isStopped(key)) return 'denied';
+  const until = Date.now() + timeoutMs;
+  clearTimeout(flushTimer);
+  flushTimer = undefined;
+  while (Date.now() < until) {
+    if (!flushing) await flush();
+    if (blocked.has(key)) return 'denied';
+    if (!(key in readPending())) return 'saved';
+    if (status === 'offline' || status === 'error') return 'offline';
+    await sleep(150);
+  }
+  return 'offline';
+};
+
 /** اعتراض الكتابة في localStorage حتى يُرسل أي تغيير للخادم تلقائيًا */
 const installInterceptors = () => {
   Storage.prototype.setItem = function (key: string, value: string) {
