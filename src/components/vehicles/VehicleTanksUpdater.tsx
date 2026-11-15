@@ -97,7 +97,8 @@ export const VehicleTanksUpdater: React.FC = () => {
         tankLiters: caps[0] ?? null,
         tank2Liters: caps[1] ?? null,
         tank3Liters: caps[2] ?? null,
-        reeferTankLiters: caps[3] ?? null,
+        tank4Liters: caps[3] ?? null,
+        reeferTankLiters: caps[4] ?? null,
         updatedAt: new Date().toISOString(),
         by: u?.name || u?.username || '',
       };
@@ -112,7 +113,7 @@ export const VehicleTanksUpdater: React.FC = () => {
       const base = prev.find(p => codeOf(p) === code)
         || { id: code, name: '', type: '', tankLiters: null, dailyLimit: null, driver: '', department: '', notes: '', photo: '', updatedAt: '', by: '' };
       const next: VehicleProfile = {
-        ...base, tankCount: null, tankLiters: null, tank2Liters: null, tank3Liters: null, reeferTankLiters: null, tanksCleared: true,
+        ...base, tankCount: null, tankLiters: null, tank2Liters: null, tank3Liters: null, tank4Liters: null, reeferTankLiters: null, tanksCleared: true,
         updatedAt: new Date().toISOString(), by: u?.name || u?.username || '',
       };
       return [next, ...prev.filter(p => p.id !== base.id)];
@@ -258,11 +259,11 @@ const UpdateDialog: React.FC<{
   const [catFilter, setCatFilter] = useState<string | null>(null);
   const [code, setCode] = useState<string | null>(null);
   /** الخزانات المختارة: الرئيسي دائمًا، والاحتياط 1 و2 والبراد حسب العربة */
-  const [on, setOn] = useState<boolean[]>([true, false, false, false]);
-  const [caps, setCaps] = useState<string[]>(['', '', '', '']);
+  const [on, setOn] = useState<boolean[]>([true, false, false, false, false]);
+  const [caps, setCaps] = useState<string[]>(['', '', '', '', '']);
   const [done, setDone] = useState(false);
   /** السعات عند فتح العربة: لمعرفة هل غيّرها المستخدم */
-  const [orig, setOrig] = useState<(number | null)[]>([null, null, null, null]);
+  const [orig, setOrig] = useState<(number | null)[]>([null, null, null, null, null]);
   const [confirming, setConfirming] = useState(false);
   const [closing, setClosing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -291,9 +292,9 @@ const UpdateDialog: React.FC<{
     const sheet = sheetTanks(c) || (FLEET_BY_CODE.get(c)?.tanks.length ? FLEET_BY_CODE.get(c)!.tanks : null);
     // المحفوظ يدويًا أولًا، وإلا سعات كشف الخزانات (الرئيسي ثم الاحتياط)
     // أُلغي تحديثها: تبدأ فارغة؛ وإلا المحفوظ يدويًا أولًا، ثم سعات كشف الخزانات (الرئيسي ثم الاحتياط)
-    const start = prof?.tanksCleared ? [null, null, null, null]
-      : isUpdated(prof) || prof?.tankCount ? tankSlotsOf(prof) : sheet ? [sheet[0] ?? null, sheet[1] ?? null, sheet[2] ?? null, null] : [null, null, null, null];
-    const startOn = prof?.tanksCleared ? [true, false, false, false] : isUpdated(prof) || prof?.tankCount ? tankOnOf(prof) : start.map((v, i) => i === 0 || !!v);
+    const start = prof?.tanksCleared ? [null, null, null, null, null]
+      : isUpdated(prof) || prof?.tankCount ? tankSlotsOf(prof) : sheet ? [sheet[0] ?? null, sheet[1] ?? null, sheet[2] ?? null, null, null] : [null, null, null, null, null];
+    const startOn = prof?.tanksCleared ? [true, false, false, false, false] : isUpdated(prof) || prof?.tankCount ? tankOnOf(prof) : start.map((v, i) => i === 0 || !!v);
     setCode(c);
     setOn(startOn);
     setCaps(start.map(v => (v ? String(v) : '')));
@@ -319,9 +320,9 @@ const UpdateDialog: React.FC<{
     const err = await onReset(code);
     setSaving(false);
     if (err) { setSaveError(err); return; }
-    setOn([true, false, false, false]);
-    setCaps(['', '', '', '']);
-    setOrig([null, null, null, null]);
+    setOn([true, false, false, false, false]);
+    setCaps(['', '', '', '', '']);
+    setOrig([null, null, null, null, null]);
     setConfirming(false);
   };
 

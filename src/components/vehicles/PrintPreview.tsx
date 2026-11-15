@@ -4,11 +4,18 @@ import { createPortal } from 'react-dom';
 import { Loader2, Printer, X } from 'lucide-react';
 import { PAGE_H, PAGE_W, PAPER, fitSheet } from './printConsumption';
 
+/** عرض ورقة A4 عمودية بالبكسل (للكشوف متعددة الصفحات) */
+const PORTRAIT_W = Math.round(210 * (96 / 25.4));
+
 /**
  * معاينة الكشف قبل الطباعة (مثل معاينة تقرير الوارد): نافذة بـ 95% من الشاشة تعرض الورقة كما ستُطبع
  * (A4 أفقي بهوامشها) مصغّرة لتتسع، وزر الطباعة في الأعلى يطبع نفس الورقة المعروضة.
  */
-export const PrintPreview: React.FC<{ html: string; title: string; subtitle?: string; onClose: () => void }> = ({ html, title, subtitle, onClose }) => {
+export const PrintPreview: React.FC<{
+  html: string; title: string; subtitle?: string; onClose: () => void;
+  /** كشف بعدة صفحات (A4 عمودي): يُعرض كاملًا بالتمرير بلا تصغير لورقة واحدة */
+  pages?: boolean;
+}> = ({ html, title, subtitle, onClose, pages = false }) => {
   const frame = useRef<HTMLIFrameElement>(null);
   const area = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
@@ -36,6 +43,12 @@ export const PrintPreview: React.FC<{ html: string; title: string; subtitle?: st
   const onLoad = () => {
     const doc = frame.current?.contentDocument;
     if (!doc) return;
+    if (pages) {
+      // الإطار بطول الكشف كله، والتمرير في نافذة المعاينة
+      const fitHeight = () => { if (frame.current) frame.current.style.height = `${doc.documentElement.scrollHeight}px`; };
+      void Promise.race([doc.fonts?.ready, new Promise(r => setTimeout(r, 3000))]).then(() => { fitHeight(); setReady(true); });
+      return;
+    }
     void fitSheet(doc).then(() => setReady(true));
   };
 
@@ -73,6 +86,18 @@ export const PrintPreview: React.FC<{ html: string; title: string; subtitle?: st
           </div>
         </div>
 
+        {pages ? (
+          <div className="flex-1 min-h-0 overflow-auto p-4 flex justify-center">
+            <div className="relative bg-white rounded-sm shadow-[0_10px_40px_rgba(15,23,42,0.25)] h-fit" style={{ width: PORTRAIT_W }}>
+              <iframe ref={frame} title={title} srcDoc={html} onLoad={onLoad} style={{ width: '100%', height: 600, border: 0, display: 'block', background: '#fff' }} />
+              {!ready && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white">
+                  <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
         <div ref={area} className="flex-1 min-h-0 overflow-auto flex items-center justify-center p-4">
           {/* الورقة بحجمها الحقيقي مصغّرة: الإطار بعرض مساحة الطباعة حتى يطابق ما سيُطبع */}
           <div dir="ltr" style={{ width: PAPER.w * scale, height: PAPER.h * scale }} className="shrink-0 overflow-hidden">
@@ -87,6 +112,7 @@ export const PrintPreview: React.FC<{ html: string; title: string; subtitle?: st
             </div>
           </div>
         </div>
+        )}
       </div>
     </div>,
     document.body,

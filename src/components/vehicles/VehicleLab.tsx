@@ -82,6 +82,7 @@ const TANKS = [
   { name: 'الخزان الرئيسي', short: 'الرئيسي', color: '#4F46E5' },
   { name: 'خزان الاحتياط 1', short: 'احتياط 1', color: '#0EA5E9' },
   { name: 'خزان الاحتياط 2', short: 'احتياط 2', color: '#14B8A6' },
+  { name: 'خزان الاحتياط 3', short: 'احتياط 3', color: '#8B5CF6' },
   { name: 'خزان البراد', short: 'البراد', color: '#F59E0B' },
 ];
 const GLASS_BOTTOM = 11.28;

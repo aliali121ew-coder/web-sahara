@@ -1,11 +1,15 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  CalendarDays, Truck, FileText, Fuel, Gauge, Trophy, TrendingUp, TrendingDown, Repeat2, Upload, Loader2, ChartLine,
+  CalendarDays, Truck, FileText, Fuel, Gauge, Trophy, TrendingUp, TrendingDown, Repeat2, Upload, Loader2, ChartLine, Printer,
 } from 'lucide-react';
 import { usePermissions } from '../../lib/usePermission';
 import { useFuelNav } from '../../context/FuelDataContext';
-import { FREQUENT_DAYS, categoryLabel, formatDay } from '../../lib/vehicleFuel';
+import { FREQUENT_DAYS, VEHICLE_PROFILES_KEY, categoryLabel, formatDay, tankSlotsOf, vehicleCategory, type VehicleProfile } from '../../lib/vehicleFuel';
+import { useSyncedStorage } from '../../lib/useSyncedStorage';
+import { FLEET } from '../../lib/vehicleFleet';
+import { PrintPreview } from './PrintPreview';
+import { buildUpdatedSheet, type UpdatedRow } from './printUpdatedVehicles';
 import { DateRangeCalendar } from '../ui/DateRangeCalendar';
 import { useVehicleData, type Scope } from './useVehicleData';
 import { UploadPanel, type QueueItem } from './UploadPanel';
@@ -47,6 +51,29 @@ export const VehiclesReport: React.FC = () => {
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [panelOpen, setPanelOpen] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
+  // طباعة العربات المحدثة (سعات خزاناتها)، الأحدث تحديثًا أولًا
+  const [profiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
+  const [updatedHtml, setUpdatedHtml] = useState<{ html: string; count: number } | null>(null);
+  const printUpdated = () => {
+    const codeOf = (p: VehicleProfile) => (p.name?.trim() || p.id).toUpperCase();
+    const byCode = new Map(profiles.map(p => [codeOf(p), p]));
+    const catOf = (code: string, fleetType?: string) => fleetType || (vehicleCategory(code) ? categoryLabel(vehicleCategory(code)!.key) : 'أخرى');
+    const rows: UpdatedRow[] = [];
+    // محدثة يدويًا (من «تحديث العربات» أو تفاصيل العربة)
+    for (const p of profiles) {
+      const caps = tankSlotsOf(p);
+      if (p.tanksCleared || !caps.some(Boolean)) continue;
+      const code = codeOf(p);
+      rows.push({ code, cat: catOf(code, FLEET.find(v => v.code === code)?.type), caps, updatedAt: p.updatedAt || '' });
+    }
+    // محدثة في كشف الخزانات (Excel) ولم يُعدَّل ملفها يدويًا
+    for (const v of FLEET) {
+      if (!v.updated || byCode.has(v.code)) continue;
+      rows.push({ code: v.code, cat: v.type, caps: [v.tanks[0] ?? null, v.tanks[1] ?? null, v.tanks[2] ?? null, null, null], updatedAt: '' });
+    }
+    rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.code.localeCompare(b.code, 'en', { numeric: true }));
+    setUpdatedHtml({ html: buildUpdatedSheet(rows), count: rows.length });
+  };
   const [analysis, setAnalysis] = useState(false);
   // مختبر العربة (من الكارت الجانبي في تحليل الاستهلاك)
   const [lab, setLab] = useState<string | null>(null);
@@ -237,6 +264,12 @@ export const VehiclesReport: React.FC = () => {
           </>
         )}
           <span className="hidden sm:block w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
+          <button type="button" onClick={printUpdated} title="طباعة سعات خزانات العربات المحدثة" className="flex items-center justify-center gap-2 w-full sm:w-auto px-3.5 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-indigo-400 cursor-pointer">
+            <Printer className="w-4 h-4 text-indigo-600" />طباعة المحدثة
+          </button>
+          {updatedHtml && (
+            <PrintPreview pages html={updatedHtml.html} title="العربات المحدثة" subtitle={`${updatedHtml.count} عربة · سعات الخزانات · A4 عمودي`} onClose={() => setUpdatedHtml(null)} />
+          )}
           <button type="button" onClick={() => setShowFiles(true)} className={`flex items-center justify-center gap-2 w-full sm:w-auto ${editable ? '' : 'col-span-2'} px-3.5 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-sky-400 cursor-pointer`}>
             <FileText className="w-4 h-4 text-sky-500" />الملفات
             <span className="min-w-[22px] h-[22px] px-1.5 inline-flex items-center justify-center rounded-full bg-sky-100 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 text-xs font-black font-mono">{recentFiles.length}</span>
