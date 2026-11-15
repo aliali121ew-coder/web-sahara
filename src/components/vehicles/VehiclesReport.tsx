@@ -55,21 +55,23 @@ export const VehiclesReport: React.FC = () => {
   const [profiles] = useSyncedStorage<VehicleProfile[]>(VEHICLE_PROFILES_KEY, []);
   const [updatedHtml, setUpdatedHtml] = useState<{ html: string; count: number } | null>(null);
   const printUpdated = () => {
+    // نفس قاعدة صفحة «تحديث العربات» تمامًا حتى يطابق العدد: ملف العربة الأول بنفس الرمز،
+    // محدثة = لها سعة محفوظة يدويًا، أو محدثة في كشف الخزانات ولم يُلغَ تحديثها
     const codeOf = (p: VehicleProfile) => (p.name?.trim() || p.id).toUpperCase();
-    const byCode = new Map(profiles.map(p => [codeOf(p), p]));
-    const catOf = (code: string, fleetType?: string) => fleetType || (vehicleCategory(code) ? categoryLabel(vehicleCategory(code)!.key) : 'أخرى');
+    const profileOf = (code: string) => profiles.find(p => codeOf(p) === code);
+    const fleetOf = new Map(FLEET.map(v => [v.code, v]));
+    const catOf = (code: string) => fleetOf.get(code)?.type || (vehicleCategory(code) ? categoryLabel(vehicleCategory(code)!.key) : 'أخرى');
+    const codes = new Set([...FLEET.map(v => v.code), ...profiles.filter(p => tankSlotsOf(p).some(Boolean)).map(codeOf)]);
     const rows: UpdatedRow[] = [];
-    // محدثة يدويًا (من «تحديث العربات» أو تفاصيل العربة)
-    for (const p of profiles) {
+    for (const code of codes) {
+      const p = profileOf(code);
+      if (p?.tanksCleared) continue;
       const caps = tankSlotsOf(p);
-      if (p.tanksCleared || !caps.some(Boolean)) continue;
-      const code = codeOf(p);
-      rows.push({ code, cat: catOf(code, FLEET.find(v => v.code === code)?.type), caps, updatedAt: p.updatedAt || '' });
-    }
-    // محدثة في كشف الخزانات (Excel) ولم يُعدَّل ملفها يدويًا
-    for (const v of FLEET) {
-      if (!v.updated || byCode.has(v.code)) continue;
-      rows.push({ code: v.code, cat: v.type, caps: [v.tanks[0] ?? null, v.tanks[1] ?? null, v.tanks[2] ?? null, null, null], updatedAt: '' });
+      if (caps.some(Boolean)) rows.push({ code, cat: catOf(code), caps, updatedAt: p?.updatedAt || '' });
+      else if (fleetOf.get(code)?.updated) {
+        const t = fleetOf.get(code)!.tanks;
+        rows.push({ code, cat: catOf(code), caps: [t[0] ?? null, t[1] ?? null, t[2] ?? null, null, null], updatedAt: '' });
+      }
     }
     rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.code.localeCompare(b.code, 'en', { numeric: true }));
     setUpdatedHtml({ html: buildUpdatedSheet(rows), count: rows.length });
