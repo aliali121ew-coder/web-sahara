@@ -270,7 +270,8 @@
       "system.vehicles_migrate": "Vehicle sheets moved to R2",
       "admin.device_approve": "Sign-in device approved",
       "admin.device_remove": "Sign-in device removed",
-      "auth.device_pending": "New device sign-in awaiting approval"
+      "auth.device_pending": "New device sign-in awaiting approval",
+      "vehicle.update": "Vehicle tanks updated"
     },
     "categories": {
       "all": "All",

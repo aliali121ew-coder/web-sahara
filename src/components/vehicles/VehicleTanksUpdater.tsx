@@ -1,7 +1,7 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CheckCircle2, Container, Loader2, RotateCcw, Search, Truck, X, XCircle } from 'lucide-react';
+import { CheckCircle2, Container, Loader2, Plus, RotateCcw, Search, Truck, X, XCircle } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { saveNow } from '../../lib/cloudSync';
 import { getProfile } from '../../lib/session';
@@ -256,6 +256,11 @@ const UpdateDialog: React.FC<{
   onClose: () => void;
 }> = ({ items, profileOf, isUp, onSave, onReset, onClose }) => {
   const [q, setQ] = useState('');
+  // إضافة عربة غير موجودة في الأسطول ولا في الملفات: تُفتح بنفس نموذج الخزانات، وتُحفظ ملفًا جديدًا
+  const [adding, setAdding] = useState(false);
+  const [newCode, setNewCode] = useState('');
+  const [exists, setExists] = useState<string | null>(null);
+  const [extra, setExtra] = useState<Item | null>(null);
   const [catFilter, setCatFilter] = useState<string | null>(null);
   const [code, setCode] = useState<string | null>(null);
   /** الخزانات المختارة: الرئيسي دائمًا، والاحتياط 1 و2 والبراد حسب العربة */
@@ -302,7 +307,25 @@ const UpdateDialog: React.FC<{
     setConfirming(false);
   };
 
-  const sel = code ? items.find(i => i.code === code) : null;
+  const sel = code ? items.find(i => i.code === code) || (extra?.code === code ? extra : null) : null;
+  const normCode = (v: string) => v.trim().toUpperCase().replace(/\s+/g, '');
+  /** متابعة إضافة عربة: الموجودة يُنبَّه عليها (ويمكن فتحها)، والجديدة تفتح نموذج خزاناتها */
+  const startAdd = (raw: string) => {
+    const c = normCode(raw);
+    if (!/^[A-Z0-9][A-Z0-9-]{0,15}$/.test(c)) { setExists(''); return; }
+    if (items.some(i => i.code === c)) { setExists(c); return; }
+    const key = /^\d+$/.test(c) ? 'HEAD' : /^([A-Z]+)/.exec(c)?.[1] || 'OTHER';
+    setExtra({ code: c, catKey: FLEET_TYPES[key] ? key : 'OTHER', cat: FLEET_TYPES[key] || 'أخرى', group: 'عربة مضافة' });
+    setAdding(false);
+    setNewCode('');
+    setExists(null);
+    setCode(c);
+    setOn([true, false, false, false, false]);
+    setCaps(['', '', '', '', '']);
+    setOrig([null, null, null, null, null]);
+    setConfirming(false);
+    setSaveError('');
+  };
   const prof = code ? profileOf(code) : undefined;
   const ok = !!code && isUp(code);
   // سعة كل خانة مختارة، وnull لغير المختارة (تُحذف سعتها عند الحفظ)
@@ -366,12 +389,36 @@ const UpdateDialog: React.FC<{
         ) : (
           <>
             <div className="flex items-center justify-between gap-3 px-5 pt-5 pb-3">
-              <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2"><Truck className="w-5 h-5 text-indigo-600" />تحديث العربات</h3>
+              <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2"><Truck className="w-5 h-5 text-indigo-600" />{extra && sel === extra ? 'إضافة عربة' : 'تحديث العربات'}</h3>
+              {!sel && (
+                <button type="button" onClick={() => { setAdding(a => !a); setExists(null); setNewCode(normCode(q)); }}
+                  className={`ms-auto h-9 px-3 rounded-xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer ${adding ? 'bg-indigo-600 text-white' : 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100'}`}>
+                  <Plus className="w-4 h-4" />إضافة عربة
+                </button>
+              )}
               <button type="button" onClick={close} aria-label="إغلاق" className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center justify-center cursor-pointer"><X className="w-4 h-4" /></button>
             </div>
 
             {!sel ? (
               <>
+                {adding && (
+                  <div className="mx-5 mb-3 rounded-2xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/60 dark:bg-indigo-950/20 p-3 space-y-2">
+                    <div className="text-xs font-black text-indigo-800 dark:text-indigo-300">رقم العربة الجديدة</div>
+                    <div className="flex gap-2">
+                      <input autoFocus dir="ltr" value={newCode} onChange={e => { setNewCode(e.target.value.toUpperCase()); setExists(null); }}
+                        onKeyDown={e => { if (e.key === 'Enter') startAdd(newCode); }} placeholder="مثل BS400"
+                        className="flex-1 min-w-0 h-11 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-black text-base text-right outline-none focus:ring-2 focus:ring-indigo-400" />
+                      <button type="button" onClick={() => startAdd(newCode)} disabled={!newCode.trim()} className="h-11 px-4 rounded-xl bg-indigo-600 text-white text-sm font-black disabled:opacity-40 cursor-pointer">متابعة</button>
+                    </div>
+                    {exists === '' && <div className="text-xs font-bold text-rose-600">اكتب رقم العربة بالحروف الإنجليزية والأرقام فقط</div>}
+                    {exists && (
+                      <div role="alert" className="flex items-center justify-between gap-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 px-3 py-2">
+                        <span className="text-sm font-bold text-amber-800 dark:text-amber-300">العربة <bdi dir="ltr" className="font-mono">{exists}</bdi> موجودة مسبقًا</span>
+                        <button type="button" onClick={() => { const c = exists; setAdding(false); setExists(null); pick(c); }} className="h-8 px-3 rounded-lg bg-amber-500 text-white text-xs font-black cursor-pointer">فتحها</button>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="px-5">
                   <label className="flex items-center gap-2 h-12 px-4 rounded-2xl bg-slate-100 dark:bg-slate-800 focus-within:ring-2 focus-within:ring-indigo-400">
                     <Search className="w-5 h-5 text-slate-400" />
@@ -403,7 +450,16 @@ const UpdateDialog: React.FC<{
                       </li>
                     );
                   })}
-                  {!results.length && <li className="py-10 text-center text-sm text-slate-400">لا توجد عربة بهذا الرقم</li>}
+                  {!results.length && (
+                    <li className="py-8 text-center space-y-3">
+                      <div className="text-sm text-slate-400">لا توجد عربة بهذا الرقم</div>
+                      {q.trim() && (
+                        <button type="button" onClick={() => startAdd(q)} className="h-10 px-4 rounded-xl bg-indigo-600 text-white text-sm font-black inline-flex items-center gap-1.5 cursor-pointer">
+                          <Plus className="w-4 h-4" />إضافة العربة <bdi dir="ltr" className="font-mono">{normCode(q)}</bdi>
+                        </button>
+                      )}
+                    </li>
+                  )}
                 </ul>
               </>
             ) : (

@@ -36,6 +36,7 @@ export const ACTIONS: Record<string, { icon: React.ComponentType<{ className?: s
   'file.delete': { icon: FileX, sev: 'warn' },
   'profile.update': { icon: UserCog, sev: 'info' },
   'system.pages': { icon: ShieldAlert, sev: 'warn' },
+  'vehicle.update': { icon: Save, sev: 'success' },
   'system.vehicles_migrate': { icon: Save, sev: 'info' },
 };
 export const actionLabel = (a: string) => (i18n.exists(`admin:audit.actions.${a}`) ? i18n.t(`admin:audit.actions.${a}`) : a);

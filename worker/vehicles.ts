@@ -207,3 +207,38 @@ export async function handleVehicles(
 
   return json({ error: 'غير موجود', code: 'not_found' }, 404);
 }
+
+// ───── سجل العمليات: ما تغيّر في خزانات كل عربة ─────
+/** مفتاح ملفات العربات (السعات) في حالة البيانات */
+export const VEHICLE_PROFILES_KEY = 'sahara_vehicle_profiles_v1';
+const TANK_FIELDS: [string, string][] = [
+  ['tankLiters', 'الرئيسي'], ['tank2Liters', 'احتياط 1'], ['tank3Liters', 'احتياط 2'], ['tank4Liters', 'احتياط 3'], ['reeferTankLiters', 'البراد'],
+];
+type Prof = Record<string, unknown> & { id?: string; name?: string; tanksCleared?: boolean };
+const capOf = (p: Prof | null, f: string) => (typeof p?.[f] === 'number' && (p[f] as number) > 0 ? (p[f] as number) : null);
+
+/**
+ * وصف تعديلات خزانات العربات في دفعة حفظ (قبل تطبيقها): «العربة 609: الرئيسي 700 ← 750 · البراد — ← 200»،
+ * أو «إضافة عربة …» أو «إلغاء تحديث …». تغييرات لا تمس السعات (الاسم، الصورة) لا تُذكر.
+ */
+export const describeProfileChanges = async (db: D1Database, upsert: { id: string; data: string }[]): Promise<string[]> => {
+  if (!upsert.length) return [];
+  const ids = upsert.slice(0, 50).map(u => u.id);
+  const { results } = await db.prepare(`SELECT id, data FROM collection_items WHERE key = ? AND id IN (${ids.map(() => '?').join(',')})`)
+    .bind(VEHICLE_PROFILES_KEY, ...ids).all<{ id: string; data: string }>();
+  const before = new Map(results.map(r => { try { return [r.id, JSON.parse(r.data) as Prof]; } catch { return [r.id, null]; } }));
+  const out: string[] = [];
+  for (const u of upsert.slice(0, 50)) {
+    let next: Prof;
+    try { next = JSON.parse(u.data) as Prof; } catch { continue; }
+    const old = before.get(u.id) ?? null;
+    const code = String(next.name || next.id || u.id).toUpperCase();
+    const diffs = TANK_FIELDS
+      .map(([f, label]) => [label, capOf(old, f), capOf(next, f)] as const)
+      .filter(([, a, b]) => a !== b)
+      .map(([label, a, b]) => `${label} ${a ?? '—'} ← ${b ?? '—'}`);
+    if (next.tanksCleared && !old?.tanksCleared) out.push(`إلغاء تحديث العربة ${code}${diffs.length ? `: ${diffs.join(' · ')}` : ''}`);
+    else if (diffs.length) out.push(`${old ? 'العربة' : 'إضافة عربة'} ${code}: ${diffs.join(' · ')}`);
+  }
+  return out;
+};

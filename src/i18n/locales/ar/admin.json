@@ -278,7 +278,8 @@
       "system.vehicles_migrate": "نقل كشوف العربات إلى R2",
       "admin.device_approve": "اعتماد جهاز دخول",
       "admin.device_remove": "حذف جهاز دخول",
-      "auth.device_pending": "دخول من جهاز جديد بانتظار الموافقة"
+      "auth.device_pending": "دخول من جهاز جديد بانتظار الموافقة",
+      "vehicle.update": "تحديث خزانات عربة"
     },
     "categories": {
       "all": "الكل",

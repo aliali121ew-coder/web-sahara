@@ -16,7 +16,7 @@ import { guardReportLogOps, isReportLogKey, scopeReportLogs } from './storage/re
 import { COLLECTION_KEYS, DISABLED_SECTIONS_META, KEY_RULES_SIGNATURE, RETIRED_KEYS, isKeyDisabled, sanitizeDisabled } from '../src/lib/permCatalog';
 import type { D1Database, D1PreparedStatement, Env, ExecutionContext, R2Bucket, ScheduledController } from './types';
 import { handleSystem } from './system/api';
-import { handleVehicles } from './vehicles';
+import { VEHICLE_PROFILES_KEY, describeProfileChanges, handleVehicles } from './vehicles';
 import { ensureSystemTables, getMaintenance } from './system/backup';
 import { schemaGate } from './storage/schema';
 import { bumpStateVersion, readStateVersion, STATE_VERSION_KEY } from './storage/stateVersion';
@@ -399,9 +399,12 @@ export default {
             ops = guarded;
           }
         }
+        // تعديل خزانات العربات: يُوصف قبل التطبيق (القيمة السابقة ← الجديدة) ويُسجَّل بعد نجاحه
+        const vehicleNotes = key === VEHICLE_PROFILES_KEY ? await describeProfileChanges(env.DB, ops.upsert || []) : [];
         const r = await applyCollectionOps(env.DB, key, ops, session.id, now);
         if (typeof r === 'string') return json({ error: r, code: 'invalid_data' }, 400);
         if (r > 0) changed.add(key);
+        if (r > 0) for (const note of vehicleNotes) await audit(env.DB, request, session.id, 'vehicle.update', note);
       }
       for (const [key, value] of Object.entries(body.set || {})) {
         if (typeof value !== 'string') continue;
