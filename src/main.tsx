@@ -16,6 +16,7 @@ import { SyncBadge } from './components/auth/SyncBadge';
 // يلتقط طلب التثبيت (أندرويد) مبكرًا قبل عرض الواجهة
 import { InstallCard } from './components/layout/InstallCard';
 import { LoginAutoUpdate } from './components/layout/AppUpdate';
+import { CrashBoundary, CrashView } from './components/layout/CrashScreen';
 
 // طلب تخزين دائم حتى لا يمسح المتصفح بيانات التطبيق تلقائيًا عند امتلاء المساحة أو إغلاقه
 navigator.storage?.persist?.().catch(() => {});
@@ -50,11 +51,14 @@ const start = async (resumed = false) => {
   const [{ default: App }] = await Promise.all([import('./App'), i18nAllReady]);
   root.render(
     <React.StrictMode>
-      <App />
-      <SyncBadge />
-      <InstallCard />
+      <CrashBoundary>
+        <App />
+        <SyncBadge />
+        <InstallCard />
+      </CrashBoundary>
     </React.StrictMode>
   );
 };
 
-start();
+// خطأ أثناء التشغيل نفسه (قبل العرض): يظهر نصه بدل شاشة بيضاء
+start().catch(e => { console.error('app start failed', e); root.render(<CrashView error={e} />); });

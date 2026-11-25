@@ -616,7 +616,7 @@ export const FUEL_TYPES: { id: FuelType; label: string }[] = [
   { id: 'petrol', label: 'بانزين' },
   { id: 'electric', label: 'شحن' },
 ];
-export const fuelLabel = (t: FuelType | null | undefined) => FUEL_TYPES.find(f => f.id === (t || 'diesel'))!.label;
+export const fuelLabel = (t: FuelType | null | undefined) => FUEL_TYPES.find(f => f.id === t)?.label || 'كاز';
 
 /** خانات خزانات العربة بالترتيب: الرئيسي، الاحتياط 1، 2، 3، البراد */
 export const TANK_SLOTS = [
