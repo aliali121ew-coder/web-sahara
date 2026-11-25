@@ -342,7 +342,8 @@ export const ReportAlertsView: React.FC = () => {
           ))}
           {ts === 'none' && a.status === 'match' && <div className="text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5"><ShieldCheck className="w-4 h-4" />{t('alerts:act.matchNoAction')}</div>}
 
-          {ts === 'waiting_user' && ((isAssignee || canFix) ? (
+          {/* الرد يتطلب «تعديل» على سجل التنبيهات (العرض للقراءة فقط) */}
+          {ts === 'waiting_user' && (canEdit('alerts') && (isAssignee || canFix) ? (
             <>
               <div className="text-xs font-black text-slate-700 dark:text-slate-200">{t('alerts:act.replyTitle')}</div>
               <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={3} placeholder={t('alerts:act.replyPh')} className={textareaCls} />

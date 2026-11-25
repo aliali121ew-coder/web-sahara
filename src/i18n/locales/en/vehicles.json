@@ -1,0 +1,40 @@
+{
+  "liter": "L",
+  "card": {
+    "consumption": "Consumption",
+    "remaining": "L · {{value}} left",
+    "over": "L · {{value}} over capacity",
+    "hint": "Total refills in the period, because each refill fills the tank and equals what was used before it. A first refill with no previous one is not counted, a refill above capacity is capped at it, and remaining = tank capacity minus consumption"
+  },
+  "donut": {
+    "fuelTitle": "Total refills",
+    "fuelEmpty": "No refills in this period",
+    "consumptionTitle": "Total consumption",
+    "consumptionEmpty": "Not enough data: consumption needs the tank capacity and a previous refill"
+  },
+  "trend": {
+    "title": "Refills over the period",
+    "enlarge": "Enlarge chart",
+    "enlargeShort": "Enlarge",
+    "close": "Close",
+    "empty": "No refills in this period",
+    "fuel": "Refills",
+    "consumption": "Consumption",
+    "noConsumption": "No consumption line: it needs the tank capacity and a following refill to show what was used",
+    "hint": "Consumption is plotted at the refill it was used from; remaining = tank capacity minus what was used",
+    "fills": "{{count}} refills",
+    "spentUntil": "{{value}} L used by {{date}}",
+    "remaining": "{{value}} L remaining",
+    "prevFill": "Earlier refill outside the period",
+    "summary": "Days: {{days}} · Refills {{fuel}} L · Consumption {{consumption}} L",
+    "col": {
+      "date": "Date",
+      "qty": "Quantity",
+      "consumed": "Used from it",
+      "remaining": "Remaining",
+      "parts": "Refills",
+      "site": "Site",
+      "driver": "Driver"
+    }
+  }
+}

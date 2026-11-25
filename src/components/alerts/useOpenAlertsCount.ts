@@ -14,9 +14,12 @@ import type { ReportAlert } from '../../lib/reportCheck';
 export const useOpenAlertsCount = () => {
   const [alerts] = useSyncedStorage<ReportAlert[]>('sahara_report_alerts_v1', []);
   const [threads] = useSyncedStorage<ThreadMessage[]>('sahara_report_threads_v1', []);
-  const { canView, isAdmin } = usePermissions();
+  const { canView, canEdit, isAdmin } = usePermissions();
   const me = useSessionProfile()?.username || '';
   return useMemo(() => {
+    // بلا صلاحية السجل لا شارة؛ وطلب التصحيح يُحسب فقط لمن يستطيع الرد عليه (تعديل)
+    if (!canView('alerts')) return 0;
+    const canReply = canEdit('alerts');
     const mine = alerts.filter(a => canView(CHECK_SECTION_PERM[a.section]));
     const byAlert = new Map<string, ThreadMessage[]>();
     for (const m of threads) byAlert.set(m.alertId, [...(byAlert.get(m.alertId) || []), m]);
@@ -25,8 +28,8 @@ export const useOpenAlertsCount = () => {
       const msgs = byAlert.get(a.id) || [];
       const st = threadStatus(msgs);
       if (isAdmin && ((st === 'none' && a.status === 'mismatch' && !a.read) || st === 'waiting_admin')) count++;
-      else if (!isAdmin && st === 'waiting_user' && threadAssignee(msgs) === me) count++;
+      else if (!isAdmin && canReply && st === 'waiting_user' && threadAssignee(msgs) === me) count++;
     }
     return count;
-  }, [alerts, threads, canView, isAdmin, me]);
+  }, [alerts, threads, canView, canEdit, isAdmin, me]);
 };

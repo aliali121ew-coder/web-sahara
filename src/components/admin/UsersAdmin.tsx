@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Users, UserPlus, Search, Loader2, Crown, Ban, CheckCircle2, ArrowRight, ArrowLeft, KeyRound, RefreshCw, Check, ShieldCheck, Inbox, History, Pencil, Eye, EyeOff, Timer } from 'lucide-react';
-import { chatApi, type Account, type SupportRequest } from '../chat/chatApi';
+import { Users, UserPlus, Search, Loader2, Crown, Ban, CheckCircle2, ArrowRight, ArrowLeft, KeyRound, Fingerprint, RefreshCw, Check, ShieldCheck, Inbox, History, Pencil, Eye, EyeOff, Timer } from 'lucide-react';
+import { chatApi, type Account, type AdminDevice, type AdminPasskey, type SupportRequest } from '../chat/chatApi';
 import { useTranslation } from 'react-i18next';
 import { errorText } from '../../i18n/errors';
 import { ProfileCard } from '../layout/ProfileCard';
@@ -13,6 +13,7 @@ import { CreateAccountWizard } from './CreateAccountWizard';
 import { DEMO_DURATIONS, demoDurationMs, remainingText, useDemoMode, type DemoDurationKey } from '../../lib/demo';
 import { SupportRequests } from './SupportRequests';
 import { AuditLog } from './AuditLog';
+import { PasskeyApprovals } from './PasskeyApprovals';
 import { UserActivityPanel } from './UserActivityPanel';
 import { AvatarPicker, CopyButton, Empty, Issued, Skeleton, UserAvatar, btnCls, cardCls, genPassword, inputCls, timeAgo } from './adminUi';
 
@@ -40,7 +41,11 @@ export const UsersAdmin: React.FC = () => {
 
   const loadUsers = useCallback(() => chatApi.adminUsers().then(r => { setItems(r.items); setMax(r.max); }).catch(e => setError(errorText(e))), []);
   const loadRequests = useCallback(() => chatApi.adminSupport().then(r => setRequests(r.items)).catch(e => setError(errorText(e))), []);
-  useEffect(() => { loadUsers(); loadRequests(); }, [loadUsers, loadRequests]);
+  const [passkeys, setPasskeys] = useState<AdminPasskey[] | null>(null);
+  const loadPasskeys = useCallback(() => chatApi.adminPasskeys().then(r => setPasskeys(r.items)).catch(e => setError(errorText(e))), []);
+  const [devices, setDevices] = useState<AdminDevice[] | null>(null);
+  const loadDevices = useCallback(() => chatApi.adminDevices().then(r => setDevices(r.items)).catch(e => setError(errorText(e))), []);
+  useEffect(() => { loadUsers(); loadRequests(); loadPasskeys(); loadDevices(); }, [loadUsers, loadRequests, loadPasskeys, loadDevices]);
   // المتصلون الآن: يُحدَّث كل 20 ثانية أثناء فتح الصفحة، ومعه «آخر ظهور» لمن خرج
   const [online, setOnline] = useState<Set<string>>(() => new Set());
   useEffect(() => {
@@ -106,6 +111,12 @@ export const UsersAdmin: React.FC = () => {
             <SupportRequests items={requests} users={items || []} reload={loadRequests}
               onCreate={p => { setPrefill(p); setIssued(null); setCreateRound(r => r + 1); setTab('create'); }}
               onResetPassword={(acc, requestId) => { setEditTarget({ acc, resetPw: true, requestId }); setTab('users'); }} />
+          ) },
+          { id: 'devices', label: t('tabs.devices'), icon: Fingerprint, badge: [...(passkeys || []), ...(devices || [])].filter(p => !p.approved).length, content: (
+            <div className="space-y-6">
+              <PasskeyApprovals kind="logins" items={devices} reload={loadDevices} />
+              <PasskeyApprovals items={passkeys} reload={loadPasskeys} />
+            </div>
           ) },
           { id: 'audit', label: t('tabs.audit'), icon: History, content: <AuditLog users={items || []} /> },
           { id: 'create', label: t('tabs.create'), icon: UserPlus, content: (

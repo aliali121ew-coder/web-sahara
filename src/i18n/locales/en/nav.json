@@ -15,7 +15,9 @@
     "settings": "Settings",
     "profile": "Profile",
     "alerts": "Alerts log",
-    "suppliers": "Suppliers"
+    "suppliers": "Suppliers",
+    "vehiclesReport": "Vehicles Report",
+    "vehiclesTanks": "Vehicle Data Update"
   },
   "sidebar": {
     "label": "Main navigation",

@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
-import { groupLevel, levelOf, type Level } from './permCatalog';
+import { PERM_GROUPS, levelOf, type Level } from './permCatalog';
+import { useDisabledPages } from './disabledPages';
 import { useSessionProfile } from './session';
 import { CHECK_SECTION_PERM } from './checkSections';
 
@@ -13,13 +14,35 @@ export function usePermissions() {
   // ثبات المراجع مهم: الدوال تُستخدم في اعتماديات useMemo/useEffect، ولو تغيّرت مع كل رسم تحدث حلقة رسم لا تنتهي
   const permsKey = JSON.stringify(profile?.perms || {});
   const perms = useMemo(() => JSON.parse(permsKey) as Record<string, Level>, [permsKey]);
-  const level = useCallback((section: string): Level => levelOf(perms, isAdmin, section), [perms, isAdmin]);
-  const group = useCallback((groupId: string): Level => groupLevel(perms, isAdmin, groupId), [perms, isAdmin]);
+  // الصفحات الموقوفة من «إدارة النظام» تُعامل كأن لا صلاحية عليها، حتى لمدير النظام (بياناتها لا تُحمَّل أصلًا)
+  const disabled = useDisabledPages();
+  const off = useMemo(() => new Set(disabled), [disabled]);
+  const level = useCallback((section: string): Level => (off.has(section) ? 0 : levelOf(perms, isAdmin, section)), [perms, isAdmin, off]);
+  const group = useCallback((groupId: string): Level => {
+    const g = PERM_GROUPS.find(x => x.id === groupId);
+    return (g ? Math.max(0, ...g.sections.map(s => level(s.id))) : 0) as Level;
+  }, [level]);
   const canView = useCallback((section: string) => level(section) >= 1, [level]);
   const canEdit = useCallback((section: string) => level(section) >= 2, [level]);
   // «صفحة واحدة فقط»: لا تُطبَّق على مدير النظام
   const singlePage = !isAdmin ? profile?.single_page || '' : '';
   return useMemo(() => ({ isAdmin, level, group, canView, canEdit, singlePage }), [isAdmin, level, group, canView, canEdit, singlePage]);
+}
+
+/** المسمى الوظيفي لحسابات تحديث خزانات العربات */
+export const VEHICLE_UPDATER_ROLE = 'تحديث بيانات العربات';
+const norm = (s: string) => s.replace(/[إأآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/\s+/g, ' ').trim();
+
+/**
+ * حساب «تحديث بيانات العربات»: صلاحيته الخاصة، أو مسماه الوظيفي «تحديث بيانات العربات».
+ * يرى صفحة التحديث بدل تقرير العربات الكامل. لا يُطبَّق على مدير النظام.
+ */
+export function useIsVehicleUpdater() {
+  const profile = useSessionProfile();
+  const { isAdmin, canView } = usePermissions();
+  if (isAdmin) return false;
+  const role = norm(profile?.role || '');
+  return canView('vehicles-tanks') || role.includes(norm(VEHICLE_UPDATER_ROLE)) || role.toLowerCase().includes('vehicle data update');
 }
 
 /** درجة صلاحية قسم واحد */
@@ -42,8 +65,12 @@ export const TAB_SECTION: Record<string, { section?: string; group?: string }> =
   reports: { section: 'reports' },
   chat: { section: 'chat' },
   settings: { section: 'settings' },
-  // سجل التنبيهات: لمن يرى أحد الأقسام الأربعة (كاز الصحاري، كاز الاتحاد، البنزين، النفط الأسود)
-  alerts: {},
+  // سجل التنبيهات: صلاحيته الخاصة + أحد الأقسام الأربعة (كاز الصحاري، كاز الاتحاد، البنزين، النفط الأسود)
+  alerts: { section: 'alerts' },
+  // تقرير العربات: صلاحيته الخاصة (البيانات حسب صلاحية الواردات)
+  'vehicles-report': { section: 'vehicles-report' },
+  // تحديث بيانات العربات: لأصحاب صلاحيته فقط (مدير النظام لا يراها)
+  'vehicles-tanks': { section: 'vehicles-tanks' },
   // الملف الشخصي لكل حساب بلا صلاحية (آخر القائمة: صفحة البداية لحساب بلا أقسام)
   profile: {},
 };
@@ -55,7 +82,9 @@ export const useCanOpenTab = () => {
     // حساب مقيَّد بصفحة واحدة: لا يفتح غيرها (الباقي يتبع الصلاحيات كالمعتاد)
     if (p.singlePage && tab !== p.singlePage) return false;
     if (tab === 'profile') return true;
-    if (tab === 'alerts') return Object.values(CHECK_SECTION_PERM).some(s => p.canView(s));
+    if (tab === 'vehicles-tanks') return !p.isAdmin && p.canView('vehicles-tanks') && !p.canView('vehicles-report');
+    // بلا أي قسم تحقق تكون الصفحة فارغة، فلا تُفتح
+    if (tab === 'alerts') return p.canView('alerts') && Object.values(CHECK_SECTION_PERM).some(s => p.canView(s));
     const t = TAB_SECTION[tab];
     if (!t) return p.isAdmin;
     if (t.group === 'deliveries') return p.canView('deliveries-sahara') || p.canView('deliveries-etihad');

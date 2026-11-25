@@ -25,11 +25,19 @@ export const ACTIONS: Record<string, { icon: React.ComponentType<{ className?: s
   'admin.update': { icon: UserCog, sev: 'info' },
   'admin.password': { icon: KeyRound, sev: 'warn' },
   'admin.support': { icon: Inbox, sev: 'info' },
+  'admin.passkey_approve': { icon: Fingerprint, sev: 'warn' },
+  'admin.passkey_remove': { icon: Fingerprint, sev: 'info' },
+  'admin.device_approve': { icon: Fingerprint, sev: 'warn' },
+  'admin.device_remove': { icon: Fingerprint, sev: 'info' },
+  'auth.device_pending': { icon: ShieldAlert, sev: 'warn' },
   'data.save': { icon: Save, sev: 'info' },
   'data.denied': { icon: ShieldAlert, sev: 'danger' },
   'file.upload': { icon: FileUp, sev: 'info' },
   'file.delete': { icon: FileX, sev: 'warn' },
   'profile.update': { icon: UserCog, sev: 'info' },
+  'system.pages': { icon: ShieldAlert, sev: 'warn' },
+  'vehicle.update': { icon: Save, sev: 'success' },
+  'system.vehicles_migrate': { icon: Save, sev: 'info' },
 };
 export const actionLabel = (a: string) => (i18n.exists(`admin:audit.actions.${a}`) ? i18n.t(`admin:audit.actions.${a}`) : a);
 export const SEV: Record<Severity, { dot: string; ring: string; text: string }> = {

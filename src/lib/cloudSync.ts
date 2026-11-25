@@ -6,14 +6,22 @@
  */
 
 import { hasSession, sessionHeaders, clearSession, SESSION_PROFILE_KEY, LAST_USER_KEY, LAST_NAME_KEY, BIO_USER_KEY, BIO_DECLINED_PREFIX } from './session';
-import { COLLECTION_KEYS, SHADOW_PREFIX } from './permCatalog';
+import { COLLECTION_KEYS, RETIRED_KEYS, SHADOW_PREFIX, isKeyDisabled } from './permCatalog';
+import { VEHICLES_SIGNAL } from './vehicleRows';
+import { DISABLED_PAGES_KEY, getDisabledPages, setDisabledPages } from './disabledPages';
 
 /** رمز الدخول القديم (قبل حسابات المستخدمين) — يُمسح فقط */
 export const TOKEN_KEY = 'sahara_cloud_token';
 const PENDING_KEY = 'sahara_cloud_pending';
+/** الحساب الذي تعود له البيانات المحلية في هذا الجهاز */
+const SYNC_OWNER_KEY = 'sahara_cloud_owner';
 
 // مفاتيح خاصة بالجهاز نفسه فلا تُزامَن
 const LOCAL_ONLY = new Set([
+  // مفاتيح انتقلت بياناتها خارج المزامنة (سطور العربات في R2): لا تُرسل أبدًا
+  ...RETIRED_KEYS,
+  // الصفحات الموقوفة: تصل من الخادم مع حالة البيانات، ولا تُرفع منه
+  DISABLED_PAGES_KEY,
   TOKEN_KEY,
   SESSION_PROFILE_KEY,
   // بيانات الدخول الخاصة بهذا الجهاز فقط: لا تُزامَن أبدًا مع الأجهزة الأخرى
@@ -30,6 +38,7 @@ const LOCAL_ONLY = new Set([
   // بطاقة "ثبّت التطبيق": تأجيلها خاص بهذا الجهاز
   'sahara_install_dismissed_at',
   PENDING_KEY,
+  SYNC_OWNER_KEY,
   'sahara_active_tab',
   'sahara_theme_mode',
   'sahara_language',
@@ -98,14 +107,20 @@ const scheduleFlush = (delay = 300) => {
 
 // مفاتيح لا يملك هذا الحساب صلاحية تعديلها (يحددها الخادم): التغييرات عليها تبقى محلية ولا تُرسل
 const blocked = new Set<string>();
-type StateResponse = { items: Record<string, string>; admin?: boolean; readOnly?: string[] };
+type StateResponse = { items: Record<string, string>; admin?: boolean; readOnly?: string[]; disabled?: string[] };
 const setBlocked = (r: StateResponse) => {
   blocked.clear();
   (r.readOnly || []).forEach(k => blocked.add(k));
+  if (Array.isArray(r.disabled)) setDisabledPages(r.disabled);
+};
+/** مفتاح صفحة موقوفة: لا يُرسل (الخادم يرفضه)، وتُحذف نسخته المحلية عند وصول الحالة */
+const isStopped = (key: string) => {
+  const off = getDisabledPages();
+  return off.length > 0 && isKeyDisabled(key, new Set(off));
 };
 
 const markPending = (key: string) => {
-  if (blocked.has(key)) return;
+  if (blocked.has(key) || isStopped(key)) return;
   const p = readPending();
   p[key] = (p[key] || 0) + 1;
   writePending(p);
@@ -160,8 +175,11 @@ const buildPayload = (pending: Pending) => {
   const collections: Record<string, CollectionOps> = {};
   /** القيم التي حُسب منها الفرق: تصبح النسخة المرجعية بعد نجاح الإرسال */
   const snapshots: Record<string, string | null> = {};
+  /** مجموعات كبيرة صارت فارغة كلها محليًا: نسخة قديمة أو ناقصة لا حذف مقصود، فلا تُرسل وتُستعاد نسخة الخادم */
+  const stale: string[] = [];
   for (const key of Object.keys(pending)) {
     const value = rawGet.call(localStorage, key);
+    if (isCollection(key) && wipesCollection(value, getShadow(key))) { stale.push(key); continue; }
     if (value === null) { remove.push(key); if (isCollection(key)) snapshots[key] = null; continue; }
     if (isCollection(key)) {
       const ops = diffCollection(value, getShadow(key));
@@ -170,7 +188,17 @@ const buildPayload = (pending: Pending) => {
     }
     set[key] = value;
   }
-  return { body: { set, remove, collections }, snapshots };
+  return { body: { set, remove, collections }, snapshots, stale };
+};
+
+/** حذف كل عناصر مجموعة فيها 20 عنصرًا أو أكثر دفعة واحدة */
+const wipesCollection = (value: string | null, shadow: string | null) => {
+  try {
+    const old = shadow ? JSON.parse(shadow) : null;
+    if (!Array.isArray(old) || old.length < 20) return false;
+    const cur = value === null ? [] : JSON.parse(value);
+    return Array.isArray(cur) && cur.length === 0;
+  } catch { return false; }
 };
 
 /** رقم نسخة البيانات التي وصلت لهذا الجهاز (يرسله الخادم عبر القناة اللحظية مع كل حفظ) */
@@ -194,7 +222,14 @@ async function flush(): Promise<void> {
   flushing = true;
   setStatus('saving');
   try {
-    const { body, snapshots } = buildPayload(pending);
+    const { body, snapshots, stale } = buildPayload(pending);
+    if (stale.length) {
+      console.warn('cloud sync: refused to empty', stale);
+      const p = readPending();
+      stale.forEach(k => { delete p[k]; delete pending[k]; });
+      writePending(p);
+      void restoreRejected(stale);
+    }
     const res = await api('/api/state', { method: 'PUT', body: JSON.stringify(body) });
     if (res.status === 401) {
       // الرمز لم يعد صالحًا: نطلب الدخول مجددًا دون فقدان التعديلات المعلّقة
@@ -232,6 +267,29 @@ async function flush(): Promise<void> {
   }
 }
 
+/** نتيجة حفظ مؤكد على الخادم */
+export type SaveResult = 'saved' | 'denied' | 'offline';
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+/**
+ * يرسل تعديل مفتاح فورًا وينتظر تأكيد الخادم (بدل الحفظ في الخلفية): saved = وصل وحُفظ ووصل إشعاره للأجهزة الأخرى،
+ * denied = لا صلاحية تعديل (أعاد الخادم نسخته)، offline = لم يصل خلال المهلة (يبقى معلّقًا ويُعاد إرساله لاحقًا).
+ * يُستدعى بعد كتابة المفتاح في localStorage.
+ */
+export const saveNow = async (key: string, timeoutMs = 12000): Promise<SaveResult> => {
+  if (blocked.has(key) || isStopped(key)) return 'denied';
+  const until = Date.now() + timeoutMs;
+  clearTimeout(flushTimer);
+  flushTimer = undefined;
+  while (Date.now() < until) {
+    if (!flushing) await flush();
+    if (blocked.has(key)) return 'denied';
+    if (!(key in readPending())) return 'saved';
+    if (status === 'offline' || status === 'error') return 'offline';
+    await sleep(150);
+  }
+  return 'offline';
+};
+
 /** اعتراض الكتابة في localStorage حتى يُرسل أي تغيير للخادم تلقائيًا */
 const installInterceptors = () => {
   Storage.prototype.setItem = function (key: string, value: string) {
@@ -254,6 +312,8 @@ export const REALTIME_OPEN_EVENT = 'sahara:realtime-open';
 /** صلاحيات هذا الحساب تغيّرت (إشارة من القناة اللحظية): خط النبض ثم تحديث الصفحة (PermsPulse) */
 export const PERMS_CHANGED_EVENT = 'sahara:perms-changed';
 export const CLOUD_APPLIED_EVENT = 'cloud-state-applied';
+/** تغيّرت سطور تفويل العربات في R2 (رفع أو حذف كشف من جهاز آخر) */
+export const VEHICLES_CHANGED_EVENT = 'sahara:vehicles-changed';
 
 /**
  * إبلاغ الصفحات بمفاتيح وصلت من الخادم: الحدث المخصّص، وحدث storage لكل مفتاح
@@ -306,6 +366,10 @@ const applyServerState = (items: Record<string, string>, removed?: string[]): st
       changed.push(key);
     }
   }
+  // مجموعة لم تعد تصل (حُذفت أو أُوقفت صفحتها): تُحذف نسختها المرجعية أيضًا فتفرغ مساحتها من المتصفح
+  for (const key of COLLECTION_KEYS) {
+    if (!(key in items) && !(key in pending) && (!removed || removed.includes(key)) && getShadow(key) !== null) setShadow(key, null);
+  }
   return changed;
 };
 
@@ -352,7 +416,8 @@ const fetchState = async (timeoutMs = 8000, conditional = false) => {
   }
 };
 
-export type InitResult = 'ready' | 'need-login';
+/** unreachable: الجلسة باقية لكن تعذّر جلب البيانات (اتصال ضعيف أو عطل في الخادم) */
+export type InitResult = 'ready' | 'need-login' | 'unreachable';
 
 /** يُستدعى قبل عرض التطبيق: يسحب آخر نسخة من الخادم ثم يفعّل الحفظ التلقائي */
 export async function initCloudSync(): Promise<InitResult> {
@@ -361,6 +426,33 @@ export async function initCloudSync(): Promise<InitResult> {
   for (const k of ['sahara_supabase_url', 'sahara_supabase_anon_key']) rawRemove.call(localStorage, k);
   if (!getToken()) return 'need-login';
 
+  // تغيّر الحساب على هذا الجهاز: تُمسح بيانات الحساب السابق ونسخه المرجعية وتعديلاته المعلّقة، ويبدأ كجهاز جديد.
+  // حساب مقيّد لا يرى أقسامًا كاملة فتبقى عنده فارغة؛ دخول مدير النظام بعده كان يرفع هذه النسخة الفارغة
+  // فوق بيانات الخادم (هكذا حُذفت واردات الصحاري والاتحاد والموردون في 2026-11-08)
+  const owner = sessionHeaders()['x-chat-user'] || '';
+  const prevOwner = rawGet.call(localStorage, SYNC_OWNER_KEY);
+  if (owner && prevOwner !== owner) {
+    if (prevOwner !== null) {
+      for (const k of Object.keys(localStorage)) {
+        if (shouldSync(k) || k.startsWith(SHADOW_PREFIX)) rawRemove.call(localStorage, k);
+      }
+      rawRemove.call(localStorage, PENDING_KEY);
+    }
+    rawSet.call(localStorage, SYNC_OWNER_KEY, owner);
+  }
+
+  // مفاتيح انتقلت بياناتها (سطور العربات صارت في R2): تُحذف نسختها ونسختها المرجعية فتفرغ مساحة المتصفح
+  {
+    const pending = readPending();
+    let dirty = false;
+    for (const k of RETIRED_KEYS) {
+      rawRemove.call(localStorage, k);
+      rawRemove.call(localStorage, SHADOW_PREFIX + k);
+      if (k in pending) { delete pending[k]; dirty = true; }
+    }
+    if (dirty) writePending(pending);
+  }
+
   // جهاز بلا بيانات محلية (أول دخول أو بعد مسح المتصفح): لا نعرض التطبيق قبل وصول نسخة الخادم،
   // وإلا يبدأ بالبيانات الافتراضية ويرفعها فوق بيانات الخادم (حدث عند بطء تشغيل الخادم)
   const freshDevice = localSyncKeys().length === 0;
@@ -368,7 +460,7 @@ export async function initCloudSync(): Promise<InitResult> {
   /** تطبيق نسخة الخادم (أو رفع بيانات الجهاز إن كان الخادم فارغًا). يعيد المفاتيح التي تغيّرت */
   const adopt = (data: StateResponse): string[] => {
     setBlocked(data);
-    if (!Object.keys(data.items).length && data.admin) {
+    if (!Object.keys(data.items).length && data.admin && !data.disabled?.length) {
       // الخادم فارغ (أول استخدام): رفع كل البيانات الموجودة في هذا الجهاز.
       // لمدير النظام فقط: الحساب المقيّد يستلم مفاتيح أقسامه فقط وقد تبدو له النسخة فارغة
       const p = readPending();
@@ -395,8 +487,8 @@ export async function initCloudSync(): Promise<InitResult> {
       adopt((await res.json()) as StateResponse);
       rememberEtag(res);
     } catch {
-      // لم يصل الخادم: نعود لشاشة الدخول بدل البدء بالبيانات الافتراضية
-      return 'need-login';
+      // لم يصل الخادم: نعود لشاشة الدخول بدل البدء بالبيانات الافتراضية (دون مسح الجلسة)
+      return 'unreachable';
     }
     installInterceptors();
     flush();
@@ -454,10 +546,12 @@ export async function initCloudSync(): Promise<InitResult> {
         if (res.status === 304) return true;
       }
       if (!res.ok) return false;
-      const data = (await res.json()) as { items: Record<string, string>; removed?: string[]; v?: string };
+      const data = (await res.json()) as { items: Record<string, string>; removed?: string[]; v?: string; disabled?: string[] };
       // اكتمل إرسال من هذا الجهاز أثناء الجلب: النسخة قد تسبقه، فيُعاد الجلب
       if (gen !== flushGen) return 'again';
       if (flushing) return 'later';
+      // النسخة الكاملة تحمل قائمة الصفحات الموقوفة (تتغيّر من إدارة النظام دون إعادة تحميل)
+      if (!keys && Array.isArray(data.disabled)) setDisabledPages(data.disabled);
       const changed = applyServerState(data.items, keys ? (data.removed ?? []) : undefined);
       // الجلب الجزئي لآخر نسخة معروفة يُبقي الجهاز متزامنًا: تُحفظ بصمتها (وإلا نزّلت المزامنة الدورية كل شيء)
       if (!keys || (data.v && data.v === knownVersion && !wantFull && !wantKeys.size)) rememberEtag(res);
@@ -537,6 +631,11 @@ export async function initCloudSync(): Promise<InitResult> {
 
   /** إشعار تغيير ("رقم النسخة|المفاتيح"): يُجلب ما تغيّر فقط، أو النسخة الكاملة إن لم تُذكر المفاتيح */
   const onVersion = (msg: string) => {
+    // رفع أو حذف كشف عربات: الأشهر في R2 تُحدَّث من صفحة العربات، ولا تمس حالة البيانات
+    if (msg.startsWith(VEHICLES_SIGNAL)) {
+      window.dispatchEvent(new Event(VEHICLES_CHANGED_EVENT));
+      return;
+    }
     const sep = msg.indexOf('|');
     const v = sep < 0 ? msg : msg.slice(0, sep);
     if (!v || v === knownVersion) return;

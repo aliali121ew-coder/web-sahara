@@ -12,7 +12,8 @@
     "users": "Users",
     "requests": "Requests",
     "audit": "Activity log",
-    "create": "Create account"
+    "create": "Create account",
+    "devices": "Devices"
   },
   "limitReached": "You've reached the maximum number of accounts",
   "createAnother": "Create another account",
@@ -63,7 +64,8 @@
       "Viewer",
       "Branch manager",
       "Department manager",
-      "General manager"
+      "General manager",
+      "Vehicle data update"
     ],
     "steps": {
       "identity": {
@@ -186,6 +188,9 @@
       "managers": "Site managers",
       "tasks": "Tasks & requests",
       "reports": "Reports",
+      "alerts": "Alerts log",
+      "vehicles-report": "Vehicles report",
+      "vehicles-tanks": "Vehicle data update",
       "chat": "Chat",
       "settings": "Settings",
       "appearance": "Appearance & background",
@@ -258,7 +263,15 @@
       "data.save": "Data saved",
       "data.denied": "Edit denied",
       "file.upload": "File uploaded",
-      "file.delete": "File deleted"
+      "file.delete": "File deleted",
+      "admin.passkey_approve": "Device passkey approved",
+      "admin.passkey_remove": "Device passkey removed",
+      "system.pages": "Pages turned off or on",
+      "system.vehicles_migrate": "Vehicle sheets moved to R2",
+      "admin.device_approve": "Sign-in device approved",
+      "admin.device_remove": "Sign-in device removed",
+      "auth.device_pending": "New device sign-in awaiting approval",
+      "vehicle.update": "Vehicle tanks updated"
     },
     "categories": {
       "all": "All",
@@ -385,5 +398,37 @@
     "empty": "No recorded operations",
     "more": "Show more",
     "open": "Account log"
+  },
+  "devices": {
+    "pending": "Awaiting approval",
+    "approved": "Approved",
+    "total": "All passkeys",
+    "hint": "Every device that turns on face or fingerprint sign-in for a staff account waits for your approval. The site never sees the face itself, so approve only devices you know belong to the account owner.",
+    "approve": "Approve",
+    "reject": "Reject",
+    "remove": "Remove",
+    "confirmRemove": "Remove this device's passkey? Its owner will sign in with the password.",
+    "added": "Added {{time}}",
+    "lastUsed": "Last used {{time}}",
+    "neverUsed": "Never used",
+    "empty": "No device passkeys",
+    "noPending": "No requests awaiting approval",
+    "search": "Search by name or username"
+  },
+  "logins": {
+    "pending": "Devices awaiting approval",
+    "approved": "Approved devices",
+    "total": "All sign-in devices",
+    "hint": "Every staff sign-in from a new device (password or passkey) waits for your approval; the account cannot sign in from that device until you approve it. Approve only devices you know belong to the account owner.",
+    "approve": "Approve",
+    "reject": "Reject",
+    "remove": "Remove",
+    "confirmRemove": "Remove this device? Signing in from it will need your approval again.",
+    "added": "First attempt {{time}}",
+    "lastUsed": "Last sign-in {{time}}",
+    "neverUsed": "Not signed in yet",
+    "empty": "No sign-in devices",
+    "noPending": "No devices awaiting approval",
+    "search": "Search by name or username"
   }
 }

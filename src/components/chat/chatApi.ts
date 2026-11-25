@@ -47,6 +47,23 @@ export interface AuditEntry {
   ip: string;
 }
 
+/** بصمة جهاز لحساب (الدخول بالوجه / الإصبع) كما يراها مدير النظام */
+export interface AdminPasskey {
+  id: string;
+  user_id: string;
+  username: string;
+  name: string;
+  avatar: string;
+  color: string;
+  label: string;
+  created_at: number;
+  last_used: number;
+  approved: number;
+}
+
+/** جهاز دخول لحساب (معتمد أو بانتظار موافقة مدير النظام) */
+export interface AdminDevice extends AdminPasskey { ip: string; approved_at: number }
+
 /** طلب دعم مُرسل من شاشة الدخول */
 export interface SupportRequest {
   id: string;
@@ -170,6 +187,12 @@ export const chatApi = {
   adminPresence: () => call<{ online: string[] }>('/admin/presence'),
   adminCreate: (body: { username: string; password: string; name: string; role: string; is_admin: boolean; perms?: Perms; avatar?: string; expires_at?: number; single_page?: string }) => call<{ id: string }>('/admin/users', send('POST', body)),
   adminSupport: () => call<{ items: SupportRequest[] }>('/admin/support'),
+  adminPasskeys: () => call<{ items: AdminPasskey[] }>('/admin/passkeys'),
+  adminPasskeyApprove: (id: string) => call(`/admin/passkeys/${encodeURIComponent(id)}`, send('PATCH', {})),
+  adminPasskeyRemove: (id: string) => call(`/admin/passkeys/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  adminDevices: () => call<{ items: AdminDevice[] }>('/admin/devices'),
+  adminDeviceApprove: (id: string) => call(`/admin/devices/${encodeURIComponent(id)}`, send('PATCH', {})),
+  adminDeviceRemove: (id: string) => call(`/admin/devices/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   adminAuditStats: () => call<{ since: number; items: { action: string; n: number; users: number }[] }>('/admin/audit/stats'),
   adminAudit: (q: { user?: string; action?: string; q?: string; since?: number; before?: number; limit?: number } = {}) => {
     const p = new URLSearchParams(Object.entries(q).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)]));

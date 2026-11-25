@@ -2,13 +2,13 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import { DemoLoginBadge } from '../layout/DemoBanner';
 import {
   User, Lock, Eye, EyeOff, Loader2, AlertCircle, Clock, ArrowUpWideNarrow, KeyRound, ShieldCheck, UserCog,
-  Sun, Moon, ArrowRight, ArrowLeft, Check, Truck, Fuel, Building2, LockKeyhole, Fingerprint, ScanFace, X,
+  Sun, Moon, ArrowRight, ArrowLeft, Check, Truck, Fuel, Building2, LockKeyhole, Fingerprint, ScanFace, X, WifiOff,
 } from 'lucide-react';
 import { useTranslation, Trans } from 'react-i18next';
 import { errorText } from '../../i18n/errors';
 import { LangToggle } from './LangToggle';
 import {
-  authStatus, loginAccount, setupSystem, AuthError, LAST_USER_KEY, LAST_NAME_KEY,
+  authStatus, loginAccount, setupSystem, AuthError, LAST_USER_KEY, LAST_NAME_KEY, hasSession, clearSession,
   biometricAvailable, biometricUser, enableBiometric, loginWithBiometric, savedLogin, resumeLogin, forgetSavedLogin,
   prepareBioLogin, bioAnimationKind, type BioLoginOptions,
   BIO_DECLINED_PREFIX, type BioRegisterOptions,
@@ -31,7 +31,6 @@ const strength = (p: string) => {
 // تسمية كل مستوى في auth:strength.<n>
 const STRENGTH = ['#ef4444', '#f97316', '#ca8a04', '#16a34a', '#059669'].map(color => ({ color }));
 const USERNAME_RE = /^[a-z0-9._-]{3,32}$/;
-const REMEMBER_KEY = 'sahara_remember_me';
 const WELCOME_KEY = 'sahara_welcome_seen';
 /** رفض عرض تفعيل البصمة لهذا الحساب على هذا الجهاز */
 const BIO_DECLINED_KEY = BIO_DECLINED_PREFIX;
@@ -87,19 +86,21 @@ const Field = React.forwardRef<HTMLInputElement, FieldProps>(({ label, icon: Ico
 Field.displayName = 'Field';
 
 // ═════ الشاشة ═════
-export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
+export const AppLogin: React.FC<{ onSuccess: () => void; unreachable?: boolean }> = ({ onSuccess, unreachable = false }) => {
   const { t, i18n } = useTranslation('auth');
   const pageDir = i18n.dir();
-  const [mode, setMode] = useState<Mode>('loading');
+  const [mode, setMode] = useState<Mode>(unreachable ? 'login' : 'loading');
   const [dark, setDark] = useState(() => localStorage.getItem('sahara_theme_mode') === 'dark');
-  // الدخول المحفوظ (72 ساعة من آخر إدخال لكلمة المرور): يكفي زر «تسجيل الدخول»
+  // الدخول المحفوظ: يكفي زر «تسجيل الدخول» بلا كلمة مرور
   const [saved, setSaved] = useState(savedLogin);
+  // وصل هنا بسبب ضعف الاتصال والجلسة ما زالت قائمة: الزر يعيد المحاولة فقط
+  const [retry, setRetry] = useState(() => unreachable && hasSession());
   const [username, setUsername] = useState(() => savedLogin() || localStorage.getItem(LAST_USER_KEY) || '');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
-  const [remember, setRemember] = useState(() => localStorage.getItem(REMEMBER_KEY) !== '0');
+  const [remember, setRemember] = useState(true);
   const [show, setShow] = useState(false);
   const [caps, setCaps] = useState(false);
   const [btn, setBtn] = useState<BtnState>('idle');
@@ -108,10 +109,13 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
   const [lockedUntil, setLockedUntil] = useState(0);
   const [now, setNow] = useState(Date.now());
   const passRef = useRef<HTMLInputElement>(null);
+  // كتب المستخدم كلمة المرور بنفسه؟ لا = ملأها مدير كلمات المرور (في الآيفون بعد التحقق بالوجه)
+  const typedPass = useRef(false);
   const errId = useId();
   const phone = useIsPhone();
-  // الشرائح التعريفية أول مرة فقط، والترحيب في كل مرة يُطلب فيها تسجيل الدخول (كل 24 ساعة أو بعد الخروج)
-  const [phoneStep, setPhoneStepState] = useState<PhoneStep>(() => (localStorage.getItem(WELCOME_KEY) ? 'welcome' : 'intro'));
+  // الشرائح التعريفية أول مرة فقط، والترحيب بعد الخروج. اسم مستخدم محفوظ يعني أنه لم يخرج بنفسه (ضعف اتصال أو مشكلة):
+  // يصل مباشرة لنموذج الدخول مملوءًا
+  const [phoneStep, setPhoneStepState] = useState<PhoneStep>(() => (localStorage.getItem(LAST_USER_KEY) ? 'login' : localStorage.getItem(WELCOME_KEY) ? 'welcome' : 'intro'));
   const setPhoneStep = (s: PhoneStep) => {
     if (s === 'login' || s === 'support') { try { localStorage.setItem(WELCOME_KEY, '1'); } catch { /* تجاهل */ } }
     setPhoneStepState(s);
@@ -150,13 +154,22 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
     return () => clearInterval(t);
   }, [lockedUntil]);
   const lockLeft = Math.max(0, Math.ceil((lockedUntil - now) / 1000));
-  const useSaved = mode === 'login' && !!saved && username.trim().toLowerCase() === saved;
+  const useSaved = mode === 'login' && (retry || (!!saved && username.trim().toLowerCase() === saved));
   const forgetSaved = () => {
     forgetSavedLogin();
     setSaved('');
     setUsername('');
     setError('');
+    if (retry) { clearSession(); setRetry(false); }
   };
+
+  // عند عودة الاتصال يُفتح التطبيق بالجلسة نفسها دون انتظار ضغطة
+  useEffect(() => {
+    if (!retry) return;
+    const on = () => { setBtn('loading'); onSuccess(); };
+    window.addEventListener('online', on);
+    return () => window.removeEventListener('online', on);
+  }, [retry]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fail = (e: unknown) => {
     setError(errorText(e));
@@ -175,8 +188,15 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
     e.preventDefault();
     if (btn !== 'idle' || lockLeft) return; // منع الإرسال المكرر
     setError('');
+    if (retry) {
+      setBtn('loading');
+      onSuccess();
+      return;
+    }
     const u = username.trim().toLowerCase();
     const invalid = (msg: string) => { setError(msg); setShake(s => s + 1); };
+    // ما يملؤه مدير كلمات المرور في المتصفح قد لا يصل إلى password قبل الضغط، فيُقرأ من الحقل مباشرة
+    const loginPassword = passRef.current?.value || password;
     if (mode === 'setup') {
       if (!code.trim()) return invalid(t('validation.code'));
       if (!name.trim()) return invalid(t('validation.fullName'));
@@ -191,23 +211,29 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
         setTimeout(onSuccess, reducedMotion() ? 0 : 650);
       } catch (err) {
         setBtn('idle');
-        // انتهت مهلة الـ 72 ساعة أو أُلغي الدخول المحفوظ: يعود الحقل لطلب كلمة المرور
+        // انتهت المهلة أو أُلغي الدخول المحفوظ: يعود الحقل لطلب كلمة المرور
         if (err instanceof AuthError && err.code === 'resume_expired') setSaved('');
         fail(err);
       }
       return;
-    } else if (!u || !password) {
+    } else if (!u || !loginPassword) {
       return invalid(t('validation.credentials'));
     }
     setBtn('loading');
     try {
       if (mode === 'setup') await setupSystem(code.trim(), { username: u, password, name: name.trim() });
-      else await loginAccount(u, password, remember);
-      localStorage.setItem(REMEMBER_KEY, remember ? '1' : '0');
+      else await loginAccount(u, loginPassword, remember);
       setBtn('success');
       // بعد أول دخول بكلمة المرور على جهاز يدعم البصمة: نعرض تفعيلها (مرة لكل حساب)
       const offer = bioAvail && biometricUser() !== u && !localStorage.getItem(BIO_DECLINED_KEY + u);
-      setTimeout(() => (offer ? setBioOffer(true) : onSuccess()), reducedMotion() ? 0 : 650);
+      const next = () => (offer ? setBioOffer(true) : onSuccess());
+      // كلمة مرور ملأها الآيفون بعد التحقق بالوجه: علامة نجاح الوجه من الأعلى قبل فتح التطبيق
+      if (mode !== 'setup' && !typedPass.current && bioAnimationKind() === 'face') {
+        setBioPhase('success');
+        setTimeout(() => { setBioPhase(null); next(); }, reducedMotion() ? 400 : 1300);
+      } else {
+        setTimeout(next, reducedMotion() ? 0 : 650);
+      }
     } catch (err) {
       setBtn('idle');
       fail(err);
@@ -227,8 +253,11 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
     if (bioBusy || btn !== 'idle') return;
     setError('');
     setBioBusy(true);
-    // أثناء التحقق تُترك الشاشة لنافذة النظام (أندرويد / iPhone تعرض نافذتها الإلزامية للبصمة)،
-    // فحركة التطبيق تظهر بعد النجاح فقط ولا تتراكب فوق نافذة النظام
+    // الوجه: لوحة الوجه تنزل من الأعلى فور الضغط (لا تتراكب مع نافذة النظام في الوسط/الأسفل).
+    // الإصبع: الشاشة تُترك لنافذة النظام السفلية، ولوحة البصمة تظهر بعد نزولها (بعد النجاح)
+    const face = bioAnimationKind() === 'face';
+    const startedAt = Date.now();
+    if (face && !reducedMotion()) setBioPhase('verify');
     const ctrl = new AbortController();
     bioAbort.current = ctrl;
     try {
@@ -239,6 +268,11 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
       if (reducedMotion()) {
         setBioPhase('success');
         setTimeout(onSuccess, 400);
+      } else if (face) {
+        // الوجه ظاهر منذ الضغط: تكتمل حركة الالتفات (1.35 ثانية على الأقل) ثم علامة الصح
+        const wait = Math.max(0, 1350 - (Date.now() - startedAt));
+        setTimeout(() => setBioPhase('success'), wait);
+        setTimeout(onSuccess, wait + 1000);
       } else {
         setBioPhase('verify');
         setTimeout(() => setBioPhase('success'), 1350);
@@ -262,6 +296,12 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
   // نموذج الدخول نفسه (مشترك بين الحاسوب والهاتف)
   const renderForm = (phone: boolean) => (
     <>
+      {unreachable && (
+        <div role="status" className="mb-5 flex items-start gap-2.5 rounded-xl px-3.5 py-3 text-[13px] font-bold leading-6 bg-amber-50 text-amber-900 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/30">
+          <WifiOff className="w-[18px] h-[18px] shrink-0 mt-0.5" aria-hidden />
+          <span className="flex-1">{t('unreachable')}</span>
+        </div>
+      )}
       {!setup && bioAvail && bioUser && (
         <div className="mb-5 auth-fade">
           <button type="button" onClick={bioLogin} disabled={bioBusy || btn !== 'idle'} aria-busy={bioBusy}
@@ -309,7 +349,7 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
         <Field
           ref={passRef} id="a-pass" label={t('fields.password')} icon={Lock} dir="ltr" invalid={hasError && !setup}
           type={show ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
-          onKeyDown={onKey} onKeyUp={onKey} maxLength={128} required
+          onKeyDown={e => { typedPass.current = true; onKey(e); }} onKeyUp={onKey} maxLength={128} required
           autoComplete={setup ? 'new-password' : 'current-password'} autoFocus={!phone && !setup && !!username}
           trailing={
             <button type="button" onClick={() => setShow(v => !v)} aria-pressed={show}
@@ -403,7 +443,8 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
 
   const offerEl = bioOffer && (
     <BioOffer
-      onEnable={async prepared => { await enableBiometric(undefined, prepared); onSuccess(); }}
+      onEnable={async prepared => { const r = await enableBiometric(undefined, prepared); if (!r.pending) onSuccess(); return r.pending; }}
+      onDone={onSuccess}
       onSkip={() => { try { localStorage.setItem(BIO_DECLINED_KEY + username.trim().toLowerCase(), '1'); } catch { /* تجاهل */ } onSuccess(); }}
     />
   );
@@ -494,10 +535,12 @@ export const AppLogin: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => 
 };
 
 /** عرض تفعيل الدخول بالبصمة / بصمة الوجه بعد الدخول بكلمة المرور */
-const BioOffer: React.FC<{ onEnable: (prepared: BioRegisterOptions | null) => Promise<void>; onSkip: () => void }> = ({ onEnable, onSkip }) => {
+const BioOffer: React.FC<{ onEnable: (prepared: BioRegisterOptions | null) => Promise<boolean>; onDone: () => void; onSkip: () => void }> = ({ onEnable, onDone, onSkip }) => {
   const { t, i18n } = useTranslation('auth');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // بصمة حساب موظف تنتظر موافقة مدير النظام قبل أن تعمل
+  const [pending, setPending] = useState(false);
   // تُجلب بيانات التسجيل فور ظهور العرض ليبدأ طلب البصمة مباشرة عند الضغط (شرط Safari في iPhone)
   const { ref: prepared } = usePreparedBio(true);
   const [methods, setMethods] = useBioMethods();
@@ -505,8 +548,9 @@ const BioOffer: React.FC<{ onEnable: (prepared: BioRegisterOptions | null) => Pr
     setBusy(true);
     setError('');
     try {
-      await onEnable(prepared.current);
+      const wait = await onEnable(prepared.current);
       saveBioMethod(methods);
+      if (wait) { setPending(true); setBusy(false); }
     } catch (e) {
       setError(bioErrorText(e));
       setBusy(false);
@@ -522,10 +566,16 @@ const BioOffer: React.FC<{ onEnable: (prepared: BioRegisterOptions | null) => Pr
         <div className="mx-auto w-16 h-16 rounded-[20px] auth-bio-hero flex items-center justify-center text-white">
           <Fingerprint className="w-8 h-8" />
         </div>
-        <h2 id="bio-title" className="mt-5 text-[22px] font-black text-slate-900 dark:text-white">{t('bio.title')}</h2>
+        <h2 id="bio-title" className="mt-5 text-[22px] font-black text-slate-900 dark:text-white">{pending ? t('bio.pendingTitle') : t('bio.title')}</h2>
         <p className="mt-1.5 text-[13px] leading-6 text-slate-500 dark:text-slate-400">
-          {t('bio.text')}
+          {pending ? t('bio.pendingText') : t('bio.text')}
         </p>
+        {pending ? (
+          <button type="button" onClick={onDone} autoFocus
+            className="auth-btn auth-focus mt-6 w-full h-14 rounded-2xl text-white font-bold text-base flex items-center justify-center gap-2">
+            {t('bio.continue')}
+          </button>
+        ) : <>
         <BioMethods value={methods} onChange={setMethods} disabled={busy} />
         {error && (
           <p role="alert" className="mt-4 flex items-center justify-center gap-2 text-[13px] font-bold text-rose-700 dark:text-rose-300">
@@ -540,6 +590,7 @@ const BioOffer: React.FC<{ onEnable: (prepared: BioRegisterOptions | null) => Pr
           className="auth-focus mt-2 w-full h-12 rounded-2xl text-[15px] font-bold text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-900">
           {t('bio.later')}
         </button>
+        </>}
       </div>
     </div>
   );

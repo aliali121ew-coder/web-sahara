@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   Server, Gauge, Database, DatabaseBackup, FolderOpen, Wrench, HardDrive, Cloud, Clock, Activity, RefreshCw, Loader2,
   FileText, MessageSquare, Trash2, ArrowUpFromLine, Play, CalendarClock, Sparkles, Construction, ChevronDown,
-  ShieldCheck, Fingerprint, RotateCcw, Trash,
+  ShieldCheck, Fingerprint, RotateCcw, Trash, PowerOff,
 } from 'lucide-react';
 import { SwipeTabs } from '../ui/SwipeTabs';
 import { chatApi } from '../chat/chatApi';
@@ -13,6 +13,7 @@ import { BarList, StatusPill, jobLabel, prefixLabel, tableLabel } from './system
 import { DbBrowser } from './DbBrowser';
 import { BackupsPanel } from './BackupsPanel';
 import { DemoPanel } from './DemoPanel';
+import { PagesPanel } from './PagesPanel';
 import { useDemoMode } from '../../lib/demo';
 import { Empty, KpiCard, Skeleton, btnCls, cardCls, fullDate, timeAgo } from '../admin/adminUi';
 
@@ -80,6 +81,7 @@ export const SystemConsole: React.FC = () => {
         { id: 'db', label: t('system:tabs.db'), icon: Database, content: ov ? <DbBrowser tables={ov.db.tables} /> : <div className={`${cardCls} p-5`}><Skeleton /></div> },
         { id: 'backups', label: t('system:tabs.backups'), icon: DatabaseBackup, content: <BackupsPanel items={backups} names={names} reload={loadBackups} onChanged={loadOverview} /> },
         { id: 'files', label: t('system:tabs.files'), icon: FolderOpen, content: <FilesTab legacy={ov?.legacyFiles || 0} onChanged={loadOverview} /> },
+        { id: 'pages', label: t('system:tabs.pages'), icon: PowerOff, content: <PagesPanel /> },
         { id: 'jobs', label: t('system:tabs.jobs'), icon: Wrench, content: <JobsTab ov={ov} onChanged={() => { loadOverview(); loadBackups(); }} names={names} /> },
       ]} />
     </div>

@@ -325,3 +325,43 @@ export const getShadePalette = (
   });
 };
 
+
+/**
+ * لون الحافة العليا للصفحة كما يُرى فعلًا: لون الخلفية الأساسي مع طبقات التدرج الشعاعي فوقه.
+ * يُستخدم لشريط عنوان نافذة التطبيق (theme-color) حتى يطابق رأس الصفحة لا اللون الأساسي وحده.
+ * يُحسب متوسط عدة نقاط على عرض الحافة العليا للنافذة.
+ */
+export const getTopEdgeColor = (baseColor: string, gradientCss: string, width: number, height: number): string => {
+  const parse = (c: string): [number, number, number] => {
+    const hex = /^#([0-9a-f]{6})$/i.exec(c.trim());
+    if (hex) return [0, 2, 4].map(i => parseInt(hex[1].slice(i, i + 2), 16)) as [number, number, number];
+    const m = c.match(/\d+(\.\d+)?/g);
+    return m ? [Number(m[0]), Number(m[1]), Number(m[2])] : [248, 250, 252];
+  };
+  const base = parse(baseColor);
+  const layers = [...gradientCss.matchAll(/radial-gradient\(circle at ([\d.]+)% ([\d.]+)%, rgba\(([\d.]+), ([\d.]+), ([\d.]+), ([\d.]+)\) 0%, transparent ([\d.]+)%\)/g)]
+    .map(m => ({ cx: (Number(m[1]) / 100) * width, cy: (Number(m[2]) / 100) * height, rgb: [Number(m[3]), Number(m[4]), Number(m[5])], a: Number(m[6]), stop: Number(m[7]) / 100 }));
+  if (!layers.length || width <= 0 || height <= 0) return `rgb(${base.join(', ')})`;
+  const samples = [0.1, 0.3, 0.5, 0.7, 0.9];
+  const acc = [0, 0, 0];
+  for (const fx of samples) {
+    const x = fx * width;
+    let c = [...base];
+    // الطبقة الأولى في CSS هي العليا: التركيب من الأخيرة إلى الأولى
+    for (const l of [...layers].reverse()) {
+      const radius = Math.max(...[[0, 0], [width, 0], [0, height], [width, height]].map(([px, py]) => Math.hypot(px - l.cx, py - l.cy)));
+      const d = Math.hypot(x - l.cx, 0 - l.cy);
+      const alpha = l.a * Math.max(0, 1 - d / (l.stop * radius));
+      c = c.map((v, i) => l.rgb[i] * alpha + v * (1 - alpha));
+    }
+    c.forEach((v, i) => { acc[i] += v / samples.length; });
+  }
+  return `rgb(${acc.map(v => Math.round(v)).join(', ')})`;
+};
+
+/** لون الثيم الأساسي (أول طبقة في تدرج الخلفية) بصيغة «R G B» لاستخدامه في تلوين الكارتات؛ أزرق سماوي بلا تدرج */
+export const getThemeAccentRgb = (gradient: BgGradientTheme, mode: ThemeMode): string => {
+  const css = getAmbientGradientStyle(gradient, 'subtle', mode, 3);
+  const m = /rgba\(([\d.]+), ([\d.]+), ([\d.]+),/.exec(css);
+  return m ? `${m[1]} ${m[2]} ${m[3]}` : '14 165 233';
+};

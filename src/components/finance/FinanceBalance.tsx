@@ -31,6 +31,7 @@ import { SaharaPetrolView } from './SaharaPetrolView';
 import { SaharaBlackOilView } from './SaharaBlackOilView';
 import { SiteFarmsHub } from './SiteFarmsHub';
 import { getBusinessDate } from '../../lib/utils';
+import { etihadCoverage } from '../../lib/etihadCoverage';
 import { CLOUD_APPLIED_EVENT } from '../../lib/cloudSync';
 import { readEtihadLatestBalance, syncEtihadExtractionTank, useCentralTanks, resolveGasoilSectionKey } from '../../lib/centralTanks';
 import { useBlackOilLedger } from '../../lib/blackOilLedger';
@@ -242,14 +243,8 @@ export const FinanceBalance: React.FC = () => {
     return key ? centralTanks.filter(t => t.sectionKey === key).reduce((a, t) => a + t.capacityLiters, 0) : 0;
   }, [centralTanks]);
   const etihadBlackOil = useBlackOilLedger('etihad');
-  // التغطية: الرصيد الحالي ÷ متوسط الاستهلاك اليومي لآخر 7 سجلات فيها استهلاك
-  const etihadCoverageDays = useMemo(() => {
-    const recent = [...records].sort((a, b) => b.date.localeCompare(a.date)).filter(r => (r.etihadExpense || 0) > 0).slice(0, 7);
-    if (!recent.length) return 0;
-    const avg = recent.reduce((a, r) => a + (r.etihadExpense || 0), 0) / recent.length;
-    const balance = [...records].sort((a, b) => b.date.localeCompare(a.date))[0]?.currentBalance || 0;
-    return avg > 0 ? Math.floor(balance / avg) : 0;
-  }, [records]);
+  // يؤمن لغاية: نفس حساب الواجهة الرئيسية
+  const coverage = useMemo(() => etihadCoverage(records), [records]);
 
   // 2. Compute live metrics based ONLY on dateFilteredRecords or activeRecordId
   const metrics: EtihadSummaryMetrics = useMemo(() => {
@@ -565,7 +560,7 @@ export const FinanceBalance: React.FC = () => {
               {activeSubtab === 'balance' && (
                 <div className="space-y-3 sm:space-y-3.5">
                   {/* 1. Top 8 Modern KPI Cards */}
-                  <EtihadBalanceCards metrics={metrics} coverageDays={etihadCoverageDays} capacityLiters={etihadGasoilCapacity} />
+                  <EtihadBalanceCards metrics={metrics} coverageDays={coverage.days} coverageDate={coverage.date} capacityLiters={etihadGasoilCapacity} />
 
                   {/* 2. Interactive Ledger Table */}
                   <EtihadBalanceTable

@@ -14,7 +14,8 @@ import { findOrphanFiles, migrateLegacyFiles, purgeTrash, verifyFiles } from '..
 const DAY = 86400_000;
 const NOTIF_KEEP_MS = 90 * DAY;
 const AUDIT_KEEP_MS = 180 * DAY;
-const SESSION_MAX_MS = DAY;
+/** الجلسة تُحذف بعد هذه المدة من آخر دخول (نفس المدة في worker/chat.ts) */
+const SESSION_MAX_MS = 7 * DAY;
 
 /** تشغيل مهمة مع تسجيلها في system_jobs (البداية، النهاية، الحالة، التفاصيل) */
 export const runJob = async <T>(env: Env, name: string, by: string, fn: () => Promise<T>): Promise<T> => {

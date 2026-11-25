@@ -9,7 +9,6 @@ import {
   Menu,
   X,
   ShieldCheck,
-  Radio,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -17,6 +16,7 @@ import {
   Factory,
   Tags,
   Truck,
+  Gauge,
   LogOut,
   Loader2,
   Search
@@ -302,6 +302,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       groupTitle: t('nav:groups.analytics'),
       items: [
+        { id: 'vehicles-report', label: t('nav:items.vehiclesReport'), icon: Gauge },
+        { id: 'vehicles-tanks', label: t('nav:items.vehiclesTanks'), icon: Gauge },
         { id: 'chat', label: t('nav:items.chat'), icon: MessageSquare },
         { id: 'settings', label: t('nav:items.settings'), icon: Settings, badge: supportCount ? String(supportCount) : undefined },
       ]
@@ -538,7 +540,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <Menu className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </button>
           ) : (
-            /* In Expanded Mode: Logo + Title + 2026 Badge + 3-Lines Collapse Button */
+            /* In Expanded Mode: Logo + Title + 3-Lines Collapse Button */
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2.5 min-w-0">
                 {/* Logo Badge Container */}
@@ -548,7 +550,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   tabIndex={0}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleItemClick('dashboard'); } }}
                   title={t('common:brand.name')}
-                  className="relative w-[34px] h-[34px] rounded-xl shadow-md shadow-slate-900/20 ring-1 ring-black/5 dark:ring-white/10 shrink-0 cursor-pointer transform transition-transform hover:scale-105 active:scale-95"
+                  className="relative w-[46px] h-[46px] rounded-xl shadow-md shadow-slate-900/20 ring-1 ring-black/5 dark:ring-white/10 shrink-0 cursor-pointer transform transition-transform hover:scale-105 active:scale-95"
                 >
                   {/* أيقونة البرنامج نفسها (نفس أيقونة التثبيت على الهاتف) */}
                   <img src="/icon-192.png" alt="" draggable={false} className="w-full h-full rounded-xl object-cover" />
@@ -558,30 +560,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   />
                 </div>
 
-                {/* Brand Title & Year */}
+                {/* Brand Title */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <h1
-                      className={`font-black text-xs tracking-tight truncate leading-tight ${
-                        tokens.isLightMode ? 'text-slate-900' : 'text-white'
-                      }`}
-                    >
-                      {t('common:brand.name')}
-                    </h1>
-                    <span
-                      className={`text-[8.5px] px-1 py-px rounded font-mono font-extrabold border ${
-                        tokens.isLightMode
-                          ? 'bg-blue-50 text-blue-700 border-blue-200'
-                          : 'bg-blue-500/20 text-blue-300 border-blue-400/30'
-                      }`}
-                    >
-                      2026
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1 mt-0.5 text-[10px] text-slate-400 font-medium truncate">
-                    <Radio className="w-2.5 h-2.5 text-emerald-500 animate-pulse shrink-0" />
-                    <span className="truncate">{t('common:brand.subtitle')}</span>
-                  </div>
+                  <h1
+                    className={`font-black text-[15px] tracking-tight truncate leading-tight ${
+                      tokens.isLightMode ? 'text-slate-900' : 'text-white'
+                    }`}
+                  >
+                    {t('common:brand.name')}
+                  </h1>
                 </div>
               </div>
 

@@ -98,6 +98,7 @@ export const BiometricSettings: React.FC<{ username: string; onClose: () => void
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [password, setPassword] = useState('');
+  const [pending, setPending] = useState(false);
   const [methods, setMethods] = useBioMethods();
   const { ref: prepared, needPw, setNeedPw } = usePreparedBio(avail === true && !enabledFor);
 
@@ -120,8 +121,9 @@ export const BiometricSettings: React.FC<{ username: string; onClose: () => void
         setNeedPw(false);
         setPassword('');
       }
-      await enableBiometric(undefined, prepared.current);
+      const r = await enableBiometric(undefined, prepared.current);
       prepared.current = null;
+      setPending(r.pending);
       saveBioMethod(methods);
       try { localStorage.removeItem(BIO_DECLINED_PREFIX + username.toLowerCase()); } catch { /* تجاهل */ }
       setEnabledFor(biometricUser());
@@ -166,6 +168,11 @@ export const BiometricSettings: React.FC<{ username: string; onClose: () => void
             <p className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-emerald-700 dark:text-emerald-400">
               <CheckCircle2 className="w-4 h-4" /> {t('bio.enabledHere', { user: enabledFor })}
             </p>
+            {pending && (
+              <p role="status" className="mt-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-[13px] leading-6 text-amber-800 dark:text-amber-200">
+                <b className="block">{t('bio.pendingTitle')}</b>{t('bio.pendingText')}
+              </p>
+            )}
             <button type="button" onClick={disable} disabled={busy}
               className="auth-focus mt-6 w-full h-12 rounded-2xl text-[15px] font-bold text-rose-600 ring-1 ring-rose-200 hover:bg-rose-50 dark:ring-rose-500/30 dark:hover:bg-rose-950/40 disabled:opacity-60">
               {t('bio.disable')}
