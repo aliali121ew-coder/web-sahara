@@ -6,6 +6,8 @@ import cairoLatin from '@fontsource-variable/cairo/files/cairo-latin-wght-normal
 export interface UpdatedRow {
   code: string;
   cat: string;
+  /** نوع الوقود: كاز، بانزين، شحن */
+  fuel: string;
   caps: (number | null)[];
   /** وقت آخر تحديث يدوي (ISO)؛ فارغ = محدثة من كشف الخزانات */
   updatedAt: string;
@@ -22,8 +24,9 @@ export const buildUpdatedSheet = (rows: UpdatedRow[]) => {
   const origin = window.location.origin;
   const now = new Date();
   const printed = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
-  const body = rows.map((r, i) => `<tr><td class="idx">${i + 1}</td><td class="code"><b>${esc(r.code)}</b><span>${esc(r.cat)}</span></td>${
-    r.caps.map((c, k) => `<td class="${k === 0 ? 'main' : k === 4 ? 'reefer' : ''}">${n(c)}</td>`).join('')}</tr>`).join('');
+  const body = rows.map((r, i) => `<tr><td class="idx">${i + 1}</td><td class="code"><b>${esc(r.code)}</b><span>${esc(r.cat)}</span></td><td class="fuel f-${r.fuel === 'شحن' ? 'e' : r.fuel === 'بانزين' ? 'p' : 'd'}">${esc(r.fuel)}</td>${
+    r.fuel === 'شحن' ? '<td colspan="5" class="charge">عربة شحن — بلا خزانات</td>'
+      : r.caps.map((c, k) => `<td class="${k === 0 ? 'main' : k === 4 ? 'reefer' : ''}">${n(c)}</td>`).join('')}</tr>`).join('');
 
   return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>العربات المحدثة</title>
 <style>
@@ -56,6 +59,11 @@ td.code b { font-weight: 900; direction: ltr; unicode-bidi: isolate; }
 td.code span { font-size: 9px; font-weight: 700; color: #64748b; margin-inline-start: 6px; }
 td.main { background: #eef2ff !important; font-weight: 900; color: #1e3a8a; }
 td.reefer { color: #b45309; }
+td.fuel { font-size: 10px; font-weight: 900; }
+td.f-d { color: #1e3a8a; }
+td.f-p { color: #b45309; }
+td.f-e { color: #047857; }
+td.charge { color: #047857; font-size: 10px; font-weight: 800; background: #ecfdf5 !important; }
 tr { page-break-inside: avoid; }
 </style></head><body>
 <header class="head">
@@ -67,8 +75,8 @@ tr { page-break-inside: avoid; }
   <div class="partner"><img src="${origin}/logos/etihad.png" alt=""><span>مجموعة الاتحاد للصناعات</span></div>
 </header>
 <table>
-<thead><tr><th>ت</th><th>العربة</th><th>سعة الخزان الرئيسي<small>لتر</small></th><th>خزان الاحتياط الأول<small>لتر</small></th><th>خزان الاحتياط الثاني<small>لتر</small></th><th>خزان الاحتياط الثالث<small>لتر</small></th><th>خزان البراد<small>لتر</small></th></tr></thead>
-<tbody>${body || '<tr><td colspan="7">لا توجد عربات محدثة</td></tr>'}</tbody>
+<thead><tr><th>ت</th><th>العربة</th><th>الوقود</th><th>سعة الخزان الرئيسي<small>لتر</small></th><th>خزان الاحتياط الأول<small>لتر</small></th><th>خزان الاحتياط الثاني<small>لتر</small></th><th>خزان الاحتياط الثالث<small>لتر</small></th><th>خزان البراد<small>لتر</small></th></tr></thead>
+<tbody>${body || '<tr><td colspan="8">لا توجد عربات محدثة</td></tr>'}</tbody>
 </table>
 </body></html>`;
 };

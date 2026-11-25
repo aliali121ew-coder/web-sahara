@@ -575,6 +575,8 @@ export interface VehicleProfile {
   tankCount?: number | null;
   /** أُلغي تحديث الخزانات: العربة بلا سعات وتُعد غير محدثة (ولا تُؤخذ سعات كشف الخزانات) */
   tanksCleared?: boolean;
+  /** نوع الوقود: كاز (افتراضي)، بانزين (خزان رئيسي فقط)، شحن (كهربائية بلا خزانات) */
+  fuelType?: FuelType | null;
   /** المعدل المرجعي للقيادة (لتر لكل 100 كم) — لمختبر العربة */
   refL100?: number | null;
   /** صرف وحدة التبريد (لتر لكل ساعة) — لمختبر العربة */
@@ -607,6 +609,14 @@ export const fileDayStart = (now: number) => {
   d.setUTCHours(4, 0, 0, 0);
   return d.getTime() > now ? d.getTime() - 86400000 : d.getTime();
 };
+
+export type FuelType = 'diesel' | 'petrol' | 'electric';
+export const FUEL_TYPES: { id: FuelType; label: string }[] = [
+  { id: 'diesel', label: 'كاز' },
+  { id: 'petrol', label: 'بانزين' },
+  { id: 'electric', label: 'شحن' },
+];
+export const fuelLabel = (t: FuelType | null | undefined) => FUEL_TYPES.find(f => f.id === (t || 'diesel'))!.label;
 
 /** خانات خزانات العربة بالترتيب: الرئيسي، الاحتياط 1، 2، 3، البراد */
 export const TANK_SLOTS = [

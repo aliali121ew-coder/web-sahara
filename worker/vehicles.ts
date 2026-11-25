@@ -214,7 +214,7 @@ export const VEHICLE_PROFILES_KEY = 'sahara_vehicle_profiles_v1';
 const TANK_FIELDS: [string, string][] = [
   ['tankLiters', 'الرئيسي'], ['tank2Liters', 'احتياط 1'], ['tank3Liters', 'احتياط 2'], ['tank4Liters', 'احتياط 3'], ['reeferTankLiters', 'البراد'],
 ];
-type Prof = Record<string, unknown> & { id?: string; name?: string; tanksCleared?: boolean };
+type Prof = Record<string, unknown> & { id?: string; name?: string; tanksCleared?: boolean; fuelType?: string | null };
 const capOf = (p: Prof | null, f: string) => (typeof p?.[f] === 'number' && (p[f] as number) > 0 ? (p[f] as number) : null);
 
 /**
@@ -237,6 +237,8 @@ export const describeProfileChanges = async (db: D1Database, upsert: { id: strin
       .map(([f, label]) => [label, capOf(old, f), capOf(next, f)] as const)
       .filter(([, a, b]) => a !== b)
       .map(([label, a, b]) => `${label} ${a ?? '—'} ← ${b ?? '—'}`);
+    const fuelName = (v: unknown) => (v === 'petrol' ? 'بانزين' : v === 'electric' ? 'شحن' : 'كاز');
+    if ((next.fuelType ?? null) !== (old?.fuelType ?? null) && (next.fuelType || old?.fuelType)) diffs.unshift(`الوقود ${old?.fuelType ? fuelName(old.fuelType) : '—'} ← ${next.fuelType ? fuelName(next.fuelType) : '—'}`);
     if (next.tanksCleared && !old?.tanksCleared) out.push(`إلغاء تحديث العربة ${code}${diffs.length ? `: ${diffs.join(' · ')}` : ''}`);
     else if (diffs.length) out.push(`${old ? 'العربة' : 'إضافة عربة'} ${code}: ${diffs.join(' · ')}`);
   }

@@ -1,12 +1,12 @@
 /* eslint-disable i18next/no-literal-string */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CheckCircle2, Container, Loader2, Plus, RotateCcw, Search, Truck, X, XCircle } from 'lucide-react';
+import { CheckCircle2, Container, Fuel, Loader2, Plus, RotateCcw, Search, Truck, X, XCircle, Zap } from 'lucide-react';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { saveNow } from '../../lib/cloudSync';
 import { getProfile } from '../../lib/session';
 import { usePermissions } from '../../lib/usePermission';
-import { TANK_SLOTS, VEHICLE_PROFILES_KEY, sheetTanks, tankOnOf, tankSlotsOf, vehicleCategory, vehicleImage, type VehicleProfile } from '../../lib/vehicleFuel';
+import { FUEL_TYPES, TANK_SLOTS, VEHICLE_PROFILES_KEY, type FuelType, sheetTanks, tankOnOf, tankSlotsOf, vehicleCategory, vehicleImage, type VehicleProfile } from '../../lib/vehicleFuel';
 import { FLEET, FLEET_TYPES } from '../../lib/vehicleFleet';
 import { groupByCategory, useCategoryNames, useVehicleNames } from './categories';
 import { useVehicleData } from './useVehicleData';
@@ -19,7 +19,8 @@ interface Item { code: string; cat: string; catKey: string; group: string }
 
 const codeOf = (p: VehicleProfile) => (p.name?.trim() || p.id).toUpperCase();
 /** سُجّلت لها سعة خزان في ملفها (يدويًا) */
-const isUpdated = (p: VehicleProfile | undefined) => tankSlotsOf(p).some(Boolean);
+/** محدثة = لها سعة خزان، أو عربة شحن (كهربائية بلا خزانات) حُفظ نوعها */
+const isUpdated = (p: VehicleProfile | undefined) => !p?.tanksCleared && (tankSlotsOf(p).some(Boolean) || p?.fuelType === 'electric');
 /** أسطول الشركة من ملفي Excel (كل آلية: نوعها، محدثة أم لا، سعاتها المكتوبة، مجموعتها) */
 const FLEET_BY_CODE = new Map(FLEET.map(v => [v.code, v]));
 /** محدثة في ملفي Excel (شيتا «المحدث») */
@@ -85,15 +86,16 @@ export const VehicleTanksUpdater: React.FC = () => {
   };
 
   /** caps: سعة كل خانة (الرئيسي، الاحتياط 1، الاحتياط 2، البراد) أو null إن لم تكن في العربة */
-  const save = (code: string, caps: (number | null)[]) => persist(() => {
+  const save = (code: string, caps: (number | null)[], fuel: FuelType) => persist(() => {
     const u = getProfile();
     setProfiles(prev => {
       const base = prev.find(p => codeOf(p) === code)
         || { id: code, name: '', type: '', tankLiters: null, dailyLimit: null, driver: '', department: '', notes: '', photo: '', updatedAt: '', by: '' };
       const next: VehicleProfile = {
         ...base,
-        tankCount: caps.filter(Boolean).length || 1,
+        tankCount: fuel === 'electric' ? 0 : caps.filter(Boolean).length || 1,
         tanksCleared: false,
+        fuelType: fuel,
         tankLiters: caps[0] ?? null,
         tank2Liters: caps[1] ?? null,
         tank3Liters: caps[2] ?? null,
@@ -113,7 +115,7 @@ export const VehicleTanksUpdater: React.FC = () => {
       const base = prev.find(p => codeOf(p) === code)
         || { id: code, name: '', type: '', tankLiters: null, dailyLimit: null, driver: '', department: '', notes: '', photo: '', updatedAt: '', by: '' };
       const next: VehicleProfile = {
-        ...base, tankCount: null, tankLiters: null, tank2Liters: null, tank3Liters: null, tank4Liters: null, reeferTankLiters: null, tanksCleared: true,
+        ...base, tankCount: null, tankLiters: null, tank2Liters: null, tank3Liters: null, tank4Liters: null, reeferTankLiters: null, fuelType: null, tanksCleared: true,
         updatedAt: new Date().toISOString(), by: u?.name || u?.username || '',
       };
       return [next, ...prev.filter(p => p.id !== base.id)];
@@ -251,7 +253,7 @@ const UpdateDialog: React.FC<{
   items: Item[];
   profileOf: (code: string) => VehicleProfile | undefined;
   isUp: (code: string) => boolean;
-  onSave: (code: string, caps: (number | null)[]) => Promise<string | null>;
+  onSave: (code: string, caps: (number | null)[], fuel: FuelType) => Promise<string | null>;
   onReset: (code: string) => Promise<string | null>;
   onClose: () => void;
 }> = ({ items, profileOf, isUp, onSave, onReset, onClose }) => {
@@ -265,6 +267,14 @@ const UpdateDialog: React.FC<{
   const [code, setCode] = useState<string | null>(null);
   /** الخزانات المختارة: الرئيسي دائمًا، والاحتياط 1 و2 والبراد حسب العربة */
   const [on, setOn] = useState<boolean[]>([true, false, false, false, false]);
+  /** نوع الوقود: كاز (كل الخزانات)، بانزين (الرئيسي فقط)، شحن (بلا خزانات، يُحفظ النوع فقط) */
+  const [fuel, setFuelState] = useState<FuelType>('diesel');
+  const [origFuel, setOrigFuel] = useState<FuelType | null>(null);
+  const setFuel = (f: FuelType) => {
+    setFuelState(f);
+    // البانزين بخزان رئيسي فقط
+    if (f === 'petrol') setOn([true, false, false, false, false]);
+  };
   const [caps, setCaps] = useState<string[]>(['', '', '', '', '']);
   const [done, setDone] = useState(false);
   /** السعات عند فتح العربة: لمعرفة هل غيّرها المستخدم */
@@ -301,6 +311,8 @@ const UpdateDialog: React.FC<{
       : isUpdated(prof) || prof?.tankCount ? tankSlotsOf(prof) : sheet ? [sheet[0] ?? null, sheet[1] ?? null, sheet[2] ?? null, null, null] : [null, null, null, null, null];
     const startOn = prof?.tanksCleared ? [true, false, false, false, false] : isUpdated(prof) || prof?.tankCount ? tankOnOf(prof) : start.map((v, i) => i === 0 || !!v);
     setCode(c);
+    setFuel(prof?.tanksCleared ? 'diesel' : prof?.fuelType || 'diesel');
+    setOrigFuel(prof?.tanksCleared || !isUpdated(prof) ? null : prof?.fuelType || 'diesel');
     setOn(startOn);
     setCaps(start.map(v => (v ? String(v) : '')));
     setOrig(start.map((v, i) => (startOn[i] ? v || null : null)));
@@ -320,6 +332,8 @@ const UpdateDialog: React.FC<{
     setNewCode('');
     setExists(null);
     setCode(c);
+    setFuel('diesel');
+    setOrigFuel(null);
     setOn([true, false, false, false, false]);
     setCaps(['', '', '', '', '']);
     setOrig([null, null, null, null, null]);
@@ -329,8 +343,8 @@ const UpdateDialog: React.FC<{
   const prof = code ? profileOf(code) : undefined;
   const ok = !!code && isUp(code);
   // سعة كل خانة مختارة، وnull لغير المختارة (تُحذف سعتها عند الحفظ)
-  const nums = caps.map((v, i) => (on[i] && v.trim() !== '' ? Math.max(0, Number(v)) || null : null));
-  const valid = on.every((o, i) => !o || !!nums[i]);
+  const nums = caps.map((v, i) => (fuel !== 'electric' && on[i] && (fuel === 'diesel' || i === 0) && v.trim() !== '' ? Math.max(0, Number(v)) || null : null));
+  const valid = fuel === 'electric' || on.every((o, i) => !o || !!nums[i]);
   const total = nums.reduce<number>((s, v) => s + (v || 0), 0);
   const toggle = (i: number) => { if (i) setOn(o => o.map((x, j) => (j === i ? !x : x))); };
   const clearCap = (k: number) => setCaps(c => c.map((x, j) => (j === k ? '' : x)));
@@ -350,7 +364,7 @@ const UpdateDialog: React.FC<{
   };
 
   // عربة محدثة تغيّرت سعاتها أو خزاناتها: تأكيد قبل الحفظ
-  const changed = ok && nums.some((v, k) => v !== orig[k]);
+  const changed = ok && (fuel !== (origFuel || 'diesel') || nums.some((v, k) => v !== orig[k]));
   const submit = async () => {
     if (!code || !valid || saving) return;
     if (changed && !confirming) { setConfirming(true); return; }
@@ -358,7 +372,7 @@ const UpdateDialog: React.FC<{
     setSaving(true);
     setSaveError('');
     // علامة النجاح بعد تأكيد الخادم فقط
-    const err = await onSave(code, nums);
+    const err = await onSave(code, nums, fuel);
     setSaving(false);
     if (err) { setSaveError(err); return; }
     setDone(true);
@@ -483,13 +497,30 @@ const UpdateDialog: React.FC<{
                 </div>
 
                 <div className="mt-4">
+                  <div className="text-xs font-black text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1.5"><Fuel className="w-3.5 h-3.5" />نوع الوقود</div>
+                  <div role="radiogroup" aria-label="نوع الوقود" className="grid grid-cols-3 gap-2">
+                    {FUEL_TYPES.map(f => (
+                      <button key={f.id} type="button" role="radio" aria-checked={fuel === f.id} onClick={() => setFuel(f.id)}
+                        className={`h-11 rounded-xl text-sm font-black cursor-pointer transition-all ${fuel === f.id ? (f.id === 'electric' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30' : f.id === 'petrol' ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30' : 'bg-indigo-600 text-white shadow-md shadow-indigo-500/30') : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {fuel === 'electric' ? (
+                  <div className="mt-4 rounded-2xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/70 dark:bg-emerald-950/20 px-4 py-4 text-sm font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+                    <Zap className="w-5 h-5 shrink-0" />عربة شحن (كهربائية): بلا خزانات، يُحفظ نوع الشحن فقط
+                  </div>
+                ) : (<>
+                <div className="mt-4">
                   <div className="text-xs font-black text-slate-500 dark:text-slate-400 mb-2 flex items-center justify-between gap-1.5">
                     <span className="flex items-center gap-1.5"><Container className="w-3.5 h-3.5" />عدد الخزانات</span>
                     <span className="font-mono text-indigo-600 dark:text-indigo-400">{on.filter(Boolean).length}</span>
                   </div>
                   {/* الخزان الرئيسي دائمًا، والباقي يُختار حسب العربة */}
                   <div role="group" aria-label="الخزانات" className="grid grid-cols-2 gap-2">
-                    {TANK_SLOTS.map((t, i) => (
+                    {TANK_SLOTS.map((t, i) => ({ t, i })).filter(({ i }) => fuel === 'diesel' || i === 0).map(({ t, i }) => (
                       <button key={t.field} type="button" aria-pressed={on[i]} disabled={i === 0} onClick={() => toggle(i)}
                         className={`h-11 px-2 rounded-xl text-[13px] font-black transition-all ${i ? 'cursor-pointer' : 'cursor-default'} ${on[i] ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
                         {t.label}
@@ -519,10 +550,11 @@ const UpdateDialog: React.FC<{
                     </label>
                   ))}
                 </div>
-                <div className="mt-3 flex items-center justify-between text-sm">
+                </>)}
+                {fuel !== 'electric' && <div className="mt-3 flex items-center justify-between text-sm">
                   <span className="font-bold text-slate-500 dark:text-slate-400">السعة الكلية</span>
                   <span className="font-mono font-black text-slate-900 dark:text-white">{total.toLocaleString()} <span className="font-cairo text-xs text-slate-400">لتر</span></span>
-                </div>
+                </div>}
 
                 {confirming && (
                   <div className="absolute inset-0 z-20 flex items-center justify-center p-5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm vehicle-fade-in" role="alertdialog" aria-label="تأكيد تغيير السعات">

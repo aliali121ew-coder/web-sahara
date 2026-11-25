@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { usePermissions } from '../../lib/usePermission';
 import { useFuelNav } from '../../context/FuelDataContext';
-import { FREQUENT_DAYS, VEHICLE_PROFILES_KEY, categoryLabel, formatDay, tankSlotsOf, vehicleCategory, type VehicleProfile } from '../../lib/vehicleFuel';
+import { FREQUENT_DAYS, VEHICLE_PROFILES_KEY, categoryLabel, formatDay, fuelLabel, tankSlotsOf, vehicleCategory, type VehicleProfile } from '../../lib/vehicleFuel';
 import { useSyncedStorage } from '../../lib/useSyncedStorage';
 import { FLEET } from '../../lib/vehicleFleet';
 import { PrintPreview } from './PrintPreview';
@@ -61,16 +61,16 @@ export const VehiclesReport: React.FC = () => {
     const profileOf = (code: string) => profiles.find(p => codeOf(p) === code);
     const fleetOf = new Map(FLEET.map(v => [v.code, v]));
     const catOf = (code: string) => fleetOf.get(code)?.type || (vehicleCategory(code) ? categoryLabel(vehicleCategory(code)!.key) : 'أخرى');
-    const codes = new Set([...FLEET.map(v => v.code), ...profiles.filter(p => tankSlotsOf(p).some(Boolean)).map(codeOf)]);
+    const codes = new Set([...FLEET.map(v => v.code), ...profiles.filter(p => tankSlotsOf(p).some(Boolean) || p.fuelType === 'electric').map(codeOf)]);
     const rows: UpdatedRow[] = [];
     for (const code of codes) {
       const p = profileOf(code);
       if (p?.tanksCleared) continue;
       const caps = tankSlotsOf(p);
-      if (caps.some(Boolean)) rows.push({ code, cat: catOf(code), caps, updatedAt: p?.updatedAt || '' });
+      if (caps.some(Boolean) || p?.fuelType === 'electric') rows.push({ code, cat: catOf(code), fuel: fuelLabel(p?.fuelType), caps, updatedAt: p?.updatedAt || '' });
       else if (fleetOf.get(code)?.updated) {
         const t = fleetOf.get(code)!.tanks;
-        rows.push({ code, cat: catOf(code), caps: [t[0] ?? null, t[1] ?? null, t[2] ?? null, null, null], updatedAt: '' });
+        rows.push({ code, cat: catOf(code), fuel: fuelLabel(null), caps: [t[0] ?? null, t[1] ?? null, t[2] ?? null, null, null], updatedAt: '' });
       }
     }
     rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.code.localeCompare(b.code, 'en', { numeric: true }));
